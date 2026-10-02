@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sponsors | Team 2972 Gears & Buccaneers</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="site-header"></div>
+
+<div class="page-header">
+  <h1>Our Sponsors</h1>
+  <p>Team 2972 runs on the generosity of local businesses, families, and our school.</p>
+</div>
+
+<section class="block">
+  <div class="block-inner">
+    <h2 class="section-title">Become a Sponsor</h2>
+    <p class="section-lead">Every dollar goes directly toward robot parts, competition fees,
+    travel, and outreach. Download our sponsorship packet to see how your organization can
+    get involved.</p>
+    <div class="btn-row">
+      <a class="btn" id="packet-link" target="_blank" rel="noopener">Download Sponsorship Packet</a>
+      <a class="btn btn-outline" href="contact.html">Contact Us</a>
+    </div>
+  </div>
+</section>
+
+<div id="sponsor-tiers"></div>
+
+<div id="site-footer"></div>
+
+<script src="js/content.js"></script>
+<script src="js/components.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("packet-link").href = SPONSOR_PACKET_URL;
+
+  const container = document.getElementById("sponsor-tiers");
+  container.innerHTML = SPONSOR_TIERS.map((tier, i) => `
+    <section class="block ${i % 2 === 1 ? "alt" : ""}">
+      <div class="block-inner">
+        <h2 class="section-title">${tier.tier}</h2>
+        ${tier.sponsors.length ? `
+          <div class="sponsor-grid">
+            ${tier.sponsors.map(s => `
+              <div class="sponsor-tile">
+                <img src="${s.logo}" alt="${s.name} logo" title="${s.name}" />
+              </div>
+            `).join("")}
+          </div>
+        ` : `<p class="empty-note">Sponsors for this year are being finalized — check back soon.</p>`}
+      </div>
+    </section>
+  `).join("");
+});
+</script>
+</body>
+</html>

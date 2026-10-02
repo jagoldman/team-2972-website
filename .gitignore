@@ -1,0 +1,21 @@
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Images are hosted on Google Drive (see README) — don't commit local photo/video files.
+# Placeholder SVGs in assets/ are still tracked.
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.heic
+*.HEIC
+*.JPG
+*.JPEG
+*.PNG
+*.mov
+*.MOV
+*.mp4

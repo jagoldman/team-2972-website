@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mentors & Coaches | Team 2972 Gears & Buccaneers</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="site-header"></div>
+
+<div class="page-header">
+  <h1>Mentors &amp; Coaches</h1>
+  <p>The adults who volunteer their time to guide our students.</p>
+</div>
+
+<section class="block">
+  <div class="block-inner">
+    <h2 class="section-title">Current Team</h2>
+    <div class="grid" id="mentor-grid"></div>
+  </div>
+</section>
+
+<section class="block alt">
+  <div class="block-inner">
+    <h2 class="section-title">Past Mentors</h2>
+    <p class="section-lead" id="past-mentors"></p>
+  </div>
+</section>
+
+<section class="block">
+  <div class="block-inner">
+    <h2 class="section-title">Become a Mentor</h2>
+    <p class="section-lead">We're always looking for engineers, parents, and professionals
+    willing to share their time and expertise with our students. No robotics background required.</p>
+    <div class="btn-row">
+      <a class="btn" href="contact.html">Get in touch</a>
+    </div>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="js/content.js"></script>
+<script src="js/components.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("mentor-grid").innerHTML = MENTORS.map(m => `
+    <div class="card mentor-card">
+      <img src="${m.photo}" alt="${m.name}" />
+      <h3>${m.name}</h3>
+      <div class="role">${m.role}</div>
+      <p>${m.bio}</p>
+    </div>
+  `).join("");
+
+  document.getElementById("past-mentors").textContent = PAST_MENTORS.join(", ");
+});
+</script>
+</body>
+</html>

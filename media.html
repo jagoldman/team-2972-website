@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Media | Team 2972 Gears & Buccaneers</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="site-header"></div>
+
+<div class="page-header">
+  <h1>Media</h1>
+  <p>Photos, videos, and press coverage of the team.</p>
+</div>
+
+<section class="block">
+  <div class="block-inner">
+    <h2 class="section-title">Photos</h2>
+    <div class="grid" id="photo-grid"></div>
+  </div>
+</section>
+
+<section class="block alt">
+  <div class="block-inner">
+    <h2 class="section-title">Videos</h2>
+    <div class="grid" id="video-grid"></div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="block-inner">
+    <h2 class="section-title">Publicity</h2>
+    <div id="publicity-list"></div>
+  </div>
+</section>
+
+<section class="block alt">
+  <div class="block-inner">
+    <h2 class="section-title">Follow Along</h2>
+    <p class="section-lead">Follow us on Instagram for behind-the-scenes updates from build season.</p>
+    <div class="btn-row">
+      <a class="btn" id="ig-link" target="_blank" rel="noopener">Instagram</a>
+    </div>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="js/content.js"></script>
+<script src="js/components.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("ig-link").href = SITE.instagram;
+  document.getElementById("ig-link").textContent = `Instagram ${SITE.instagramHandle}`;
+
+  const photoGrid = document.getElementById("photo-grid");
+  photoGrid.innerHTML = MEDIA_PHOTOS.length
+    ? MEDIA_PHOTOS.map(src => `<div class="card"><img src="${src}" alt="Team photo" /></div>`).join("")
+    : `<p class="empty-note">Photo gallery coming soon.</p>`;
+
+  const videoGrid = document.getElementById("video-grid");
+  videoGrid.innerHTML = MEDIA_VIDEOS.length
+    ? MEDIA_VIDEOS.map(src => `<div class="card"><iframe src="${src}" style="width:100%;aspect-ratio:16/9;border:0;"></iframe></div>`).join("")
+    : `<p class="empty-note">Video gallery coming soon.</p>`;
+
+  const publicity = document.getElementById("publicity-list");
+  publicity.innerHTML = MEDIA_PUBLICITY.length
+    ? `<ul>${MEDIA_PUBLICITY.map(p => `<li><a href="${p.url}" target="_blank" rel="noopener">${p.title}</a> — ${p.outlet}</li>`).join("")}</ul>`
+    : `<p class="empty-note">No press coverage listed yet.</p>`;
+});
+</script>
+</body>
+</html>

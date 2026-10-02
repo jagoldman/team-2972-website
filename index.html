@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Team 2972 Gears & Buccaneers | Dawson School FRC</title>
+<meta name="description" content="Gears & Buccaneers, FIRST Robotics Competition Team 2972 at Dawson School in Lafayette, Colorado." />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="site-header"></div>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="eyebrow">FRC Team 2972 · Dawson School</div>
+      <h1>Gears &amp; Buccaneers</h1>
+      <p>Opportunities to experience real-world engineering and fundraising, built by
+      high schoolers, for high schoolers.</p>
+      <div class="btn-row">
+        <a class="btn" href="about.html">Learn About Us</a>
+        <a class="btn btn-outline" href="sponsors.html">Become a Sponsor</a>
+      </div>
+    </div>
+    <div class="hero-image">
+      <img src="assets/placeholder-hero.svg" alt="Team 2972 robot" />
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="block-inner">
+    <h2 class="section-title">Our Mission</h2>
+    <p class="section-lead" id="mission-text"></p>
+  </div>
+</section>
+
+<section class="block alt">
+  <div class="block-inner">
+    <h2 class="section-title">Robot History</h2>
+    <p class="section-lead">A look back at what we've built, season by season.</p>
+    <div class="grid" id="robot-showcase"></div>
+    <div class="btn-row"><a class="btn btn-outline" href="robots.html">See all robots</a></div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="block-inner">
+    <h2 class="section-title">2026 Competition Schedule</h2>
+    <ul class="schedule-list" id="schedule-list"></ul>
+  </div>
+</section>
+
+<section class="block alt">
+  <div class="block-inner">
+    <h2 class="section-title" id="about-school-title"></h2>
+    <p class="section-lead" id="about-school-body"></p>
+    <div class="btn-row"><a class="btn btn-outline" href="about.html">More about us</a></div>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="js/content.js"></script>
+<script src="js/components.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("mission-text").textContent = SITE.mission;
+
+  document.getElementById("about-school-title").textContent = ABOUT_SCHOOL.heading;
+  document.getElementById("about-school-body").textContent = ABOUT_SCHOOL.body;
+
+  const showcase = document.getElementById("robot-showcase");
+  showcase.innerHTML = ROBOTS.slice(0, 3).map(r => `
+    <div class="card">
+      <img src="${r.image}" alt="${r.name} - ${r.year} robot" />
+      <div class="card-body">
+        <div class="meta">${r.year} · ${r.game}</div>
+        <h3>${r.name}</h3>
+        <p>${r.status}</p>
+      </div>
+    </div>
+  `).join("");
+
+  const schedule = document.getElementById("schedule-list");
+  schedule.innerHTML = SCHEDULE_2026.map(s => `
+    <li>
+      <span class="event-name">${s.event}</span>
+      <span class="event-loc">${s.dates} · ${s.location}</span>
+    </li>
+  `).join("");
+});
+</script>
+</body>
+</html>

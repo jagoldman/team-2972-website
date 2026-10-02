@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>About | Team 2972 Gears & Buccaneers</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="site-header"></div>
+
+<div class="page-header">
+  <h1>About Us</h1>
+  <p>Who we are, what FIRST Robotics is, and how we got here.</p>
+</div>
+
+<section class="block">
+  <div class="block-inner">
+    <h2 class="section-title" id="school-title"></h2>
+    <p class="section-lead" id="school-body"></p>
+  </div>
+</section>
+
+<section class="block alt">
+  <div class="block-inner">
+    <h2 class="section-title" id="first-title"></h2>
+    <p class="section-lead" id="first-body"></p>
+  </div>
+</section>
+
+<section class="block">
+  <div class="block-inner">
+    <h2 class="section-title">Our Mission</h2>
+    <p class="section-lead" id="mission-body"></p>
+  </div>
+</section>
+
+<section class="block alt">
+  <div class="block-inner">
+    <h2 class="section-title">2026 Competition Schedule</h2>
+    <ul class="schedule-list" id="schedule-list"></ul>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="js/content.js"></script>
+<script src="js/components.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("school-title").textContent = ABOUT_SCHOOL.heading;
+  document.getElementById("school-body").textContent = ABOUT_SCHOOL.body;
+  document.getElementById("first-title").textContent = ABOUT_FIRST.heading;
+  document.getElementById("first-body").textContent = ABOUT_FIRST.body;
+  document.getElementById("mission-body").textContent = SITE.mission;
+
+  document.getElementById("schedule-list").innerHTML = SCHEDULE_2026.map(s => `
+    <li>
+      <span class="event-name">${s.event}</span>
+      <span class="event-loc">${s.dates} · ${s.location}</span>
+    </li>
+  `).join("");
+});
+</script>
+</body>
+</html>

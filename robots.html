@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FRC Robots | Team 2972 Gears & Buccaneers</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="site-header"></div>
+
+<div class="page-header">
+  <h1>Our Robots</h1>
+  <p>Every season brings a new game — and a new robot to solve it.</p>
+</div>
+
+<section class="block">
+  <div class="block-inner" id="robots-list"></div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="js/content.js"></script>
+<script src="js/components.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("robots-list").innerHTML = ROBOTS.map(r => `
+    <div class="robot-block">
+      <div>
+        <img src="${r.image}" alt="${r.name} - ${r.year} ${r.game} robot" />
+      </div>
+      <div>
+        <span class="badge">${r.year} · ${r.game}</span>
+        <h2>${r.name}</h2>
+        <p>${r.status}</p>
+        <p>${r.description}</p>
+        ${r.specs.length ? `
+          <table class="specs-table">
+            ${r.specs.map(s => `<tr><td>${s.label}</td><td>${s.value}</td></tr>`).join("")}
+          </table>
+        ` : ""}
+        ${r.results.length ? `
+          <h3>Competition Results</h3>
+          <ul>${r.results.map(res => `<li><strong>${res.event}:</strong> ${res.result}</li>`).join("")}</ul>
+        ` : ""}
+        ${r.links.length ? `
+          <div class="btn-row">
+            ${r.links.map(l => `<a class="btn btn-outline" href="${l.url}" target="_blank" rel="noopener">${l.label}</a>`).join("")}
+          </div>
+        ` : ""}
+      </div>
+    </div>
+  `).join("");
+});
+</script>
+</body>
+</html>

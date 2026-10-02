@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Outreach | Team 2972 Gears & Buccaneers</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="site-header"></div>
+
+<div class="page-header">
+  <h1>Outreach</h1>
+  <p>How we give back to the FIRST and Dawson community.</p>
+</div>
+
+<section class="block">
+  <div class="block-inner">
+    <h2 class="section-title">Community Events</h2>
+    <p class="section-lead">From mentoring FIRST LEGO League teams to running STEM
+    demos, we try to pass on what FIRST has given us.</p>
+    <div class="grid" id="outreach-grid"></div>
+  </div>
+</section>
+
+<section class="block alt">
+  <div class="block-inner">
+    <h2 class="section-title">Dawson FLL</h2>
+    <p class="section-lead">Team 2972 supports Dawson School's FIRST LEGO League program,
+    mentoring younger students as they take their first steps in robotics.</p>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="js/content.js"></script>
+<script src="js/components.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const grid = document.getElementById("outreach-grid");
+  if (!OUTREACH_EVENTS.length) {
+    grid.innerHTML = `<p class="empty-note">Event write-ups coming soon — check back for updates on our latest outreach.</p>`;
+    return;
+  }
+  grid.innerHTML = OUTREACH_EVENTS.map(e => `
+    <div class="card">
+      <img src="${e.image}" alt="${e.name}" />
+      <div class="card-body">
+        <div class="meta">${e.date}</div>
+        <h3>${e.name}</h3>
+        <p>${e.description}</p>
+      </div>
+    </div>
+  `).join("");
+});
+</script>
+</body>
+</html>

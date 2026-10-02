@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400">
+  <rect width="600" height="400" fill="#eef0f4"/>
+  <rect x="220" y="140" width="160" height="160" fill="#0b1f3a"/>
+  <circle cx="250" cy="320" r="24" fill="#d4a72c"/>
+  <circle cx="350" cy="320" r="24" fill="#d4a72c"/>
+  <text x="300" y="80" font-family="Segoe UI, sans-serif" font-size="20" fill="#5b6472" text-anchor="middle">Robot photo goes here</text>
+</svg>
