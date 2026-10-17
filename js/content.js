@@ -56,7 +56,7 @@ const ANNUAL_EVENTS = [
   { name: "Broomfield Days", when: "Fall", description: "Robot demos for the local community." },
 ];
 
-// Google Calendar shared with the team (also listed on Team Login)
+// Google Calendar shared with the team (also a portal tile in infra/config/apps.json)
 const TEAM_CALENDAR_URL =
   "https://calendar.google.com/calendar/embed?src=c_4e72069c8bd9568f2218c71e58a6ed7cbb7471b08fb6410b0405c95acc4da73a%40group.calendar.google.com";
 
@@ -662,61 +662,7 @@ const CAD_OVERVIEW = [
   ] },
 ];
 
-/*
-  TEAM_APPS — the internal tools listed on the Team Login page.
-  Each app handles its own sign-in; this page only links to them.
-  A url of "#" shows the card as "Coming soon".
-*/
-const TEAM_APPS = [
-  {
-    name: "Task App",
-    description: "Tasks, build schedule, Gantt chart, and team calendar. Sign in with your school Google account.",
-    url: "https://mouro.ai/2972",
-    audience: "Students, mentors, parents",
-  },
-  {
-    name: "Team Calendar",
-    description: "Meetings, build days, and competitions.",
-    url: TEAM_CALENDAR_URL,
-    audience: "Everyone",
-  },
-  {
-    name: "Team Handbook",
-    description: "Student, Family, and Mentor Handbook 2025–2026.",
-    url: "https://docs.google.com/document/d/1cmYxwgvPZEGiw9m3zzVnzU7u41QOKLFab4hHGOfGd5U/edit?usp=sharing",
-    audience: "Everyone",
-  },
-  {
-    name: "GitHub",
-    description: "Robot code for every season.",
-    url: "https://github.com/Gears-and-Buccaneers",
-    audience: "Programmers",
-  },
-  {
-    name: "Onshape",
-    description: "Robot CAD.",
-    url: "https://cad.onshape.com",
-    audience: "Designers",
-  },
-  {
-    name: "Game Analysis Template",
-    description: "Kickoff game breakdown and planning document.",
-    url: "https://docs.google.com/document/d/1fZVxb6nVicIAbYfuTFl0PZAnThBFkbATEzExnshtqF0/edit?usp=sharing",
-    audience: "Students",
-  },
-  {
-    name: "Scouting",
-    description: "Match scouting app.",
-    url: "#", // TODO
-    audience: "Scouts",
-  },
-  {
-    name: "Team Drive",
-    description: "Shared Google Drive folder.",
-    url: "#", // TODO
-    audience: "Students, mentors",
-  },
-];
+// Portal tiles (Task App, Calendar, Handbook, …) live in infra/config/apps.json, not here.
 
 // Media galleries
 const MEDIA_PHOTOS = [

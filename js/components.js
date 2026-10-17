@@ -64,7 +64,8 @@ function hostUrl(sub, path = "/") {
 
 const PORTAL_URL = hostUrl("portal");
 const REQUEST_URL = hostUrl("admin", "/request");
-// Authentik sign-out (INTEGRATION §1; exact path verified in infra P0)
+// Authentik sign-out, from INTEGRATION §1. UNCONFIRMED until infra P0 verifies the path (and
+// whether the outpost's /outpost.goauthentik.io/sign_out is also needed). Change it only here.
 const SIGNOUT_URL = hostUrl("auth", "/flows/-/default/invalidation/");
 
 // The portal page sets <body data-portal>. Its nav links must go to the public host.
@@ -121,8 +122,8 @@ function renderFooter() {
       <div class="footer-col">
         <a href="${pageHref("sponsors.html")}">Become a Sponsor</a>
         <a href="${pageHref("team.html")}">Become a Mentor</a>
-        <a href="${PORTAL_URL}">Team Login</a>
-        <a href="${REQUEST_URL}">Request an account</a>
+        ${isPortalPage() ? "" : `<a href="${PORTAL_URL}">Team Login</a>
+        <a href="${REQUEST_URL}">Request an account</a>`}
       </div>
     </div>
     <p class="footer-copy">© ${new Date().getFullYear()} ${SITE.teamName}, FRC Team ${SITE.teamNumber}.</p>

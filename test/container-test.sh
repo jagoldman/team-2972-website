@@ -56,6 +56,7 @@ done
 
 echo "-- with the secret"
 S="-H X-Proxy-Secret:$SECRET"
+check 200 "portal / (portal page)" -H "Host: portal.$D" $S "$URL/"
 check 200 "portal /apps.json" -H "Host: portal.$D" $S "$URL/apps.json"
 check 200 "portal /me.json" -H "Host: portal.$D" $S "$URL/me.json"
 check 200 "portal /css/style.css" -H "Host: portal.$D" $S "$URL/css/style.css"

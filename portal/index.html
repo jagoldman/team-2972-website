@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title>Team Portal | Team 2972 Gears & Buccaneers</title>
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<!-- Served at portal.SITE_DOMAIN/ only, behind login. Identity comes from /me.json and tiles from
+     /apps.json (infra/config/apps.json). Showing or hiding a tile is for convenience only:
+     Authentik's bindings decide who can really open each app. -->
+<body data-portal>
+<div id="site-header"></div>
+
+<div class="page-header">
+  <h1 id="greeting">Team Portal</h1>
+  <p id="portal-intro">Your team apps.</p>
+</div>
+
+<section class="block">
+  <div class="block-inner">
+    <div class="portal-notice" id="no-group" hidden>
+      <p><strong>Your account is waiting for an admin to assign your group.</strong></p>
+      <p>You'll see your team apps here once that's done.</p>
+    </div>
+    <div class="app-grid" id="app-grid"></div>
+    <p class="app-note" id="app-note"></p>
+    <p><a class="btn btn-outline" id="sign-out" href="#">Sign out</a></p>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="/config.js"></script>
+<script src="/js/content.js"></script>
+<script src="/js/components.js"></script>
+<script>
+// The site-wide groups (CONVENTIONS §3). Other Authentik groups don't count.
+const SITE_GROUPS = ["admin", "mentor", "student", "parent", "alumni"];
+
+// X-Authentik-Groups is pipe-separated ("mentor|parent"); empty means no groups.
+function userGroups(raw) {
+  return String(raw || "")
+    .split("|")
+    .map((g) => g.trim())
+    .filter((g) => SITE_GROUPS.includes(g));
+}
+
+// groups: [] means anyone with a group. Users with no group see no tiles (MASTER_PLAN D27).
+function visibleTiles(tiles, groups) {
+  if (groups.length === 0) return [];
+  return tiles.filter((t) => !t.groups || t.groups.length === 0 || t.groups.some((g) => groups.includes(g)));
+}
+
+// Site tiles name a subdomain ("host" + "path"); outside tiles give a full "url".
+function tileHref(t) {
+  if (t.host) return hostUrl(t.host, t.path || "/");
+  return /^https?:\/\//.test(t.url || "") ? t.url : null;
+}
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text) node.textContent = text;
+  return node;
+}
+
+function renderTile(t) {
+  const href = t.comingSoon ? null : tileHref(t);
+  const card = el("div", `app-card${href ? "" : " coming-soon"}`);
+  card.append(el("h3", "", t.name));
+  if (t.audience) card.append(el("div", "app-audience", t.audience));
+  card.append(el("p", "", t.description));
+  if (href) {
+    const a = el("a", "btn", "Open");
+    a.href = href;
+    if (!t.host) {
+      a.target = "_blank";
+      a.rel = "noopener";
+    }
+    card.append(a);
+  } else {
+    const s = el("span", "btn btn-disabled", "Coming soon");
+    s.setAttribute("aria-disabled", "true");
+    card.append(s);
+  }
+  return card;
+}
+
+async function getJson(path) {
+  const res = await fetch(path, { credentials: "same-origin", cache: "no-store" });
+  if (!res.ok) throw new Error(`${path}: ${res.status}`);
+  return res.json();
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  document.getElementById("sign-out").href = SIGNOUT_URL;
+  const note = document.getElementById("app-note");
+  note.append("Something not working? Email ");
+  const mail = el("a", "", SITE.email);
+  mail.href = `mailto:${SITE.email}`;
+  note.append(mail, ".");
+
+  let me, tiles;
+  try {
+    [me, tiles] = await Promise.all([getJson("/me.json"), getJson("/apps.json")]);
+  } catch (err) {
+    document.getElementById("portal-intro").textContent =
+      "The portal couldn't load your apps. Try reloading the page.";
+    return;
+  }
+
+  const name = me.name || me.email || "there";
+  document.getElementById("greeting").textContent = `Hi, ${name}`;
+
+  const groups = userGroups(me.groups);
+  if (groups.length === 0) {
+    document.getElementById("no-group").hidden = false;
+    document.getElementById("portal-intro").textContent = "Welcome to the team portal.";
+    return;
+  }
+
+  const shown = visibleTiles(Array.isArray(tiles) ? tiles : [], groups);
+  document.getElementById("app-grid").append(...shown.map(renderTile));
+  if (shown.length === 0) {
+    document.getElementById("portal-intro").textContent = "There are no apps for your groups yet.";
+  }
+});
+</script>
+</body>
+</html>

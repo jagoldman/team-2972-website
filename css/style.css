@@ -518,3 +518,13 @@ a.card:hover { color: inherit; transform: translateY(-3px); border-color: var(--
 .btn-disabled:hover { transform: none; box-shadow: none; color: var(--gray-600); }
 .app-note { color: var(--gray-600); margin-top: 28px; }
 .app-note a { text-decoration: underline; text-decoration-color: var(--gold); }
+.portal-notice {
+  background: var(--white);
+  border: 1px solid var(--gray-100);
+  border-left: 4px solid var(--gold);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  margin-bottom: 24px;
+}
+.portal-notice p { margin: 0; }
+.portal-notice p + p { margin-top: 6px; color: var(--gray-600); }
