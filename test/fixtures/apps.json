@@ -1,0 +1,43 @@
+[
+  {
+    "id": "tasks",
+    "name": "Task App",
+    "description": "Fake tile for tests.",
+    "host": "tasks",
+    "groups": ["admin", "mentor", "student", "parent"],
+    "audience": "Students, mentors, parents"
+  },
+  {
+    "id": "admin",
+    "name": "Admin",
+    "description": "Fake tile for tests.",
+    "host": "admin",
+    "path": "/requests",
+    "groups": ["admin"],
+    "audience": "Admins"
+  },
+  {
+    "id": "everyone",
+    "name": "Everyone Link",
+    "description": "Fake outside link shown to every user with a group.",
+    "url": "https://example.com/handbook",
+    "groups": [],
+    "audience": "Everyone"
+  },
+  {
+    "id": "alumni-news",
+    "name": "Alumni News",
+    "description": "Fake tile for alumni and mentors.",
+    "url": "https://example.com/alumni",
+    "groups": ["alumni", "mentor"],
+    "audience": "Alumni, mentors"
+  },
+  {
+    "id": "scouting",
+    "name": "Scouting",
+    "description": "Fake coming-soon tile.",
+    "comingSoon": true,
+    "groups": ["student", "mentor"],
+    "audience": "Scouts"
+  }
+]

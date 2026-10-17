@@ -1,0 +1,24 @@
+# Only the site goes into the image. Photos come from Google Drive.
+.git
+.github
+.gitignore
+.gitleaks.toml
+.dockerignore
+.DS_Store
+**/.DS_Store
+.env
+.env.*
+Dockerfile
+*.md
+docs/
+test/
+assets/**/*.jpg
+assets/**/*.jpeg
+assets/**/*.png
+assets/**/*.gif
+assets/**/*.webp
+assets/**/*.heic
+assets/**/*.JPG
+assets/**/*.JPEG
+assets/**/*.PNG
+assets/**/*.HEIC

@@ -1,0 +1,1 @@
+{"email":{{.Req.Header.Get "X-Authentik-Email" | lower | toJson}},"name":{{.Req.Header.Get "X-Authentik-Name" | toJson}},"username":{{.Req.Header.Get "X-Authentik-Username" | toJson}},"groups":{{.Req.Header.Get "X-Authentik-Groups" | toJson}},"uid":{{.Req.Header.Get "X-Authentik-Uid" | toJson}}}
