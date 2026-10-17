@@ -1,0 +1,26 @@
+# Secret scan on every push and PR (infra/docs/CONVENTIONS.md §9). A finding fails the build.
+# Runs the pinned gitleaks image directly: gitleaks-action needs a paid license for org repos.
+name: gitleaks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Scan history
+        run: >
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.28.0
+          git /repo --config /repo/.gitleaks.toml --redact -v --no-banner
+      - name: Scan working tree
+        run: >
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.28.0
+          dir /repo --config /repo/.gitleaks.toml --redact -v --no-banner

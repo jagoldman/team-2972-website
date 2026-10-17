@@ -1,0 +1,12 @@
+# gitleaks config (infra/docs/CONVENTIONS.md §9).
+# Uses gitleaks' default rules. Never disable the scan; allowlist known fake test keys by path only.
+title = "2972 landing"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fake values used only by local container tests"
+paths = [
+  '''^test/''',
+]
