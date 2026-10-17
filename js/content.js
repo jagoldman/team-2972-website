@@ -6,15 +6,15 @@
   sponsors, events, and images. Every page reads from here, so a
   change here shows up everywhere it's used.
 
-  IMAGES: put image files in assets/ (preferred), or paste a Google
-  Drive image URL. Easiest way to get a usable direct-image URL from Drive:
+  IMAGES: photos come from Google Drive only (they are not kept in git).
     1. Right click the image in Drive -> Share -> "Anyone with the link"
     2. Copy the file ID from the share link
        (drive.google.com/file/d/FILE_ID_HERE/view)
-    3. Use this format:
-       https://lh3.googleusercontent.com/d/FILE_ID_HERE
-  That format reliably renders as a hotlinked <img>, unlike the
-  raw "/view" share link.
+    3. Use this format, with a width that fits where it's shown:
+       https://lh3.googleusercontent.com/d/FILE_ID_HERE=w800
+       (logo w200, hero w1600, robots/history w800, headshots and
+       logos w400, gallery thumbnails w600; see README)
+  That format renders as an <img>, unlike the raw "/view" share link.
 
   LINKS: a url of "#" means "not set yet" — pages hide those links
   (or show them as "coming soon") instead of linking nowhere.
