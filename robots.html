@@ -15,7 +15,16 @@
 </div>
 
 <section class="block">
-  <div class="block-inner" id="robots-list"></div>
+  <div class="block-inner">
+    <div class="grid robot-archive" id="robot-archive"></div>
+  </div>
+</section>
+
+<section class="block alt">
+  <div class="block-inner">
+    <h2 class="section-title">Help us fill in the archive</h2>
+    <p class="section-lead" id="archive-ask"></p>
+  </div>
 </section>
 
 <div id="site-footer"></div>
@@ -24,33 +33,23 @@
 <script src="js/components.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("robots-list").innerHTML = ROBOTS.map(r => `
-    <div class="robot-block">
-      <div>
-        <img src="${r.image}" alt="${r.name} - ${r.year} ${r.game} robot" />
+  document.getElementById("robot-archive").innerHTML = ROBOTS.map(r => `
+    <a class="card robot-card${r.image ? "" : " no-photo"}" href="${robotUrl(r)}">
+      ${r.image
+        ? `<img src="${r.image}" alt="${robotName(r)}, the ${r.year} robot" loading="lazy" />`
+        : `<div class="photo-wanted"><span>${r.year}</span>Photo wanted</div>`}
+      <div class="card-body">
+        <div class="meta">${r.year} · ${r.game}</div>
+        <h3>${robotName(r)}</h3>
+        ${r.tagline ? `<p>${r.tagline}</p>` : ""}
+        ${r.stats ? `<p class="stats-line">${r.stats}</p>` : ""}
       </div>
-      <div>
-        <span class="badge">${r.year} · ${r.game}</span>
-        <h2>${r.name}</h2>
-        <p>${r.status}</p>
-        <p>${r.description}</p>
-        ${r.specs.length ? `
-          <table class="specs-table">
-            ${r.specs.map(s => `<tr><td>${s.label}</td><td>${s.value}</td></tr>`).join("")}
-          </table>
-        ` : ""}
-        ${r.results.length ? `
-          <h3>Competition Results</h3>
-          <ul>${r.results.map(res => `<li><strong>${res.event}:</strong> ${res.result}</li>`).join("")}</ul>
-        ` : ""}
-        ${r.links.length ? `
-          <div class="btn-row">
-            ${r.links.map(l => `<a class="btn btn-outline" href="${l.url}" target="_blank" rel="noopener">${l.label}</a>`).join("")}
-          </div>
-        ` : ""}
-      </div>
-    </div>
+    </a>
   `).join("");
+
+  document.getElementById("archive-ask").innerHTML = `We don't have photos or names for many of
+    our older robots. Were you on the team? Send photos, robot names, or stories to
+    <a href="mailto:${SITE.email}">${SITE.email}</a>.`;
 });
 </script>
 </body>

@@ -8,9 +8,11 @@ Claude (or anyone) to "change X" — almost all real content lives in one file.
 
 ```
 index.html        Home
-about.html         About Dawson School + FIRST Robotics + mission + schedule
+about.html         About Dawson School + FIRST + mission, values, history, yearly events
 team.html          Mentors & coaches
-robots.html        Robot history (2025, 2024, 2023, ...)
+robots.html        Robot archive: one card per season, 2009 to now
+robot.html         One season's page, picked by ?year= (e.g. robot.html?year=2025)
+team-login.html    Team Login: links to internal apps (each app has its own sign-in)
 sponsors.html       Sponsor tiers + sponsorship packet download
 outreach.html      Community outreach events
 media.html         Photos / videos / publicity + Instagram
@@ -20,7 +22,7 @@ contact.html       Email / Instagram / sponsor CTA
 css/style.css      All styling (navy & gold theme)
 js/content.js      >>> EDIT THIS FILE to change almost all text, links, and images <<<
 js/components.js   Shared header/footer + nav, auto-injected on every page
-assets/            Placeholder logo/photos — swap for real images
+assets/            brand/, robots/, gallery/, mentors/, history/, outreach/ images
 ```
 
 ## Editing content
@@ -28,8 +30,41 @@ assets/            Placeholder logo/photos — swap for real images
 Open `js/content.js`. It's one file of plain data — team info, mentors,
 robots, sponsors, schedule, outreach events, and resource links. Change a
 value there and it updates on every page that uses it. Look for `TODO`
-comments marking sections that still need real content (2024/2023 robot
-details, current sponsors, outreach write-ups, media links).
+comments marking sections that still need real content (2026 robot details,
+older robot photos, current sponsors, outreach write-ups, media links).
+
+A link set to `"#"` means "not set yet". Pages hide it, or show it as
+"Coming soon" on Team Login, so nothing links nowhere.
+
+### Robots
+
+Each season is one object in `ROBOTS`, newest first. Only `year` and `game`
+are required, and each page section appears only when its field is set. The
+comment above `ROBOTS` lists every field (stats line, specs, mechanisms,
+results, awards, gallery, videos, CAD and code links, and more).
+
+- **Adding a season:** add a new object at the top of `ROBOTS`. The archive
+  card and its page at `robot.html?year=YEAR` appear automatically.
+- **The Blue Alliance:** every season page gets a link to
+  `thebluealliance.com/team/2972/YEAR`, built from the team number. In
+  `results`, set `tba` to an event key (such as `"2025mnum"`) to link that
+  event. Nothing else is loaded from TBA. Results and awards are typed in by hand.
+- **Unknown names or photos:** leave `name` or `image` as `""`. The site shows
+  "Robot name unknown" or a "Photo wanted" box and asks alumni for help.
+  If a photo is a screenshot from a match video, say so in `photoSource`.
+- **Where older results came from:** FIRST's event records
+  (frc-events.firstinspires.org/YEAR/team/2972) list a robot name for each
+  season since 2015. FIRST copies the previous year's name forward when nobody
+  updates it, so names that repeat are left blank with a comment.
+
+### Team Login
+
+`TEAM_APPS` in `content.js` lists the internal tools shown on
+`team-login.html`. The page holds no passwords and does no sign-in itself:
+each app (such as the Task App at mouro.ai/2972) asks for your account.
+Anyone with the link can see the list, so don't put private links on it that
+would work without signing in. The page is marked `noindex` to keep it out
+of search results.
 
 ### Adding images from Google Drive
 

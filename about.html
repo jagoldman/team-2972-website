@@ -37,8 +37,34 @@
 
 <section class="block alt">
   <div class="block-inner">
-    <h2 class="section-title">2026 Competition Schedule</h2>
+    <h2 class="section-title">Our Values</h2>
+    <div class="mechanism-grid" id="values-grid"></div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="block-inner">
+    <h2 class="section-title">How We Work</h2>
+    <div class="mechanism-grid" id="strategy-grid"></div>
+  </div>
+</section>
+
+<section class="block alt">
+  <div class="block-inner">
+    <h2 class="section-title">Our History</h2>
+    <p class="section-lead">Team 2972 has competed every season since 2009. See every robot on the
+    <a href="robots.html">robots page</a>.</p>
+    <div id="history"></div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="block-inner">
+    <h2 class="section-title">Our Year</h2>
+    <ul class="schedule-list" id="annual-list"></ul>
+    <h3 class="subsection-title">2026 Competition Schedule</h3>
     <ul class="schedule-list" id="schedule-list"></ul>
+    <div class="btn-row"><a class="btn btn-outline" id="calendar-link" target="_blank" rel="noopener">Team calendar</a></div>
   </div>
 </section>
 
@@ -53,6 +79,28 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("first-title").textContent = ABOUT_FIRST.heading;
   document.getElementById("first-body").textContent = ABOUT_FIRST.body;
   document.getElementById("mission-body").textContent = SITE.mission;
+
+  const cards = items => items.map(v => `<div class="mechanism"><h3>${v.name}</h3><p>${v.text}</p></div>`).join("");
+  document.getElementById("values-grid").innerHTML = cards(VALUES);
+  document.getElementById("strategy-grid").innerHTML = cards(STRATEGY);
+
+  document.getElementById("history").innerHTML = HISTORY.map(h => `
+    <article class="history-era${h.image ? "" : " no-image"}">
+      <div>
+        <h3>${h.era} <span class="era-years">${h.years}</span></h3>
+        ${h.paragraphs.map(p => `<p>${p}</p>`).join("")}
+      </div>
+      ${h.image ? `<img src="${h.image}" alt="${h.imageAlt || h.era}" loading="lazy" />` : ""}
+    </article>
+  `).join("");
+
+  document.getElementById("annual-list").innerHTML = ANNUAL_EVENTS.map(e => `
+    <li>
+      <span class="event-name">${e.name}</span>
+      <span class="event-loc">${e.when} · ${e.description}</span>
+    </li>
+  `).join("");
+  document.getElementById("calendar-link").href = TEAM_CALENDAR_URL;
 
   document.getElementById("schedule-list").innerHTML = SCHEDULE_2026.map(s => `
     <li>

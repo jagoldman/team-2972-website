@@ -19,3 +19,17 @@ Thumbs.db
 *.mov
 *.MOV
 *.mp4
+
+# --- 2972 standard: never commit secrets or data (infra/docs/CONVENTIONS.md §9) ---
+.env
+.env.*
+!.env.example
+backups/
+data/
+*.sql.gz
+*.dump
+*.pem
+*.key
+/test-results/
+/playwright-report/
+/.claude/worktrees/

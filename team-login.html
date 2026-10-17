@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title>Team Login | Team 2972 Gears & Buccaneers</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="site-header"></div>
+
+<div class="page-header">
+  <h1>Team Login</h1>
+  <p>Tools for students, mentors, and parents. Each app asks you to sign in with your team account.</p>
+</div>
+
+<section class="block">
+  <div class="block-inner">
+    <div class="app-grid" id="app-grid"></div>
+    <p class="app-note" id="app-note"></p>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="js/content.js"></script>
+<script src="js/components.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("app-grid").innerHTML = TEAM_APPS.map(app => {
+    const ready = isSet(app.url);
+    return `
+      <div class="app-card${ready ? "" : " coming-soon"}">
+        <h3>${app.name}</h3>
+        ${app.audience ? `<div class="app-audience">${app.audience}</div>` : ""}
+        <p>${app.description}</p>
+        ${ready
+          ? `<a class="btn" href="${app.url}" target="_blank" rel="noopener">Open</a>`
+          : `<span class="btn btn-disabled" aria-disabled="true">Coming soon</span>`}
+      </div>`;
+  }).join("");
+
+  document.getElementById("app-note").innerHTML = `Can't get in? Email
+    <a href="mailto:${SITE.email}">${SITE.email}</a> and a mentor will set up your account.`;
+});
+</script>
+</body>
+</html>

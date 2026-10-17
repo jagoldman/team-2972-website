@@ -23,7 +23,7 @@
       </div>
     </div>
     <div class="hero-image">
-      <img src="assets/placeholder-hero.svg" alt="Team 2972 robot" />
+      <img id="hero-img" alt="Team 2972 students with their robot" />
     </div>
   </div>
 </section>
@@ -65,21 +65,23 @@
 <script src="js/components.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("hero-img").src = SITE.heroImage;
   document.getElementById("mission-text").textContent = SITE.mission;
 
   document.getElementById("about-school-title").textContent = ABOUT_SCHOOL.heading;
   document.getElementById("about-school-body").textContent = ABOUT_SCHOOL.body;
 
   const showcase = document.getElementById("robot-showcase");
-  showcase.innerHTML = ROBOTS.slice(0, 3).map(r => `
-    <div class="card">
-      <img src="${r.image}" alt="${r.name} - ${r.year} robot" />
+  // Latest three seasons that have a photo
+  showcase.innerHTML = ROBOTS.filter(r => r.image).slice(0, 3).map(r => `
+    <a class="card robot-card" href="${robotUrl(r)}">
+      <img src="${r.image}" alt="${robotName(r)}, the ${r.year} robot" />
       <div class="card-body">
         <div class="meta">${r.year} · ${r.game}</div>
-        <h3>${r.name}</h3>
-        <p>${r.status}</p>
+        <h3>${robotName(r)}</h3>
+        <p>${r.tagline || r.status || ""}</p>
       </div>
-    </div>
+    </a>
   `).join("");
 
   const schedule = document.getElementById("schedule-list");

@@ -12,9 +12,34 @@ const NAV_LINKS = [
   { label: "Contact", href: "contact.html" },
 ];
 
+// Pages that should highlight a different nav item
+const NAV_ALIASES = { "robot.html": "robots.html" };
+
 function currentPage() {
   const path = window.location.pathname.split("/").pop();
-  return path === "" ? "index.html" : path;
+  const page = path === "" ? "index.html" : path;
+  return NAV_ALIASES[page] || page;
+}
+
+// ---------- Shared helpers ----------
+
+// True when a link has a real value (content.js uses "#" for "not set yet")
+function isSet(url) {
+  return Boolean(url) && url !== "#";
+}
+
+// "https://www.youtube.com/watch?v=ID" or "https://youtu.be/ID" -> embed URL
+function youtubeEmbed(url) {
+  const m = String(url).match(/(?:youtu\.be\/|v=|\/embed\/)([\w-]{11})/);
+  return m ? `https://www.youtube.com/embed/${m[1]}` : url;
+}
+
+function robotName(r) {
+  return r.name || "Robot name unknown";
+}
+
+function robotUrl(r) {
+  return `robot.html?year=${encodeURIComponent(r.year)}`;
 }
 
 function renderHeader() {
@@ -36,7 +61,10 @@ function renderHeader() {
       <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
         <span></span><span></span><span></span>
       </button>
-      <nav class="site-nav">${links}</nav>
+      <nav class="site-nav">
+        ${links}
+        <a href="team-login.html" class="nav-login${active === "team-login.html" ? " active" : ""}">Team Login</a>
+      </nav>
     </div>
   </header>`;
 }
@@ -57,6 +85,7 @@ function renderFooter() {
       <div class="footer-col">
         <a href="sponsors.html">Become a Sponsor</a>
         <a href="team.html">Become a Mentor</a>
+        <a href="team-login.html">Team Login</a>
       </div>
     </div>
     <p class="footer-copy">© ${new Date().getFullYear()} ${SITE.teamName}, FRC Team ${SITE.teamNumber}.</p>

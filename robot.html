@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Robot | Team 2972 Gears & Buccaneers</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="site-header"></div>
+
+<main id="robot-page"></main>
+
+<div id="site-footer"></div>
+
+<script src="js/content.js"></script>
+<script src="js/components.js"></script>
+<script>
+// One template for every season: robot.html?year=2025
+document.addEventListener("DOMContentLoaded", () => {
+  const page = document.getElementById("robot-page");
+  const year = new URLSearchParams(window.location.search).get("year");
+  const index = ROBOTS.findIndex(r => r.year === year);
+
+  if (index === -1) {
+    document.title = `Robot not found | Team ${SITE.teamNumber}`;
+    page.innerHTML = `
+      <div class="page-header">
+        <h1>Robot not found</h1>
+        <p>${year ? `We don't have a page for ${year} yet.` : "No season was picked."}</p>
+      </div>
+      <section class="block"><div class="block-inner">
+        <div class="btn-row"><a class="btn" href="robots.html">See all robots</a></div>
+      </div></section>`;
+    return;
+  }
+
+  const r = ROBOTS[index];
+  const newer = ROBOTS[index - 1];
+  const older = ROBOTS[index + 1];
+  document.title = `${r.year} ${r.name || r.game} | Team ${SITE.teamNumber}`;
+
+  const list = (x) => Array.isArray(x) ? x : [];
+  const section = (title, body, alt) => body ? `
+    <section class="block${alt ? " alt" : ""}">
+      <div class="block-inner">
+        <h2 class="section-title">${title}</h2>
+        ${body}
+      </div>
+    </section>` : "";
+
+  // Button row: TBA always, then whatever links are set
+  const buttons = [
+    { label: `The Blue Alliance (${r.year})`, url: tbaTeamYear(r.year) },
+    { label: "Technical Binder", url: r.binder },
+    ...list(r.links),
+    { label: "Reveal Video", url: r.reveal },
+  ].filter(b => isSet(b.url));
+
+  const hero = `
+    <section class="robot-hero">
+      <div class="robot-hero-inner">
+        <div class="robot-hero-text">
+          <span class="badge">${r.year} · ${r.game}</span>
+          <h1>${robotName(r)}</h1>
+          ${r.status ? `<p class="robot-status">${r.status}</p>` : ""}
+          ${r.stats ? `<p class="stats-line">${r.stats}</p>` : ""}
+          <div class="btn-row">
+            ${buttons.map((b, i) => `<a class="btn${i ? " btn-outline" : ""}" href="${b.url}" target="_blank" rel="noopener">${b.label}</a>`).join("")}
+          </div>
+        </div>
+        <figure class="robot-hero-image">
+          ${r.image
+            ? `<img src="${r.image}" alt="${robotName(r)}, the ${r.year} robot" />`
+            : `<div class="photo-wanted"><span>${r.year}</span>Photo wanted</div>`}
+          ${r.photoSource ? `<figcaption>${r.photoSource}</figcaption>` : ""}
+        </figure>
+      </div>
+    </section>`;
+
+  const awards = list(r.awards).length
+    ? `<ul class="award-list">${r.awards.map(a => `<li>🏆 ${a}</li>`).join("")}</ul>` : "";
+  const results = list(r.results).length ? `
+    <ul class="schedule-list">
+      ${r.results.map(res => `
+        <li>
+          <span class="event-name">${res.tba
+            ? `<a href="${tbaEvent(res.tba)}" target="_blank" rel="noopener">${res.event}</a>`
+            : res.event}</span>
+          <span class="event-loc">${res.result}</span>
+        </li>`).join("")}
+    </ul>` : "";
+
+  const game = (r.gameSummary || r.gameVideo) ? `
+    ${r.gameSummary ? `<p class="section-lead">${r.gameSummary}</p>` : ""}
+    ${r.gameVideo ? `<div class="video-grid single"><iframe src="${youtubeEmbed(r.gameVideo)}" title="${r.year} ${r.game} game animation" loading="lazy" allowfullscreen></iframe></div>` : ""}` : "";
+
+  const about = (r.description || list(r.specs).length) ? `
+    <div class="robot-about">
+      ${r.description ? `<p>${r.description}</p>` : ""}
+      ${list(r.specs).length ? `
+        <table class="specs-table">
+          ${r.specs.map(s => `<tr><td>${s.label}</td><td>${s.value}</td></tr>`).join("")}
+        </table>` : ""}
+    </div>` : "";
+
+  const mechanisms = list(r.mechanisms).length ? `
+    <div class="mechanism-grid">
+      ${r.mechanisms.map(m => `<div class="mechanism"><h3>${m.name}</h3><p>${m.text}</p></div>`).join("")}
+    </div>` : "";
+
+  const gallery = list(r.gallery).length ? `
+    <div class="gallery-grid">
+      ${r.gallery.map(src => `<a href="${src}" target="_blank" rel="noopener"><img src="${src}" alt="${robotName(r)} (${r.year})" loading="lazy" /></a>`).join("")}
+    </div>` : "";
+
+  const videos = (list(r.videos).length || list(r.matchVideos).length) ? `
+    ${list(r.videos).length ? `<div class="video-grid">
+      ${r.videos.map(v => `<iframe src="${youtubeEmbed(v)}" title="${r.year} video" loading="lazy" allowfullscreen></iframe>`).join("")}
+    </div>` : ""}
+    ${list(r.matchVideos).length ? `<ul class="link-list">
+      ${r.matchVideos.map(v => `<li><a href="${v.url}" target="_blank" rel="noopener">${v.label}</a></li>`).join("")}
+    </ul>` : ""}` : "";
+
+  const blog = list(r.buildBlog).length ? `
+    <ul class="link-list">
+      ${r.buildBlog.map(b => `<li><a href="${b.url}" target="_blank" rel="noopener">${b.label}</a></li>`).join("")}
+    </ul>` : "";
+
+  // Seasons with little on record ask alumni for help
+  const sparse = !r.image || !r.name;
+  const ask = sparse ? `
+    <p class="section-lead">Were you on the team in ${r.year}? Send photos, the robot's name, or stories to
+    <a href="mailto:${SITE.email}">${SITE.email}</a>. Match videos for this season are linked from
+    <a href="${tbaTeamYear(r.year)}" target="_blank" rel="noopener">The Blue Alliance</a>.</p>` : "";
+
+  // Sections alternate background, skipping any that are empty
+  const parts = [
+    ["Awards & Results", awards + results],
+    [`The Game: ${r.game}`, game],
+    ["The Robot", about],
+    ["Mechanisms", mechanisms],
+    ["Photos", gallery],
+    ["Videos", videos],
+    ["Build Blog", blog],
+    ["Help Us Fill This In", ask],
+  ].filter(([, body]) => body);
+
+  page.innerHTML = hero + parts.map(([title, body], i) => section(title, body, i % 2 === 1)).join("") + `
+    <nav class="season-nav" aria-label="Other seasons">
+      ${newer ? `<a href="${robotUrl(newer)}">← ${newer.year} ${newer.name || newer.game}</a>` : "<span></span>"}
+      <a href="robots.html">All robots</a>
+      ${older ? `<a href="${robotUrl(older)}">${older.year} ${older.name || older.game} →</a>` : "<span></span>"}
+    </nav>`;
+});
+</script>
+</body>
+</html>

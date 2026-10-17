@@ -18,18 +18,39 @@
   <div class="block-inner" id="resource-groups"></div>
 </section>
 
+<section class="block alt" id="cad-overview">
+  <div class="block-inner">
+    <h2 class="section-title">3D CAD/CAM Modeling Overview</h2>
+    <div class="cad-overview" id="cad-body"></div>
+  </div>
+</section>
+
 <div id="site-footer"></div>
 
 <script src="js/content.js"></script>
 <script src="js/components.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("resource-groups").innerHTML = RESOURCE_LINKS.map(group => `
-    <div class="resource-group">
-      <h3>${group.category}</h3>
-      <ul>
-        ${group.items.map(item => `<li><a href="${item.url}" target="_blank" rel="noopener">${item.label}</a></li>`).join("")}
-      </ul>
+  // Links still set to "#" are hidden; groups with nothing left are skipped
+  const external = url => /^https?:/.test(url);
+  document.getElementById("resource-groups").innerHTML = RESOURCE_LINKS
+    .map(group => ({ ...group, items: group.items.filter(item => isSet(item.url)) }))
+    .filter(group => group.items.length)
+    .map(group => `
+      <div class="resource-group">
+        <h3>${group.category}</h3>
+        <ul>
+          ${group.items.map(item => `<li><a href="${item.url}"${external(item.url) ? ' target="_blank" rel="noopener"' : ""}>${item.label}</a></li>`).join("")}
+        </ul>
+      </div>
+    `).join("");
+
+  document.getElementById("cad-body").innerHTML = CAD_OVERVIEW.map(part => `
+    <div class="cad-part">
+      <h3>${part.heading}</h3>
+      ${part.body ? `<p>${part.body}</p>` : ""}
+      ${part.list ? `<ul>${part.list.map(li => `<li>${li}</li>`).join("")}</ul>` : ""}
+      ${part.after ? `<p>${part.after}</p>` : ""}
     </div>
   `).join("");
 });
