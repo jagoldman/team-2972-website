@@ -133,24 +133,35 @@ stripped and `/healthz` routed; `portal` with `import protected` and `header_up 
    `/config.js` from env; or derive from `location.host` by stripping `www.`/`portal.`. The first is
    explicit; the second needs nothing from infra. Local preview with `python3 -m http.server` must still
    work (fall back to relative links).
+   **Resolved ([MASTER_PLAN D21](../../MASTER_PLAN.md)):** Caddy-templated `/config.js`; falls back to
+   `location.host` when unrendered.
 2. **What "portal routes" means.** The plan says "proxy-secret check on portal routes" but not whether the
    container tells portal from public by `Host` header or by a path like `/portal/`. If by `Host`, a direct
    request to `landing:3001` with `Host: landing` is public and returns `200`, so `check.sh`'s forged-header
    test (MASTER_PLAN §5 expects `401` from `landing:3001`) must send the portal `Host` or hit a portal path.
    INTEGRATION should state which.
+   **Resolved ([MASTER_PLAN D26](../../MASTER_PLAN.md)):** gated by `Host` *and* path. Portal host needs the
+   secret on every path; public hosts 404 portal paths; any other host (direct `landing:3001`) needs the
+   secret for `/portal/*`, `/me.json`, `/apps.json`.
 3. **Constant-time compare.** CONVENTIONS §4 requires a constant-time secret compare. A static Caddy
    `header` matcher is a plain string compare. Either CONVENTIONS allows this for landing (internal
    network only, no data behind it beyond names and groups), or landing needs a tiny non-Caddy server,
    which goes against D10.
+   **Resolved ([MASTER_PLAN D26](../../MASTER_PLAN.md)):** static Caddy's plain string compare is accepted
+   for landing. Secrets are ≥16 URL-safe characters with no `*` or spaces (the entrypoint enforces this).
 4. **`apps.json` details.** (a) Container mount path is not in the plan; `/config/apps.json` is proposed.
    (b) How a tile names a site host so it works on `localhost` and production (a host-relative form such as
    `"url": "tasks"`, or a `{SITE_DOMAIN}` placeholder landing fills in). (c) `check.sh` compares apps.json
    with bindings; outside links (Calendar, Handbook, GitHub) have no binding and should be skipped.
    INTEGRATION §8 should record all three.
+   **Resolved ([MASTER_PLAN D27](../../MASTER_PLAN.md), INTEGRATION §8):** mounted at `/config/apps.json`;
+   site tiles use `host` (+ `path`), outside links use `url`, unfinished tiles `comingSoon: true`.
 5. **"Coming soon" tiles.** `TEAM_APPS` shows `url: "#"` entries as "Coming soon". Does apps.json allow
    that, or are unfinished tiles left out?
 6. **No-group users and `groups: []` tiles.** CONVENTIONS §3 says no-group users "cannot reach any
    applet". Should they still see everyone-tiles like the handbook and calendar, or only the notice?
+   **Resolved ([MASTER_PLAN D27](../../MASTER_PLAN.md)):** notice only. `groups: []` means anyone with a
+   group; users with no group see no tiles.
 7. **Sign-out path.** INTEGRATION §1 links to Authentik's invalidation flow. With forward auth the
    embedded outpost also sets a cookie per host; the outpost's `/outpost.goauthentik.io/sign_out` may be
    needed too. Infra should confirm in P0.

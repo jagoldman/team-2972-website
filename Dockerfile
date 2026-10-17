@@ -1,7 +1,7 @@
 # landing: static Caddy serving the public site and the portal home on $PORT (3001).
 # Built by infra (build: ../landing). Env: PORT, SITE_DOMAIN, SITE_SCHEME, PROXY_SHARED_SECRET.
 # Portal tiles: infra mounts apps.json read-only at /config/apps.json.
-FROM caddy:2.11.4-alpine
+FROM caddy:2.11.7-alpine
 
 ENV PORT=3001
 # The base image keeps Caddy state in /config and /data. /config is our apps.json mount, and
