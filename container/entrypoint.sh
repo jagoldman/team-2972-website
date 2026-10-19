@@ -10,10 +10,10 @@ for v in PORT SITE_DOMAIN SITE_SCHEME PROXY_SHARED_SECRET; do
   fi
 done
 
-# Caddy's header matcher treats * as a wildcard, and spaces would split the value.
+# CONVENTIONS §4: letters, digits, - and _ only. This also keeps out Caddy's * wildcard and spaces.
 case "$PROXY_SHARED_SECRET" in
-  *'*'* | *' '*)
-    echo '{"level":"error","msg":"PROXY_SHARED_SECRET must not contain * or spaces"}' >&2
+  *[!A-Za-z0-9_-]*)
+    echo '{"level":"error","msg":"PROXY_SHARED_SECRET may only contain letters, digits, - and _"}' >&2
     exit 1 ;;
 esac
 if [ "${#PROXY_SHARED_SECRET}" -lt 16 ]; then

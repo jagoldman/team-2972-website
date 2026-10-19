@@ -9,7 +9,7 @@
 #
 # The secret check is a plain header match, not constant-time. CONVENTIONS §4 allows this for
 # landing: it is reachable only on the Docker network and guards only the viewer's own identity.
-# entrypoint.sh refuses to start with an empty, short or wildcard secret.
+# entrypoint.sh refuses an empty secret, one under 16 chars, or anything but [A-Za-z0-9_-].
 #
 # Gated parts use `route` so the 401 runs first. (Outside `route`, Caddy runs `handle` before
 # `respond`, which would skip the gate.)

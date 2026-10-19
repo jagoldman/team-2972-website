@@ -158,6 +158,8 @@ stripped and `/healthz` routed; `portal` with `import protected` and `header_up 
    site tiles use `host` (+ `path`), outside links use `url`, unfinished tiles `comingSoon: true`.
 5. **"Coming soon" tiles.** `TEAM_APPS` shows `url: "#"` entries as "Coming soon". Does apps.json allow
    that, or are unfinished tiles left out?
+   **Resolved ([MASTER_PLAN D27](../../MASTER_PLAN.md)):** allowed as `comingSoon: true`; shown as a
+   disabled card, skipped by `check.sh`.
 6. **No-group users and `groups: []` tiles.** CONVENTIONS §3 says no-group users "cannot reach any
    applet". Should they still see everyone-tiles like the handbook and calendar, or only the notice?
    **Resolved ([MASTER_PLAN D27](../../MASTER_PLAN.md)):** notice only. `groups: []` means anyone with a
@@ -167,9 +169,12 @@ stripped and `/healthz` routed; `portal` with `import protected` and `header_up 
    needed too. Infra should confirm in P0.
 8. **Who edits tiles.** Today a non-developer edits `content.js`; after Phase 3 tiles live in another repo
    (`infra/config/apps.json`). That is a second place to edit. README must say so; or the plan accepts it.
+   **Resolved (MASTER_PLAN Q10):** accepted. README section "Portal tiles live in infra, not here".
 9. **Possibly private links on public pages.** `TEAM_CALENDAR_URL` (calendar ID, public About page),
    the handbook and game-analysis Google Docs (public Resources page), and the sponsor packet Drive link
    are in git and on public pages. Confirm each is meant to be public; otherwise move them to portal tiles.
+   **Resolved (user, 2026-10-17):** all four are meant to be public. No change.
 10. **Real names and photos in `content.js`.** Mentor names, bios and headshots, and adults named in
     `HISTORY`, are published site content. CONVENTIONS §9 bans real people in seeds, tests and docs, not
     in chosen site content, but say so explicitly and confirm the mentors agreed. No students are named.
+   **Resolved (MASTER_PLAN Q11):** mentors agreed; their names and photos stay as chosen site content.
