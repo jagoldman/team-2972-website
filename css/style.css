@@ -152,7 +152,7 @@ a:hover { color: var(--gold); }
   font-size: 0.85rem;
 }
 .hero p { color: var(--gray-300); font-size: 1.1rem; max-width: 46ch; }
-.hero-image img { border-radius: var(--radius); box-shadow: var(--shadow); }
+.hero-image img { border-radius: var(--radius); box-shadow: var(--shadow); width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: var(--gray-100); }
 
 /* ---------- Page header (non-home pages) ---------- */
 .page-header {
@@ -252,7 +252,7 @@ h2.section-title {
 }
 .robot-block:last-child { border-bottom: none; }
 @media (max-width: 860px) { .robot-block { grid-template-columns: 1fr; } }
-.robot-block img { border-radius: var(--radius); box-shadow: var(--shadow); }
+.robot-block img { border-radius: var(--radius); box-shadow: var(--shadow); width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--gray-100); }
 .robot-block h2 { color: var(--navy); margin: 0 0 4px; }
 .robot-block .badge {
   display: inline-block;
@@ -285,7 +285,7 @@ h2.section-title {
   padding: 20px;
   min-height: 90px;
 }
-.sponsor-tile img { max-height: 50px; width: auto; }
+.sponsor-tile img { height: 50px; width: auto; max-width: 100%; object-fit: contain; }
 .sponsor-tile span { color: var(--navy); font-weight: 600; text-align: center; }
 
 /* ---------- Resource list ---------- */
@@ -398,7 +398,7 @@ a.card:hover { color: inherit; transform: translateY(-3px); border-color: var(--
 .robot-status { color: var(--gray-300); margin: 0; }
 .robot-hero .stats-line { color: var(--gold-light) !important; font-size: 1.05rem; }
 .robot-hero-image { margin: 0; }
-.robot-hero-image img { border-radius: var(--radius); box-shadow: var(--shadow); width: 100%; max-height: 460px; object-fit: cover; }
+.robot-hero-image img { border-radius: var(--radius); box-shadow: var(--shadow); width: 100%; height: min(460px, 75vw); object-fit: cover; background: var(--gray-100); }
 .robot-hero-image .photo-wanted { height: 280px; border-radius: var(--radius); }
 .robot-hero-image figcaption { color: var(--gray-300); font-size: 0.85rem; margin-top: 8px; }
 @media (max-width: 860px) {
@@ -484,7 +484,7 @@ a.card:hover { color: inherit; transform: translateY(-3px); border-color: var(--
 .history-era h3 { color: var(--navy); margin: 0 0 8px; font-size: 1.3rem; }
 .history-era .era-years { color: var(--gold); font-weight: 600; font-size: 1rem; margin-left: 6px; }
 .history-era p { color: var(--gray-600); max-width: 70ch; }
-.history-era img { border-radius: var(--radius); box-shadow: var(--shadow); }
+.history-era img { border-radius: var(--radius); box-shadow: var(--shadow); width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--gray-100); }
 @media (max-width: 860px) { .history-era { grid-template-columns: 1fr; } }
 .subsection-title { color: var(--navy); margin: 32px 0 12px; }
 

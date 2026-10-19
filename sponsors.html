@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="sponsor-grid">
             ${tier.sponsors.map(s => `
               <div class="sponsor-tile">
-                <img src="${s.logo}" alt="${s.name} logo" title="${s.name}" />
+                <img src="${driveImg(s.logo, 400)}" alt="${s.name} logo" title="${s.name}" loading="lazy" />
               </div>
             `).join("")}
           </div>

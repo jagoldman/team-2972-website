@@ -45,7 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   grid.innerHTML = OUTREACH_EVENTS.map(e => `
     <div class="card">
-      <img src="${e.image}" alt="${e.name}" />
+      <img src="${driveImg(e.image, 800)}" alt="${e.name}" loading="lazy" />
       <div class="card-body">
         <div class="meta">${e.date}</div>
         <h3>${e.name}</h3>

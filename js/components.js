@@ -28,6 +28,16 @@ function isSet(url) {
   return Boolean(url) && url !== "#";
 }
 
+// Photo URL at the width a spot needs. content.js may hold a bare Google Drive file ID or a full
+// lh3.googleusercontent.com/d/ID URL (any =w size on it is replaced). Anything else, such as an
+// SVG placeholder path, is returned unchanged.
+//   driveImg("1AbC…", 400) -> "https://lh3.googleusercontent.com/d/1AbC…=w400"
+function driveImg(src, width) {
+  const s = String(src || "");
+  const id = /^[\w-]{20,}$/.test(s) ? s : (s.match(/^https:\/\/lh3\.googleusercontent\.com\/d\/([\w-]+)/) || [])[1];
+  return id ? `https://lh3.googleusercontent.com/d/${id}=w${width}` : s;
+}
+
 // "https://www.youtube.com/watch?v=ID" or "https://youtu.be/ID" -> embed URL
 function youtubeEmbed(url) {
   const m = String(url).match(/(?:youtu\.be\/|v=|\/embed\/)([\w-]{11})/);
@@ -88,7 +98,7 @@ function renderHeader() {
   <header class="site-header">
     <div class="header-inner">
       <a href="${pageHref("index.html")}" class="brand">
-        <img src="${SITE.logo}" alt="${SITE.teamName} logo" class="brand-logo" />
+        <img src="${driveImg(SITE.logo, 200)}" alt="${SITE.teamName} logo" class="brand-logo" width="42" height="42" />
         <span class="brand-text">
           <strong>${SITE.teamNumber}</strong> ${SITE.teamName}
         </span>

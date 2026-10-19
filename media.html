@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const photoGrid = document.getElementById("photo-grid");
   photoGrid.innerHTML = MEDIA_PHOTOS.length
-    ? MEDIA_PHOTOS.map(src => `<div class="card"><img src="${src}" alt="Team photo" /></div>`).join("")
+    ? MEDIA_PHOTOS.map(src => `<div class="card"><img src="${driveImg(src, 600)}" alt="Team photo" loading="lazy" /></div>`).join("")
     : `<p class="empty-note">Photo gallery coming soon.</p>`;
 
   const videoGrid = document.getElementById("video-grid");

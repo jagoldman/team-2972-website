@@ -72,7 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
         <figure class="robot-hero-image">
           ${r.image
-            ? `<img src="${r.image}" alt="${robotName(r)}, the ${r.year} robot" />`
+            ? `<img src="${driveImg(r.image, 1200)}" alt="${robotName(r)}, the ${r.year} robot" />`
             : `<div class="photo-wanted"><span>${r.year}</span>Photo wanted</div>`}
           ${r.photoSource ? `<figcaption>${r.photoSource}</figcaption>` : ""}
         </figure>
@@ -112,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const gallery = list(r.gallery).length ? `
     <div class="gallery-grid">
-      ${r.gallery.map(src => `<a href="${src}" target="_blank" rel="noopener"><img src="${src}" alt="${robotName(r)} (${r.year})" loading="lazy" /></a>`).join("")}
+      ${r.gallery.map(src => `<a href="${driveImg(src, 2000)}" target="_blank" rel="noopener"><img src="${driveImg(src, 600)}" alt="${robotName(r)} (${r.year})" loading="lazy" /></a>`).join("")}
     </div>` : "";
 
   const videos = (list(r.videos).length || list(r.matchVideos).length) ? `

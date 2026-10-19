@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("robot-archive").innerHTML = ROBOTS.map(r => `
     <a class="card robot-card${r.image ? "" : " no-photo"}" href="${robotUrl(r)}">
       ${r.image
-        ? `<img src="${r.image}" alt="${robotName(r)}, the ${r.year} robot" loading="lazy" />`
+        ? `<img src="${driveImg(r.image, 800)}" alt="${robotName(r)}, the ${r.year} robot" loading="lazy" />`
         : `<div class="photo-wanted"><span>${r.year}</span>Photo wanted</div>`}
       <div class="card-body">
         <div class="meta">${r.year} · ${r.game}</div>

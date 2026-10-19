@@ -91,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <h3>${h.era} <span class="era-years">${h.years}</span></h3>
         ${h.paragraphs.map(p => `<p>${p}</p>`).join("")}
       </div>
-      ${h.image ? `<img src="${h.image}" alt="${h.imageAlt || h.era}" loading="lazy" />` : ""}
+      ${h.image ? `<img src="${driveImg(h.image, 800)}" alt="${h.imageAlt || h.era}" loading="lazy" />` : ""}
     </article>
   `).join("");
 

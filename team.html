@@ -48,7 +48,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("mentor-grid").innerHTML = MENTORS.map(m => `
     <div class="card mentor-card">
-      <img src="${m.photo}" alt="${m.name}" />
+      <img src="${driveImg(m.photo, 400)}" alt="${m.name}" loading="lazy" width="96" height="96" />
       <h3>${m.name}</h3>
       <div class="role">${m.role}</div>
       <p>${m.bio}</p>
