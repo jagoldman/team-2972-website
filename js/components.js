@@ -74,9 +74,9 @@ function hostUrl(sub, path = "/") {
 
 const PORTAL_URL = hostUrl("portal");
 const REQUEST_URL = hostUrl("admin", "/request");
-// Authentik sign-out, from INTEGRATION §1. UNCONFIRMED until infra P0 verifies the path (and
-// whether the outpost's /outpost.goauthentik.io/sign_out is also needed). Change it only here.
-const SIGNOUT_URL = hostUrl("auth", "/flows/-/default/invalidation/");
+// Sign-out (MASTER_PLAN D36, INTEGRATION §1): the outpost sign_out on the portal host. It clears every
+// host's outpost cookie and, through the team-logout flow, the Authentik session. Change it only here.
+const SIGNOUT_URL = hostUrl("portal", "/outpost.goauthentik.io/sign_out");
 
 // The portal page sets <body data-portal>. Its nav links must go to the public host.
 function isPortalPage() {

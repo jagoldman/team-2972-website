@@ -167,6 +167,9 @@ stripped and `/healthz` routed; `portal` with `import protected` and `header_up 
 7. **Sign-out path.** INTEGRATION §1 links to Authentik's invalidation flow. With forward auth the
    embedded outpost also sets a cookie per host; the outpost's `/outpost.goauthentik.io/sign_out` may be
    needed too. Infra should confirm in P0.
+   **Resolved ([MASTER_PLAN D36](../../MASTER_PLAN.md)):** `SIGNOUT_URL` is
+   `SITE_SCHEME://portal.SITE_DOMAIN/outpost.goauthentik.io/sign_out` (outpost cookies plus the Authentik
+   session through the team-logout flow).
 8. **Who edits tiles.** Today a non-developer edits `content.js`; after Phase 3 tiles live in another repo
    (`infra/config/apps.json`). That is a second place to edit. README must say so; or the plan accepts it.
    **Resolved (MASTER_PLAN Q10):** accepted. README section "Portal tiles live in infra, not here".
