@@ -38,11 +38,13 @@
 }
 
 # Identity and tiles. Import only after the gate.
+# no-store on everything behind login, so after sign-out the browser can't show a stored
+# (or back/forward-cached) portal page with the old name and tiles.
 (portal_files) {
 	header X-Robots-Tag "noindex, nofollow"
+	header Cache-Control "no-store"
 	handle /me.json {
 		root * /srv/templates
-		header Cache-Control "no-store"
 		templates {
 			mime application/json
 		}
@@ -50,7 +52,6 @@
 	}
 	handle /apps.json {
 		root * /config
-		header Cache-Control "no-cache"
 		file_server
 	}
 }
@@ -68,8 +69,8 @@
 	handle @portal_host {
 		route {
 			import gate
-			import config_js
 			import portal_files
+			import config_js
 			handle /portal/* {
 				file_server
 			}

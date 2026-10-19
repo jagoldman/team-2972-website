@@ -70,6 +70,15 @@ body '{"email":"","name":"","username":"","groups":"","uid":""}' "me.json with n
   -H "Host: portal.$D" $S "$URL/me.json"
 hdr=$(curl -s -D - -o /dev/null -H "Host: portal.$D" $S "$URL/apps.json" | tr -d '\r' | grep -i '^x-robots-tag:' || true)
 if [ -n "$hdr" ]; then echo "ok   portal sends $hdr"; else echo "FAIL portal has no X-Robots-Tag"; fail=1; fi
+# Nothing behind login may be cached, or a signed-out browser could still show it.
+for p in / /me.json /apps.json /css/style.css /js/components.js; do
+  cc=$(curl -s -D - -o /dev/null -H "Host: portal.$D" $S "$URL$p" | tr -d '\r' | grep -i '^cache-control:' | cut -d' ' -f2- || true)
+  if [ "$cc" = "no-store" ]; then echo "ok   portal $p Cache-Control: no-store"; else echo "FAIL portal $p Cache-Control is '$cc'"; fail=1; fi
+done
+for p in /me.json /apps.json /portal/; do
+  cc=$(curl -s -D - -o /dev/null -H "Host: landing" $S "$URL$p" | tr -d '\r' | grep -i '^cache-control:' | cut -d' ' -f2- || true)
+  if [ "$cc" = "no-store" ]; then echo "ok   direct $p Cache-Control: no-store"; else echo "FAIL direct $p Cache-Control is '$cc'"; fail=1; fi
+done
 
 echo "-- public hosts never serve portal files"
 for h in $D www.$D; do
