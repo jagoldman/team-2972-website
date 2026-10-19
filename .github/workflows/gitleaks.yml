@@ -18,9 +18,9 @@ jobs:
           fetch-depth: 0
       - name: Scan history
         run: >
-          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.28.0
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1
           git /repo --config /repo/.gitleaks.toml --redact -v --no-banner
       - name: Scan working tree
         run: >
-          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.28.0
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1
           dir /repo --config /repo/.gitleaks.toml --redact -v --no-banner
