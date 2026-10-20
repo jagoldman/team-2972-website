@@ -5,30 +5,41 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="robots" content="noindex" />
 <title>Team Portal | Team 2972 Gears & Buccaneers</title>
+<link rel="preload" href="/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="/css/style.css" />
 </head>
 <!-- Served at portal.SITE_DOMAIN/ only, behind login. Identity comes from /me.json and tiles from
      /apps.json (infra/config/apps.json). Showing or hiding a tile is for convenience only:
      Authentik's bindings decide who can really open each app. -->
 <body data-portal>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
 <div id="site-header"></div>
 
-<div class="page-header">
-  <h1 id="greeting">Team Portal</h1>
-  <p id="portal-intro">Your team apps.</p>
-</div>
-
-<section class="block">
-  <div class="block-inner">
-    <div class="portal-notice" id="no-group" hidden>
-      <p><strong>Your account is waiting for an admin to assign your group.</strong></p>
-      <p>You'll see your team apps here once that's done.</p>
+<main class="portal-main">
+  <div class="portal-hello">
+    <div>
+      <div class="eyebrow" id="today"></div>
+      <h1 id="greeting" class="rise"><span class="w"><span id="greet-word">Welcome</span></span><br /><span class="w"><span class="name" id="name">back.</span></span></h1>
+      <p id="portal-intro"></p>
     </div>
-    <div class="app-grid" id="app-grid"></div>
-    <p class="app-note" id="app-note"></p>
-    <p><a class="btn btn-outline" id="sign-out" href="#">Sign out</a></p>
+    <label class="app-search" id="search-wrap" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Find an app…" aria-label="Find an app" autocomplete="off" />
+      <kbd aria-hidden="true">/</kbd>
+    </label>
   </div>
-</section>
+
+  <div class="portal-notice" id="no-group" hidden>
+    <div class="spinner" aria-hidden="true"></div>
+    <p>Your account is waiting for an admin to assign your group.</p>
+    <p>Your team apps will appear here as soon as that's done.</p>
+  </div>
+
+  <div class="app-grid" id="app-grid"></div>
+  <p class="app-empty" id="app-empty" hidden>No app matches that. Try a different word.</p>
+  <p class="app-note" id="app-note"></p>
+  <p><a class="btn btn-outline" id="sign-out" href="#">Sign out</a></p>
+</main>
 
 <div id="site-footer"></div>
 
@@ -59,6 +70,33 @@ function tileHref(t) {
   return /^https?:\/\//.test(t.url || "") ? t.url : null;
 }
 
+// Small line icons, picked by tile id. Anything unknown gets the generic one.
+const ICONS = {
+  tasks: '<path d="M4 12.5l5 5L20 6.5"/>',
+  kickoff: '<path d="M5 15c-1 1-1.5 3.5-1.5 5.5 2 0 4.5-.5 5.5-1.5"/><path d="M9 15l-3-3c2-6 6-9 14-9 0 8-3 12-9 14z"/><circle cx="15" cy="9" r="1.6"/>',
+  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  handbook: '<path d="M4 4.5h6a2 2 0 012 2V20a1.5 1.5 0 00-1.5-1.5H4zM20 4.5h-6a2 2 0 00-2 2V20a1.5 1.5 0 011.5-1.5H20z"/>',
+  github: '<path d="M8.5 7L3.5 12l5 5M15.5 7l5 5-5 5M13.5 4.5l-3 15"/>',
+  onshape: '<path d="M12 2.8l8.5 4.7v9L12 21.2l-8.5-4.7v-9z"/><path d="M3.5 7.5L12 12.2l8.5-4.7M12 12.2v9"/>',
+  scouting: '<path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  drive: '<path d="M3 6.5A1.5 1.5 0 014.5 5h4.6l2 2.2h8.4A1.5 1.5 0 0121 8.7v9.8a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18.5z"/>',
+  admin: '<path d="M12 3l7.5 3v5.5c0 4.5-3 8-7.5 9.5-4.5-1.5-7.5-5-7.5-9.5V6z"/><path d="M9 12l2.2 2.2L15.5 10"/>',
+  _default: '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 12h6M12 9v6"/>',
+};
+const SVG_NS = "http://www.w3.org/2000/svg";
+function svgIcon(paths, size) {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "1.6");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+  svg.innerHTML = paths; // fixed strings from ICONS above, never from user data
+  return svg;
+}
+
 function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -66,25 +104,32 @@ function el(tag, className, text) {
   return node;
 }
 
-function renderTile(t) {
+// size: "big", "wide" or "" (the first tile leads, the second is wide when there are enough)
+function renderTile(t, index, size) {
   const href = t.comingSoon ? null : tileHref(t);
-  const card = el("div", `app-card${href ? "" : " coming-soon"}`);
-  card.append(el("h3", "", t.name));
-  if (t.audience) card.append(el("div", "app-audience", t.audience));
-  card.append(el("p", "", t.description));
+  const card = el(href ? "a" : "div", `app-card${size ? " " + size : ""}${href ? "" : " coming-soon"}`);
+  card.style.setProperty("--i", index);
+  card.dataset.q = `${t.name} ${t.description} ${t.audience || ""}`.toLowerCase();
   if (href) {
-    const a = el("a", "btn", "Open");
-    a.href = href;
-    if (!t.host) {
-      a.target = "_blank";
-      a.rel = "noopener";
-    }
-    card.append(a);
+    card.href = href;
+    if (!t.host) { card.target = "_blank"; card.rel = "noopener"; }
   } else {
-    const s = el("span", "btn btn-disabled", "Coming soon");
-    s.setAttribute("aria-disabled", "true");
-    card.append(s);
+    card.setAttribute("aria-disabled", "true");
   }
+
+  const ico = el("div", "app-ico");
+  ico.append(svgIcon(ICONS[t.id] || ICONS._default));
+  card.append(ico);
+
+  if (href) {
+    const go = el("span", "app-go");
+    go.append(svgIcon('<path d="M7 17L17 7M9 7h8v8"/>'));
+    card.append(go);
+  } else {
+    card.append(el("span", "soon-badge", "Coming soon"));
+  }
+  card.append(el("h3", "", t.name), el("p", "", t.description));
+  if (t.audience) card.append(el("div", "app-audience", t.audience));
   return card;
 }
 
@@ -94,8 +139,14 @@ async function getJson(path) {
   return res.json();
 }
 
+function greetingWord() {
+  const h = new Date().getHours();
+  return h < 5 ? "Burning the midnight oil," : h < 12 ? "Good morning," : h < 18 ? "Good afternoon," : "Good evening,";
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("sign-out").href = SIGNOUT_URL;
+  document.getElementById("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   const note = document.getElementById("app-note");
   note.append("Something not working? Email ");
   const mail = el("a", "", SITE.email);
@@ -106,26 +157,53 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     [me, tiles] = await Promise.all([getJson("/me.json"), getJson("/apps.json")]);
   } catch (err) {
-    document.getElementById("portal-intro").textContent =
-      "The portal couldn't load your apps. Try reloading the page.";
+    document.getElementById("portal-intro").textContent = "The portal couldn't load your apps. Try reloading the page.";
     return;
   }
 
-  const name = me.name || me.email || "there";
-  document.getElementById("greeting").textContent = `Hi, ${name}`;
+  // Names go in with textContent, never as HTML.
+  const full = me.name || me.email || "there";
+  document.getElementById("greet-word").textContent = greetingWord();
+  document.getElementById("name").textContent = `${full.split(" ")[0]}.`;
+  document.getElementById("greeting").setAttribute("aria-label", `${greetingWord()} ${full}`);
+  document.querySelectorAll("#greeting .w > span").forEach((s, i) => s.style.setProperty("--wi", i));
 
   const groups = userGroups(me.groups);
+  const chip = document.getElementById("group-chip");
+  if (chip) { chip.textContent = groups.join(" · ") || "no group yet"; chip.hidden = false; }
+
   if (groups.length === 0) {
     document.getElementById("no-group").hidden = false;
-    document.getElementById("portal-intro").textContent = "Welcome to the team portal.";
     return;
   }
 
   const shown = visibleTiles(Array.isArray(tiles) ? tiles : [], groups);
-  document.getElementById("app-grid").append(...shown.map(renderTile));
-  if (shown.length === 0) {
-    document.getElementById("portal-intro").textContent = "There are no apps for your groups yet.";
-  }
+  const grid = document.getElementById("app-grid");
+  shown.forEach((t, i) => {
+    const size = shown.length >= 3 && i === 0 ? "big" : shown.length >= 5 && i === 1 ? "wide" : "";
+    grid.append(renderTile(t, i, size));
+  });
+  const ready = shown.filter((t) => !t.comingSoon).length;
+  document.getElementById("portal-intro").textContent = shown.length
+    ? `${ready} ${ready === 1 ? "app is" : "apps are"} ready for you.`
+    : "There are no apps for your groups yet.";
+  if (shown.length) document.getElementById("search-wrap").hidden = false;
+  setupPointerFx(grid);
+
+  // Search: type to filter, "/" to focus, Enter opens the first match, Esc clears
+  const q = document.getElementById("q");
+  const apply = () => {
+    const s = q.value.trim().toLowerCase();
+    let count = 0;
+    grid.querySelectorAll(".app-card").forEach((c) => { const hit = !s || c.dataset.q.includes(s); c.hidden = !hit; count += hit; });
+    document.getElementById("app-empty").hidden = count > 0;
+  };
+  q.addEventListener("input", apply);
+  addEventListener("keydown", (e) => {
+    if (e.key === "/" && document.activeElement !== q && !e.metaKey && !e.ctrlKey) { e.preventDefault(); q.focus(); }
+    else if (e.key === "Escape") { q.value = ""; apply(); q.blur(); }
+    else if (e.key === "Enter" && document.activeElement === q) { const hit = grid.querySelector("a.app-card:not([hidden])"); if (hit) hit.click(); }
+  });
 });
 </script>
 </body>

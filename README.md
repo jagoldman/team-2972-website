@@ -70,7 +70,8 @@ portal/index.html  The portal page (only works inside the full site, behind logi
 js/content.js      >>> EDIT THIS to change text, links and photos <<<
 js/components.js   Shared header and footer, plus helpers
 config.js          Site address settings, filled in by the server. Don't edit.
-css/style.css      All styling (navy and gold)
+css/style.css      All styling (dark navy and gold "night workshop" design)
+fonts/             The two fonts (Bricolage Grotesque, Inter) and their licenses; hosted here, not loaded from Google
 assets/            SVG placeholders only
 
 Dockerfile, container/   How the server runs (see below)

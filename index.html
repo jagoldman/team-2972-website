@@ -5,57 +5,86 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Team 2972 Gears & Buccaneers | Dawson School FRC</title>
 <meta name="description" content="Gears & Buccaneers, FIRST Robotics Competition Team 2972 at Dawson School in Lafayette, Colorado." />
+<link rel="preload" href="fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
 <div id="site-header"></div>
 
-<section class="hero">
+<section class="hero" id="hero">
+  <div class="hero-bg" id="hero-bg" role="img" aria-label="Team 2972 students with their robot"></div>
   <div class="hero-inner">
-    <div>
-      <div class="eyebrow">FRC Team 2972 · Dawson School</div>
-      <h1>Gears &amp; Buccaneers</h1>
-      <p>Opportunities to experience real-world engineering and fundraising, built by
-      high schoolers, for high schoolers.</p>
-      <div class="btn-row">
-        <a class="btn" href="about.html">Learn About Us</a>
-        <a class="btn btn-outline" href="sponsors.html">Become a Sponsor</a>
+    <div class="eyebrow">FRC Team 2972 · Dawson School · Since <span id="founded"></span></div>
+    <h1>Gears <em>&amp;</em><br />Buccaneers</h1>
+    <div class="hero-row">
+      <p class="fade-in" id="hero-tagline"></p>
+      <div class="btn-row fade-in">
+        <a class="btn magnetic" href="robots.html">See the robots <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a>
+        <a class="btn btn-outline magnetic" href="sponsors.html">Become a sponsor</a>
       </div>
     </div>
-    <div class="hero-image">
-      <img id="hero-img" alt="Team 2972 students with their robot" fetchpriority="high" />
-    </div>
   </div>
+  <div class="scroll-cue" aria-hidden="true">Scroll</div>
 </section>
+
+<div class="marquee" aria-hidden="true"><div class="marquee-track" id="marquee"></div></div>
 
 <section class="block">
   <div class="block-inner">
-    <h2 class="section-title">Our Mission</h2>
-    <p class="section-lead" id="mission-text"></p>
+    <div class="kicker"><b>01</b>Who we are</div>
+    <div class="mission">
+      <h2 class="section-title" data-reveal>We build robots.<br /><span class="dim">They build people.</span></h2>
+      <p class="section-lead" id="mission-text" data-reveal style="--ri:1"></p>
+    </div>
+    <div class="stats" id="stats"></div>
   </div>
 </section>
 
-<section class="block alt">
+<section class="block alt" style="padding-top: clamp(60px, 8vw, 110px)">
   <div class="block-inner">
-    <h2 class="section-title">Robot History</h2>
-    <p class="section-lead">A look back at what we've built, season by season.</p>
-    <div class="grid" id="robot-showcase"></div>
+    <div class="reel-head">
+      <div>
+        <div class="kicker"><b>02</b>The fleet</div>
+        <h2 class="section-title" data-reveal style="margin:0">Every season,<br /><span class="dim">a new machine.</span></h2>
+      </div>
+      <div class="reel-ctrl">
+        <button type="button" aria-label="Previous robots" data-dir="-1">←</button>
+        <button type="button" aria-label="Next robots" data-dir="1">→</button>
+      </div>
+    </div>
+    <div class="reel" id="robot-showcase"></div>
     <div class="btn-row"><a class="btn btn-outline" href="robots.html">See all robots</a></div>
   </div>
 </section>
 
 <section class="block">
   <div class="block-inner">
-    <h2 class="section-title">2026 Competition Schedule</h2>
-    <ul class="schedule-list" id="schedule-list"></ul>
+    <div class="split">
+      <div class="pic" data-reveal><img id="split-img" alt="" loading="lazy" /></div>
+      <div>
+        <div class="kicker"><b>03</b>This season</div>
+        <h2 class="section-title" data-reveal id="schedule-title">Where you'll<br /><span class="dim">find us.</span></h2>
+        <ul class="schedule-list" id="schedule-list"></ul>
+      </div>
+    </div>
   </div>
 </section>
 
 <section class="block alt">
   <div class="block-inner">
-    <h2 class="section-title" id="about-school-title"></h2>
-    <p class="section-lead" id="about-school-body"></p>
+    <div class="kicker"><b>04</b>About us</div>
+    <h2 class="section-title" id="about-school-title" data-reveal></h2>
+    <p class="section-lead" id="about-school-body" data-reveal style="--ri:1"></p>
     <div class="btn-row"><a class="btn btn-outline" href="about.html">More about us</a></div>
+  </div>
+</section>
+
+<section class="block cta-band">
+  <div class="kicker"><b>05</b>Join the crew</div>
+  <h2 class="section-title" data-reveal>Fuel the next<br /><span class="shine">robot.</span></h2>
+  <div class="btn-row">
+    <a class="btn magnetic" href="sponsors.html">Become a sponsor <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a>
+    <a class="btn btn-outline magnetic" href="team.html">Meet the mentors</a>
   </div>
 </section>
 
@@ -66,32 +95,72 @@
 <script src="js/components.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("hero-img").src = driveImg(SITE.heroImage, 1600);
+  // Hero
+  document.getElementById("hero-bg").style.backgroundImage = `url("${driveImg(SITE.heroImage, 1600)}")`;
+  document.getElementById("founded").textContent = SITE.founded;
+  document.getElementById("hero-tagline").textContent = SITE.tagline;
   document.getElementById("mission-text").textContent = SITE.mission;
-
   document.getElementById("about-school-title").textContent = ABOUT_SCHOOL.heading;
   document.getElementById("about-school-body").textContent = ABOUT_SCHOOL.body;
 
-  const showcase = document.getElementById("robot-showcase");
-  // Latest three seasons that have a photo
-  showcase.innerHTML = ROBOTS.filter(r => r.image).slice(0, 3).map(r => `
-    <a class="card robot-card" href="${robotUrl(r)}">
-      <img src="${driveImg(r.image, 800)}" alt="${robotName(r)}, the ${r.year} robot" loading="lazy" />
-      <div class="card-body">
-        <div class="meta">${r.year} · ${r.game}</div>
-        <h3>${robotName(r)}</h3>
-        <p>${r.tagline || r.status || ""}</p>
-      </div>
-    </a>
-  `).join("");
+  // Robots that have a photo, newest first (the reel and the marquee both use them)
+  const withPhoto = ROBOTS.filter((r) => r.image);
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  const schedule = document.getElementById("schedule-list");
-  schedule.innerHTML = SCHEDULE_2026.map(s => `
-    <li>
-      <span class="event-name">${s.event}</span>
-      <span class="event-loc">${s.dates} · ${s.location}</span>
-    </li>
-  `).join("");
+  const names = withPhoto.filter((r) => r.name).map((r) => `<span class="solid">${esc(r.name)}</span><span><i>✦</i> ${r.year}</span>`).join("");
+  document.getElementById("marquee").innerHTML = names + names;
+
+  document.getElementById("robot-showcase").innerHTML = withPhoto.slice(0, 6).map((r) => `
+    <a class="bot tilt" href="${robotUrl(r)}">
+      <img src="${driveImg(r.image, 800)}" alt="${esc(robotName(r))}, the ${r.year} robot" loading="lazy" width="420" height="525" />
+      ${r.status ? `<span class="pill">${esc(r.status)}</span>` : ""}
+      <div class="info">
+        <div class="yr">${r.year} · ${esc(r.game)}</div>
+        <h3>${esc(robotName(r))}</h3>
+        <p>${esc(r.tagline || "")}</p>
+      </div>
+    </a>`).join("");
+
+  // Numbers that come straight from content.js
+  const stats = [
+    { n: ROBOTS.length, label: "seasons on the field" },
+    { n: Number(SITE.founded), label: "year we started", plain: true },
+    { n: MENTORS.length, label: "mentors and coaches" },
+    { n: SCHEDULE_2026.length, label: "events this season" },
+  ];
+  document.getElementById("stats").innerHTML = stats.map((s, i) => `
+    <div class="stat" data-reveal style="--ri:${i}"><div class="n"><span ${s.plain ? "" : `data-count="${s.n}"`}>${s.plain ? s.n : 0}</span></div><div class="l">${s.label}</div></div>`).join("");
+
+  document.getElementById("schedule-list").innerHTML = SCHEDULE_2026.map((s) => `
+    <li data-reveal>
+      <span class="event-name">${esc(s.event)}</span>
+      <span class="event-loc">${esc(s.dates)} · ${esc(s.location)}</span>
+    </li>`).join("");
+  const photo = MEDIA_PHOTOS[1] || MEDIA_PHOTOS[0]; // a different photo than the hero
+  if (photo) document.getElementById("split-img").src = driveImg(photo, 1200);
+  else document.querySelector(".split .pic").remove();
+
+  // Reel arrows
+  document.querySelectorAll(".reel-ctrl button").forEach((b) => b.addEventListener("click", () => {
+    document.getElementById("robot-showcase").scrollBy({ left: Number(b.dataset.dir) * 460, behavior: REDUCED_MOTION ? "auto" : "smooth" });
+  }));
+
+  if (!REDUCED_MOTION) {
+    // The gold glow in the hero follows the pointer
+    const hero = document.getElementById("hero");
+    hero.addEventListener("pointermove", (e) => {
+      const r = hero.getBoundingClientRect();
+      hero.style.setProperty("--mx", `${e.clientX - r.left}px`);
+      hero.style.setProperty("--my", `${e.clientY - r.top}px`);
+    });
+    // Slow parallax on the photo
+    const img = document.getElementById("split-img");
+    const wrap = img.parentElement;
+    addEventListener("scroll", () => {
+      const r = wrap.getBoundingClientRect();
+      img.style.setProperty("--py", `${(r.top / innerHeight) * -50}px`);
+    }, { passive: true });
+  }
 });
 </script>
 </body>

@@ -88,29 +88,41 @@ function pageHref(page) {
 }
 
 function renderHeader() {
-  const active = isPortalPage() ? "" : currentPage();
-  const links = NAV_LINKS.map(
-    (l) =>
-      `<a href="${pageHref(l.href)}" class="nav-link${l.href === active ? " active" : ""}">${l.label}</a>`
-  ).join("");
+  const brand = `
+      <a href="${pageHref("index.html")}" class="brand">
+        <img src="${driveImg(SITE.logo, 200)}" alt="${SITE.teamName} logo" class="brand-logo" width="40" height="40" />
+        <span class="brand-text"><strong>${SITE.teamNumber}</strong> ${isPortalPage() ? "Portal" : SITE.teamName}</span>
+      </a>`;
 
+  // The portal keeps its header short: the user's group, a way back to the public site, and sign-out.
+  if (isPortalPage()) {
+    return `
+  <header class="site-header">
+    <div class="header-inner">
+      ${brand}
+      <nav class="site-nav portal-nav">
+        <span class="nav-chip" id="group-chip" hidden></span>
+        <a href="${pageHref("index.html")}" class="nav-link">Public site</a>
+        <a href="${SIGNOUT_URL}" class="nav-login">Sign out</a>
+      </nav>
+    </div>
+  </header>`;
+  }
+
+  const active = currentPage();
+  const links = NAV_LINKS.map(
+    (l) => `<a href="${l.href}" class="nav-link${l.href === active ? " active" : ""}">${l.label}</a>`
+  ).join("");
   return `
   <header class="site-header">
     <div class="header-inner">
-      <a href="${pageHref("index.html")}" class="brand">
-        <img src="${driveImg(SITE.logo, 200)}" alt="${SITE.teamName} logo" class="brand-logo" width="42" height="42" />
-        <span class="brand-text">
-          <strong>${SITE.teamNumber}</strong> ${SITE.teamName}
-        </span>
-      </a>
-      <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      ${brand}
+      <button class="nav-toggle" aria-label="Open menu" aria-expanded="false">
         <span></span><span></span><span></span>
       </button>
       <nav class="site-nav">
         ${links}
-        ${isPortalPage()
-          ? `<a href="${SIGNOUT_URL}" class="nav-login">Sign out</a>`
-          : `<a href="${PORTAL_URL}" class="nav-login">Team Login</a>`}
+        <a href="${PORTAL_URL}" class="nav-login">Team Login</a>
       </nav>
     </div>
   </header>`;
@@ -121,8 +133,8 @@ function renderFooter() {
   <footer class="site-footer">
     <div class="footer-inner">
       <div class="footer-col">
-        <strong>Team ${SITE.teamNumber} — ${SITE.teamName}</strong>
-        <p>${SITE.school} · ${SITE.location}</p>
+        <strong>${SITE.teamName}</strong>
+        <p>FRC Team ${SITE.teamNumber} · ${SITE.school}<br />${SITE.location} · Since ${SITE.founded}</p>
       </div>
       <div class="footer-col">
         <a href="${pageHref("contact.html")}">Contact us</a>
@@ -136,20 +148,162 @@ function renderFooter() {
         <a href="${REQUEST_URL}">Request an account</a>`}
       </div>
     </div>
+    <div class="footer-giant" aria-hidden="true">${SITE.teamNumber}</div>
     <p class="footer-copy">© ${new Date().getFullYear()} ${SITE.teamName}, FRC Team ${SITE.teamNumber}.</p>
   </footer>`;
+}
+
+// ---------- Motion and effects ----------
+// All of it is decoration: pages work without it, and none of it runs when the visitor
+// has asked their system for reduced motion.
+
+const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const FINE_POINTER = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+// Wrap each word of an element's text so it can rise into place (class "rise").
+function splitWords(el) {
+  if (!el || el.dataset.split) return;
+  el.dataset.split = "1";
+  let i = 0;
+  const walk = (node) => {
+    [...node.childNodes].forEach((child) => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const frag = document.createDocumentFragment();
+        child.textContent.split(/(\s+)/).forEach((part) => {
+          if (!part) return;
+          if (/^\s+$/.test(part)) { frag.append(part); return; }
+          const w = document.createElement("span");
+          w.className = "w";
+          const inner = document.createElement("span");
+          inner.textContent = part;
+          inner.style.setProperty("--wi", i++);
+          w.append(inner);
+          frag.append(w);
+        });
+        child.replaceWith(frag);
+      } else if (child.nodeType === Node.ELEMENT_NODE && child.tagName !== "BR") {
+        walk(child);
+      }
+    });
+  };
+  walk(el);
+  el.classList.add("rise");
+}
+
+// Reveal [data-reveal] elements as they scroll into view.
+function setupReveal(root = document) {
+  const els = [...root.querySelectorAll("[data-reveal]:not(.in)")];
+  if (REDUCED_MOTION || !("IntersectionObserver" in window)) { els.forEach((e) => e.classList.add("in")); return; }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((en) => {
+      if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
+    });
+  }, { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
+  els.forEach((e) => io.observe(e));
+}
+
+// Count numbers in [data-count] up from zero when they come into view.
+function setupCounters(root = document) {
+  root.querySelectorAll("[data-count]:not([data-counted])").forEach((el) => {
+    el.dataset.counted = "1";
+    const target = Number(el.dataset.count);
+    if (REDUCED_MOTION || !("IntersectionObserver" in window)) { el.textContent = target; return; }
+    const io = new IntersectionObserver((en) => {
+      if (!en[0].isIntersecting) return;
+      io.disconnect();
+      const start = performance.now();
+      const tick = (now) => {
+        const p = Math.min(1, (now - start) / 1400);
+        el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+        if (p < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }, { threshold: 0.6 });
+    io.observe(el);
+  });
+}
+
+// Pointer effects: tilt on .tilt, spotlight on .spot and .app-card, magnetic .magnetic buttons.
+function setupPointerFx(root = document) {
+  if (REDUCED_MOTION || !FINE_POINTER) return;
+  root.querySelectorAll(".tilt:not([data-fx])").forEach((c) => {
+    c.dataset.fx = "1";
+    c.addEventListener("pointermove", (e) => {
+      const r = c.getBoundingClientRect();
+      c.style.setProperty("--ry", `${((e.clientX - r.left) / r.width - 0.5) * 8}deg`);
+      c.style.setProperty("--rx", `${-((e.clientY - r.top) / r.height - 0.5) * 8}deg`);
+    });
+    c.addEventListener("pointerleave", () => { c.style.setProperty("--rx", "0deg"); c.style.setProperty("--ry", "0deg"); });
+  });
+  root.querySelectorAll(".spot:not([data-fx-spot]), .app-card:not([data-fx-spot])").forEach((c) => {
+    c.dataset.fxSpot = "1";
+    c.addEventListener("pointermove", (e) => {
+      const r = c.getBoundingClientRect();
+      c.style.setProperty("--x", `${e.clientX - r.left}px`);
+      c.style.setProperty("--y", `${e.clientY - r.top}px`);
+    });
+  });
+  root.querySelectorAll(".magnetic:not([data-fx])").forEach((b) => {
+    b.dataset.fx = "1";
+    b.addEventListener("pointermove", (e) => {
+      const r = b.getBoundingClientRect();
+      b.style.setProperty("--bx", `${(e.clientX - r.left - r.width / 2) * 0.25}px`);
+      b.style.setProperty("--by", `${(e.clientY - r.top - r.height / 2) * 0.35}px`);
+    });
+    b.addEventListener("pointerleave", () => { b.style.setProperty("--bx", "0px"); b.style.setProperty("--by", "0px"); });
+  });
+}
+
+// A small gold dot that follows the mouse and grows over links.
+function setupCursor() {
+  if (REDUCED_MOTION || !FINE_POINTER || document.querySelector(".cursor-dot")) return;
+  const dot = document.createElement("div");
+  dot.className = "cursor-dot";
+  dot.setAttribute("aria-hidden", "true");
+  document.body.append(dot);
+  addEventListener("pointermove", (e) => {
+    dot.classList.add("on");
+    dot.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+    dot.classList.toggle("big", Boolean(e.target.closest("a, button, input, [role=button]")));
+  }, { passive: true });
+  document.documentElement.addEventListener("pointerleave", () => dot.classList.remove("on"));
+}
+
+// Run every effect on whatever is on the page now. Pages that add content later call it again.
+function initEffects(root = document) {
+  setupReveal(root);
+  setupCounters(root);
+  setupPointerFx(root);
 }
 
 function mountLayout() {
   document.getElementById("site-header").innerHTML = renderHeader();
   document.getElementById("site-footer").innerHTML = renderFooter();
 
+  const header = document.querySelector(".site-header");
+  // Pages without a full-screen hero get a solid header from the start.
+  if (!document.querySelector(".hero")) header.classList.add("solid");
+  const onScroll = () => header.classList.toggle("scrolled", scrollY > 30);
+  addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
   const toggle = document.querySelector(".nav-toggle");
   const nav = document.querySelector(".site-nav");
-  toggle.addEventListener("click", () => {
-    const isOpen = nav.classList.toggle("open");
-    toggle.setAttribute("aria-expanded", String(isOpen));
-  });
+  if (toggle) {
+    toggle.addEventListener("click", () => {
+      const isOpen = nav.classList.toggle("open");
+      toggle.setAttribute("aria-expanded", String(isOpen));
+      toggle.setAttribute("aria-label", isOpen ? "Close menu" : "Open menu");
+      document.body.classList.toggle("nav-open", isOpen);
+    });
+  }
+
+  // Big page headings rise in word by word.
+  const splitHeadings = () => document.querySelectorAll(".page-header h1, .robot-hero h1").forEach(splitWords);
+  splitHeadings();
+  setupCursor();
+  // After every page script's DOMContentLoaded handler has filled in content.
+  setTimeout(() => { splitHeadings(); initEffects(); }, 0);
 }
 
 document.addEventListener("DOMContentLoaded", mountLayout);

@@ -57,7 +57,7 @@ run_user() {
     | grep -o '<h3>[^<]*</h3>' | sed 's/<[^>]*>//g' | paste -sd, - || true)
   has_notice=no
   printf '%s' "$dom" | grep -q 'id="no-group">' && has_notice=yes
-  greet=$(printf '%s' "$dom" | grep -o '<h1 id="greeting">[^<]*' | sed 's/.*>//')
+  greet=$(printf '%s' "$dom" | tr '\n' ' ' | grep -o '<span[^>]*id="name"[^>]*>[^<]*' | sed 's/.*>//')
   label=${groups:-"(no group)"}
   if [ "$got" = "$want" ] && [ "$has_notice" = "$notice" ]; then
     echo "ok   $label: [$got] notice=$has_notice greeting='$greet'"

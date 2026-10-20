@@ -42,7 +42,7 @@ body '{"status":"ok"}' "/healthz" "$URL/healthz"
 check 200 "/healthz on portal host, no secret" -H "Host: portal.$D" "$URL/healthz"
 
 echo "-- portal host needs the secret"
-for p in / /me.json /apps.json /portal/ /css/style.css /about.html; do
+for p in / /me.json /apps.json /portal/ /css/style.css /fonts/inter-latin.woff2 /about.html; do
   check 401 "portal $p, no secret, fake headers" -H "Host: portal.$D" $FAKE "$URL$p"
   check 401 "portal $p, wrong secret" -H "Host: portal.$D" -H "X-Proxy-Secret: wrong" $FAKE "$URL$p"
 done
@@ -60,6 +60,7 @@ check 200 "portal / (portal page)" -H "Host: portal.$D" $S "$URL/"
 check 200 "portal /apps.json" -H "Host: portal.$D" $S "$URL/apps.json"
 check 200 "portal /me.json" -H "Host: portal.$D" $S "$URL/me.json"
 check 200 "portal /css/style.css" -H "Host: portal.$D" $S "$URL/css/style.css"
+check 200 "portal /fonts/inter-latin.woff2" -H "Host: portal.$D" $S "$URL/fonts/inter-latin.woff2"
 check 302 "portal /about.html redirects to public host" -H "Host: portal.$D" $S "$URL/about.html"
 body '{"email":"pat@example.com","name":"Pat \"O\u003cb\u003e","username":"pat@example.com","groups":"mentor|parent","uid":"u-1"}' \
   "me.json echoes headers, lowercases email, escapes \" and <" \
