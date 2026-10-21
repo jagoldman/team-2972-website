@@ -1,6 +1,8 @@
 # landing: static Caddy serving the public site and the portal home on $PORT (3001).
 # Built by infra (build: ../landing). Env: PORT, SITE_DOMAIN, SITE_SCHEME, PROXY_SHARED_SECRET.
 # Portal tiles: infra mounts apps.json read-only at /config/apps.json.
+# Published site content: infra mounts the editor's volumes read-only at /srv/content (content.json)
+# and /srv/media (<id>-<w>.webp). Without them the site renders its built-in content.
 FROM caddy:2.11.7-alpine
 
 ENV PORT=3001
@@ -12,7 +14,7 @@ COPY container/Caddyfile /etc/caddy/Caddyfile
 COPY container/me.json /srv/templates/me.json
 COPY --chmod=0755 container/entrypoint.sh /usr/local/bin/landing-entrypoint
 COPY . /srv/site
-RUN rm -rf /srv/site/container && mkdir -p /config
+RUN rm -rf /srv/site/container && mkdir -p /config /srv/content /srv/media
 
 EXPOSE 3001
 USER nobody

@@ -15,9 +15,22 @@
        (logo w200, hero w1600, robots/history w800, headshots and
        logos w400, gallery thumbnails w600; see README)
   That format renders as an <img>, unlike the raw "/view" share link.
+  An image uploaded through the site editor is written as "media:<id>"; the page
+  turns that into /media/<id>-<width>.webp for you.
 
   LINKS: a url of "#" means "not set yet" — pages hide those links
   (or show them as "coming soon") instead of linking nowhere.
+
+  RICH TEXT: paragraphs, bios and descriptions are plain text with a tiny
+  Markdown subset: [link text](url), **bold** and *italic*. Anything else
+  (including HTML) is shown as typed. Links may be https:, mailto:, or a page
+  on this site such as robot.html?year=2011.
+
+  PUBLISHED CONTENT: this file is the built-in DEFAULT. The site editor
+  publishes a copy to /content/content.json (same sections, same shape);
+  js/content-loader.js uses that when it is there and valid, and falls back
+  to this file otherwise. A new section must also be added to contentSections
+  at the bottom of this file.
 */
 
 const SITE = {
@@ -57,6 +70,7 @@ const ANNUAL_EVENTS = [
   { name: "KCMT Offseason Tournament", when: "Fall", description: "The Kendrick Castillo Memorial Tournament, a Colorado offseason event." },
   { name: "Broomfield Days", when: "Fall", description: "Robot demos for the local community." },
 ];
+
 
 // Google Calendar shared with the team (also a portal tile in infra/config/apps.json)
 const TEAM_CALENDAR_URL =
@@ -114,7 +128,7 @@ const HISTORY = {
       { kind: "comp", text: "Our first FRC season." },
     ] },
     { year: "2011", items: [
-      { kind: "comp", text: `Won the <a href="robot.html?year=2011">Colorado Regional</a> with an aggressive defensive strategy.` },
+      { kind: "comp", text: `Won the [Colorado Regional](robot.html?year=2011) with an aggressive defensive strategy.` },
     ] },
     { year: "2013", items: [
       { kind: "comp", text: "Built our best robot of the team's first five years and moved into the top 25, where we stayed until 2017." },
@@ -136,7 +150,7 @@ const HISTORY = {
       { kind: "team", text: "Added a lathe and a CNC router to the shop." },
     ] },
     { year: "2026", items: [
-      { kind: "comp", text: `Our robot <a href="robot.html?year=2026">Theseus</a> won the Utah Regional as the second pick of Alliance 2.` },
+      { kind: "comp", text: `Our robot [Theseus](robot.html?year=2026) won the Utah Regional as the second pick of Alliance 2.` },
       { kind: "team", text: "Building a permanent two-thirds-length practice field." },
     ] },
   ],
@@ -499,6 +513,7 @@ const SPONSOR_TIERS = [
   },
 ];
 
+
 const SPONSOR_PACKET_URL = "https://drive.google.com/file/d/1pQur7KkQSo5CY8GExVnrh-9iaMpoMrnf/view?usp=sharing";
 
 // Outreach / community events — add one object per event
@@ -644,3 +659,34 @@ const MEDIA_VIDEOS = [
 const MEDIA_PUBLICITY = [
   // TODO: add press/publicity links, e.g. { title: "...", url: "#", outlet: "..." }
 ];
+
+/*
+  contentSections — the sections the site editor can change. js/content-loader.js
+  replaces the CONTENTS of these objects (and the two URL strings) when
+  /content/content.json is published, so keep this list in step with the const
+  declarations above and with the editor's schema (editor/src/lib/content/schema.ts).
+  Pages read the two URLs with contentGet("TEAM_CALENDAR_URL") and
+  contentGet("SPONSOR_PACKET_URL"), because a string cannot be updated in place.
+  (This name is camelCase on purpose: the editor imports every UPPER_SNAKE name.)
+*/
+const contentSections = {
+  SITE,
+  SCHEDULE_2027,
+  ANNUAL_EVENTS,
+  TEAM_CALENDAR_URL,
+  ABOUT_SCHOOL,
+  ABOUT_FIRST,
+  VALUES,
+  STRATEGY,
+  HISTORY,
+  ROBOTS,
+  SPONSOR_TIERS,
+  SPONSOR_PACKET_URL,
+  OUTREACH_EVENTS,
+  REQUEST_ACCESS,
+  RESOURCE_LINKS,
+  CAD_OVERVIEW,
+  MEDIA_PHOTOS,
+  MEDIA_VIDEOS,
+  MEDIA_PUBLICITY,
+};

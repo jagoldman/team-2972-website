@@ -62,31 +62,148 @@ function requestAccessHref(resource, who = {}) {
 
 function renderRequestAccess(who) {
   return `
-    <div class="contact-grid">${REQUEST_ACCESS.map((r) => `
-      <div class="contact-card">
-        <h3>${r.name}</h3>
-        <p>${r.what} Access is by invitation.</p>
-        <a class="btn" href="${requestAccessHref(r, who)}">Request access</a>
+    <div class="contact-grid"${ck("REQUEST_ACCESS")}>${REQUEST_ACCESS.map((r, i) => `
+      <div class="contact-card"${ck(`REQUEST_ACCESS[${i}]`)}>
+        <h3${ck(`REQUEST_ACCESS[${i}].name`)}>${esc(r.name)}</h3>
+        <p><span${ck(`REQUEST_ACCESS[${i}].what`)}>${esc(r.what)}</span> Access is by invitation.</p>
+        <a class="btn" href="${esc(requestAccessHref(r, who))}">Request access</a>
       </div>`).join("")}
     </div>
-    <p class="access-note">Each button opens an email to <a href="mailto:${SITE.email}">${SITE.email}</a>. If no email app opens,
+    <p class="access-note">Each button opens an email to <a href="mailto:${esc(SITE.email)}"${ck("SITE.email")}>${esc(SITE.email)}</a>. If no email app opens,
     write to that address with your name, your school email and why you need access.</p>`;
 }
 
-// Photo URL at the width a spot needs. content.js may hold a bare Google Drive file ID or a full
-// lh3.googleusercontent.com/d/ID URL (any =w size on it is replaced). Anything else, such as an
-// SVG placeholder path, is returned unchanged.
-//   driveImg("1AbC…", 400) -> "https://lh3.googleusercontent.com/d/1AbC…=w400"
-function driveImg(src, width) {
-  const s = String(src || "");
-  const id = /^[\w-]{20,}$/.test(s) ? s : (s.match(/^https:\/\/lh3\.googleusercontent\.com\/d\/([\w-]+)/) || [])[1];
-  return id ? `https://lh3.googleusercontent.com/d/${id}=w${width}` : s;
+// ---------- Safe rendering of content ----------
+// Content may come from the site editor, so nothing from it is ever put into a page as raw HTML.
+// Every value goes through esc() (text), safeUrl() (links) or rich() (the Markdown subset).
+
+const ESC_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ESC_MAP[c]);
 }
 
-// "https://www.youtube.com/watch?v=ID" or "https://youtu.be/ID" -> embed URL
+// A link target that is safe to use: https:, http:, mailto:, or a path on this site. Anything else
+// (javascript:, data:, //other.host) becomes "". Whitespace and control characters are removed first,
+// because browsers ignore them inside a URL ("java\tscript:" still runs).
+function safeUrl(u) {
+  const s = String(u ?? "").replace(/[\u0000-\u0020\u007f-\u009f]/g, "");
+  if (!s) return "";
+  const scheme = s.match(/^([a-z][a-z0-9+.-]*):/i);
+  if (scheme) return /^(https?|mailto)$/i.test(scheme[1]) ? s : "";
+  return s.startsWith("//") ? "" : s;
+}
+
+// Rich text: plain text with [link](url), **bold** and *italic*. Everything else is shown as typed.
+// This follows the site editor's rules (editor/src/lib/content/text.ts) so a preview there and the
+// real page look the same: a link must be https:, mailto: or a page on this site; anything else, and
+// anything that is not a well-formed [label](url), stays as plain text. Returns HTML that is safe to
+// assign to innerHTML (all text is escaped first).
+const RICH_LINK = /\[([^\]\n]{1,300})\]\(([^()\s]{1,2000})\)/g;
+
+function richLinkOk(u) {
+  if (/^mailto:/i.test(u)) return /^mailto:[^\s<>"]+$/i.test(u);
+  if (/^https:\/\//i.test(u)) return /^https:\/\/[^/\\\s]/i.test(u) && u.length <= 2000;
+  // a page on this site: no scheme, no "//", no backslash, no ".." or "." segments, no leading "/"
+  if (!u || u.includes("//") || u.includes("\\") || u.includes(":") || u.startsWith("/")) return false;
+  return !u.split(/[?#]/)[0].split("/").some((seg) => seg === ".." || seg === ".");
+}
+
+function richEmphasis(escaped) {
+  return escaped
+    .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*\w])\*([^*\n]+)\*(?![*\w])/g, "$1<em>$2</em>");
+}
+
+function rich(text) {
+  const md = String(text ?? "");
+  let out = "";
+  let last = 0;
+  for (const m of md.matchAll(RICH_LINK)) {
+    out += richEmphasis(esc(md.slice(last, m.index)));
+    if (richLinkOk(m[2])) {
+      const external = /^https:/i.test(m[2]);
+      out += `<a href="${esc(m[2])}"${external ? ' target="_blank" rel="noopener"' : ""}>${richEmphasis(esc(m[1]))}</a>`;
+    } else {
+      out += richEmphasis(esc(m[0]));
+    }
+    last = m.index + m[0].length;
+  }
+  return out + richEmphasis(esc(md.slice(last)));
+}
+
+// data-ck marks the element that shows a content field, so the site editor can find it:
+//   data-ck="ROBOTS[2].image"        the element that shows that field (a list container gets
+//                                     the list's own path, e.g. data-ck="ROBOTS")
+//   data-ck-type="image" | "rich"     only where it is not obvious: an image shown as a CSS
+//                                     background (<img> is assumed to be an image), or a field
+//                                     written in the Markdown subset
+//   data-ck-href="SITE.instagram"     on a link whose address is its own field
+//   data-ck-alt="SPONSOR_TIERS[0].sponsors[1].name"   on an <img> whose alt text comes from a field
+// ck()/ckHref() return the attribute text to put inside a tag in a template string.
+function ck(path, type) {
+  return ` data-ck="${esc(path)}"${type ? ` data-ck-type="${type}"` : ""}`;
+}
+function ckHref(path) {
+  return ` data-ck-href="${esc(path)}"`;
+}
+// On an <img>: the field its alt text comes from (a sponsor's name, a history photo's imageAlt, ...)
+function ckAlt(path) {
+  return ` data-ck-alt="${esc(path)}"`;
+}
+
+// Photo URL at the width a spot needs. A value may be:
+//   "media:<id>"   an image uploaded through the site editor (a 20-character lowercase hex id) ->
+//                  /media/<id>-<w>.webp, where <w> is the smallest stored width (400, 800 or 1600) that
+//                  is at least the width asked for; if the published media list says which widths exist,
+//                  only those are used. (<id>-thumb.webp is for the editor's own screens, not for pages.)
+//   a Google Drive image ID or lh3.googleusercontent.com/d/ID URL (any =w size on it is replaced)
+//   any other http(s) URL or site path, such as an SVG placeholder, which is returned unchanged
+//   imgUrl("media:<id>", 600) -> "/media/<id>-800.webp"
+//   imgUrl("1AbC…", 400)      -> "https://lh3.googleusercontent.com/d/1AbC…=w400"
+const MEDIA_WIDTHS = [400, 800, 1600];
+const MEDIA_REF = /^media:([a-f0-9]{20})$/;
+function imgUrl(src, width) {
+  const s = String(src || "").trim();
+  const media = s.match(MEDIA_REF);
+  if (media) {
+    const info = (window.CONTENT_MEDIA || {})[media[1]];
+    const have = info && info.widths.length ? info.widths : MEDIA_WIDTHS;   // widths the editor says it stored
+    const w = have.find((x) => x >= width) || have[have.length - 1];
+    return `/media/${media[1]}-${w}.webp`;
+  }
+  const id = /^[\w-]{20,}$/.test(s) ? s : (s.match(/^https:\/\/lh3\.googleusercontent\.com\/d\/([\w-]+)/) || [])[1];
+  return id ? `https://lh3.googleusercontent.com/d/${id}=w${width}` : safeUrl(s);
+}
+
+// The srcset for an uploaded image (every stored width), so the browser can pick for the screen.
+// Empty for anything else (Drive images are already sized by the URL).
+function imgSrcset(src) {
+  const media = String(src || "").trim().match(MEDIA_REF);
+  if (!media) return "";
+  const info = (window.CONTENT_MEDIA || {})[media[1]];
+  const widths = info && info.widths.length ? info.widths : MEDIA_WIDTHS;   // the widths the editor says it stored
+  return widths.map((w) => `/media/${media[1]}-${w}.webp ${w}w`).join(", ");
+}
+
+// Alt text for an image field: the editor requires one for every upload and publishes it with the
+// content, so use that; otherwise `fallback` (usually a name nearby). Plain text, not yet escaped.
+function altFor(src, fallback) {
+  const media = String(src || "").trim().match(MEDIA_REF);
+  const info = media && (window.CONTENT_MEDIA || {})[media[1]];
+  return (info && info.alt) || fallback || "";
+}
+
+// The src (plus srcset and sizes for uploaded images) of an <img>, as attribute text for a template string:
+//   `<img${imgAttrs(m.photo, 400)} alt="…">`
+function imgAttrs(src, width) {
+  const set = imgSrcset(src);
+  return ` src="${esc(imgUrl(src, width))}"${set ? ` srcset="${set}" sizes="${Number(width)}px"` : ""}`;
+}
+
+// "https://www.youtube.com/watch?v=ID" or "https://youtu.be/ID" -> embed URL, or "" if it is not YouTube
 function youtubeEmbed(url) {
-  const m = String(url).match(/(?:youtu\.be\/|v=|\/embed\/)([\w-]{11})/);
-  return m ? `https://www.youtube.com/embed/${m[1]}` : url;
+  const m = String(url).match(/^https:\/\/(?:www\.youtube\.com|youtu\.be)\/(?:embed\/|watch\?(?:[^#]*&)?v=)?([\w-]{11})(?:[?&#]|$)/);
+  return m ? `https://www.youtube.com/embed/${m[1]}` : "";
 }
 
 function robotName(r) {
@@ -137,8 +254,8 @@ function pageHref(page) {
 function renderHeader() {
   const brand = `
       <a href="${pageHref("index.html")}" class="brand">
-        <img src="${driveImg(SITE.logo, 200)}" alt="${SITE.teamName} logo" class="brand-logo" width="40" height="40" />
-        <span class="brand-text"><strong>${SITE.teamNumber}</strong> ${isPortalPage() ? "Portal" : SITE.teamName}</span>
+        <img${imgAttrs(SITE.logo, 200)}${ck("SITE.logo")} alt="${esc(altFor(SITE.logo, SITE.teamName + " logo"))}" class="brand-logo" width="40" height="40" />
+        <span class="brand-text"><strong${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</strong> ${isPortalPage() ? "Portal" : `<span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span>`}</span>
       </a>`;
 
   // The portal keeps its header short: the user's group, a way back to the public site, and sign-out.
@@ -184,17 +301,18 @@ function renderHeader() {
 }
 
 function renderFooter() {
+  const igHref = safeUrl(SITE.instagram);
   return `
   <footer class="site-footer">
     <div class="footer-inner">
       <div class="footer-col">
-        <strong>${SITE.teamName}</strong>
-        <p>FRC Team ${SITE.teamNumber} · ${SITE.school}<br />${SITE.location} · Since ${SITE.founded}</p>
+        <strong${ck("SITE.teamName")}>${esc(SITE.teamName)}</strong>
+        <p>FRC Team <span${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span> · <span${ck("SITE.school")}>${esc(SITE.school)}</span><br /><span${ck("SITE.location")}>${esc(SITE.location)}</span> · Since <span${ck("SITE.founded")}>${esc(SITE.founded)}</span></p>
       </div>
       <div class="footer-col">
         <a href="${pageHref("contact.html")}">Contact us</a>
-        <a href="mailto:${SITE.email}">${SITE.email}</a>
-        <a href="${SITE.instagram}" target="_blank" rel="noopener">Instagram ${SITE.instagramHandle}</a>
+        <a href="mailto:${esc(SITE.email)}"${ck("SITE.email")}>${esc(SITE.email)}</a>
+        <a href="${esc(igHref)}" target="_blank" rel="noopener"${ckHref("SITE.instagram")}>Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span></a>
       </div>
       <div class="footer-col">
         <a href="${pageHref("sponsors.html")}">Become a Sponsor</a>
@@ -204,8 +322,8 @@ function renderFooter() {
         <a href="${REQUEST_URL}">Request an account</a>`}
       </div>
     </div>
-    <div class="footer-giant" aria-hidden="true">${SITE.teamNumber}</div>
-    <p class="footer-copy"><span>© ${new Date().getFullYear()} ${SITE.teamName}, FRC Team ${SITE.teamNumber}.</span> <span><a href="${pageHref("privacy.html")}">Privacy</a> · <a href="${pageHref("terms.html")}">Terms</a></span></p>
+    <div class="footer-giant" aria-hidden="true"${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</div>
+    <p class="footer-copy"><span>© ${new Date().getFullYear()} <span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span>, FRC Team <span${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span>.</span> <span><a href="${pageHref("privacy.html")}">Privacy</a> · <a href="${pageHref("terms.html")}">Terms</a></span></p>
   </footer>`;
 }
 
@@ -405,6 +523,9 @@ function initEffects(root = document) {
   setupPointerFx(root);
 }
 
+let layoutStarted = false;
+
+// Builds the header and footer. Safe to run again (the editor re-renders after a draft change).
 function mountLayout() {
   document.getElementById("site-header").innerHTML = renderHeader();
   document.getElementById("site-footer").innerHTML = renderFooter();
@@ -413,9 +534,7 @@ function mountLayout() {
   const header = document.querySelector(".site-header");
   // Pages without a full-screen hero get a solid header from the start.
   if (!document.querySelector(".hero")) header.classList.add("solid");
-  const onScroll = () => header.classList.toggle("scrolled", scrollY > 30);
-  addEventListener("scroll", onScroll, { passive: true });
-  onScroll();
+  header.classList.toggle("scrolled", scrollY > 30);
 
   const toggle = document.querySelector(".nav-toggle");
   const nav = document.querySelector(".site-nav");
@@ -448,11 +567,22 @@ function mountLayout() {
   });
 
   // Big page headings rise in word by word.
-  const splitHeadings = () => document.querySelectorAll(".page-header h1, .robot-hero h1").forEach(splitWords);
-  splitHeadings();
-  setupCursor();
-  // After every page script's DOMContentLoaded handler has filled in content.
-  setTimeout(() => { splitHeadings(); initEffects(); }, 0);
+  document.querySelectorAll(".page-header h1, .robot-hero h1").forEach(splitWords);
+
+  if (!layoutStarted) {
+    layoutStarted = true;
+    addEventListener("scroll", () => {
+      const h = document.querySelector(".site-header");
+      if (h) h.classList.toggle("scrolled", scrollY > 30);
+    }, { passive: true });
+    setupCursor();
+  }
+  // After the page's own render function has filled in its content.
+  setTimeout(() => {
+    document.querySelectorAll(".page-header h1, .robot-hero h1").forEach(splitWords);
+    initEffects();
+  }, 0);
 }
 
-document.addEventListener("DOMContentLoaded", mountLayout);
+// Wait for the DOM and the content, then build the layout (the loader runs this).
+onContent(mountLayout);

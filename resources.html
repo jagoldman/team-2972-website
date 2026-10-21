@@ -41,7 +41,8 @@
 
 <section class="block" id="cad-overview">
   <div class="block-inner">
-    <h2 class="section-title">3D CAD/CAM Modeling Overview</h2>
+    <!-- fixed page heading; it only happens to match a link label, so it is not a content field -->
+    <h2 class="section-title" data-ck-ignore>3D CAD/CAM Modeling Overview</h2>
     <div class="cad-overview" id="cad-body"></div>
   </div>
 </section>
@@ -50,32 +51,44 @@
 
 <script src="config.js"></script>
 <script src="js/content.js"></script>
+<script src="js/content-loader.js"></script>
 <script src="js/components.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-  // Links still set to "#" are hidden; groups with nothing left are skipped
-  const external = url => /^https?:/.test(url);
-  document.getElementById("resource-groups").innerHTML = RESOURCE_LINKS
-    .map(group => ({ ...group, items: group.items.filter(item => isSet(item.url)) }))
-    .filter(group => group.items.length)
-    .map(group => `
-      <div class="resource-group">
-        <h3>${group.category}</h3>
-        <ul>
-          ${group.items.map(item => `<li><a href="${item.url}"${item.download ? ` download="${item.download}"` : ""}${external(item.url) ? ' target="_blank" rel="noopener"' : ""}><span>${item.label}${item.note ? `<small class="res-note">${item.note}</small>` : ""}</span></a></li>`).join("")}
+onContent(() => {
+  // Links still set to "#" are hidden; groups with nothing left are skipped. Indexes stay the ones
+  // in RESOURCE_LINKS, so the data-ck paths are right even when something is hidden.
+  const external = url => /^https?:/i.test(url);
+  const groups = document.getElementById("resource-groups");
+  groups.setAttribute("data-ck", "RESOURCE_LINKS");
+  groups.innerHTML = RESOURCE_LINKS
+    .map((group, gi) => ({ group, gi, items: group.items.map((item, ii) => ({ item, ii })).filter(({ item }) => isSet(item.url)) }))
+    .filter(g => g.items.length)
+    .map(({ group, gi, items }) => `
+      <div class="resource-group"${ck(`RESOURCE_LINKS[${gi}]`)}>
+        <h3${ck(`RESOURCE_LINKS[${gi}].category`)}>${esc(group.category)}</h3>
+        <ul${ck(`RESOURCE_LINKS[${gi}].items`)}>
+          ${items.map(({ item, ii }) => {
+            const href = safeUrl(item.url);
+            const P = `RESOURCE_LINKS[${gi}].items[${ii}]`;
+            return `<li${ck(P)}><a href="${esc(href)}"${item.download ? ` download="${esc(item.download)}"` : ""}${external(href) ? ' target="_blank" rel="noopener"' : ""}${ckHref(`${P}.url`)}><span><span${ck(`${P}.label`)}>${esc(item.label)}</span>${item.note ? `<small class="res-note"${ck(`${P}.note`)}>${esc(item.note)}</small>` : ""}</span></a></li>`;
+          }).join("")}
         </ul>
       </div>
     `).join("");
 
-  document.getElementById("onshape-public").href = SITE.onshapePublic;
+  const onshape = document.getElementById("onshape-public");
+  onshape.href = safeUrl(SITE.onshapePublic);
+  onshape.setAttribute("data-ck-href", "SITE.onshapePublic");
   document.getElementById("request-access-body").innerHTML = renderRequestAccess();
 
-  document.getElementById("cad-body").innerHTML = CAD_OVERVIEW.map(part => `
-    <div class="cad-part">
-      <h3>${part.heading}</h3>
-      ${part.body ? `<p>${part.body}</p>` : ""}
-      ${part.list ? `<ul>${part.list.map(li => `<li>${li}</li>`).join("")}</ul>` : ""}
-      ${part.after ? `<p>${part.after}</p>` : ""}
+  const cad = document.getElementById("cad-body");
+  cad.setAttribute("data-ck", "CAD_OVERVIEW");
+  cad.innerHTML = CAD_OVERVIEW.map((part, i) => `
+    <div class="cad-part"${ck(`CAD_OVERVIEW[${i}]`)}>
+      <h3${ck(`CAD_OVERVIEW[${i}].heading`)}>${esc(part.heading)}</h3>
+      ${part.body ? `<p${ck(`CAD_OVERVIEW[${i}].body`, "rich")}>${rich(part.body)}</p>` : ""}
+      ${part.list ? `<ul${ck(`CAD_OVERVIEW[${i}].list`)}>${part.list.map((li, j) => `<li${ck(`CAD_OVERVIEW[${i}].list[${j}]`, "rich")}>${rich(li)}</li>`).join("")}</ul>` : ""}
+      ${part.after ? `<p${ck(`CAD_OVERVIEW[${i}].after`, "rich")}>${rich(part.after)}</p>` : ""}
     </div>
   `).join("");
 });

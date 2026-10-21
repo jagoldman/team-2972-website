@@ -46,21 +46,23 @@
 
 <script src="config.js"></script>
 <script src="js/content.js"></script>
+<script src="js/content-loader.js"></script>
 <script src="js/components.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+onContent(() => {
   const grid = document.getElementById("outreach-grid");
+  grid.setAttribute("data-ck", "OUTREACH_EVENTS");
   if (!OUTREACH_EVENTS.length) {
     grid.innerHTML = `<p class="empty-note">Event write-ups coming soon — check back for updates on our latest outreach.</p>`;
     return;
   }
-  grid.innerHTML = OUTREACH_EVENTS.map(e => `
-    <div class="card">
-      <img src="${driveImg(e.image, 800)}" alt="${e.name}" loading="lazy" />
+  grid.innerHTML = OUTREACH_EVENTS.map((e, i) => `
+    <div class="card"${ck(`OUTREACH_EVENTS[${i}]`)}>
+      <img${imgAttrs(e.image, 800)}${ck(`OUTREACH_EVENTS[${i}].image`)}${ckAlt(`OUTREACH_EVENTS[${i}].name`)} alt="${esc(altFor(e.image, e.name))}" loading="lazy" />
       <div class="card-body">
-        <div class="meta">${e.date}</div>
-        <h3>${e.name}</h3>
-        <p>${e.description}</p>
+        <div class="meta"${ck(`OUTREACH_EVENTS[${i}].date`)}>${esc(e.date)}</div>
+        <h3${ck(`OUTREACH_EVENTS[${i}].name`)}>${esc(e.name)}</h3>
+        <p${ck(`OUTREACH_EVENTS[${i}].description`, "rich")}>${rich(e.description)}</p>
       </div>
     </div>
   `).join("");

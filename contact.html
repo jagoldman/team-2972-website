@@ -51,18 +51,23 @@
 
 <script src="config.js"></script>
 <script src="js/content.js"></script>
+<script src="js/content-loader.js"></script>
 <script src="js/components.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+onContent(() => {
   const emailLink = document.getElementById("email-link");
   emailLink.href = `mailto:${SITE.email}`;
   // On a very narrow phone the address wraps after the "@", not mid-word.
   const at = SITE.email.indexOf("@") + 1;
+  emailLink.textContent = "";
   emailLink.append(SITE.email.slice(0, at), document.createElement("wbr"), SITE.email.slice(at));
+  emailLink.setAttribute("data-ck", "SITE.email");
 
   const igLink = document.getElementById("ig-link");
-  igLink.href = SITE.instagram;
+  igLink.href = safeUrl(SITE.instagram);
   igLink.textContent = SITE.instagramHandle;
+  igLink.setAttribute("data-ck", "SITE.instagramHandle");
+  igLink.setAttribute("data-ck-href", "SITE.instagram");
 });
 </script>
 </body>
