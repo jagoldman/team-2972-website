@@ -62,7 +62,9 @@ function siteBase() {
   if (filled(env.scheme) && filled(env.domain)) return { scheme: env.scheme, domain: env.domain };
   // Plain local preview: work it out from the address bar.
   const scheme = location.protocol === "https:" ? "https" : "http";
-  const domain = location.host.replace(/^(www|portal)\./, "") || "localhost";
+  // Only a plain host name (letters, digits, dots, hyphens, a port) is used to build links.
+  const host = /^[A-Za-z0-9.:-]+$/.test(location.host) ? location.host : "localhost";
+  const domain = host.replace(/^(www|portal)\./, "") || "localhost";
   return { scheme, domain };
 }
 

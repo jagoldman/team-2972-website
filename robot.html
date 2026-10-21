@@ -21,6 +21,8 @@
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.getElementById("robot-page");
   const year = new URLSearchParams(window.location.search).get("year");
+  // The year comes from the address bar, so it is escaped wherever it is put into HTML.
+  const escHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const index = ROBOTS.findIndex(r => r.year === year);
 
   if (index === -1) {
@@ -28,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
     page.innerHTML = `
       <div class="page-header">
         <h1>Robot not found</h1>
-        <p>${year ? `We don't have a page for ${year} yet.` : "No season was picked."}</p>
+        <p>${year ? `We don't have a page for ${escHtml(year)} yet.` : "No season was picked."}</p>
       </div>
       <section class="block"><div class="block-inner">
         <div class="btn-row"><a class="btn" href="robots.html">See all robots</a></div>
