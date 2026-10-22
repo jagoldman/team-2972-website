@@ -48,6 +48,25 @@ Photos are **not** stored in this repo (only SVG placeholders are). They're serv
 | Mentor headshots, sponsor logos | `=w400` |
 | Gallery thumbnails (link the full photo with `=w2000`) | `=w600` |
 
+## Light and dark mode
+
+The site follows each visitor's system setting (light or dark) and also has a **Light / Dark / System** switch
+in the header, on every page and in the portal. The choice is remembered in the browser. If the browser blocks
+storage, the choice still works for that visit.
+
+- **To change a colour, edit one line** in the `:root` block at the top of `css/style.css`. Every colour is a
+  `--token` written as `light-dark(<light theme>, <dark theme>)`, so both themes sit side by side. Don't write
+  colours anywhere else in that file (`node test/theme-test.cjs` catches it).
+- **Gold has two jobs.** `--gold` fills buttons and badges (with dark text, `--on-gold`). `--accent` is gold used
+  as *text* or a thin line; it is darker on the light theme so it stays readable on cream.
+- **The home page photo and the robot photo cards stay dark** in both themes (light text on a dark wash). Sponsor
+  logos always sit on white tiles.
+- **No flash on load:** each page's `<head>` has a one-line script that applies a saved choice before anything
+  paints. With "System" there is nothing to apply: the browser's own setting is used by the stylesheet.
+- **After changing colours, run `test/theme-test.sh`.** It opens every page in both themes in headless Chrome and
+  fails if any text is below WCAG AA contrast (4.5:1, or 3:1 for large text), if the page does not follow the
+  system setting, or if the switch misbehaves.
+
 ## Portal tiles live in infra, not here
 
 The tiles on the team portal (Task App, Calendar, Handbook, …) and which groups see each one are
@@ -109,6 +128,7 @@ Google Chrome):
 ```bash
 test/container-test.sh
 test/portal-test.sh
+test/theme-test.sh     # light and dark themes (needs Chrome)
 ```
 
 ## Deploying

@@ -105,6 +105,7 @@ function renderHeader() {
       <nav class="site-nav portal-nav">
         <span class="nav-chip" id="group-chip" hidden></span>
         <a href="${pageHref("index.html")}" class="nav-link">Public site</a>
+        ${renderThemeSwitch()}
         <a href="${SIGNOUT_URL}" class="nav-login">Sign out</a>
       </nav>
     </div>
@@ -124,6 +125,7 @@ function renderHeader() {
       </button>
       <nav class="site-nav">
         ${links}
+        ${renderThemeSwitch()}
         <a href="${PORTAL_URL}" class="nav-login">Team Login</a>
       </nav>
     </div>
@@ -154,6 +156,57 @@ function renderFooter() {
     <p class="footer-copy">© ${new Date().getFullYear()} ${SITE.teamName}, FRC Team ${SITE.teamNumber}.</p>
   </footer>`;
 }
+
+// ---------- Theme: Light / Dark / System ----------
+// "System" (the default) leaves data-theme off <html>, so the page follows the visitor's system setting
+// through CSS alone. Light and Dark set data-theme, remembered in localStorage. An inline script in each
+// page's <head> sets it before the page paints, so there is no flash of the wrong theme.
+const THEME_KEY = "theme";
+
+function storedTheme() {
+  try {
+    const t = localStorage.getItem(THEME_KEY);
+    return t === "light" || t === "dark" ? t : "system";
+  } catch (e) {
+    return "system";           // storage blocked (private window, site data off): the choice just doesn't persist
+  }
+}
+
+function applyTheme(choice) {
+  const root = document.documentElement;
+  if (choice === "light" || choice === "dark") root.dataset.theme = choice;
+  else delete root.dataset.theme;
+  document.querySelectorAll(".theme-switch button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.theme === choice)));
+}
+
+function setTheme(choice) {
+  try {
+    if (choice === "system") localStorage.removeItem(THEME_KEY);
+    else localStorage.setItem(THEME_KEY, choice);
+  } catch (e) { /* not saved, still applied */ }
+  applyTheme(choice);
+}
+
+const THEME_OPTIONS = [
+  { value: "light", label: "Light", icon: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>' },
+  { value: "dark", label: "Dark", icon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>' },
+  { value: "system", label: "System", icon: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>' },
+];
+
+function renderThemeSwitch() {
+  const current = storedTheme();
+  return `<div class="theme-switch" role="group" aria-label="Colour theme">${THEME_OPTIONS.map((o) => `
+    <button type="button" data-theme="${o.value}" aria-pressed="${o.value === current}" title="${o.label}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${o.icon}</svg><span class="sr">${o.label}</span>
+    </button>`).join("")}</div>`;
+}
+
+function bindThemeSwitch() {
+  document.querySelectorAll(".theme-switch button").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.theme)));
+}
+
+// Another tab changed the theme: follow it.
+addEventListener("storage", (e) => { if (e.key === THEME_KEY || e.key === null) applyTheme(storedTheme()); });
 
 // ---------- Motion and effects ----------
 // All of it is decoration: pages work without it, and none of it runs when the visitor
@@ -282,6 +335,7 @@ function mountLayout() {
   document.getElementById("site-header").innerHTML = renderHeader();
   document.getElementById("site-footer").innerHTML = renderFooter();
 
+  bindThemeSwitch();
   const header = document.querySelector(".site-header");
   // Pages without a full-screen hero get a solid header from the start.
   if (!document.querySelector(".hero")) header.classList.add("solid");

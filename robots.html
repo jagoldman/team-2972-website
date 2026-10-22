@@ -4,6 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FRC Robots | Team 2972 Gears & Buccaneers</title>
+<meta name="color-scheme" content="light dark" />
+<meta name="theme-color" content="#f6f3ea" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#07090f" media="(prefers-color-scheme: dark)" />
+<script>try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -38,7 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <a class="card robot-card${r.image ? "" : " no-photo"}" href="${robotUrl(r)}">
       ${r.image
         ? `<img src="${driveImg(r.image, 800)}" alt="${robotName(r)}, the ${r.year} robot" loading="lazy" />`
-        : `<div class="photo-wanted"><span>${r.year}</span>Photo wanted</div>`}
+        : `<div class="photo-wanted"><span aria-hidden="true">${r.year}</span>Photo wanted</div>`}
       <div class="card-body">
         <div class="meta">${r.year} · ${r.game}</div>
         <h3>${robotName(r)}</h3>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>theme test</title>
+<!-- Loaded by test/theme-test.sh in headless Chrome. mode=contrast: every page in light and dark, WCAG AA text
+     contrast and the switch. mode=system-light / system-dark: Chrome is started with that system setting and the
+     pages must follow it. mode=nogroup: the portal for a user with no group. One line per check goes into #out. -->
+</head>
+<body>
+<pre id="out"></pre>
+<div id="frames"></div>
+<script>
+const MODE = new URLSearchParams(location.search).get("mode") || "contrast";
+const out = document.getElementById("out");
+let failures = 0;
+function report(ok, name, detail) {
+  if (!ok) failures++;
+  out.textContent += `${ok ? "ok  " : "FAIL"} ${MODE}: ${name}${!ok && detail ? ` -- ${detail}` : ""}\n`;
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ---------- colour maths (WCAG 2.x) ----------
+function parse(str) {
+  const m = String(str).match(/rgba?\(([^)]+)\)/);
+  if (!m) return null;
+  const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number);
+  return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1];
+}
+const over = (top, under) => { const a = top[3]; return [top[0] * a + under[0] * (1 - a), top[1] * a + under[1] * (1 - a), top[2] * a + under[2] * (1 - a)]; };
+const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+const lum = (c) => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+const ratio = (a, b) => { const [hi, lo] = lum(a) >= lum(b) ? [a, b] : [b, a]; return (lum(hi) + 0.05) / (lum(lo) + 0.05); };
+const key = (c) => c.map((v) => Math.round(v)).join(",");
+
+// Text on a photo: the photo can be replaced, so assume the worst case, a pure white photo, under what the
+// stylesheet puts over it. Each entry lists those layers from the bottom up.
+const ON_PHOTO = [
+  // .hero-bg is filtered to brightness .45 (white becomes 115); .hero::before washes it 0.55 where the text sits
+  { sel: ".hero", base: [115, 115, 115], layers: [[7, 9, 15, 0.55]] },
+  // the header over the hero: the hero wash at the top is 0.35, then the header's own scrim of 0.72
+  { sel: ".site-header:not(.scrolled):not(.solid)", base: [115, 115, 115], layers: [[7, 9, 15, 0.35], [7, 9, 15, 0.72]] },
+  // robot photo cards: .bot::after is 0.94 at the bottom, where the text sits
+  { sel: ".bot", base: [255, 255, 255], layers: [[7, 9, 15, 0.94]] },
+];
+// A header with its glass background can sit over anything: white or black.
+const OVER_ANYTHING = ".site-header.scrolled, .site-header.solid";
+
+// Every colour the element's own background could be: solid colours and each stop of a gradient, over each possibility below it.
+function backgroundsOf(win, el) {
+  let cands = [[255, 255, 255]];
+  const chain = [];
+  for (let n = el; n; n = n.parentElement) chain.unshift(n);
+  for (const n of chain) {
+    const photo = ON_PHOTO.find((p) => n.matches(p.sel));
+    if (photo) cands = [photo.layers.reduce((acc, l) => over(l, acc), photo.base)];
+    else if (n.matches(OVER_ANYTHING)) cands = [[255, 255, 255], [0, 0, 0]];
+    const cs = win.getComputedStyle(n);
+    if (!photo) {
+      const bg = parse(cs.backgroundColor);
+      if (bg && bg[3] > 0) cands = cands.map((c) => over(bg, c));
+      if (cs.backgroundImage && cs.backgroundImage.includes("gradient(") && cs.webkitBackgroundClip !== "text" && cs.backgroundClip !== "text") {
+        const stops = (cs.backgroundImage.match(/rgba?\([^)]*\)/g) || []).map(parse).filter(Boolean);
+        const next = new Map();
+        for (const c of cands) { next.set(key(c), c); for (const s of stops) { const v = over(s, c); next.set(key(v), v); } }
+        cands = [...next.values()].slice(0, 80);
+      }
+    } else {
+      const bg = parse(cs.backgroundColor);
+      if (bg && bg[3] > 0 && n !== chain.find((x) => x.matches(photo.sel))) cands = cands.map((c) => over(bg, c));
+    }
+  }
+  return cands;
+}
+
+function opacityOf(win, el) {
+  let o = 1;
+  for (let n = el; n; n = n.parentElement) o *= parseFloat(win.getComputedStyle(n).opacity);
+  return o;
+}
+
+function textColorsOf(win, el) {
+  const cs = win.getComputedStyle(el);
+  const c = parse(cs.color);
+  if (c && c[3] > 0) return [c];
+  if (cs.webkitBackgroundClip === "text" || cs.backgroundClip === "text") {          // gradient text: every stop
+    return (cs.backgroundImage.match(/rgba?\([^)]*\)/g) || []).map(parse).filter((x) => x && x[3] > 0);
+  }
+  return [];
+}
+
+function describe(el) {
+  const cls = typeof el.className === "string" && el.className.trim() ? "." + el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
+  return `<${el.tagName.toLowerCase()}${cls}> "${(el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 28)}"`;
+}
+
+// Checks all visible text and icons on a page. Returns { checked, min, failures[] }.
+function contrastOf(win, doc) {
+  const fails = [];
+  let checked = 0, min = 99;
+  const test = (el, textColors, bgs, need, what) => {
+    let worst = 99;
+    for (const bg of bgs) for (const t of textColors) {
+      const o = opacityOf(win, el);
+      const fg = t[3] < 1 || o < 1 ? over([t[0], t[1], t[2], t[3] * o], bg) : t;
+      worst = Math.min(worst, ratio(fg, bg));
+    }
+    checked++; min = Math.min(min, worst);
+    if (worst < need) fails.push(`${what} ${describe(el)} ${worst.toFixed(2)}:1 (needs ${need})`);
+  };
+  for (const el of doc.body.querySelectorAll("*")) {
+    if (["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "IFRAME", "IMG", "PATH", "CIRCLE", "RECT", "LINE", "G"].includes(el.tagName.toUpperCase())) continue;
+    if (el.closest('[aria-hidden="true"], [hidden], .sr, .cursor-dot')) continue;
+    if (!el.getClientRects().length) continue;
+    const cs = win.getComputedStyle(el);
+    if (cs.visibility === "hidden" || cs.display === "none" || opacityOf(win, el) < 0.2) continue;
+
+    // icons (SVG drawn with the text colour): 3:1
+    if (el.tagName.toLowerCase() === "svg") {
+      const c = parse(cs.color);
+      if (c && el.closest("button, a, .app-ico, .app-go")) test(el, [c], backgroundsOf(win, el.parentElement), 3, "icon");
+      continue;
+    }
+    const hasText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length);
+    if (hasText) {
+      const colors = textColorsOf(win, el);
+      if (colors.length) {
+        const size = parseFloat(cs.fontSize), bold = parseInt(cs.fontWeight, 10) >= 700;
+        const large = size >= 24 || (size >= 18.66 && bold);
+        test(el, colors, backgroundsOf(win, el), large ? 3 : 4.5, large ? "large text" : "text");
+      }
+    }
+    if (el.tagName === "INPUT" && el.placeholder) {
+      const ph = parse(win.getComputedStyle(el, "::placeholder").color);
+      if (ph) test(el, [ph], backgroundsOf(win, el), 4.5, "placeholder");
+    }
+  }
+  return { checked, min, fails };
+}
+
+async function openPage(url, theme) {
+  const f = document.createElement("iframe");
+  f.style.cssText = "width:1280px;height:900px;border:0";
+  document.getElementById("frames").append(f);
+  f.src = "/" + url;
+  const ready = () => { try { const w = f.contentWindow; return w.location.href !== "about:blank" && w.document.documentElement.classList.contains("content-ready"); } catch (e) { return false; } };
+  for (let i = 0; i < 200 && !ready(); i++) await sleep(50);
+  const w = f.contentWindow;
+  if (url.startsWith("portal/")) for (let i = 0; i < 100 && !(w.document.querySelector("#app-grid .app-card") || (w.document.getElementById("no-group") && !w.document.getElementById("no-group").hidden)); i++) await sleep(50);
+  await sleep(300);
+  return { frame: f, win: w, doc: w.document };
+}
+
+const PUBLIC_PAGES = ["index.html", "about.html", "team.html", "robots.html", "robot.html?year=2025", "robot.html?year=2022", "sponsors.html", "outreach.html", "media.html", "resources.html", "contact.html"];
+
+(async () => {
+  if (MODE === "contrast" || MODE === "nogroup") {
+    const pages = MODE === "nogroup" ? ["portal/index.html"] : [...PUBLIC_PAGES, "portal/index.html"];
+    for (const url of pages) {
+      const { frame, win, doc } = await openPage(url);
+      for (const theme of ["light", "dark"]) {
+        doc.documentElement.dataset.theme = theme;
+        await sleep(120);
+        const bg = win.getComputedStyle(doc.body).backgroundColor;
+        report(theme === "light" ? bg === "rgb(246, 243, 234)" : bg === "rgb(7, 9, 15)", `${url}: ${theme} theme paints the ${theme} page colour`, bg);
+        const r = contrastOf(win, doc);
+        report(r.fails.length === 0, `${url}: ${theme}: WCAG AA text contrast (${r.checked} items, lowest ${r.min.toFixed(2)}:1)`, r.fails.slice(0, 6).join(" | "));
+      }
+      // the switch drives the page and is remembered
+      if (url === "index.html" || url === "portal/index.html") {
+        const btn = (v) => doc.querySelector(`.theme-switch button[data-theme="${v}"]`);
+        report(!!btn("light") && !!btn("dark") && !!btn("system"), `${url}: header has the Light / Dark / System switch`);
+        btn("light").click(); await sleep(80);
+        report(doc.documentElement.dataset.theme === "light" && win.localStorage.getItem("theme") === "light" && btn("light").getAttribute("aria-pressed") === "true", `${url}: Light button sets the theme, saves it and shows pressed`);
+        btn("dark").click(); await sleep(80);
+        report(doc.documentElement.dataset.theme === "dark" && win.localStorage.getItem("theme") === "dark" && btn("dark").getAttribute("aria-pressed") === "true" && btn("light").getAttribute("aria-pressed") === "false", `${url}: Dark button sets the theme and moves the pressed state`);
+        btn("system").click(); await sleep(80);
+        report(doc.documentElement.dataset.theme === undefined && win.localStorage.getItem("theme") === null && btn("system").getAttribute("aria-pressed") === "true", `${url}: System button clears the choice`);
+        const label = btn("dark").textContent.trim();
+        report(label === "Dark" && btn("dark").getAttribute("title") === "Dark", `${url}: switch buttons have a text name for screen readers`);
+      }
+      frame.remove();
+    }
+    // focus ring (a UI component: 3:1 against every surface it can sit on)
+    const { frame, win, doc } = await openPage("index.html");
+    for (const theme of ["light", "dark"]) {
+      doc.documentElement.dataset.theme = theme; await sleep(80);
+      const cs = win.getComputedStyle(doc.documentElement);
+      const probe = doc.createElement("i"); probe.style.cssText = "color:var(--accent);background:var(--ink)"; doc.body.append(probe);
+      const accent = parse(win.getComputedStyle(probe).color);
+      for (const surface of ["--ink", "--ink-2", "--ink-3"]) {
+        probe.style.background = `var(${surface})`;
+        const bg = parse(win.getComputedStyle(probe).backgroundColor);
+        report(ratio(accent, bg) >= 3, `${theme}: focus ring (--accent) is at least 3:1 on ${surface}`, `${ratio(accent, bg).toFixed(2)}:1`);
+      }
+      probe.remove();
+    }
+    frame.remove();
+  }
+
+  if (MODE === "system-light" || MODE === "system-dark") {
+    const dark = MODE === "system-dark";
+    const wantBg = dark ? "rgb(7, 9, 15)" : "rgb(246, 243, 234)";
+    // 1) no saved choice: the page follows the system, with no script involved
+    localStorage.removeItem("theme");
+    let { frame, win, doc } = await openPage("index.html");
+    report(win.matchMedia("(prefers-color-scheme: dark)").matches === dark, "Chrome is running with the " + (dark ? "dark" : "light") + " system setting");
+    report(doc.documentElement.dataset.theme === undefined, "no saved choice: the page does not set data-theme");
+    report(win.getComputedStyle(doc.body).backgroundColor === wantBg, `follows the system: page colour is ${wantBg}`, win.getComputedStyle(doc.body).backgroundColor);
+    report(doc.querySelector('.theme-switch button[data-theme="system"]').getAttribute("aria-pressed") === "true", "the System button is shown pressed");
+    const r = contrastOf(win, doc);
+    report(r.fails.length === 0, `contrast passes under the ${dark ? "dark" : "light"} system setting (${r.checked} items)`, r.fails.slice(0, 4).join(" | "));
+    frame.remove();
+    // 2) a saved choice beats the system setting, from the first paint
+    localStorage.setItem("theme", dark ? "light" : "dark");
+    ({ frame, win, doc } = await openPage("about.html"));
+    report(doc.documentElement.dataset.theme === (dark ? "light" : "dark"), "a saved choice overrides the system setting on load");
+    report(win.getComputedStyle(doc.body).backgroundColor === (dark ? "rgb(246, 243, 234)" : "rgb(7, 9, 15)"), "...and the page is painted in the saved theme");
+    frame.remove();
+    // 3) garbage in storage is ignored
+    localStorage.setItem("theme", "purple");
+    ({ frame, win, doc } = await openPage("contact.html"));
+    report(doc.documentElement.dataset.theme === undefined && win.getComputedStyle(doc.body).backgroundColor === wantBg, "an unknown saved value is ignored");
+    frame.remove();
+    localStorage.removeItem("theme");
+  }
+
+  report(failures === 0, `ALL CHECKS (${failures} failures)`);
+  const done = document.createElement("div");
+  done.id = "done";
+  done.textContent = failures === 0 ? "THEME-TEST-PASS" : "THEME-TEST-FAIL";
+  document.body.append(done);
+})();
+</script>
+</body>
+</html>

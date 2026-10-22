@@ -45,5 +45,7 @@ build step. Almost all content lives in `js/content.js` (see README).
 - Commit `.env`, secrets, or Drive IDs of files that are not shared publicly. Keep the standard
   `.gitignore` block and the gitleaks scan.
 - Treat portal tile filtering as security. Authentik bindings are the real control.
+- Write a colour outside the `--token` block at the top of `css/style.css`, or change colours without running
+  `test/theme-test.sh`. Every page must pass WCAG AA in both the light and the dark theme (MASTER_PLAN D56).
 - Edit `../infra`, `../admin` or `../taskapp` from here. Write down what infra needs and tell the user.
 - Push, or commit without the user's OK.
