@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><title>menu test</title>
+<!-- Loaded by test/menu-test.sh. At phone width, opens the menu on a page with a transparent header (home) and
+     on one with a glass header (robots) and checks that the menu fills the whole screen. -->
+</head><body><pre id="out"></pre><div id="frames"></div>
+<script>
+const out = document.getElementById("out"); let failures = 0;
+const report = (ok, name, detail) => { if (!ok) failures++; out.textContent += `${ok ? "ok  " : "FAIL"} ${name}${!ok && detail ? ` -- ${detail}` : ""}\n`; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function openPage(url, w, h) {
+  const f = document.createElement("iframe");
+  f.style.cssText = `width:${w}px;height:${h}px;border:0`;
+  document.getElementById("frames").append(f);
+  f.src = "/" + url;
+  const ready = () => { try { const d = f.contentWindow.document; return f.contentWindow.location.href !== "about:blank" && !!d.querySelector(".nav-toggle"); } catch (e) { return false; } };
+  for (let i = 0; i < 200 && !ready(); i++) await sleep(50);
+  await sleep(300);
+  return { frame: f, win: f.contentWindow, doc: f.contentWindow.document };
+}
+(async () => {
+  const W = 390, H = 700;
+  for (const [url, scroll] of [["index.html", 0], ["index.html", 600], ["robots.html", 0], ["about.html", 0]]) {
+    const { frame, win, doc } = await openPage(url, W, H);
+    win.scrollTo(0, scroll); await sleep(200);
+    doc.querySelector(".nav-toggle").click(); await sleep(500);
+    const nav = doc.querySelector(".site-nav").getBoundingClientRect();
+    const label = `${url} (scrolled ${scroll}px)`;
+    report(doc.body.classList.contains("nav-open"), `${label}: the menu opens`);
+    report(Math.abs(nav.top) < 2 && Math.abs(nav.left) < 2 && Math.abs(nav.width - W) < 2 && Math.abs(nav.height - H) < 2, `${label}: the menu fills the whole screen`, `menu box is ${Math.round(nav.left)},${Math.round(nav.top)} ${Math.round(nav.width)}x${Math.round(nav.height)}, screen is ${W}x${H}`);
+    const links = [...doc.querySelectorAll(".site-nav .nav-link, .site-nav .nav-login")];
+    const outside = links.filter((a) => { const r = a.getBoundingClientRect(); return r.top < 0 || r.bottom > H; });
+    report(outside.length === 0, `${label}: every menu item is on screen`, outside.map((a) => a.textContent.trim()).join(", "));
+    doc.querySelector(".nav-toggle").click(); await sleep(300);
+    report(!doc.body.classList.contains("nav-open"), `${label}: the menu closes`);
+    frame.remove();
+  }
+  report(failures === 0, `ALL CHECKS (${failures} failures)`);
+  const done = document.createElement("div"); done.id = "done"; done.textContent = failures === 0 ? "MENU-TEST-PASS" : "MENU-TEST-FAIL"; document.body.append(done);
+})();
+</script></body></html>
