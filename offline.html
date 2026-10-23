@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title>Offline | Team 2972 Gears & Buccaneers</title>
+<meta name="color-scheme" content="light dark" />
+<meta name="theme-color" content="#f6f3ea" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#07090f" media="(prefers-color-scheme: dark)" />
+<script>try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="icon" href="/pwa-icons/site/icon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<!-- Shown by the service worker (sw.js) when a page is asked for while there is no connection. It is stored when
+     the worker installs, so it must not depend on anything that is not stored too: no content.js, no config.js. -->
+<body>
+<main class="offline">
+  <img class="offline-icon" src="/pwa-icons/site/icon.svg" width="96" height="96" alt="" />
+  <h1>You're offline</h1>
+  <p>We can't reach the team site right now. Check your connection and try again. Pages you've already opened may still work.</p>
+  <div class="btn-row">
+    <button class="btn" type="button" id="retry">Try again</button>
+    <a class="btn btn-outline" href="/">Go to the home page</a>
+  </div>
+</main>
+<script>document.getElementById("retry").addEventListener("click", function () { location.reload(); });</script>
+</body>
+</html>

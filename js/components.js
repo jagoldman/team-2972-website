@@ -106,7 +106,7 @@ function renderHeader() {
         <span class="nav-chip" id="group-chip" hidden></span>
         <a href="${pageHref("index.html")}" class="nav-link">Public site</a>
         ${renderThemeSwitch()}
-        <a href="${SIGNOUT_URL}" class="nav-login">Sign out</a>
+        <a href="${SIGNOUT_URL}" class="nav-login" data-signout>Sign out</a>
       </nav>
     </div>
   </header>`;
@@ -155,6 +155,28 @@ function renderFooter() {
     <div class="footer-giant" aria-hidden="true">${SITE.teamNumber}</div>
     <p class="footer-copy">© ${new Date().getFullYear()} ${SITE.teamName}, FRC Team ${SITE.teamNumber}.</p>
   </footer>`;
+}
+
+// ---------- Installable app: service worker ----------
+// /sw.js keeps the shared files (styles, scripts, fonts, icons) and shows /offline.html when there is no network.
+// It never stores a page, /me.json or /apps.json (see sw.js). It only runs where browsers allow it: https, or localhost.
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  const secure = location.protocol === "https:" || /^(localhost|127\.0\.0\.1|.+\.localhost)$/.test(location.hostname);
+  if (!secure) return;
+  navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => { /* not installable here; the site works as before */ });
+}
+
+// On sign-out, forget everything the app stored, so nothing is left on a shared device.
+async function clearOfflineCaches() {
+  try {
+    if ("caches" in window) {
+      const names = await caches.keys();
+      await Promise.all(names.filter((n) => n.startsWith("2972-")).map((n) => caches.delete(n)));
+    }
+    const reg = navigator.serviceWorker && (await navigator.serviceWorker.getRegistration());
+    if (reg && reg.active) reg.active.postMessage({ type: "clear-caches" });
+  } catch (e) { /* nothing to clear, or not allowed: sign out anyway */ }
 }
 
 // ---------- Theme: Light / Dark / System ----------
@@ -353,6 +375,16 @@ function mountLayout() {
       document.body.classList.toggle("nav-open", isOpen);
     });
   }
+
+  // The installable app: register the service worker, and clear what it stored when someone signs out.
+  registerServiceWorker();
+  // A sign-out link clears the stored files first (waiting at most a second), then goes on to sign out.
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest && e.target.closest("a[data-signout]");
+    if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    Promise.race([clearOfflineCaches(), new Promise((r) => setTimeout(r, 1000))]).then(() => { location.href = link.href; });
+  });
 
   // Big page headings rise in word by word.
   const splitHeadings = () => document.querySelectorAll(".page-header h1, .robot-hero h1").forEach(splitWords);

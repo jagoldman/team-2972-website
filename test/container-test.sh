@@ -96,12 +96,62 @@ case "$cfg" in
   *) echo "FAIL config.js not rendered: $cfg"; fail=1 ;;
 esac
 
+echo "-- installable app: manifest, service worker, offline page, icons"
+hdr_of() { curl -s -D - -o /dev/null "$@" | tr -d '\r'; }
+body_of() { curl -s "$@"; }
+has_hdr() { echo "$1" | grep -qi "$2"; }
+for h in $D www.$D landing; do
+  check 200 "$h /manifest.webmanifest" -H "Host: $h" "$URL/manifest.webmanifest"
+  check 200 "$h /sw.js" -H "Host: $h" "$URL/sw.js"
+  check 200 "$h /offline.html" -H "Host: $h" "$URL/offline.html"
+  check 200 "$h /pwa-icons/site/icon-512.png" -H "Host: $h" "$URL/pwa-icons/site/icon-512.png"
+done
+m=$(hdr_of -H "Host: $D" "$URL/manifest.webmanifest")
+has_hdr "$m" '^content-type: application/manifest+json' && echo "ok   manifest is application/manifest+json" || { echo "FAIL manifest content type: $(echo "$m" | grep -i '^content-type')"; fail=1; }
+has_hdr "$m" '^cache-control: no-cache' && echo "ok   manifest revalidates" || { echo "FAIL manifest cache header"; fail=1; }
+body_of -H "Host: $D" "$URL/manifest.webmanifest" | grep -q '"short_name": "Team 2972"' && echo "ok   public host serves the site manifest" || { echo "FAIL public manifest"; fail=1; }
+sw=$(hdr_of -H "Host: $D" "$URL/sw.js")
+has_hdr "$sw" '^content-type: text/javascript' && echo "ok   sw.js is JavaScript" || { echo "FAIL sw.js content type: $(echo "$sw" | grep -i '^content-type')"; fail=1; }
+has_hdr "$sw" '^cache-control: no-cache' && echo "ok   sw.js is never cached by the browser (no-cache)" || { echo "FAIL sw.js cache header"; fail=1; }
+ic=$(hdr_of -H "Host: $D" "$URL/pwa-icons/site/icon-512.png")
+has_hdr "$ic" '^content-type: image/png' && has_hdr "$ic" '^cache-control: public, max-age=86400' && echo "ok   icons are PNG and cacheable for a day" || { echo "FAIL icon headers"; fail=1; }
+check 404 "public /pwa-icons/ listing is not served" -H "Host: $D" "$URL/pwa-icons/"
+check 404 "public /pwa-icons/site/ listing is not served" -H "Host: $D" "$URL/pwa-icons/site/"
+check 404 "public /pwa-icons/site/build.cjs is not served" -H "Host: $D" "$URL/pwa-icons/build-icons.cjs"
+check 404 "public /pwa-icons/other/icon.svg (not an app) is not served" -H "Host: $D" "$URL/pwa-icons/other/icon.svg"
+check 404 "public /portal/manifest.webmanifest is not served" -H "Host: $D" "$URL/portal/manifest.webmanifest"
+
+echo "-- ...and the same files are public on the portal host, with no secret; nothing else is"
+P="portal.$D"
+check 200 "portal host /manifest.webmanifest, no secret" -H "Host: $P" "$URL/manifest.webmanifest"
+check 200 "portal host /sw.js, no secret" -H "Host: $P" "$URL/sw.js"
+check 200 "portal host /offline.html, no secret" -H "Host: $P" "$URL/offline.html"
+for a in site portal tasks admin kickoff; do
+  for f in icon.svg icon-192.png icon-512.png maskable-512.png apple-touch-icon.png; do
+    check 200 "portal host /pwa-icons/$a/$f, no secret" -H "Host: $P" "$URL/pwa-icons/$a/$f"
+  done
+done
+body_of -H "Host: $P" "$URL/manifest.webmanifest" | grep -q '"short_name": "2972 Portal"' && echo "ok   portal host serves the PORTAL manifest (2972 Portal)" || { echo "FAIL portal manifest"; fail=1; }
+body_of -H "Host: $P" "$URL/manifest.webmanifest" | grep -q '/pwa-icons/portal/maskable-512.png' && echo "ok   the portal manifest uses the portal icons" || { echo "FAIL portal manifest icons"; fail=1; }
+for p in / /me.json /apps.json /portal/index.html /portal/manifest.webmanifest /config.js /css/style.css /js/components.js /fonts/inter-latin.woff2 /about.html "/pwa-icons/../me.json" "/pwa-icons/site/../../apps.json" /pwa-icons/ /pwa-icons/build-icons.cjs /pwa-icons/other/icon.svg; do
+  got=$(curl -s --path-as-is -o /dev/null -w '%{http_code}' -H "Host: $P" "$URL$p")
+  case "$got" in 401|404) echo "ok   portal host $p still needs the secret or is not served ($got)" ;; *) echo "FAIL portal host $p without the secret got $got"; fail=1 ;; esac
+done
+check 401 "portal host /me.json, no secret" -H "Host: $P" "$URL/me.json"
+check 401 "portal host /apps.json, no secret" -H "Host: $P" "$URL/apps.json"
+check 200 "portal host /me.json with the secret still works" -H "Host: $P" $S "$URL/me.json"
+nm=$(hdr_of -H "Host: $P" $S "$URL/")
+has_hdr "$nm" '^cache-control: no-store' && echo "ok   the portal page itself is still no-store" || { echo "FAIL portal page cache header"; fail=1; }
+oh=$(hdr_of -H "Host: $P" "$URL/offline.html")
+has_hdr "$oh" '^x-robots-tag: noindex' && echo "ok   the offline page is kept out of search results" || { echo "FAIL offline page robots header"; fail=1; }
+body_of -H "Host: $D" "$URL/offline.html" | grep -q "You're offline" && echo "ok   offline page says it" || { echo "FAIL offline page text"; fail=1; }
+
 echo "-- nothing private in the image"
 for f in /srv/site/README.md /srv/site/CLAUDE.md /srv/site/.git /srv/site/test /srv/site/docs /srv/site/container /srv/site/.env.example; do
   if docker exec "$NAME" test -e "$f"; then echo "FAIL image contains $f"; fail=1; fi
 done
-if docker exec "$NAME" sh -c 'find /srv/site -iname "*.jpg" -o -iname "*.png" | grep -q .'; then
+if docker exec "$NAME" sh -c 'find /srv/site -path /srv/site/pwa-icons -prune -o \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print | grep -q .'; then
   echo "FAIL image contains photos"; fail=1
-else echo "ok   no photos or repo files in the image"; fi
+else echo "ok   no photos or repo files in the image (the app icons in pwa-icons/ are meant to be there)"; fi
 
 [ $fail -eq 0 ] && echo "ALL PASSED" || { echo "SOME CHECKS FAILED"; exit 1; }

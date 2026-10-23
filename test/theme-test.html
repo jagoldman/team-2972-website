@@ -143,7 +143,7 @@ async function openPage(url, theme) {
   f.style.cssText = "width:1280px;height:900px;border:0";
   document.getElementById("frames").append(f);
   f.src = "/" + url;
-  const ready = () => { try { const w = f.contentWindow; return w.location.href !== "about:blank" && w.document.documentElement.classList.contains("content-ready"); } catch (e) { return false; } };
+  const ready = () => { try { const w = f.contentWindow; return w.location.href !== "about:blank" && (w.document.documentElement.classList.contains("content-ready") || (url === "offline.html" && w.document.readyState === "complete")); } catch (e) { return false; } };
   for (let i = 0; i < 200 && !ready(); i++) await sleep(50);
   const w = f.contentWindow;
   if (url.startsWith("portal/")) for (let i = 0; i < 100 && !(w.document.querySelector("#app-grid .app-card") || (w.document.getElementById("no-group") && !w.document.getElementById("no-group").hidden)); i++) await sleep(50);
@@ -151,7 +151,7 @@ async function openPage(url, theme) {
   return { frame: f, win: w, doc: w.document };
 }
 
-const PUBLIC_PAGES = ["index.html", "about.html", "team.html", "robots.html", "robot.html?year=2025", "robot.html?year=2022", "sponsors.html", "outreach.html", "media.html", "resources.html", "contact.html"];
+const PUBLIC_PAGES = ["index.html", "offline.html", "about.html", "team.html", "robots.html", "robot.html?year=2025", "robot.html?year=2022", "sponsors.html", "outreach.html", "media.html", "resources.html", "contact.html"];
 
 (async () => {
   if (MODE === "contrast" || MODE === "nogroup") {

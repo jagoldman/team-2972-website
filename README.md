@@ -67,6 +67,23 @@ storage, the choice still works for that visit.
   fails if any text is below WCAG AA contrast (4.5:1, or 3:1 for large text), if the page does not follow the
   system setting, or if the switch misbehaves.
 
+## Installable app (PWA)
+
+The public site and the portal can each be installed like an app (Chrome, Edge, Android: "Install"; iPhone: "Add to Home
+Screen"). Both are separate apps with their own name and icon: **Team 2972** and **2972 Portal**.
+
+- `manifest.webmanifest` (site) and `portal/manifest.webmanifest` (portal) name the app and list its icons. The server
+  gives the portal host the portal's manifest at the same address, `/manifest.webmanifest`.
+- `sw.js` is the service worker. It keeps the shared files (styles, scripts, fonts, icons) so the app starts fast, and shows
+  `offline.html` when there is no connection. **It never stores a page, `/me.json` or `/apps.json`**, and signing out
+  clears everything it stored. Change `VERSION` at the top of `sw.js` when its rules or file list change.
+- `pwa-icons/` is the icon pack for **all** Team 2972 apps (site, portal, tasks, admin, kickoff). Its `README.md`
+  says how the other apps copy it, and `node pwa-icons/build-icons.cjs` redraws it.
+- Public on the portal host too, with no secret: `/manifest.webmanifest`, `/sw.js`, `/offline.html` and the exact icon
+  files in `/pwa-icons/<app>/`. infra's Caddy must send those paths to landing without forward auth.
+- Tests: `node test/pwa-test.cjs` (icons, manifests, page heads, and a simulation of the service worker that tries to
+  make it store anything about a person) and the PWA section of `test/container-test.sh`.
+
 ## Portal tiles live in infra, not here
 
 The tiles on the team portal (Task App, Calendar, Handbook, …) and which groups see each one are
@@ -129,6 +146,7 @@ Google Chrome):
 test/container-test.sh
 test/portal-test.sh
 test/theme-test.sh     # light and dark themes (needs Chrome)
+node test/pwa-test.cjs # installable app: icons, manifests, service worker
 ```
 
 ## Deploying

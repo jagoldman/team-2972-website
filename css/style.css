@@ -971,6 +971,23 @@ a.app-card:hover .app-go { background: var(--text); border-color: var(--text); c
 .portal-notice p { margin: 0; color: var(--text-2); }
 .portal-notice p:first-of-type { font: 800 32px/1.1 var(--display); letter-spacing: -0.03em; color: var(--text); margin-bottom: 10px; }
 
+/* ---------- Offline page (offline.html) ---------- */
+.offline {
+  min-height: 100svh;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 8px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 48px var(--gutter);
+}
+.offline-icon { width: 96px; height: 96px; border-radius: 24px; margin-bottom: 18px; box-shadow: 0 20px 50px -20px var(--glow); }
+.offline h1 { font: 800 clamp(40px, 8vw, 76px)/0.95 var(--display); letter-spacing: -0.04em; margin: 0 0 8px; }
+.offline p { color: var(--text-2); font-size: 18px; margin: 0; max-width: 46ch; }
+.offline .btn-row { margin-top: 24px; }
+button.btn { font-family: inherit; cursor: pointer; }
+
 /* ---------- Cursor dot (fine pointers only; components.js shows it) ---------- */
 .cursor-dot {
   position: fixed;
