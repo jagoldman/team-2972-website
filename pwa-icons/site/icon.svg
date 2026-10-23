@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="site icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.6" y2="1"><stop offset="0" stop-color="#1a2c52"/><stop offset="1" stop-color="#070b16"/></linearGradient>
+    <radialGradient id="glow" cx="0.82" cy="0.12" r="0.7"><stop offset="0" stop-color="#e8b931" stop-opacity="0.16"/><stop offset="1" stop-color="#e8b931" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/><rect width="512" height="512" rx="112" fill="url(#glow)"/>
+  <rect x="3" y="3" width="506" height="506" rx="109" fill="none" stroke="#e8b931" stroke-opacity="0.28" stroke-width="3"/>
+  <g><path d="M222.2 149.2 L232.2 105.9 L279.8 105.9 L289.8 149.2 L307.6 156.6 L345.3 133.0 L379.0 166.7 L355.4 204.4 L362.8 222.2 L406.1 232.2 L406.1 279.8 L362.8 289.8 L355.4 307.6 L379.0 345.3 L345.3 379.0 L307.6 355.4 L289.8 362.8 L279.8 406.1 L232.2 406.1 L222.2 362.8 L204.4 355.4 L166.7 379.0 L133.0 345.3 L156.6 307.6 L149.2 289.8 L105.9 279.8 L105.9 232.2 L149.2 222.2 L156.6 204.4 L133.0 166.7 L166.7 133.0 L204.4 156.6Z M300 256a44 44 0 1 0 -88 0a44 44 0 1 0 88 0Z" fill="#e8b931" fill-rule="evenodd" stroke="#e8b931" stroke-width="12" stroke-linejoin="round"/></g>
+</svg>

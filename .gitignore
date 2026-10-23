@@ -20,6 +20,9 @@ Thumbs.db
 *.MOV
 *.mp4
 
+# The app icons (pwa-icons/) are drawn by build-icons.cjs, not photos, so their PNGs are tracked.
+!/pwa-icons/**/*.png
+
 # --- 2972 standard: never commit secrets or data (infra/docs/CONVENTIONS.md §9) ---
 .env
 .env.*
