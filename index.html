@@ -137,12 +137,12 @@ document.addEventListener("DOMContentLoaded", () => {
     { n: ROBOTS.length, label: "seasons on the field" },
     { n: Number(SITE.founded), label: "year we started", plain: true },
     { n: MENTORS.length, label: "mentors and coaches" },
-    { n: SCHEDULE_2026.length, label: "events this season" },
+    { n: SCHEDULE_2027.length, label: "events this season" },
   ];
   document.getElementById("stats").innerHTML = stats.map((s, i) => `
     <div class="stat" data-reveal style="--ri:${i}"><div class="n"><span ${s.plain ? "" : `data-count="${s.n}"`}>${s.plain ? s.n : 0}</span></div><div class="l">${s.label}</div></div>`).join("");
 
-  document.getElementById("schedule-list").innerHTML = SCHEDULE_2026.map((s) => `
+  document.getElementById("schedule-list").innerHTML = SCHEDULE_2027.map((s) => `
     <li data-reveal>
       <span class="event-name">${esc(s.event)}</span>
       <span class="event-loc">${esc(s.dates)} · ${esc(s.location)}</span>

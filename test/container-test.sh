@@ -61,6 +61,8 @@ check 200 "portal /apps.json" -H "Host: portal.$D" $S "$URL/apps.json"
 check 200 "portal /me.json" -H "Host: portal.$D" $S "$URL/me.json"
 check 200 "portal /css/style.css" -H "Host: portal.$D" $S "$URL/css/style.css"
 check 200 "portal /fonts/inter-latin.woff2" -H "Host: portal.$D" $S "$URL/fonts/inter-latin.woff2"
+check 200 "portal /brand/team-2972-logo-256.png (header logo)" -H "Host: portal.$D" $S "$URL/brand/team-2972-logo-256.png"
+check 200 "public /brand/team-2972-logo.png (resources download)" -H "Host: $D" "$URL/brand/team-2972-logo.png"
 check 302 "portal /about.html redirects to public host" -H "Host: portal.$D" $S "$URL/about.html"
 body '{"email":"pat@example.com","name":"Pat \"O\u003cb\u003e","username":"pat@example.com","groups":"mentor|parent","uid":"u-1"}' \
   "me.json echoes headers, lowercases email, escapes \" and <" \
@@ -150,8 +152,8 @@ echo "-- nothing private in the image"
 for f in /srv/site/README.md /srv/site/CLAUDE.md /srv/site/.git /srv/site/test /srv/site/docs /srv/site/container /srv/site/.env.example; do
   if docker exec "$NAME" test -e "$f"; then echo "FAIL image contains $f"; fail=1; fi
 done
-if docker exec "$NAME" sh -c 'find /srv/site -path /srv/site/pwa-icons -prune -o \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print | grep -q .'; then
+if docker exec "$NAME" sh -c 'find /srv/site \( -path /srv/site/pwa-icons -o -path /srv/site/brand \) -prune -o \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print | grep -q .'; then
   echo "FAIL image contains photos"; fail=1
-else echo "ok   no photos or repo files in the image (the app icons in pwa-icons/ are meant to be there)"; fi
+else echo "ok   no photos or repo files in the image (the app icons in pwa-icons/ and the logo in brand/ are meant to be there)"; fi
 
 [ $fail -eq 0 ] && echo "ALL PASSED" || { echo "SOME CHECKS FAILED"; exit 1; }

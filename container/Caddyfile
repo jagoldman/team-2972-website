@@ -110,7 +110,7 @@
 			handle /portal/* {
 				file_server
 			}
-			@shared path /css/* /js/* /assets/* /fonts/*
+			@shared path /css/* /js/* /assets/* /fonts/* /brand/*
 			handle @shared {
 				file_server
 			}

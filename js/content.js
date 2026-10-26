@@ -32,7 +32,7 @@ const SITE = {
   instagram: "https://www.instagram.com/frc2972/",
   instagramHandle: "@frc2972",
   github: "https://github.com/Gears-and-Buccaneers",
-  logo: "assets/brand/logo.png",
+  logo: "brand/team-2972-logo-256.png",
   heroImage: "assets/brand/team-2025.jpg",
   schoolLogo: "assets/brand/dawson-school.png",
   schoolUrl: "https://www.dawsonschool.org",
@@ -43,9 +43,9 @@ const tbaTeamYear = (year) => `https://www.thebluealliance.com/team/${SITE.teamN
 const tbaEvent = (key) => `https://www.thebluealliance.com/event/${key}`;
 
 // Upcoming competitions — edit dates/events each season
-const SCHEDULE_2026 = [
-  { event: "Denver Regional", dates: "April 8–11, 2026", location: "Denver, CO" },
-  { event: "Utah Regional", dates: "April 16–18, 2026", location: "Salt Lake City, UT" },
+const SCHEDULE_2027 = [
+  { event: "Denver Regional", dates: "Spring 2027, dates to come", location: "Denver, CO" }, // TODO: exact dates when FIRST posts them
+  { event: "Intermountain West Regional", dates: "Spring 2027, dates to come", location: "Utah" }, // TODO: exact dates and city
 ];
 
 // Events the team goes to most years (from the old Calendar page)
@@ -586,7 +586,7 @@ const RESOURCE_LINKS = [
   { category: "Team Documents", items: [
     { label: "Student, Family, and Mentor Handbook 2025–2026", url: "https://docs.google.com/document/d/1cmYxwgvPZEGiw9m3zzVnzU7u41QOKLFab4hHGOfGd5U/edit?usp=sharing" },
     { label: "Game Analysis and Planning Template", url: "https://docs.google.com/document/d/1fZVxb6nVicIAbYfuTFl0PZAnThBFkbATEzExnshtqF0/edit?usp=sharing" },
-    { label: "Team logo (PNG)", url: "assets/brand/logo.png" },
+    { label: "Team logo (PNG, 2400 × 2400, white on black)", url: "brand/team-2972-logo.png", download: "team-2972-logo.png" },
   ]},
   { category: "Software & Controls", items: [
     { label: "Team GitHub", url: "https://github.com/Gears-and-Buccaneers" },

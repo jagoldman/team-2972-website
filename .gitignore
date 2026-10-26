@@ -23,6 +23,10 @@ Thumbs.db
 # The app icons (pwa-icons/) are drawn by build-icons.cjs, not photos, so their PNGs are tracked.
 !/pwa-icons/**/*.png
 
+# The team logo (a drawing, not a photo; the user asked for it to be a file in the site) and its small copy for the header.
+!/brand/team-2972-logo.png
+!/brand/team-2972-logo-256.png
+
 # --- 2972 standard: never commit secrets or data (infra/docs/CONVENTIONS.md §9) ---
 .env
 .env.*

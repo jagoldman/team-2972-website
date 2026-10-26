@@ -52,7 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="resource-group">
         <h3>${group.category}</h3>
         <ul>
-          ${group.items.map(item => `<li><a href="${item.url}"${external(item.url) ? ' target="_blank" rel="noopener"' : ""}>${item.label}</a></li>`).join("")}
+          ${group.items.map(item => `<li><a href="${item.url}"${item.download ? ` download="${item.download}"` : ""}${external(item.url) ? ' target="_blank" rel="noopener"' : ""}>${item.label}</a></li>`).join("")}
         </ul>
       </div>
     `).join("");
