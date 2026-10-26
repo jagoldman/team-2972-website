@@ -725,6 +725,14 @@ a.card:hover { color: inherit; border-color: var(--tint-line); }
   color: transparent;
   user-select: none;
 }
+.legal { max-width: 70ch; }
+.legal h2 { font: 700 clamp(22px, 2.4vw, 28px)/1.15 var(--display); letter-spacing: -0.02em; margin: 40px 0 12px; }
+.legal p, .legal li { color: var(--text-2); font-size: 17px; line-height: 1.65; }
+.legal ul { padding-left: 22px; }
+.legal li { margin: 6px 0; }
+.legal a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--accent); }
+.legal .legal-date { color: var(--mute); font-size: 14px; margin: 0; }
+.footer-copy a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
 .footer-copy { max-width: var(--max-width); margin: 0 auto; padding: 16px 0 26px; font-size: 13px; color: var(--mute); border-top: 1px solid var(--line); }
 
 /* ---------- Robot archive + single robot page ---------- */

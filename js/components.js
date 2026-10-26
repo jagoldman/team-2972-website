@@ -153,7 +153,7 @@ function renderFooter() {
       </div>
     </div>
     <div class="footer-giant" aria-hidden="true">${SITE.teamNumber}</div>
-    <p class="footer-copy">© ${new Date().getFullYear()} ${SITE.teamName}, FRC Team ${SITE.teamNumber}.</p>
+    <p class="footer-copy">© ${new Date().getFullYear()} ${SITE.teamName}, FRC Team ${SITE.teamNumber}. · <a href="${pageHref("privacy.html")}">Privacy</a> · <a href="${pageHref("terms.html")}">Terms</a></p>
   </footer>`;
 }
 

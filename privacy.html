@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Privacy | Team 2972 Gears &amp; Buccaneers</title>
+<meta name="color-scheme" content="light dark" />
+<meta name="theme-color" content="#f6f3ea" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#07090f" media="(prefers-color-scheme: dark)" />
+<script>try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/pwa-icons/site/icon.svg" type="image/svg+xml" />
+<link rel="icon" href="/pwa-icons/site/icon-192.png" sizes="192x192" type="image/png" />
+<link rel="apple-touch-icon" href="/pwa-icons/site/apple-touch-icon.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Team 2972" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="site-header"></div>
+
+<div class="page-header">
+  <h1>Privacy</h1>
+  <p>What the team site keeps about you, and why.</p>
+</div>
+
+<section class="block">
+  <div class="block-inner legal">
+    <p class="legal-date">Last updated: October 26, 2026</p>
+    <!-- DRAFT FOR REVIEW: a mentor (and probably Dawson) should read this before it is relied on. Open questions
+         (retention period, how deletion works, minors' consent, who the data controller is) are deliberately NOT
+         answered here; see docs/HANDOFF.md. Do not add claims the stack cannot back up. -->
+
+    <h2>Who we are</h2>
+    <p>This site belongs to FIRST Robotics Competition Team 2972, the Gears &amp; Buccaneers, at Dawson School.
+    The team runs the public website at 2972robotics.com and a members-only team portal with a few team apps
+    (a task app, a kickoff app and an admin app). Questions about this page: <a href="mailto:robotics@dawsonschool.org">robotics@dawsonschool.org</a>.</p>
+
+    <h2>Visiting the public website</h2>
+    <p>You do not need an account to read the public pages. We do not use advertising or analytics trackers, and
+    we do not sell or share information about visitors. Some pages load photos from Google Drive and videos from
+    YouTube, so Google sees those requests the way it would on any website that shows its content.</p>
+
+    <h2>Signing in</h2>
+    <p>Team members sign in with Google, using a Dawson account, or with an account the team approved after a request
+    through our request form. When you use Google to sign in, we ask Google only for the basic sign-in details
+    (&ldquo;openid&rdquo;, &ldquo;email&rdquo; and &ldquo;profile&rdquo;). Google shares your name and email address with us.
+    <strong>We never see your Google password.</strong> A person with an approved account who does not use Google signs in with a password they
+    set themselves.</p>
+
+    <h2>What the team site keeps</h2>
+    <ul>
+      <li>Your <strong>name and email address</strong>.</li>
+      <li>Your <strong>role group</strong>: student, mentor, parent, alumni or admin. It decides which team apps you can open.</li>
+      <li>What you add in the team apps, such as <strong>tasks, comments and kickoff notes</strong>.</li>
+      <li>An <strong>audit log</strong> of account requests, approvals and changes, so the team can see who did what.</li>
+      <li><strong>Session cookies</strong> that keep you signed in. They are strictly necessary for signing in. We use no advertising or tracking cookies.</li>
+    </ul>
+
+    <h2>Who can see it</h2>
+    <p>Only signed-in team members can open the team apps, and each app shows only what your role allows. Team admins
+    can see account details and the audit log so they can run the team site. We do not sell your information or share it for advertising.</p>
+
+    <h2>AI features</h2>
+    <p>The task app and the kickoff app have optional AI helpers (a chat and a research assistant). They are off unless a team
+    admin turns them on. When they are on, what you type in the helper is sent to Google&rsquo;s Gemini service to get an answer.
+    We do not send your name or user ID with it.</p>
+
+    <h2>Email</h2>
+    <p>The team site sends email for account approval, password reset and task digests, through the team&rsquo;s email service.</p>
+
+    <h2>Where it is kept, and backups</h2>
+    <p>The site runs on one server on Google Cloud in the United States (us-central1). The server makes a database backup
+    every night and keeps the newest 7 daily and 4 weekly copies. It also takes a nightly snapshot of the whole disk and
+    keeps those for 14 days. Because of backups, a deleted account can remain in a backup copy until that copy is replaced.</p>
+
+    <h2>Your choices</h2>
+    <p>You can ask to see, correct or delete your account. Ask a team mentor or admin, or write to
+    <a href="mailto:robotics@dawsonschool.org">robotics@dawsonschool.org</a>.</p>
+
+    <h2>Changes</h2>
+    <p>If this page changes, the date at the top changes too. The terms for using the site are on the <a href="terms.html">terms page</a>.</p>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="config.js"></script>
+<script src="js/content.js"></script>
+<script src="js/components.js"></script>
+</body>
+</html>

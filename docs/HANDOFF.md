@@ -87,6 +87,7 @@ is in `../landing`, so keep `main` checked out there and use `git worktree` for 
 | `test/theme-test.sh` | Chrome | every page, both themes: WCAG AA, tokens-only colours, theme switch |
 | `test/menu-test.sh` | Chrome | phone menu on pages with the glass header |
 | `test/url-injection-test.sh` | Chrome | `robot.html?year=` cannot inject markup |
+| `node test/legal-test.cjs` | node | privacy and terms pages: head, links, contact, no placeholders, no invented retention/consent claims |
 | `node test/pwa-test.cjs` | node | icons, manifests, page heads, offline page, service worker simulation, Caddy PWA routes |
 | gitleaks (Docker image `zricethezav/gitleaks`) | docker | run before each commit; config `.gitleaks.toml`, CI `.github/workflows/gitleaks.yml` |
 
