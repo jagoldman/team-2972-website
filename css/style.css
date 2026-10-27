@@ -68,6 +68,10 @@
   --wash-1: light-dark(rgba(214, 160, 20, 0.18), rgba(232, 185, 49, 0.16));
   --wash-2: light-dark(rgba(60, 100, 200, 0.12), rgba(30, 60, 140, 0.25));
 
+  /* QR code: always black on white so every camera can read it, in both themes */
+  --qr-fg: #000000;
+  --qr-bg: #ffffff;
+
   /* decoration */
   --giant: light-dark(#e1dac8, #1c2438);        /* the huge 2972 in the footer */
   --grain: 0.06;                                /* film grain: only in the dark theme (see below) */
@@ -970,6 +974,48 @@ a.app-card:hover .app-go { background: var(--text); border-color: var(--text); c
 @keyframes spin { to { transform: rotate(360deg); } }
 .portal-notice p { margin: 0; color: var(--text-2); }
 .portal-notice p:first-of-type { font: 800 32px/1.1 var(--display); letter-spacing: -0.03em; color: var(--text); margin-bottom: 10px; }
+
+/* ---------- Install banner (portal home) and /install page ---------- */
+.install-banner {
+  position: fixed;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: 16px;
+  max-width: 560px;
+  margin: 0 auto;
+  z-index: 900;
+  padding: 20px 22px;
+  border-radius: var(--radius);
+  border: 1px solid var(--tint-line);
+  background: linear-gradient(160deg, var(--tint-2), var(--ink-3));
+  box-shadow: 0 20px 60px -20px var(--glow);
+  animation: install-in 0.5s var(--ease) both;
+}
+@keyframes install-in { from { opacity: 0; transform: translateY(24px); } }
+.install-banner h2 { margin: 0 0 8px; font: 800 20px/1.2 var(--display); letter-spacing: -0.02em; }
+.install-body p { margin: 0 0 12px; color: var(--text-2); font-size: 15px; }
+.install-body .install-note { font-size: 14px; color: var(--mute); }
+.install-actions { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 4px; }
+.install-link { background: none; border: 0; padding: 6px 0; font: inherit; font-size: 14px; color: var(--text-2); text-decoration: underline; cursor: pointer; }
+.install-link:hover { color: var(--accent); }
+.install-steps { margin: 0 0 12px; padding-left: 22px; color: var(--text-2); font-size: 15px; }
+.install-steps li { margin: 4px 0; }
+.inline-ico { width: 1.2em; height: 1.2em; vertical-align: -0.2em; color: var(--accent); }
+.install-note { color: var(--mute); font-size: 14px; margin: 0; }
+
+.install-h1 { font: 800 clamp(40px, 7vw, 84px)/1 var(--display); letter-spacing: -0.035em; margin: 8px 0 16px; }
+.install-h2 { font: 800 clamp(26px, 3.4vw, 38px)/1.1 var(--display); letter-spacing: -0.03em; margin: 56px 0 12px; }
+.install-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin: 32px 0 24px; }
+.install-card { padding: 26px; border-radius: var(--radius); border: 1px solid var(--line-2); background: linear-gradient(160deg, var(--card-1), var(--card-2)); }
+.install-card h2 { margin: 0 0 12px; font: 800 24px/1.1 var(--display); letter-spacing: -0.02em; }
+.install-list { color: var(--text-2); max-width: 62ch; padding-left: 22px; }
+.install-share { display: flex; gap: 32px; align-items: center; flex-wrap: wrap; }
+.qr-box { width: 220px; height: 220px; border-radius: var(--radius-sm); overflow: hidden; background: var(--qr-bg); flex: none; }
+.qr-box svg { display: block; width: 100%; height: 100%; }
+.qr-bg { fill: var(--qr-bg); }
+.qr-fg { fill: var(--qr-fg); }
+.install-url { margin: 0 0 14px; color: var(--text-2); word-break: break-all; }
+.install-status { min-height: 1.6em; margin: 10px 0 0; color: var(--accent); font-weight: 600; }
 
 /* ---------- Offline page (offline.html) ---------- */
 .offline {

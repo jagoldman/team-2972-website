@@ -81,7 +81,7 @@ const blocked = { getItem() { throw new Error("SecurityError"); }, setItem() { t
 }
 
 // ---------- every page: the no-flash snippet comes before the stylesheet ----------
-const pages = fs.readdirSync(root).filter((f) => f.endsWith(".html")).concat(["portal/index.html"]);
+const pages = fs.readdirSync(root).filter((f) => f.endsWith(".html")).concat(["portal/index.html", "portal/install.html"]);
 for (const page of pages) {
   const html = read(page);
   const css = html.indexOf('<link rel="stylesheet"');

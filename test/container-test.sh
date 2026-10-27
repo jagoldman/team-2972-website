@@ -42,14 +42,14 @@ body '{"status":"ok"}' "/healthz" "$URL/healthz"
 check 200 "/healthz on portal host, no secret" -H "Host: portal.$D" "$URL/healthz"
 
 echo "-- portal host needs the secret"
-for p in / /me.json /apps.json /portal/ /css/style.css /fonts/inter-latin.woff2 /about.html; do
+for p in / /install /me.json /apps.json /portal/ /css/style.css /fonts/inter-latin.woff2 /about.html; do
   check 401 "portal $p, no secret, fake headers" -H "Host: portal.$D" $FAKE "$URL$p"
   check 401 "portal $p, wrong secret" -H "Host: portal.$D" -H "X-Proxy-Secret: wrong" $FAKE "$URL$p"
 done
 check 401 "portal, secret plus extra characters" -H "Host: portal.$D" -H "X-Proxy-Secret: $SECRET-x" "$URL/me.json"
 
 echo "-- direct requests (Host: landing) to portal paths need the secret"
-for p in /me.json /apps.json /portal/ /portal/index.html; do
+for p in /me.json /apps.json /install /portal/ /portal/index.html; do
   check 401 "direct $p, no secret, fake headers" -H "Host: landing" $FAKE "$URL$p"
   check 401 "direct $p, wrong secret" -H "Host: landing" -H "X-Proxy-Secret: wrong" "$URL$p"
 done
@@ -57,6 +57,9 @@ done
 echo "-- with the secret"
 S="-H X-Proxy-Secret:$SECRET"
 check 200 "portal / (portal page)" -H "Host: portal.$D" $S "$URL/"
+check 200 "portal /install (install page)" -H "Host: portal.$D" $S "$URL/install"
+check 200 "portal /install/ (trailing slash)" -H "Host: portal.$D" $S "$URL/install/"
+check 200 "portal /js/vendor/qrcode.js" -H "Host: portal.$D" $S "$URL/js/vendor/qrcode.js"
 check 200 "portal /apps.json" -H "Host: portal.$D" $S "$URL/apps.json"
 check 200 "portal /me.json" -H "Host: portal.$D" $S "$URL/me.json"
 check 200 "portal /css/style.css" -H "Host: portal.$D" $S "$URL/css/style.css"
@@ -85,7 +88,7 @@ done
 
 echo "-- public hosts never serve portal files"
 for h in $D www.$D; do
-  for p in /me.json /apps.json /portal/ /portal/index.html; do
+  for p in /me.json /apps.json /install /install/ /portal/ /portal/index.html /portal/install.html; do
     check 404 "$h $p even with the secret" -H "Host: $h" $S "$URL$p"
   done
   check 200 "$h / with forged headers" -H "Host: $h" $FAKE "$URL/"

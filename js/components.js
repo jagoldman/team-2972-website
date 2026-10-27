@@ -148,7 +148,7 @@ function renderFooter() {
       <div class="footer-col">
         <a href="${pageHref("sponsors.html")}">Become a Sponsor</a>
         <a href="${pageHref("team.html")}">Become a Mentor</a>
-        ${isPortalPage() ? "" : `<a href="${PORTAL_URL}">Team Login</a>
+        ${isPortalPage() ? `<a href="/install">Install the app</a>` : `<a href="${PORTAL_URL}">Team Login</a>
         <a href="${REQUEST_URL}">Request an account</a>`}
       </div>
     </div>

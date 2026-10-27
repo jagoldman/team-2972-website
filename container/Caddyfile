@@ -4,7 +4,8 @@
 #   /healthz (any host)                              -> 200 {"status":"ok"}
 #   Host portal.SITE_DOMAIN, any path                -> X-Proxy-Secret required, else 401
 #   Any other host: /portal/*, /me.json, /apps.json  -> X-Proxy-Secret required, else 401
-#   Host SITE_DOMAIN / www: those portal paths       -> 404
+#   Host portal.SITE_DOMAIN /install                 -> portal/install.html (the install page, after the gate)
+#   Host SITE_DOMAIN / www: those portal paths and /install -> 404
 #   /manifest.webmanifest, /sw.js, /offline.html, /pwa-icons/<app>/<icon>  -> PUBLIC on every host, the portal host
 #                                                    included (no secret): they are fetched before sign-in and
 #                                                    hold nothing about a person. On the portal host the manifest is
@@ -110,6 +111,11 @@
 			handle /portal/* {
 				file_server
 			}
+			@install path /install /install/
+			handle @install {
+				rewrite * /portal/install.html
+				file_server
+			}
 			@shared path /css/* /js/* /assets/* /fonts/* /brand/*
 			handle @shared {
 				file_server
@@ -129,7 +135,7 @@
 	@public_host host {$SITE_DOMAIN} www.{$SITE_DOMAIN}
 	handle @public_host {
 		route {
-			@portal_paths path /portal /portal/* /me.json /apps.json
+			@portal_paths path /portal /portal/* /install /install/ /me.json /apps.json
 			respond @portal_paths 404
 			redir /team-login.html {$SITE_SCHEME}://portal.{$SITE_DOMAIN}/ 302
 			import pwa_public
@@ -146,6 +152,15 @@
 	# ---- Any other host (direct requests such as landing:3001) ----
 	handle {
 		route {
+			@install_direct path /install /install/
+			handle @install_direct {
+				route {
+					import gate
+					import portal_files
+					rewrite * /portal/install.html
+					file_server
+				}
+			}
 			@portal_paths_direct path /portal /portal/* /me.json /apps.json
 			handle @portal_paths_direct {
 				route {

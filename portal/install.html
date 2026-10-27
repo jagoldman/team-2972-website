@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title>Install the app | Team 2972 Gears & Buccaneers</title>
+<meta name="color-scheme" content="light dark" />
+<meta name="theme-color" content="#f6f3ea" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#07090f" media="(prefers-color-scheme: dark)" />
+<script>try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/pwa-icons/portal/icon.svg" type="image/svg+xml" />
+<link rel="icon" href="/pwa-icons/portal/icon-192.png" sizes="192x192" type="image/png" />
+<link rel="apple-touch-icon" href="/pwa-icons/portal/apple-touch-icon.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="2972 Portal" />
+<link rel="preload" href="/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<!-- Served at portal.SITE_DOMAIN/install only, behind login (container/Caddyfile rewrites /install to this file).
+     Developer note: a phone cannot install the app from http://portal.localhost. Browsers only offer installing
+     from https (or localhost on the same computer), so test the install steps on the live site. -->
+<body data-portal>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div id="site-header"></div>
+
+<main class="portal-main install-page">
+  <div class="eyebrow">Team 2972 app</div>
+  <h1 class="install-h1">Install the app</h1>
+  <p class="section-lead">Put the Team 2972 portal on your phone, tablet or computer. It opens like any other app, and you still sign in the same way.</p>
+  <p><a class="btn btn-outline" href="/">Back to the portal</a></p>
+
+  <div class="install-grid">
+    <section class="install-card" aria-labelledby="h-iphone">
+      <h2 id="h-iphone">iPhone and iPad</h2>
+      <ol class="install-steps">
+        <li>Open this site in <strong>Safari</strong>.</li>
+        <li>Tap the <strong>Share</strong> button <span id="ico-share"></span> in the browser bar.</li>
+        <li>Scroll down and tap <strong>Add to Home Screen</strong> <span id="ico-plus"></span>, then <strong>Add</strong>.</li>
+      </ol>
+      <p class="install-note">If the team turns on notifications later, iPhone needs the app on the Home Screen first.</p>
+    </section>
+
+    <section class="install-card" aria-labelledby="h-android">
+      <h2 id="h-android">Android</h2>
+      <ol class="install-steps">
+        <li>Open this site in <strong>Chrome</strong>.</li>
+        <li>Tap <strong>Install</strong> below if you see it, or open the <strong>⋮ menu</strong>.</li>
+        <li>Choose <strong>Install app</strong> (or <strong>Add to Home screen</strong>).</li>
+      </ol>
+    </section>
+
+    <section class="install-card" aria-labelledby="h-computer">
+      <h2 id="h-computer">Computer</h2>
+      <ol class="install-steps">
+        <li>Open this site in <strong>Chrome</strong> or <strong>Edge</strong>.</li>
+        <li>Click the <strong>install</strong> icon at the right end of the address bar, or press <strong>Install</strong> below.</li>
+        <li>Safari on Mac: choose <strong>File, Add to Dock</strong>.</li>
+      </ol>
+    </section>
+  </div>
+
+  <p><button type="button" class="btn" id="install-now" hidden>Install</button></p>
+
+  <h2 class="install-h2">What you get</h2>
+  <ul class="install-list">
+    <li>An icon on your home screen, dock or desktop that opens the portal in one tap.</li>
+    <li>A full-screen window without the browser's address bar.</li>
+    <li>Faster starts, because the app's look and feel is kept on your device.</li>
+    <li>The same sign-in as the website, and the same apps and tiles you see here.</li>
+  </ul>
+
+  <h2 class="install-h2">Share this app</h2>
+  <p class="section-lead">Scan the code with a phone camera, or send the link to a teammate.</p>
+  <div class="install-share">
+    <div class="qr-box" id="qr"></div>
+    <div>
+      <p class="install-url" id="install-url"></p>
+      <button type="button" class="btn" id="share-btn">Share this app</button>
+      <p class="install-status" id="share-status" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="/config.js"></script>
+<script src="/js/content.js"></script>
+<script src="/js/components.js"></script>
+<script src="/js/vendor/qrcode.js"></script>
+<script src="/js/install.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("ico-share").append(installIcon("share"));
+  document.getElementById("ico-plus").append(installIcon("plus"));
+
+  // The address people should open: the portal host, built from SITE_SCHEME and SITE_DOMAIN.
+  const url = PORTAL_URL;
+  document.getElementById("install-url").textContent = url;
+  document.getElementById("qr").append(qrSvg(url));
+
+  const share = document.getElementById("share-btn");
+  const status = document.getElementById("share-status");
+  if (typeof navigator.share !== "function") share.textContent = "Copy link";
+  let timer = 0;
+  share.addEventListener("click", async () => {
+    const result = await shareApp({ title: "Team 2972 app", text: "Add the Team 2972 portal to your device.", url });
+    clearTimeout(timer);
+    status.textContent = result === "copied" ? "Copied" : result === "failed" ? "Couldn't copy. Copy the address shown here." : "";
+    if (status.textContent) timer = setTimeout(() => { status.textContent = ""; }, 2500);
+  });
+
+  // Chrome and Edge: a real Install button once the browser says the app can be installed.
+  const now = document.getElementById("install-now");
+  const offer = () => { now.hidden = false; };
+  now.addEventListener("click", async () => { await runInstallPrompt(); now.hidden = true; });
+  document.addEventListener("install-available", offer);
+  document.addEventListener("install-done", () => { now.hidden = true; });
+  if (deferredInstall) offer();
+});
+</script>
+</body>
+</html>

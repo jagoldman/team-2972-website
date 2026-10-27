@@ -155,9 +155,14 @@ const PUBLIC_PAGES = ["index.html", "offline.html", "about.html", "team.html", "
 
 (async () => {
   if (MODE === "contrast" || MODE === "nogroup") {
-    const pages = MODE === "nogroup" ? ["portal/index.html"] : [...PUBLIC_PAGES, "portal/index.html"];
+    const pages = MODE === "nogroup" ? ["portal/index.html"] : [...PUBLIC_PAGES, "portal/index.html", "portal/install.html"];
     for (const url of pages) {
       const { frame, win, doc } = await openPage(url);
+      // the install banner sits over the portal home: show it (iPhone steps and the Install/link variants) and check it too
+      if (url === "portal/index.html" && MODE === "contrast" && win.showInstallBanner) {
+        win.showInstallBanner({ force: true });
+        report(!!doc.querySelector(".install-banner"), `${url}: install banner can be shown over the page`);
+      }
       for (const theme of ["light", "dark"]) {
         doc.documentElement.dataset.theme = theme;
         await sleep(120);

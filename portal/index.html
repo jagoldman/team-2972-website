@@ -57,6 +57,7 @@
 <script src="/config.js"></script>
 <script src="/js/content.js"></script>
 <script src="/js/components.js"></script>
+<script src="/js/install.js"></script>
 <script>
 // The site-wide groups (CONVENTIONS §3). Other Authentik groups don't count.
 const SITE_GROUPS = ["admin", "mentor", "student", "parent", "alumni"];
@@ -157,6 +158,7 @@ function greetingWord() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("sign-out").href = SIGNOUT_URL;
+  initInstallBanner();
   document.getElementById("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   const note = document.getElementById("app-note");
   note.append("Something not working? Email ");

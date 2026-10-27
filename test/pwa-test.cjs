@@ -117,7 +117,7 @@ for (const [file, want] of Object.entries(MANIFESTS)) {
 check("the site and portal manifests have different names", JSON.parse(read("manifest.webmanifest")).name !== JSON.parse(read("portal/manifest.webmanifest")).name);
 
 // ---------- every page's <head> ----------
-const pages = fs.readdirSync(root).filter((f) => f.endsWith(".html")).concat(["portal/index.html"]);
+const pages = fs.readdirSync(root).filter((f) => f.endsWith(".html")).concat(["portal/index.html", "portal/install.html"]);
 for (const page of pages) {
   const html = read(page), head = html.slice(0, html.indexOf("</head>"));
   const portal = page.startsWith("portal/");
