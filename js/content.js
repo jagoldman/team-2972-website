@@ -189,12 +189,13 @@ const ROBOTS = [
     status: "In service",
     image: "", // TODO: add a photo of Theseus
     tagline: "Utah Regional winners.",
-    stats: "2 events · Utah Regional Winners · 2nd pick, Alliance 2",
+    stats: "3 events · Utah Regional Winners · 2nd pick, Alliance 2",
     gameSummary: "", // TODO: describe the 2026 game, REBUILT
     description: "", // TODO: describe Theseus
     results: [
       { event: "Denver Regional", result: "Rank 49 of 55 (2-7-0)", tba: "2026code" },
       { event: "Utah Regional", result: "Rank 38 of 42 — 2nd pick of Alliance 2, won the event", tba: "2026utwv" },
+      { event: "Kendrick Castillo Memorial Tournament (KCMT)", result: "Rank 14 of 31 (7-5-0) — 2nd pick, Alliance 5", tba: "2026cokc" },
     ],
     awards: ["Utah Regional Winners"],
     links: [],
