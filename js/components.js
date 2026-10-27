@@ -114,7 +114,7 @@ function renderHeader() {
   // The portal keeps its header short: the user's group, a way back to the public site, and sign-out.
   if (isPortalPage()) {
     return `
-  <header class="site-header">
+  <header class="site-header portal-header">
     <div class="header-inner">
       ${brand}
       <nav class="site-nav portal-nav">
@@ -175,7 +175,7 @@ function renderFooter() {
       </div>
     </div>
     <div class="footer-giant" aria-hidden="true">${SITE.teamNumber}</div>
-    <p class="footer-copy">© ${new Date().getFullYear()} ${SITE.teamName}, FRC Team ${SITE.teamNumber}. · <a href="${pageHref("privacy.html")}">Privacy</a> · <a href="${pageHref("terms.html")}">Terms</a></p>
+    <p class="footer-copy"><span>© ${new Date().getFullYear()} ${SITE.teamName}, FRC Team ${SITE.teamNumber}.</span> <span><a href="${pageHref("privacy.html")}">Privacy</a> · <a href="${pageHref("terms.html")}">Terms</a></span></p>
   </footer>`;
 }
 

@@ -240,7 +240,9 @@ a:hover { color: var(--accent); }
 .theme-switch svg { width: 16px; height: 16px; }
 .theme-switch .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (pointer: coarse) { .theme-switch button { width: 40px; height: 40px; } }
-@media (max-width: 960px) { .theme-switch { margin: 22px 0 0; align-self: flex-start; } }
+/* The full desktop nav needs about 1100px; just above that its links tighten up so "Team Login" stays on screen. */
+@media (max-width: 1240px) { .nav-link { padding: 8px 9px; } .nav-login, .theme-switch { margin-left: 4px; } }
+@media (max-width: 1100px) { .theme-switch { margin: 22px 0 0; align-self: flex-start; } }
 
 .nav-toggle {
   display: none;
@@ -269,7 +271,7 @@ a:hover { color: var(--accent); }
 .nav-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
 .nav-toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
-@media (max-width: 960px) {
+@media (max-width: 1100px) {
   .nav-toggle { display: block; }
   .site-nav {
     position: fixed;
@@ -304,7 +306,13 @@ a:hover { color: var(--accent); }
 .site-nav.portal-nav { position: static; flex-direction: row; align-items: center; gap: 8px; padding: 0; background: none; opacity: 1; visibility: visible; backdrop-filter: none; }
 .site-nav.portal-nav .nav-link { font: 400 14px/1 var(--font); color: var(--mute); padding: 8px 12px; letter-spacing: 0; }
 .site-nav.portal-nav .nav-login { margin: 0; font-size: 14px; padding: 10px 18px; }
-@media (max-width: 520px) { .site-nav.portal-nav .nav-link { display: none; } }
+.site-nav.portal-nav .theme-switch { margin: 0; align-self: auto; }
+/* On a phone the portal header keeps the logo (it links to the public site), the theme switch and sign-out. */
+@media (max-width: 640px) { .site-nav.portal-nav .nav-link { display: none; } }
+@media (max-width: 480px) {
+  .portal-header .brand-text, .site-nav.portal-nav .nav-chip { display: none; }
+  .site-nav.portal-nav .nav-login { padding: 10px 14px; }
+}
 
 /* Over the full-screen hero photo the header keeps the dark look in both themes, until it is scrolled
    (then it gets its glass background) or the mobile menu is open. */
@@ -479,6 +487,8 @@ h2.section-title .dim { color: var(--dim); }
 .btn.btn-outline { background: transparent; color: var(--text); border-color: var(--line-2); box-shadow: none; }
 .btn.btn-outline:hover { background: var(--text); border-color: var(--text); color: var(--ink); }
 .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+.btn { max-width: 100%; overflow-wrap: anywhere; }   /* a long label (an email address) wraps rather than spilling out of its card */
+@media (max-width: 420px) { .btn { padding: 14px 20px; } }
 .btn-disabled, .btn-disabled:hover { background: transparent; border: 1px dashed var(--line-2); color: var(--mute); box-shadow: none; cursor: default; }
 
 /* ---------- Cards / grids ---------- */
@@ -656,7 +666,7 @@ a.card:hover { color: inherit; border-color: var(--tint-line); }
 .specs-table td:last-child { font-weight: 600; }
 
 /* ---------- Sponsor logos ---------- */
-.sponsor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; }
+.sponsor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
 .sponsor-tile {
   background: #ffffff;
   border: 1px solid var(--line);
@@ -699,13 +709,14 @@ a.card:hover { color: inherit; border-color: var(--tint-line); }
 }
 
 /* ---------- Contact ---------- */
-.contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; }
+/* 330px fits the email button on one line; min() lets a single card shrink on a phone. */
+.contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 22px; }
 .contact-card {
   position: relative;
   background: linear-gradient(180deg, var(--ink-3), var(--ink-2));
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 30px;
+  padding: clamp(22px, 6vw, 30px);
   overflow: hidden;
 }
 .contact-card h3 { font: 700 26px/1.15 var(--display); letter-spacing: -0.02em; margin: 0 0 10px; }
@@ -745,7 +756,7 @@ a.card:hover { color: inherit; border-color: var(--tint-line); }
 .legal a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--accent); }
 .legal .legal-date { color: var(--mute); font-size: 14px; margin: 0; }
 .footer-copy a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
-.footer-copy { max-width: var(--max-width); margin: 0 auto; padding: 16px 0 26px; font-size: 13px; color: var(--mute); border-top: 1px solid var(--line); }
+.footer-copy { max-width: var(--max-width); margin: 0 auto; padding: 16px 0 26px; font-size: 13px; color: var(--mute); border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 4px 18px; }
 
 /* ---------- Robot archive + single robot page ---------- */
 .stats-line { color: var(--accent) !important; font-weight: 600; font-size: 14px !important; }

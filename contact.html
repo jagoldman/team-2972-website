@@ -56,7 +56,9 @@
 document.addEventListener("DOMContentLoaded", () => {
   const emailLink = document.getElementById("email-link");
   emailLink.href = `mailto:${SITE.email}`;
-  emailLink.textContent = SITE.email;
+  // On a very narrow phone the address wraps after the "@", not mid-word.
+  const at = SITE.email.indexOf("@") + 1;
+  emailLink.append(SITE.email.slice(0, at), document.createElement("wbr"), SITE.email.slice(at));
 
   const igLink = document.getElementById("ig-link");
   igLink.href = SITE.instagram;
