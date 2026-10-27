@@ -138,6 +138,7 @@
 			@portal_paths path /portal /portal/* /install /install/ /me.json /apps.json
 			respond @portal_paths 404
 			redir /team-login.html {$SITE_SCHEME}://portal.{$SITE_DOMAIN}/ 302
+			redir /team.html /mentor.html 301
 			import pwa_public
 			handle /manifest.webmanifest {
 				header Content-Type "application/manifest+json"

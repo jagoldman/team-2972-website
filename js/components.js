@@ -1,15 +1,30 @@
 // Shared header/footer, injected on every page so nav only lives in one place.
 
 const NAV_LINKS = [
-  { label: "Home", href: "index.html" },
-  { label: "About", href: "about.html" },
-  { label: "Mentor", href: "team.html" },
-  { label: "Robots", href: "robots.html" },
+  {
+    label: "About",
+    children: [
+      { label: "About the Team", href: "about.html", desc: "Who we are, our school, our mission and our history." },
+      { label: "Our Robots", href: "robots.html", desc: "Every robot we have built, season by season." },
+      { label: "Contact", href: "contact.html", desc: "Questions? Write to us." },
+    ],
+  },
+  {
+    label: "Outreach & Media",
+    children: [
+      { label: "Outreach", href: "outreach.html", desc: "How we bring robotics to our community." },
+      { label: "Media", href: "media.html", desc: "Photos, videos and press." },
+    ],
+  },
   { label: "Sponsors", href: "sponsors.html" },
-  { label: "Outreach", href: "outreach.html" },
-  { label: "Media", href: "media.html" },
+  {
+    label: "Join the Team",
+    children: [
+      { label: "Become a Team Member", href: "member.html", desc: "For students who want to design, build and compete with us." },
+      { label: "Become a Mentor", href: "mentor.html", desc: "For adults who want to guide students with their time and expertise." },
+    ],
+  },
   { label: "Resources", href: "resources.html" },
-  { label: "Contact", href: "contact.html" },
 ];
 
 // Pages that should highlight a different nav item
@@ -113,9 +128,15 @@ function renderHeader() {
   }
 
   const active = currentPage();
-  const links = NAV_LINKS.map(
-    (l) => `<a href="${l.href}" class="nav-link${l.href === active ? " active" : ""}">${l.label}</a>`
-  ).join("");
+  const links = NAV_LINKS.map((l) => {
+    if (!l.children) return `<a href="${l.href}" class="nav-link${l.href === active ? " active" : ""}">${l.label}</a>`;
+    const here = l.children.some((c) => c.href === active);
+    return `<div class="nav-group">
+        <button type="button" class="nav-link nav-drop${here ? " active" : ""}" aria-expanded="false">${l.label}</button>
+        <div class="nav-menu">${l.children.map((c) =>
+          `<a href="${c.href}"${c.href === active ? ' aria-current="page"' : ""}><strong>${c.label}</strong><span>${c.desc}</span></a>`).join("")}</div>
+      </div>`;
+  }).join("");
   return `
   <header class="site-header">
     <div class="header-inner">
@@ -147,7 +168,8 @@ function renderFooter() {
       </div>
       <div class="footer-col">
         <a href="${pageHref("sponsors.html")}">Become a Sponsor</a>
-        <a href="${pageHref("team.html")}">Become a Mentor</a>
+        <a href="${pageHref("mentor.html")}">Become a Mentor</a>
+        <a href="${pageHref("member.html")}">Become a Team Member</a>
         ${isPortalPage() ? `<a href="/install">Install the app</a>` : `<a href="${PORTAL_URL}">Team Login</a>
         <a href="${REQUEST_URL}">Request an account</a>`}
       </div>
@@ -375,6 +397,15 @@ function mountLayout() {
       document.body.classList.toggle("nav-open", isOpen);
     });
   }
+
+  // "Join the Team" dropdown: opens on hover or focus by CSS; a click or tap toggles it, Escape or an outside click closes it.
+  document.querySelectorAll(".nav-drop").forEach((btn) => {
+    const group = btn.parentElement;
+    const set = (open) => { group.classList.toggle("open", open); btn.setAttribute("aria-expanded", String(open)); };
+    btn.addEventListener("click", () => set(!group.classList.contains("open")));
+    document.addEventListener("click", (e) => { if (!group.contains(e.target)) set(false); });
+    group.addEventListener("keydown", (e) => { if (e.key === "Escape") { set(false); btn.focus(); } });
+  });
 
   // The installable app: register the service worker, and clear what it stored when someone signs out.
   registerServiceWorker();
