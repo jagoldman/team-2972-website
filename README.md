@@ -96,7 +96,7 @@ Hiding a tile is only a convenience. Who can actually open an app is decided by 
 ## Files
 
 ```
-index.html, about.html, team.html,     Public pages
+index.html, about.html, mentor.html,     Public pages
 robots.html, robot.html, sponsors.html,  (robot.html shows one season: robot.html?year=2025)
 outreach.html, media.html,
 resources.html, contact.html

@@ -32,7 +32,7 @@ framework. It runs as the `landing` container (static Caddy 2.11.7, port 3001, `
   Authentik bindings are the real control. Tile shape: `{id, name, description, host|url, path?, groups, audience,
   comingSoon?}`. Tiles are edited in infra, not here.
 - **Photos** come from Google Drive (`lh3.googleusercontent.com/d/<ID>=w<size>`). No rasters are tracked, only SVG
-  placeholders in `assets/`. Sizes per place are in README. See section 7 for the open photo task.
+  placeholders in `assets/`. Sizes per place are in README. See section 7 for the photo task (on hold, D68).
 
 ## 3. Look, themes and accessibility (MASTER_PLAN D56)
 
@@ -88,6 +88,7 @@ is in `../landing`, so keep `main` checked out there and use `git worktree` for 
 | `test/menu-test.sh` | Chrome | phone menu on pages with the glass header |
 | `test/url-injection-test.sh` | Chrome | `robot.html?year=` cannot inject markup |
 | `node test/legal-test.cjs` | node | privacy and terms pages: head, links, contact, no placeholders, no invented retention/consent claims |
+| `node test/install-test.cjs` | node | install banner rules, iPhone detection, offline QR (vendored hash), Share fallback, `/install` Caddy routes |
 | `node test/pwa-test.cjs` | node | icons, manifests, page heads, offline page, service worker simulation, Caddy PWA routes |
 | gitleaks (Docker image `zricethezav/gitleaks`) | docker | run before each commit; config `.gitleaks.toml`, CI `.github/workflows/gitleaks.yml` |
 
@@ -95,15 +96,18 @@ Chrome path defaults to macOS Google Chrome (`CHROME=` overrides). Fixtures use 
 
 ## 7. Open work
 
-1. **Photo IDs (Phase 3 remainder).** 43 distinct local files must be uploaded to Drive ("Anyone with the link") and their
+1. **Photo IDs (Phase 3 remainder), ON HOLD (user, 2026-10-27, MASTER_PLAN D68).** Do not start this until the user
+   says so. `docs/photo-ids.csv` (35 files) is for the user to fill in with Drive IDs; when it comes back, the plan below
+   applies. 43 distinct local files must be uploaded to Drive ("Anyone with the link") and their
    IDs put into `content.js`: gallery 21, robots 7, mentors 6, brand 5, history 2, outreach 2 (some reused).
    Not referenced, skip: `history/early-robot.jpg`, `robots/2025-reefscape-logo.png`. The full table of which field
    takes which file and size is in `docs/PHASE3_TASKS.md` §1. **The user supplies** the Sheet (or the list) of
    file name to Drive ID; I could read it with the Sheets connector. Then: store IDs once and add a `driveImg(id, width)`
    helper, add `width`/`height` + `loading="lazy"`, rewrite the `content.js` top comment (Drive only), do a clean-clone
    check, and run Lighthouse mobile (goal 80+).
-2. **D63: install banner, `/install` page, Share button (not built).** I had a working draft in a scratch worktree, but
-   the scratch folder was deleted before it could be committed, so **none of it is in git.** Redo from this spec:
+2. **D63: install banner, `/install` page, Share button (built 2026-10-27, uncommitted until the user OKs).** Files: `js/install.js`,
+   `portal/install.html`, `js/vendor/` (QR library + README), Caddy `/install` routes, footer link, tests in `test/install-test.cjs`.
+   Still to do: check on the live site with a real iPhone and Android phone. Tell admin the path `/install`. Original spec:
    - *Banner* on the portal home only (never on public pages): hidden when installed (`display-mode: standalone` or
      `navigator.standalone`); "Not now" remembered 30 days and "Don't show again", both in `localStorage` in try/catch;
      follows light/dark; a fixed overlay so nothing shifts; `role="region"`, focus and Escape handled, reduced motion
@@ -124,14 +128,14 @@ Chrome path defaults to macOS Google Chrome (`CHROME=` overrides). Fixtures use 
    - Tests: banner rules (installed, dismissed, remembered 30 days), iOS branch by user agent, QR produced offline (no
      network calls, vendored hash), share fallback to copy, AA contrast in both themes (extend `theme-test.html`), banner
      absent from every public page, `/install` 401 without secret / 200 with / 404 on public hosts.
-3. **Editor groundwork (D55), paused.** Branch `feature/editable-content` (`918789c`, local only, not pushed). Adds
+3. **Editor groundwork (D55), GO AHEAD (user, 2026-10-27; was paused).** Branch `feature/editable-content` (`694c3e5`, local only, not pushed; checked out in the worktree `../landing-editor-rebase`). Adds
    `js/content-loader.js` (content.js is the default; `/content/content.json` from the editor replaces it when valid),
    `data-ck` keys on every field, media image support, container routes for `/content/content.json` and
    `/media/<id>-<400|800|1600>.webp`, `docs/CONTENT_EDITING.md` (the contract with the `editor` repo), loader and
-   in-browser tests. **It was cut before the redesign, themes and PWA, so it must be rebased onto `main`** (expect
-   conflicts in every page, `components.js` and the Caddyfile). Revive only if the editor app goes ahead.
-4. **BACKLOG** (`docs/BACKLOG.md`): History is now a timeline (done 2026-10-27) and the mentor listing is gone. Open: an
-   optional "role of the mentors" note on `team.html`, 2027 regional dates, and Theseus/Sea Shanty/sponsor/outreach content.
+   in-browser tests. **Rebased onto `main` on 2026-10-27** (loader, site, theme, PWA, legal and container tests pass). It moved with `main`: `HISTORY` is
+   now `{ milestones, today }`, `SCHEDULE_2026` is `SCHEDULE_2027`, `MENTORS`/`PAST_MENTORS` are gone (listed at the end of
+   `docs/CONTENT_EDITING.md`; the editor's schema must follow). Not merged to `main` yet. Lead session to log the change to D55 in MASTER_PLAN.
+4. **BACKLOG** (`docs/BACKLOG.md`): History is now a timeline (done 2026-10-27) and the mentor listing is gone. "Role of the mentors" section is on `mentor.html` (done 2026-10-27). Open: 2027 regional dates, and Theseus/Sea Shanty/sponsor/outreach content.
 5. **Deploy and verify (infra).** Deploy `459dd21` and check installability on both hosts (section 4). Also open: should
    the public "Game Analysis Template" link stay now that Kickoff replaces it on the portal (default: leave it).
 6. **Constant-time secret compare** is an accepted exception (CONVENTIONS §4), listed in `docs/PHASE3_TASKS.md`; revisit

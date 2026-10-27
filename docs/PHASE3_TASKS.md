@@ -51,7 +51,7 @@ Also:
 - [ ] Simplest for editors: store the Drive ID once per photo and let a helper in `js/components.js`
       add the size per place it is shown (for example `driveImg(id, 400)`). Full URLs must still work.
 - [ ] Add `width`/`height` or `aspect-ratio` and `loading="lazy"` (not on the hero) to the `<img>` tags in
-      `index.html`, `team.html`, `robots.html`, `robot.html`, `about.html`, `media.html`,
+      `index.html`, `mentor.html`, `robots.html`, `robot.html`, `about.html`, `media.html`,
       `outreach.html`, `sponsors.html` and the header logo in `components.js` (l.56).
 - [ ] Rewrite the top comment in `content.js` (l.9–17): it says "put image files in assets/ (preferred)",
       which contradicts D8. Drive only, with the size suffix.
