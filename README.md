@@ -24,7 +24,7 @@ page section appears only when its field is set. The comment above `ROBOTS` list
 - **The Blue Alliance:** every season page links to `thebluealliance.com/team/2972/YEAR`. In
   `results`, set `tba` to an event key (such as `"2025mnum"`) to link that event. Results and awards
   are typed in by hand.
-- **Unknown names or photos:** leave `name` or `image` as `""`. The site shows "Robot name unknown" or
+- **Unknown names or photos:** leave `name` or `image` as `""`. The site shows "<year> Robot" (for example "2022 Robot") or
   a "Photo wanted" box. If a photo is a screenshot from a match video, say so in `photoSource`.
 - **Older results** come from FIRST's event records (frc-events.firstinspires.org/YEAR/team/2972).
   FIRST copies the previous year's robot name forward when nobody updates it, so repeated names are

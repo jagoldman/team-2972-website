@@ -95,7 +95,7 @@
   <h2 class="section-title" data-reveal>Fuel the next<br /><span class="shine">robot.</span></h2>
   <div class="btn-row">
     <a class="btn magnetic" href="sponsors.html">Become a sponsor <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a>
-    <a class="btn btn-outline magnetic" href="team.html">Meet the mentors</a>
+    <a class="btn btn-outline magnetic" href="team.html">Become a mentor</a>
   </div>
 </section>
 
@@ -133,10 +133,13 @@ document.addEventListener("DOMContentLoaded", () => {
     </a>`).join("");
 
   // Numbers that come straight from content.js
+  // Events where the result mentions an alliance, the playoffs, or an event win
+  const playoffEvents = ROBOTS.reduce((n, r) =>
+    n + r.results.filter(x => /alliance|playoffs|won the event/i.test(x.result)).length, 0);
   const stats = [
     { n: ROBOTS.length, label: "seasons on the field" },
     { n: Number(SITE.founded), label: "year we started", plain: true },
-    { n: MENTORS.length, label: "mentors and coaches" },
+    { n: playoffEvents, label: "playoff appearances" },
     { n: SCHEDULE_2027.length, label: "events this season" },
   ];
   document.getElementById("stats").innerHTML = stats.map((s, i) => `

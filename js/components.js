@@ -3,7 +3,7 @@
 const NAV_LINKS = [
   { label: "Home", href: "index.html" },
   { label: "About", href: "about.html" },
-  { label: "Team", href: "team.html" },
+  { label: "Mentor", href: "team.html" },
   { label: "Robots", href: "robots.html" },
   { label: "Sponsors", href: "sponsors.html" },
   { label: "Outreach", href: "outreach.html" },
@@ -45,7 +45,7 @@ function youtubeEmbed(url) {
 }
 
 function robotName(r) {
-  return r.name || "Robot name unknown";
+  return r.name || `${r.year} Robot`;
 }
 
 function robotUrl(r) {

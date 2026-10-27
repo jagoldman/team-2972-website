@@ -413,13 +413,13 @@ h2.section-title .dim { color: var(--dim); }
 }
 .kicker b { color: var(--accent); font-weight: 600; margin-right: 10px; }
 .section-lead { color: var(--text-2); max-width: 62ch; margin: 0 0 40px; font-size: 18px; }
-.section-lead a, .link-list a, .history-era a, .app-note a {
+.section-lead a, .link-list a, .history-era a, .timeline a, .app-note a {
   color: var(--text);
   text-decoration: underline;
   text-decoration-color: var(--tint-line);
   text-underline-offset: 3px;
 }
-.section-lead a:hover, .link-list a:hover, .history-era a:hover, .app-note a:hover { color: var(--accent); }
+.section-lead a:hover, .link-list a:hover, .history-era a:hover, .timeline a:hover, .app-note a:hover { color: var(--accent); }
 .subsection-title { font: 700 26px/1.2 var(--display); letter-spacing: -0.02em; margin: 50px 0 16px; }
 
 /* Scroll reveal (components.js adds .in) */
@@ -604,23 +604,6 @@ a.card:hover { color: inherit; border-color: var(--tint-line); }
 .schedule-list .event-name { font: 700 clamp(22px, 2.6vw, 32px)/1.15 var(--display); letter-spacing: -0.02em; color: var(--text); }
 .schedule-list .event-loc { color: var(--mute); font-size: 15px; text-align: right; }
 @media (max-width: 640px) { .schedule-list li { grid-template-columns: 1fr; } .schedule-list .event-loc { text-align: left; } }
-
-/* ---------- Mentor cards ---------- */
-.mentor-card { text-align: left; padding: 28px; }
-.mentor-card img {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin: 0 0 20px;
-  background: var(--ink-3);
-  box-shadow: 0 0 0 1px var(--line-2), 0 0 0 6px var(--tint);
-  transition: box-shadow 0.4s;
-}
-.mentor-card:hover img { box-shadow: 0 0 0 1px var(--accent), 0 0 0 6px var(--tint-2); }
-.mentor-card h3 { margin: 0; font: 700 24px/1.15 var(--display); letter-spacing: -0.02em; }
-.mentor-card .role { color: var(--accent); font: 600 12px/1.4 var(--font); text-transform: uppercase; letter-spacing: 0.14em; margin: 8px 0 12px; }
-.mentor-card p { color: var(--text-2); font-size: 15px; margin: 0; }
 
 /* ---------- Robot detail ---------- */
 .robot-block { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 40px; padding: 40px 0; border-bottom: 1px solid var(--line); }
@@ -819,6 +802,15 @@ a.card:hover { color: inherit; border-color: var(--tint-line); }
 .history-era p { color: var(--text-2); max-width: 70ch; }
 .history-era img { border-radius: var(--radius-sm); width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--ink-3); }
 @media (max-width: 860px) { .history-era { grid-template-columns: 1fr; } }
+.timeline { list-style: none; margin: 0; padding: 0 0 0 4px; border-left: 2px solid var(--line); }
+.timeline li { position: relative; display: grid; grid-template-columns: 72px 1fr; gap: 16px; padding: 0 0 22px 24px; }
+.timeline li::before { content: ""; position: absolute; left: -7px; top: 8px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+.timeline-year { font: 700 20px/1.5 var(--display); letter-spacing: -0.02em; }
+.timeline-body ul { list-style: disc; margin: 0; padding-left: 18px; color: var(--text-2); max-width: 70ch; }
+.timeline-body li { display: list-item; padding: 0; margin: 0 0 4px; border: 0; }
+.timeline-body li::before { content: none; }
+.timeline-body img { margin-top: 10px; border-radius: var(--radius-sm); max-width: 320px; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--ink-3); }
+@media (max-width: 560px) { .timeline li { grid-template-columns: 1fr; gap: 2px; } }
 
 /* ---------- Resources: CAD overview ---------- */
 .cad-overview { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }

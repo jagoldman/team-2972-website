@@ -73,7 +73,7 @@
   <div class="block-inner">
     <h2 class="section-title">Our Year</h2>
     <ul class="schedule-list" id="annual-list"></ul>
-    <h3 class="subsection-title">2026 Competition Schedule</h3>
+    <h3 class="subsection-title">2027 Competition Schedule</h3>
     <ul class="schedule-list" id="schedule-list"></ul>
     <div class="btn-row"><a class="btn btn-outline" id="calendar-link" target="_blank" rel="noopener">Team calendar</a></div>
   </div>
@@ -96,15 +96,25 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("values-grid").innerHTML = cards(VALUES);
   document.getElementById("strategy-grid").innerHTML = cards(STRATEGY);
 
-  document.getElementById("history").innerHTML = HISTORY.map(h => `
-    <article class="history-era${h.image ? "" : " no-image"}">
+  const t = HISTORY.today;
+  document.getElementById("history").innerHTML = `
+    <ol class="timeline">
+      ${HISTORY.milestones.map(m => `
+        <li>
+          <span class="timeline-year">${m.year}</span>
+          <div class="timeline-body">
+            <ul>${m.items.map(it => `<li>${it.text}</li>`).join("")}</ul>
+            ${m.image ? `<img src="${driveImg(m.image, 600)}" alt="${m.imageAlt || m.year}" loading="lazy" />` : ""}
+          </div>
+        </li>`).join("")}
+    </ol>
+    <article class="history-era${t.image ? "" : " no-image"}">
       <div>
-        <h3>${h.era} <span class="era-years">${h.years}</span></h3>
-        ${h.paragraphs.map(p => `<p>${p}</p>`).join("")}
+        <h3>${t.heading}</h3>
+        ${t.paragraphs.map(p => `<p>${p}</p>`).join("")}
       </div>
-      ${h.image ? `<img src="${driveImg(h.image, 800)}" alt="${h.imageAlt || h.era}" loading="lazy" />` : ""}
-    </article>
-  `).join("");
+      ${t.image ? `<img src="${driveImg(t.image, 800)}" alt="${t.imageAlt || t.heading}" loading="lazy" />` : ""}
+    </article>`;
 
   document.getElementById("annual-list").innerHTML = ANNUAL_EVENTS.map(e => `
     <li>

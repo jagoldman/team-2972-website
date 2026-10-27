@@ -16,7 +16,7 @@ framework. It runs as the `landing` container (static Caddy 2.11.7, port 3001, `
 
 ## 2. How the pages are built
 
-- **`js/content.js`** holds nearly all text, links and photo URLs as plain constants (`SITE`, `MENTORS`, `ROBOTS`, ...).
+- **`js/content.js`** holds nearly all text, links and photo URLs as plain constants (`SITE`, `HISTORY`, `ROBOTS`, ...).
   Editing the site means editing this file (README explains each field). `"#"` means "not set"; pages hide it.
 - **`js/components.js`** draws the shared header and footer, and holds helpers: `hostUrl(sub, path)`, `PORTAL_URL`,
   `REQUEST_URL`, `TASKS_URL`, `SIGNOUT_URL`, the theme switch, the service worker registration and
@@ -130,9 +130,8 @@ Chrome path defaults to macOS Google Chrome (`CHROME=` overrides). Fixtures use 
    `/media/<id>-<400|800|1600>.webp`, `docs/CONTENT_EDITING.md` (the contract with the `editor` repo), loader and
    in-browser tests. **It was cut before the redesign, themes and PWA, so it must be rebased onto `main`** (expect
    conflicts in every page, `components.js` and the Caddyfile). Revive only if the editor app goes ahead.
-4. **BACKLOG** (`docs/BACKLOG.md`): rewrite the History section (one paragraph still ends mid-sentence, a `TODO`), and add
-   a "role of the mentors" area. Ask the user two questions first: a short explanation of the mentor role, or a per-mentor
-   roles list; and where it goes (Team page, "Become a Mentor" block, or About).
+4. **BACKLOG** (`docs/BACKLOG.md`): History is now a timeline (done 2026-10-27) and the mentor listing is gone. Open: an
+   optional "role of the mentors" note on `team.html`, 2027 regional dates, and Theseus/Sea Shanty/sponsor/outreach content.
 5. **Deploy and verify (infra).** Deploy `459dd21` and check installability on both hosts (section 4). Also open: should
    the public "Game Analysis Template" link stay now that Kickoff replaces it on the portal (default: leave it).
 6. **Constant-time secret compare** is an accepted exception (CONVENTIONS §4), listed in `docs/PHASE3_TASKS.md`; revisit

@@ -2,7 +2,7 @@
   ============================================================
   SITE CONTENT — edit this file to update almost everything
   ============================================================
-  This is the single place to change team info, mentors, robots,
+  This is the single place to change team info, robots,
   sponsors, events, and images. Every page reads from here, so a
   change here shows up everywhere it's used.
 
@@ -100,144 +100,66 @@ const STRATEGY = [
   { name: "Engage the community", text: "Compete hard, share knowledge, and inspire others through outreach." },
 ];
 
-// Team history by era (from the old About page). Paragraphs may contain links.
-const HISTORY = [
-  {
-    era: "Founding Era",
-    years: "2008–2012",
-    image: "assets/history/rc-dawson-logo.jpg",
-    imageAlt: "The original RC Dawson team crest",
+// Team history: a short timeline of milestones plus a "today" block. Text may contain links.
+// To add photos from the past or present, give a milestone an `image` (Drive path) and `imageAlt`.
+const HISTORY = {
+  // Each year lists "comp" (competition results) and "team" (space, shop, organization) items; comp shows first.
+  milestones: [
+    { year: "2008", items: [
+      { kind: "team", text: "Founded as Robotics Club (RC) Dawson by a Dawson physics teacher, working out of the back of the physics room." },
+    ] },
+    { year: "2009", items: [
+      { kind: "comp", text: "Our first FRC season." },
+    ] },
+    { year: "2011", items: [
+      { kind: "comp", text: `Won the <a href="robot.html?year=2011">Colorado Regional</a> with an aggressive defensive strategy.` },
+    ] },
+    { year: "2013", items: [
+      { kind: "comp", text: "Built our best robot of the team's first five years and moved into the top 25, where we stayed until 2017." },
+    ] },
+    { year: "2014", items: [
+      { kind: "comp", text: "Ranked 7th at the Colorado Regional and captained the 4th alliance to the semifinals." },
+    ] },
+    { year: "2019", items: [
+      { kind: "comp", text: "Ranked 9th in qualifiers and captained alliance 8 in Colorado." },
+    ] },
+    { year: "2021", items: [
+      { kind: "team", text: "Moved out of the physics room and into a new, larger space." },
+    ] },
+    { year: "2023", items: [
+      { kind: "comp", text: "Ranked 9th and led alliance 7 at the Green Country Regional." },
+      { kind: "team", text: "Started a machine shop and wrote the team's first handbook." },
+    ] },
+    { year: "2025", items: [
+      { kind: "team", text: "Added a lathe and a CNC router to the shop." },
+    ] },
+    { year: "2026", items: [
+      { kind: "comp", text: `Our robot <a href="robot.html?year=2026">Theseus</a> won the Utah Regional as the second pick of Alliance 2.` },
+      { kind: "team", text: "Building a permanent two-thirds-length practice field." },
+    ] },
+  ],
+  today: {
+    heading: "Where we are now",
     paragraphs: [
-      `In 2008, our team, Robotics Club (RC) Dawson, was founded by then-physics teacher
-      <a href="https://www.linkedin.com/in/ryan-c-depew/" target="_blank" rel="noopener">Ryan Depew</a>
-      to compete in the 2009 FRC season. For the next 12 years, we operated in the back of the
-      physics room. Our team ranged in size from 10 to 18 students, with two mentors: Mr. Depew
-      and Terry Young, who was one of the longest-serving mentors in the state of Colorado.`,
-      `In 2011, our team had the motto, "Is that fear I see?" Despite a barely operational robot,
-      we won the <a href="robot.html?year=2011">Colorado Regional</a> with an aggressive defensive
-      strategy that disrupted other robots at the last second, preventing them from scoring in the
-      end game. The large founding group of freshmen who had grown into seniors graduated in 2012,
-      along with Mr. Depew, leaving behind a small team of 6 students with a new physics teacher.
-      Thankfully, Terry stayed.`,
+      `Team 2972 is growing and doing well. Grants from the Dawson Parent Association and private
+      donations have turned a back room into a real workshop, and we are building a permanent
+      two-thirds-length practice field. Students machine parts on a lathe, a CNC mill and a CNC router, cut stock on
+      horizontal and vertical bandsaws and a miter saw, and prototype on new 3D printers and a laser
+      engraver/cutter. A new parts library keeps the components we need on hand, so we spend our time
+      building instead of waiting on orders. Students learn to design, make and wire a competition
+      robot with mentors and parent volunteers beside them.`,
     ],
-  },
-  {
-    era: "Nickerson/Miner Era",
-    years: "2013–2018",
-    image: "assets/history/physics-room-2017.jpg",
-    imageAlt: "The team's workspace in the back of the Dawson physics room, 2017",
-    paragraphs: [
-      `In 2013, our team had six students: one senior and five sophomores, as well as a new coach,
-      Erik Nickerson, who was also the new physics teacher. That year, we built our best robot ever
-      and moved from the bottom half of the rankings into the top 25, where we remained until 2017.
-      Check out <a href="https://www.youtube.com/watch?v=ysP5KEcw9FU" target="_blank" rel="noopener">RC Dawson 2972 in 2013</a>,
-      the season "documentary". A highlight of that year was when our alliance was the first
-      <a href="https://youtu.be/xhr9v2J8u3k?t=110" target="_blank" rel="noopener">to block two cross-court frisbee shots</a>
-      from the dominant robot, "King TeC" (2169), a moment that drew cheers from the audience!`,
-      `For the first time, in 2014, our team ranked 7th at the Colorado Regional and were the
-      4th alliance captains, leading our team to the semifinals!`,
-    ],
-  },
-  {
-    era: "Coach Turnover and COVID Era",
-    years: "2019–2022",
-    paragraphs: [
-      `Between the 2019 and 2022 seasons, we endured four coaches over four years, as well as the
-      COVID pandemic. COVID hit many teams and the FIRST organization hard, but our biggest
-      long-term obstacle was a lack of consistency among coaches, which fundamentally eroded our
-      team's culture. Thanks to a great group of seniors, 2019 was our last high-performing year,
-      where we earned rank 9 in qualifiers and captained alliance 8 in Colorado.`,
-      `By the 2022 season, COVID had subsided enough for school to return, and 3 years had passed,
-      so the 2019 freshmen were now seniors. To make matters worse, the team effectively disbanded
-      during COVID, leading to a steep decline in know-how, institutional knowledge, and culture.
-      Additionally, the team was moved out of its longtime back-of-the-physics-room lab into a
-      similarly sized room in the basement.`,
-      `Despite a rough 2022 season, it was filled with silver linings. First, our team was granted
-      the large area outside of our small basement room, effectively quadrupling our space. Second,
-      a 2012–2015 team alum who also mentored the team from 2016–2018, Jacob Goldman, returned to
-      serve as Lead Mentor. With these two new resources, the team began the long rebuilding process.`,
-    ],
-  },
-  {
-    era: "Goldman/Rider Era",
-    years: "2023–Present",
     image: "assets/brand/team-2025.jpg",
     imageAlt: "Team 2972 at a 2025 regional",
-    paragraphs: [
-      `For the 2023 season, another team alum from 2011, Tessa Rider, returned as Head Coach. With
-      the help of a new technical mentor, Rami Mouro, and a few ambitious seniors, the team jumped
-      back to its prior performance, ranking 9th and leading alliance seven at the Green Country
-      Regional. That year, we took advantage of our ample space to build a permanent 2/3-length
-      field area and began equipping a machine shop. Generous grants from the Dawson Parent
-      Association enabled us to buy a CNC mill and a horizontal band saw. Private donations brought
-      us a floor drill press, a new miter saw, and a whole new set of parts to build robots with!
-      For the first time in the team's history, a handbook was written, and parents began to
-      volunteer to fill critical mentoring and logistics roles. In response, the team built its
-      most technically complex and robust robot ever!`,
-      // TODO: the old Google Site cut this off at "...and reorganized all" — finish the sentence.
-      `In 2024, our team adopted new battery wiring standards and brought on two new mentors.`,
-      `In 2025, we continued expanding our shop with a new lathe, Omio CNC router, and additional
-      hand tools.`,
-      `In 2026, our robot <a href="robot.html?year=2026">Theseus</a> won the Utah Regional as the
-      second pick of Alliance 2.`,
-    ],
   },
-];
-
-// Mentors & coaches — add/remove people freely, order = display order
-const MENTORS = [
-  {
-    name: "Tessa Rider",
-    role: "Head Coach",
-    bio: "Dawson School alumna ('11) and parent. M.E. in Nuclear Engineering from the Colorado School of Mines.",
-    photo: "assets/mentors/tessa-rider.jpg",
-    current: true,
-  },
-  {
-    name: "Jacob Goldman",
-    role: "Lead Mentor",
-    bio: "Dawson School alumnus ('15). B.S. in Computer Science & Entrepreneurship from the University of Denver. Startup founder.",
-    photo: "assets/mentors/jacob-goldman.jpg",
-    current: true,
-  },
-  {
-    name: "Rami Mouro",
-    role: "All-Around Mentor",
-    bio: "Extensive FIRST experience as an FTC volunteer and Field Technical Advisor. Works at Qualcomm.",
-    photo: "assets/mentors/rami-mouro.jpg",
-    current: true,
-  },
-  {
-    name: "John Fu",
-    role: "Electronics Mentor",
-    bio: "Hardware Engineer at Cesium Astro.",
-    photo: "assets/mentors/john-fu.jpg",
-    current: true,
-  },
-  {
-    name: "Lisa Kistner",
-    role: "Parent Volunteer",
-    bio: "Architect.",
-    photo: "assets/mentors/lisa-kistner.jpg",
-    current: true,
-  },
-  {
-    name: "Gavin Kistner",
-    role: "Programming & Software Mentor",
-    bio: "Software Engineer at NVIDIA.",
-    photo: "assets/mentors/gavin-kistner.jpg",
-    current: true,
-  },
-];
-
-const PAST_MENTORS = ["Terry Young", "Ryan Depew", "Erik Nickerson", "Kyle Miner"];
+};
 
 /*
   ROBOTS — one object per season, newest first.
 
   Required: year, game.
   Everything else is optional; a page section only shows when its field is set.
-    name          Robot name. Leave "" if unknown (shows "Robot name unknown").
+    name          Robot name. Leave "" if unknown (shows "<year> Robot", e.g. "2022 Robot").
     status        "In service", "Retired", ...
     image         Main photo. Leave "" if there is no photo yet.
     photoSource   Caption for where the photo came from, e.g. "Screenshot from QF2 video".

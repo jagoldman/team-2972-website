@@ -34,7 +34,7 @@ The user supplies the Drive IDs. Each file must be shared "Anyone with the link"
 | l.36 | `SITE.heroImage` | `brand/team-2025.jpg` | `=w1600` |
 | l.37 | `SITE.schoolLogo` | `brand/dawson-school.png` | `=w400` (field is unused by any page; drop it or use it) |
 | l.108, 127, 164 | `HISTORY[].image` | `history/rc-dawson-logo.jpg`, `history/physics-room-2017.jpg`, `brand/team-2025.jpg` | `=w800` |
-| l.193–228 | `MENTORS[].photo` | 6 files in `mentors/` | `=w400` |
+| (removed 2026-10-27) | `MENTORS[].photo` | mentor listing removed from the site | n/a |
 | l.285, 344, 363, 427 | `ROBOTS[].image` | `robots/2025-sea-bunny.jpg`, `2024-sea-shanty.jpg`, `2023-scurvy.jpg`, `2019-robot.jpg` | `=w800` |
 | l.310–331 | `ROBOTS[2025].gallery` | `robots/2025-sea-bunny-cad.png`, `gallery/2025-competition-1…7.jpg`, `gallery/2025-build-1…14.jpg` | `=w600` thumb, link to `=w2000` |
 | l.355 | `ROBOTS[2024].gallery` | `robots/2024-sea-shanty-2.jpg` | same as above |
