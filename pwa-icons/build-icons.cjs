@@ -39,9 +39,20 @@ function gear() {
   const holePath = `M${C + hole} ${C}a${hole} ${hole} 0 1 0 ${-2 * hole} 0a${hole} ${hole} 0 1 0 ${2 * hole} 0Z`;
   return `<path d="${d} ${holePath}" fill="${GOLD}" fill-rule="evenodd" stroke="${GOLD}" stroke-width="12" stroke-linejoin="round"/>`;
 }
+// "2972" drawn as strokes (no font, so icon.svg looks the same everywhere). Each digit is a 50 x 104 path drawn
+// with a 26-unit round stroke, so it is 76 x 130 on the icon; the whole number is 346 wide, inside the safe zone.
+function number2972() {
+  const digits = {
+    2: "M0 26 A25 25 0 0 1 50 26 C50 50 28 66 0 104 H50",
+    9: "M50 30 A25 25 0 1 1 50 29.9 V64 C50 90 36 104 12 104",
+    7: "M0 0 H50 L16 104",
+  };
+  const top = C - 52, left = C - 173 + 13;
+  return [2, 9, 7, 2].map((d, i) => `<path transform="translate(${left + i * 90} ${top})" d="${digits[d]}" fill="none" stroke="${GOLD}" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>`).join("\n    ");
+}
 const GLYPHS = {
   site: gear,                                              // the team: Gears & Buccaneers
-  portal: () => `<path d="M256 104 L124 224 H158 V394 H354 V224 H388 Z M222 394 V294 H290 V394 Z" fill="${GOLD}" fill-rule="evenodd" stroke="${GOLD}" stroke-width="14" stroke-linejoin="round"/>`,
+  portal: number2972,                                      // the portal: the team number (user, 2026-10-29)
   tasks: () => `<circle cx="256" cy="256" r="146" fill="none" stroke="${GOLD}" stroke-width="26"/>
     <path d="M178 262 L236 320 L338 200" fill="none" stroke="${GOLD}" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>`,
   admin: () => `<path d="M256 100 C300 128 346 136 384 138 V252 C384 332 328 384 256 414 C184 384 128 332 128 252 V138 C166 136 212 128 256 100 Z" fill="${GOLD}" stroke="${GOLD}" stroke-width="14" stroke-linejoin="round"/>
@@ -77,7 +88,9 @@ function render(svgText, px, outFile) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
-for (const app of Object.keys(GLYPHS)) {
+// Pass app names to draw only those (node pwa-icons/build-icons.cjs portal); with none, it draws them all.
+const only = process.argv.slice(2);
+for (const app of Object.keys(GLYPHS).filter((a) => !only.length || only.includes(a))) {
   const dir = path.join(OUT, app);
   fs.mkdirSync(dir, { recursive: true });
   const any = svg(app, false), full = svg(app, true);

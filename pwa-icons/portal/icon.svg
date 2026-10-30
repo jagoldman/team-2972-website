@@ -5,5 +5,8 @@
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#bg)"/><rect width="512" height="512" rx="112" fill="url(#glow)"/>
   <rect x="3" y="3" width="506" height="506" rx="109" fill="none" stroke="#e8b931" stroke-opacity="0.28" stroke-width="3"/>
-  <g><path d="M256 104 L124 224 H158 V394 H354 V224 H388 Z M222 394 V294 H290 V394 Z" fill="#e8b931" fill-rule="evenodd" stroke="#e8b931" stroke-width="14" stroke-linejoin="round"/></g>
+  <g><path transform="translate(96 204)" d="M0 26 A25 25 0 0 1 50 26 C50 50 28 66 0 104 H50" fill="none" stroke="#e8b931" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+    <path transform="translate(186 204)" d="M50 30 A25 25 0 1 1 50 29.9 V64 C50 90 36 104 12 104" fill="none" stroke="#e8b931" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+    <path transform="translate(276 204)" d="M0 0 H50 L16 104" fill="none" stroke="#e8b931" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+    <path transform="translate(366 204)" d="M0 26 A25 25 0 0 1 50 26 C50 50 28 66 0 104 H50" fill="none" stroke="#e8b931" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/></g>
 </svg>
