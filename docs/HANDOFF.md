@@ -128,7 +128,7 @@ Chrome path defaults to macOS Google Chrome (`CHROME=` overrides). Fixtures use 
    - Tests: banner rules (installed, dismissed, remembered 30 days), iOS branch by user agent, QR produced offline (no
      network calls, vendored hash), share fallback to copy, AA contrast in both themes (extend `theme-test.html`), banner
      absent from every public page, `/install` 401 without secret / 200 with / 404 on public hosts.
-3. **Editor groundwork (D55), GO AHEAD (user, 2026-10-27; was paused).** Branch `feature/editable-content` (`694c3e5`, local only, not pushed; checked out in the worktree `../landing-editor-rebase`). Adds
+3. **Editor groundwork (D55), GO AHEAD (user, 2026-10-27; was paused).** Branch `feature/editable-content` (`764248e`, rebased on `d2c4189`, local only, not pushed; checked out in the worktree `../landing-editor-rebase`). Adds
    `js/content-loader.js` (content.js is the default; `/content/content.json` from the editor replaces it when valid),
    `data-ck` keys on every field, media image support, container routes for `/content/content.json` and
    `/media/<id>-<400|800|1600>.webp`, `docs/CONTENT_EDITING.md` (the contract with the `editor` repo), loader and
