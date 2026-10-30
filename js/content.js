@@ -598,8 +598,9 @@ const MEDIA_PHOTOS = [
   "assets/gallery/2025-build-1.jpg",
   "assets/history/physics-room-2017.jpg",
 ];
+// A video is a YouTube embed URL, or { url, caption }.
 const MEDIA_VIDEOS = [
-  "https://www.youtube.com/embed/CB1DmHxDGQw",
+  { url: "https://www.youtube.com/embed/fZ4p6_IFnls", caption: "2026 Utah Regional, Final 1" },
   "https://www.youtube.com/embed/ysP5KEcw9FU",
 ];
 const MEDIA_PUBLICITY = [

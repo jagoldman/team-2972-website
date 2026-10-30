@@ -73,7 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const videoGrid = document.getElementById("video-grid");
   videoGrid.innerHTML = MEDIA_VIDEOS.length
-    ? MEDIA_VIDEOS.map(src => `<div class="card"><iframe src="${src}" style="width:100%;aspect-ratio:16/9;border:0;"></iframe></div>`).join("")
+    ? MEDIA_VIDEOS.map(v => typeof v === "string" ? { url: v } : v).map(v => `<div class="card"><iframe src="${v.url}" title="${v.caption || "Team video"}" style="width:100%;aspect-ratio:16/9;border:0;" allowfullscreen></iframe>${v.caption ? `<div class="card-body"><p>${v.caption}</p></div>` : ""}</div>`).join("")
     : `<p class="empty-note">Video gallery coming soon.</p>`;
 
   const publicity = document.getElementById("publicity-list");
