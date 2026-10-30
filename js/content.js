@@ -319,7 +319,7 @@ const ROBOTS = [
   {
     year: "2022",
     game: "Rapid React",
-    name: "", // FIRST records say "Helga" (carried over from 2018) — confirm
+    name: "Kunagunda", // confirmed by the user 2026-10-30 (FIRST records said "Helga", carried over from 2018)
     stats: "2 regionals · rebuilding year",
     gameSummary: "Rapid React is the 2022 game. Robots shoot Cargo balls into a central Hub and climb the rungs of a Hangar at the end of the match.",
     results: [
