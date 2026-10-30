@@ -97,7 +97,7 @@ Chrome path defaults to macOS Google Chrome (`CHROME=` overrides). Fixtures use 
 ## 7. Open work
 
 1. **Photo IDs (Phase 3 remainder), ON HOLD (user, 2026-10-27, MASTER_PLAN D68).** Do not start this until the user
-   says so. `docs/photo-ids.csv` (35 files) is for the user to fill in with Drive IDs; when it comes back, the plan below
+   says so. `docs/photo-ids.csv` (76 photo rows) is for the user to fill in with Drive IDs; when it comes back, the plan below
    applies. 43 distinct local files must be uploaded to Drive ("Anyone with the link") and their
    IDs put into `content.js`: gallery 21, robots 7, mentors 6, brand 5, history 2, outreach 2 (some reused).
    Not referenced, skip: `history/early-robot.jpg`, `robots/2025-reefscape-logo.png`. The full table of which field
