@@ -42,26 +42,29 @@
 
 <script src="config.js"></script>
 <script src="js/content.js"></script>
+<script src="js/content-loader.js"></script>
 <script src="js/components.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("robot-archive").innerHTML = ROBOTS.map(r => `
-    <a class="card robot-card${r.image ? "" : " no-photo"}" href="${robotUrl(r)}">
+onContent(() => {
+  const archive = document.getElementById("robot-archive");
+  archive.setAttribute("data-ck", "ROBOTS");
+  archive.innerHTML = ROBOTS.map((r, i) => `
+    <a class="card robot-card${r.image ? "" : " no-photo"}" href="${robotUrl(r)}"${ck(`ROBOTS[${i}]`)}>
       ${r.image
-        ? `<img src="${driveImg(r.image, 800)}"${imgPos(r)} alt="${robotName(r)}, the ${r.year} robot" loading="lazy" />`
-        : `<div class="photo-wanted"><span aria-hidden="true">${r.year}</span>Photo wanted</div>`}
+        ? `<img${imgAttrs(r.image, 800)}${imgPos(r)}${ck(`ROBOTS[${i}].image`)} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}" loading="lazy" />`
+        : `<div class="photo-wanted"${ck(`ROBOTS[${i}].image`, "image")}><span aria-hidden="true" data-ck-ignore>${esc(r.year)}</span>Photo wanted</div>`}
       <div class="card-body">
-        <div class="meta">${r.year} · ${r.game}</div>
-        <h3>${robotName(r)}</h3>
-        ${r.tagline ? `<p>${r.tagline}</p>` : ""}
-        ${r.stats ? `<p class="stats-line">${r.stats}</p>` : ""}
+        <div class="meta"><span${ck(`ROBOTS[${i}].year`)}>${esc(r.year)}</span> · <span${ck(`ROBOTS[${i}].game`)}>${esc(r.game)}</span></div>
+        <h3${ck(`ROBOTS[${i}].name`)}>${esc(robotName(r))}</h3>
+        ${r.tagline ? `<p${ck(`ROBOTS[${i}].tagline`)}>${esc(r.tagline)}</p>` : ""}
+        ${r.stats ? `<p class="stats-line"${ck(`ROBOTS[${i}].stats`)}>${esc(r.stats)}</p>` : ""}
       </div>
     </a>
   `).join("");
 
   document.getElementById("archive-ask").innerHTML = `We don't have photos or names for many of
     our older robots. Were you on the team? Send photos, robot names, or stories to
-    <a href="mailto:${SITE.email}">${SITE.email}</a>.`;
+    <a href="mailto:${esc(SITE.email)}"${ck("SITE.email")}>${esc(SITE.email)}</a>.`;
 });
 </script>
 </body>

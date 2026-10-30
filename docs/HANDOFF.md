@@ -128,13 +128,13 @@ Chrome path defaults to macOS Google Chrome (`CHROME=` overrides). Fixtures use 
    - Tests: banner rules (installed, dismissed, remembered 30 days), iOS branch by user agent, QR produced offline (no
      network calls, vendored hash), share fallback to copy, AA contrast in both themes (extend `theme-test.html`), banner
      absent from every public page, `/install` 401 without secret / 200 with / 404 on public hosts.
-3. **Editor groundwork (D55), GO AHEAD (user, 2026-10-27; was paused).** Branch `feature/editable-content` (`764248e`, rebased on `d2c4189`, local only, not pushed; checked out in the worktree `../landing-editor-rebase`). Adds
+3. **Editor groundwork (D55), MERGED into `main` (2026-10-30).** Branch `feature/editable-content` (`764248e`, rebased on `d2c4189`) was merged into `main` with a merge commit, and the branch was fast-forwarded to it, so both names deploy the same code. It adds
    `js/content-loader.js` (content.js is the default; `/content/content.json` from the editor replaces it when valid),
    `data-ck` keys on every field, media image support, container routes for `/content/content.json` and
    `/media/<id>-<400|800|1600>.webp`, `docs/CONTENT_EDITING.md` (the contract with the `editor` repo), loader and
-   in-browser tests. **Rebased onto `main` on 2026-10-27** (loader, site, theme, PWA, legal and container tests pass). It moved with `main`: `HISTORY` is
-   now `{ milestones, today }`, `SCHEDULE_2026` is `SCHEDULE_2027`, `MENTORS`/`PAST_MENTORS` are gone (listed at the end of
-   `docs/CONTENT_EDITING.md`; the editor's schema must follow). Not merged to `main` yet. Lead session to log the change to D55 in MASTER_PLAN.
+   in-browser tests. The merge kept main's photo work (Drive photos for 2012-2019, outreach photos, the 2020 and 2021 robots removed)
+   and adds the new framing fields `SITE.heroPosition` and `ROBOTS[].imagePosition` (checked by `safePosition()` in `js/components.js`).
+   Schema changes for the editor are listed at the end of `docs/CONTENT_EDITING.md`. Lead session to log the change to D55 in MASTER_PLAN.
 4. **BACKLOG** (`docs/BACKLOG.md`): History is now a timeline (done 2026-10-27) and the mentor listing is gone. "Role of the mentors" section is on `mentor.html` (done 2026-10-27). Open: 2027 regional dates, and Theseus/Sea Shanty/sponsor/outreach content.
 5. **Deploy and verify (infra).** Deploy `459dd21` and check installability on both hosts (section 4). Also open: should
    the public "Game Analysis Template" link stay now that Kickoff replaces it on the portal (default: leave it).

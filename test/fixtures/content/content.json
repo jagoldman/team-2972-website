@@ -1,0 +1,357 @@
+{
+  "format": 1,
+  "version": 7,
+  "publishedAt": "2026-10-20T12:00:00.000Z",
+  "content": {
+    "SITE": {
+      "teamNumber": "9999",
+      "teamName": "Fixture Robotics",
+      "school": "Example School",
+      "location": "Exampleville, CO",
+      "founded": "2001",
+      "tagline": "Fixture tagline for tests.",
+      "mission": "Fixture mission text for tests.",
+      "email": "team@example.com",
+      "instagram": "https://www.instagram.com/example/",
+      "instagramHandle": "@example",
+      "github": "https://github.com/example",
+      "logo": "media:00000000000000000001",
+      "heroImage": "media:00000000000000000002",
+      "schoolLogo": "media:00000000000000000001",
+      "schoolUrl": "https://example.com",
+      "onshapePublic": "https://example.com/onshape"
+    },
+    "ANNUAL_EVENTS": [
+      {
+        "name": "Fixture Fest",
+        "when": "Fall",
+        "description": "A yearly fixture event."
+      }
+    ],
+    "TEAM_CALENDAR_URL": "https://example.com/calendar",
+    "ABOUT_SCHOOL": {
+      "heading": "About Example School",
+      "body": "Fixture school text with a [link](https://example.com/school) in it."
+    },
+    "ABOUT_FIRST": {
+      "heading": "What is Fixture Robotics?",
+      "body": "Fixture **bold** and *italic* text."
+    },
+    "VALUES": [
+      {
+        "name": "Fixture Value",
+        "text": "Value text."
+      }
+    ],
+    "STRATEGY": [
+      {
+        "name": "Fixture Way",
+        "text": "Way text."
+      }
+    ],
+    "HISTORY": {
+      "milestones": [
+        {
+          "year": "2001",
+          "image": "media:00000000000000000004",
+          "imageAlt": "",
+          "items": [
+            {
+              "kind": "comp",
+              "text": "Para one with [a site link](robot.html?year=2030) and **bold**."
+            },
+            {
+              "kind": "team",
+              "text": "Para two has <b>html</b> & a [bad link](javascript:alert(1)) that must not run."
+            }
+          ]
+        },
+        {
+          "year": "2011",
+          "items": [
+            {
+              "kind": "team",
+              "text": "Only text here."
+            }
+          ]
+        }
+      ],
+      "today": {
+        "heading": "Fixture today",
+        "paragraphs": [
+          "Today paragraph."
+        ],
+        "image": "media:00000000000000000003",
+        "imageAlt": "A fixture photo"
+      }
+    },
+    "ROBOTS": [
+      {
+        "year": "2030",
+        "game": "Fixture Game",
+        "name": "Fixture Bot",
+        "status": "In service",
+        "image": "media:00000000000000000005",
+        "photoSource": "A fixture caption",
+        "tagline": "Fixture tagline.",
+        "stats": "1 event · fixture rank",
+        "gameSummary": "Summary with [a link](https://example.com/game).",
+        "gameVideo": "https://www.youtube.com/watch?v=aaaaaaaaaaa",
+        "description": "Fixture description.",
+        "specs": [
+          {
+            "label": "Weight",
+            "value": "100 lbs"
+          }
+        ],
+        "mechanisms": [
+          {
+            "name": "Arm",
+            "text": "Moves things."
+          }
+        ],
+        "results": [
+          {
+            "event": "Fixture Regional",
+            "result": "Rank 1 of 40",
+            "tba": "2030test"
+          },
+          {
+            "event": "Fixture Scrimmage",
+            "result": "Scrimmage"
+          }
+        ],
+        "awards": [
+          "Fixture Award"
+        ],
+        "gallery": [
+          "media:00000000000000000006",
+          "media:00000000000000000007"
+        ],
+        "videos": [
+          "https://youtu.be/bbbbbbbbbbb"
+        ],
+        "matchVideos": [
+          {
+            "label": "Final 1",
+            "url": "https://example.com/final1"
+          }
+        ],
+        "buildBlog": [
+          {
+            "label": "Week 1",
+            "url": "https://example.com/week1"
+          }
+        ],
+        "links": [
+          {
+            "label": "Code",
+            "url": "https://example.com/code"
+          }
+        ],
+        "binder": "https://example.com/binder.pdf",
+        "reveal": "https://example.com/reveal"
+      },
+      {
+        "year": "2029",
+        "game": "Older Game",
+        "name": "",
+        "stats": "Rookie season",
+        "results": []
+      }
+    ],
+    "SPONSOR_TIERS": [
+      {
+        "tier": "Fixture Tier",
+        "sponsors": [
+          {
+            "name": "Example Corp",
+            "logo": "media:00000000000000000001",
+            "url": "https://example.com/sponsor"
+          }
+        ]
+      },
+      {
+        "tier": "Empty Tier",
+        "sponsors": []
+      }
+    ],
+    "SPONSOR_PACKET_URL": "https://example.com/packet.pdf",
+    "OUTREACH_EVENTS": [
+      {
+        "name": "Fixture Demo",
+        "date": "Annual",
+        "description": "A demo for fixtures.",
+        "image": "media:00000000000000000008"
+      }
+    ],
+    "RESOURCE_LINKS": [
+      {
+        "category": "Fixture Docs",
+        "items": [
+          {
+            "label": "Fixture handbook",
+            "url": "https://example.com/handbook",
+            "note": "A fixture note."
+          },
+          {
+            "label": "Not set yet",
+            "url": "#"
+          }
+        ]
+      },
+      {
+        "category": "Hidden group",
+        "items": [
+          {
+            "label": "Hidden",
+            "url": "#"
+          }
+        ]
+      }
+    ],
+    "CAD_OVERVIEW": [
+      {
+        "heading": "Fixture models",
+        "body": "Body text."
+      },
+      {
+        "heading": "Fixture list",
+        "list": [
+          "One",
+          "Two"
+        ],
+        "after": "After text."
+      }
+    ],
+    "MEDIA_PHOTOS": [
+      "media:00000000000000000009",
+      "media:0000000000000000000a"
+    ],
+    "MEDIA_VIDEOS": [
+      { "url": "https://www.youtube.com/embed/ccccccccccc", "caption": "A <b>fixture</b> caption" },
+      "https://evil.example.com/not-youtube"
+    ],
+    "MEDIA_PUBLICITY": [
+      {
+        "title": "Fixture press",
+        "url": "https://example.com/press",
+        "outlet": "Example Daily"
+      }
+    ],
+    "SCHEDULE_2027": [
+      {
+        "event": "Fixture Regional",
+        "dates": "April 1-3, 2027",
+        "location": "Exampleville, CO"
+      }
+    ],
+    "REQUEST_ACCESS": [
+      {
+        "name": "Fixture Binder",
+        "what": "A fixture resource."
+      }
+    ]
+  },
+  "media": {
+    "00000000000000000001": {
+      "alt": "Fixture team logo",
+      "width": 3000,
+      "height": 2000,
+      "widths": [
+        400,
+        800,
+        1600
+      ]
+    },
+    "00000000000000000002": {
+      "alt": "Fixture team photo",
+      "width": 3000,
+      "height": 2000,
+      "widths": [
+        400,
+        800,
+        1600
+      ]
+    },
+    "00000000000000000003": {
+      "alt": "A fixture history photo",
+      "width": 3000,
+      "height": 2000,
+      "widths": [
+        400,
+        800,
+        1600
+      ]
+    },
+    "00000000000000000004": {
+      "alt": "Pat Example smiling",
+      "width": 3000,
+      "height": 2000,
+      "widths": [
+        400,
+        800,
+        1600
+      ]
+    },
+    "00000000000000000005": {
+      "alt": "The fixture robot on the field",
+      "width": 3000,
+      "height": 2000,
+      "widths": [
+        400,
+        800,
+        1600
+      ]
+    },
+    "00000000000000000006": {
+      "alt": "Fixture gallery photo one",
+      "width": 3000,
+      "height": 2000,
+      "widths": [
+        400,
+        800
+      ]
+    },
+    "00000000000000000007": {
+      "alt": "Fixture gallery photo two",
+      "width": 3000,
+      "height": 2000,
+      "widths": [
+        400,
+        800,
+        1600
+      ]
+    },
+    "00000000000000000008": {
+      "alt": "A fixture outreach event",
+      "width": 3000,
+      "height": 2000,
+      "widths": [
+        400,
+        800,
+        1600
+      ]
+    },
+    "00000000000000000009": {
+      "alt": "Fixture media photo one",
+      "width": 3000,
+      "height": 2000,
+      "widths": [
+        400,
+        800,
+        1600
+      ]
+    },
+    "0000000000000000000a": {
+      "alt": "Fixture media photo two",
+      "width": 3000,
+      "height": 2000,
+      "widths": [
+        400,
+        800,
+        1600
+      ]
+    }
+  }
+}

@@ -14,6 +14,7 @@ function portalUrlFor(host, protocol = "http:") {
   ctx.window = ctx;
   ctx.matchMedia = () => ({ matches: false });
   ctx.addEventListener = () => {};
+  ctx.onContent = () => {};   // defined by content-loader.js; the layout is not mounted here
   ctx.document = { addEventListener() {}, body: { hasAttribute: () => false }, querySelector: () => null, querySelectorAll: () => [] };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "components.js"), "utf8") + ";globalThis.out = [PORTAL_URL, REQUEST_URL, SIGNOUT_URL];", ctx);

@@ -61,6 +61,7 @@
 
 <script src="/config.js"></script>
 <script src="/js/content.js"></script>
+<script src="/js/content-loader.js"></script>
 <script src="/js/components.js"></script>
 <script src="/js/install.js"></script>
 <script>
@@ -161,7 +162,7 @@ function greetingWord() {
   return h < 5 ? "Burning the midnight oil," : h < 12 ? "Good morning," : h < 18 ? "Good afternoon," : "Good evening,";
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+onContent(async () => {
   document.getElementById("sign-out").href = SIGNOUT_URL;
   initInstallBanner();
   document.getElementById("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>site test</title>
+<!-- Loaded by test/site-test.sh in headless Chrome. It opens each real page in an iframe, waits for
+     the content to render, checks the page, and writes one line per check into #out. -->
+</head>
+<body>
+<pre id="out"></pre>
+<div id="frames"></div>
+<script>
+const params = new URLSearchParams(location.search);
+const MODE = params.get("mode") || "default";          // default | fixture | broken
+const out = document.getElementById("out");
+let failures = 0;
+function report(ok, name, detail) {
+  if (!ok) failures++;
+  out.textContent += `${ok ? "ok  " : "FAIL"} ${MODE}: ${name}${!ok && detail ? ` -- ${detail}` : ""}\n`;
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const norm = (s) => String(s).replace(/\s+/g, " ").trim();
+// Visible text of a rich-text string: [text](url) -> text, ** and * removed
+const plain = (s) => norm(String(s).replace(/\[([^\]]+)\]\((?:[^()\s]|\([^()\s]*\))+\)/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1$2"));
+
+// Pages and the list containers each one must have (so an editor can always add an item).
+// Robot pages are chosen per mode, below.
+const PAGES = [
+  { url: "index.html", lists: ["ROBOTS", "SCHEDULE_2027"] },
+  { url: "about.html", lists: ["VALUES", "STRATEGY", "HISTORY.milestones", "ANNUAL_EVENTS", "SCHEDULE_2027"] },
+  { url: "robots.html", lists: ["ROBOTS"] },
+  { url: "sponsors.html", lists: ["SPONSOR_TIERS", "SPONSOR_TIERS[0].sponsors"] },
+  { url: "outreach.html", lists: ["OUTREACH_EVENTS"] },
+  { url: "media.html", lists: ["MEDIA_PHOTOS", "MEDIA_VIDEOS", "MEDIA_PUBLICITY"] },
+  { url: "resources.html", lists: ["RESOURCE_LINKS", "CAD_OVERVIEW", "REQUEST_ACCESS"] },
+  { url: "contact.html", lists: [] },
+];
+// Header and footer fields every page shows
+const COMMON = ["SITE.logo", "SITE.teamNumber", "SITE.teamName", "SITE.email", "SITE.instagramHandle", "SITE.school", "SITE.location", "SITE.founded"];
+const ROBOT_PAGES = MODE === "fixture"
+  ? [{ url: "robot.html?year=2030", lists: ["ROBOTS[0].awards", "ROBOTS[0].results", "ROBOTS[0].specs", "ROBOTS[0].mechanisms", "ROBOTS[0].gallery", "ROBOTS[0].videos", "ROBOTS[0].matchVideos", "ROBOTS[0].buildBlog"] },
+     { url: "robot.html?year=2029", lists: [] }]
+  : [{ url: "robot.html?year=2025", lists: ["ROBOTS[1].results", "ROBOTS[1].specs", "ROBOTS[1].mechanisms", "ROBOTS[1].gallery", "ROBOTS[1].videos", "ROBOTS[1].links"] },
+     { url: "robot.html?year=2023", lists: ["ROBOTS[3].mechanisms", "ROBOTS[3].specs"] },
+     { url: "robot.html?year=2022", lists: ["ROBOTS[4].results"] }];
+
+async function openPage(url) {
+  const f = document.createElement("iframe");
+  f.style.cssText = "width:1280px;height:900px;border:0";
+  document.getElementById("frames").append(f);
+  const errors = [];
+  f.src = "/" + url;
+  // Wait for the page's own content, not for the iframe's load event (that would also wait for
+  // outside embeds such as YouTube players).
+  const ready = () => {
+    try {
+      const w = f.contentWindow;
+      return w.location.href !== "about:blank" && w.document.documentElement.classList.contains("content-ready");
+    } catch (e) { return false; }
+  };
+  for (let i = 0; i < 200 && !ready(); i++) await sleep(50);
+  const w = f.contentWindow;
+  w.addEventListener("error", (e) => errors.push(e.message));
+  await sleep(250); // after the page's own render and effects
+  return { frame: f, win: w, doc: w.document, errors };
+}
+
+function leafStrings(v, acc) {
+  if (typeof v === "string") acc.add(v);
+  else if (Array.isArray(v)) v.forEach((x) => leafStrings(x, acc));
+  else if (v && typeof v === "object") Object.values(v).forEach((x) => leafStrings(x, acc));
+  return acc;
+}
+
+async function checkPage(p) {
+  const label = p.url;
+  const { frame, win, doc, errors } = await openPage(p.url);
+  try {
+    report(win.CONTENT_SOURCE === (MODE === "fixture" ? "published" : "default"), `${label}: content source is ${MODE === "fixture" ? "published" : "built-in"}`, `got ${win.CONTENT_SOURCE}`);
+    report(!!doc.querySelector(".site-header .brand") && !!doc.querySelector(".site-footer"), `${label}: header and footer rendered`);
+    report(errors.length === 0, `${label}: no script errors`, errors.join(" | "));
+
+    const cks = [...doc.querySelectorAll("[data-ck]")];
+    report(cks.length > 5, `${label}: has data-ck elements (${cks.length})`);
+
+    // 1) every data-ck / data-ck-href / data-ck-alt path points at something real
+    // (A field that is not set yet, such as a robot with no tagline, may still be keyed: the editor
+    // creates it. Its parent must exist.)
+    const resolvesOrCanBeCreated = (path) => {
+      if (win.contentGet(path) !== undefined) return true;
+      const parent = path.replace(/(\.[A-Za-z_]\w*|\[\d+\])$/, "");
+      const pv = parent === path ? undefined : win.contentGet(parent);
+      return pv !== null && typeof pv === "object";
+    };
+    const bad = [];
+    for (const attr of ["data-ck", "data-ck-href", "data-ck-alt"]) {
+      for (const el of doc.querySelectorAll(`[${attr}]`)) {
+        const path = el.getAttribute(attr);
+        if (!resolvesOrCanBeCreated(path)) bad.push(`${attr}=${path}`);
+      }
+    }
+    report(bad.length === 0, `${label}: every key resolves to a content value`, bad.slice(0, 5).join(", "));
+
+    // 2) the header/footer fields and this page's lists are marked
+    const present = new Set(cks.map((e) => e.getAttribute("data-ck")));
+    const missing = [...COMMON, ...p.lists].filter((k) => !present.has(k));
+    report(missing.length === 0, `${label}: required keys present`, "missing " + missing.join(", "));
+    const notLists = p.lists.filter((k) => !Array.isArray(win.contentGet(k)));
+    report(notLists.length === 0, `${label}: list containers point at lists`, notLists.join(", "));
+
+    // 3) an item key has its list's container on the page (so "add item" works)
+    const orphans = [];
+    for (const path of present) {
+      const m = path.match(/^(.*)\[\d+\]$/);
+      if (m && !present.has(m[1])) orphans.push(path);
+    }
+    report(orphans.length === 0, `${label}: every list item sits in a keyed list`, orphans.slice(0, 5).join(", "));
+
+    // 4) every image is keyed (or marked decorative)
+    const unkeyed = [...doc.querySelectorAll("img")].filter((i) => !i.hasAttribute("data-ck") && !i.hasAttribute("data-ck-ignore")).map((i) => i.getAttribute("src"));
+    report(unkeyed.length === 0, `${label}: every <img> has a data-ck`, unkeyed.slice(0, 3).join(", "));
+
+    // 5) text that comes from content is keyed: the smallest element showing a whole content string must carry data-ck
+    const strings = new Set();
+    for (const n of win.CONTENT_SECTIONS) leafStrings(win.contentGet(n), strings);
+    const wanted = new Set([...strings].map(plain).filter((s) => s.length >= 3));
+    const unkeyedText = [];
+    for (const el of doc.body.querySelectorAll("*")) {
+      if (["SCRIPT", "STYLE", "NOSCRIPT", "IFRAME", "svg"].includes(el.tagName) || el.closest("[data-ck-ignore]")) continue;
+      if (el.closest(".w")) continue;                   // a word that splitWords() wrapped for the heading animation
+      if (el.closest('[data-ck-type="rich"]')) continue;   // a link inside a rich paragraph is part of that paragraph
+      const text = norm(el.textContent);
+      if (!wanted.has(text)) continue;
+      const childShowsIt = [...el.children].some((c) => norm(c.textContent) === text);
+      if (childShowsIt) continue;                       // a smaller element shows it; that one is checked
+      const owner = el.closest("[data-ck]");
+      if (owner && norm(owner.textContent) === text) continue;   // the keyed element around it shows the same text
+      if (!el.hasAttribute("data-ck")) unkeyedText.push(`${el.outerHTML.replace(/\s+/g, " ").slice(0, 110)} in ${el.parentElement ? el.parentElement.className || el.parentElement.tagName : "?"}`);
+    }
+    report(unkeyedText.length === 0, `${label}: content text is keyed`, unkeyedText.slice(0, 4).join("; "));
+
+    // 6) links that come from content carry data-ck-href
+    const urlStrings = new Set([...strings].filter((s) => /^https?:\/\//.test(s)));
+    const unkeyedLinks = [...doc.body.querySelectorAll("a[href]")]
+      .filter((a) => urlStrings.has(a.getAttribute("href")) && !a.hasAttribute("data-ck-href") && !a.closest('[data-ck-type="rich"]'))
+      .map((a) => a.getAttribute("href"));
+    report(unkeyedLinks.length === 0, `${label}: links from content carry data-ck-href`, unkeyedLinks.slice(0, 3).join(", "));
+
+    // 7) nothing dangerous got through
+    report(doc.querySelectorAll('a[href^="javascript" i], a[href^="data:" i]').length === 0, `${label}: no javascript:/data: links`);
+    const frames = [...doc.querySelectorAll("iframe")].map((i) => i.getAttribute("src"));
+    report(frames.every((s) => /^https:\/\/www\.youtube\.com\/embed\/[\w-]{11}$/.test(s)), `${label}: iframes are YouTube embeds only`, frames.join(", "));
+    report(![...doc.querySelectorAll("[onerror],[onload],[onclick],[onmouseover]")].length, `${label}: no inline event handlers in content`);
+
+    return { doc, win };
+  } finally {
+    if (!p.keep) frame.remove();
+  }
+}
+
+(async () => {
+  const pages = [...PAGES, ...ROBOT_PAGES];
+  const results = {};
+  for (const p of pages) {
+    try { results[p.url] = await checkPage({ ...p, keep: false }); }
+    catch (e) { report(false, `${p.url}: page test crashed`, e && e.message); }
+  }
+
+  // ---------- mode-specific checks ----------
+  const get = async (url) => openPage(url);
+  if (MODE === "fixture") {
+    let { doc, win, frame } = await get("index.html");
+    report(doc.getElementById("hero-tagline").textContent === "Fixture tagline for tests.", "fixture text is shown (hero tagline)");
+    report(/\/media\/00000000000000000002-1600\.webp/.test(doc.getElementById("hero-bg").style.backgroundImage), "media: hero background resolves to /media/00000000000000000002-1600.webp", doc.getElementById("hero-bg").style.backgroundImage);
+    report(doc.querySelector('.brand-logo').getAttribute("src") === "/media/00000000000000000001-400.webp", "media: header logo (asked for 200) resolves to the 400 width", doc.querySelector('.brand-logo').getAttribute("src"));
+    report(doc.querySelector(".brand-text").textContent.includes("9999") && doc.querySelector(".brand-text").textContent.includes("Fixture Robotics"), "fixture team number and name are in the header");
+    const reelImg = doc.querySelector("#robot-showcase img");
+    report(reelImg && reelImg.getAttribute("src") === "/media/00000000000000000005-800.webp", "media: robot photo in the reel is the 800 width", reelImg && reelImg.getAttribute("src"));
+    report(reelImg && reelImg.getAttribute("srcset") === "/media/00000000000000000005-400.webp 400w, /media/00000000000000000005-800.webp 800w, /media/00000000000000000005-1600.webp 1600w", "media: srcset lists every stored width", reelImg && reelImg.getAttribute("srcset"));
+    report(doc.querySelectorAll("#robot-showcase .bot").length === 1, "fixture has one robot with a photo in the reel");
+    frame.remove();
+
+    ({ doc, win, frame } = await get("about.html"));
+    const hist = [...doc.querySelectorAll("#history .timeline-body ul li, #history p")];
+    report(hist.some((p) => p.querySelector("a[href='robot.html?year=2030']") && p.querySelector("strong")), "rich text: site link and bold in a history paragraph");
+    const para2 = hist.find((p) => p.textContent.includes("Para two"));
+    report(para2 && !para2.querySelector("b") && para2.textContent.includes("<b>html</b>"), "rich text: raw HTML is shown as text, not run");
+    report(para2 && !para2.querySelector("a") && para2.textContent.includes("bad link"), "rich text: javascript: link is dropped, its words stay");
+    const tl = doc.querySelector("#history .timeline img");
+    report(tl.getAttribute("src") === "/media/00000000000000000004-800.webp", "media: timeline photo resolves to the 800 width", tl.getAttribute("src"));
+    report(tl.getAttribute("alt") === "Pat Example smiling", "media: timeline photo uses the media alt text", tl.getAttribute("alt"));
+    report(doc.querySelector("#history .history-era img").getAttribute("src") === "/media/00000000000000000003-800.webp", "media: history photo resolves to the 800 width");
+    report(doc.getElementById("calendar-link").getAttribute("href") === "https://example.com/calendar", "TEAM_CALENDAR_URL feeds the calendar link");
+    frame.remove();
+
+    ({ doc, win, frame } = await get("sponsors.html"));
+    report(doc.getElementById("packet-link").getAttribute("href") === "https://example.com/packet.pdf", "SPONSOR_PACKET_URL feeds the packet link");
+    report(doc.querySelectorAll(".sponsor-tile img").length === 1 && /Empty Tier/.test(doc.body.textContent), "sponsor tiers: tile shown, empty tier still listed");
+    report(!!doc.querySelector('.sponsor-tile a[href="https://example.com/sponsor"][data-ck-href="SPONSOR_TIERS[0].sponsors[0].url"] img'), "sponsor with a url: the logo links to it");
+    frame.remove();
+
+    ({ doc, win, frame } = await get("media.html"));
+    report(doc.querySelectorAll("#photo-grid img").length === 2 && doc.querySelector("#photo-grid img").getAttribute("src") === "/media/00000000000000000009-800.webp", "media: gallery photos resolve to the 800 width");
+    report(doc.querySelectorAll("#video-grid iframe").length === 1, "media: the non-YouTube video is not embedded");
+    frame.remove();
+
+    ({ doc, win, frame } = await get("robot.html?year=2030"));
+    const gal = [...doc.querySelectorAll(".gallery-grid a")];
+    report(gal.length === 2 && gal[0].getAttribute("href") === "/media/00000000000000000006-800.webp" && gal[0].querySelector("img").getAttribute("src") === "/media/00000000000000000006-800.webp", "media: only stored widths are used (this image has 400 and 800)", gal[0] && gal[0].getAttribute("href"));
+    report(gal[0].querySelector("img").getAttribute("srcset") === "/media/00000000000000000006-400.webp 400w, /media/00000000000000000006-800.webp 800w", "media: srcset lists only the stored widths", gal[0].querySelector("img").getAttribute("srcset"));
+    report(gal[0].querySelector("img").getAttribute("alt") === "Fixture gallery photo one", "media: alt text comes from the published media list", gal[0].querySelector("img").getAttribute("alt"));
+    report(doc.querySelector(".robot-hero-image img").getAttribute("src") === "/media/00000000000000000005-1600.webp", "media: robot hero photo resolves to the 1600 width");
+    frame.remove();
+
+    ({ doc, win, frame } = await get("resources.html"));
+    const groups = [...doc.querySelectorAll(".resource-group")];
+    report(groups.length === 1 && groups[0].querySelectorAll("li").length === 1, "resources: unset (#) links and groups are hidden");
+    report(groups[0].querySelector("li").getAttribute("data-ck") === "RESOURCE_LINKS[0].items[0]", "resources: keys keep their place in the full list");
+    const note = doc.querySelector('.res-note[data-ck="RESOURCE_LINKS[0].items[0].note"]');
+    report(note && note.textContent === "A fixture note.", "resources: an item's note is shown and keyed");
+    report(doc.getElementById("onshape-public").getAttribute("href") === "https://example.com/onshape", "SITE.onshapePublic feeds the Onshape link");
+    report(doc.querySelector('[data-ck="REQUEST_ACCESS[0].name"]').textContent === "Fixture Binder", "request access: fixture resource is shown");
+    frame.remove();
+
+    ({ doc, win, frame } = await get("media.html"));
+    const cap = doc.querySelector('[data-ck="MEDIA_VIDEOS[0].caption"]');
+    report(cap && cap.textContent === "A <b>fixture</b> caption" && !cap.querySelector("b"), "media: a video caption is shown as text, with its key");
+    frame.remove();
+  }
+
+  if (MODE === "broken") {
+    const { doc, win, frame } = await get("index.html");
+    report(win.CONTENT_SOURCE === "default", "invalid content.json: page uses the built-in content", win.CONTENT_SOURCE);
+    report(doc.getElementById("mission-text").textContent.startsWith("To build a confident"), "invalid content.json: the page still has its text");
+    frame.remove();
+  }
+
+  if (MODE === "default") {
+    // Reflected input must not become HTML
+    const hostile = "robot.html?year=" + encodeURIComponent('<img src=x onerror="window.__pwned=1">');
+    const { doc, win, frame } = await get(hostile);
+    report(!win.__pwned && !doc.querySelector("img[onerror]"), "robot.html?year=<script-ish> is shown as text, not run");
+    report(doc.body.textContent.includes('<img src=x onerror="window.__pwned=1">'), "the odd year is visible as plain text");
+    frame.remove();
+
+    // Page with no such season
+    const nf = await get("robot.html?year=1999");
+    report(/Robot not found/.test(nf.doc.body.textContent), "unknown season shows 'Robot not found'");
+    nf.frame.remove();
+
+    // Live re-render with draft content (what the editor does)
+    const live = await get("about.html");
+    const ok = live.win.setContent({ ABOUT_SCHOOL: { heading: "Draft heading", body: "Draft **body**." } });
+    await sleep(100);
+    report(ok === true && live.doc.getElementById("school-title").textContent === "Draft heading" && !!live.doc.querySelector("#school-body strong"), "setContent re-renders the page with draft content");
+    live.frame.remove();
+  }
+
+  report(failures === 0, `ALL CHECKS (${failures} failures)`);
+  const done = document.createElement("div");
+  done.id = "done";
+  done.textContent = failures === 0 ? "SITE-TEST-PASS" : "SITE-TEST-FAIL";
+  document.body.append(done);
+})();
+</script>
+</body>
+</html>

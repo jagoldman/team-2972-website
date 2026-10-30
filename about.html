@@ -83,53 +83,74 @@
 
 <script src="config.js"></script>
 <script src="js/content.js"></script>
+<script src="js/content-loader.js"></script>
 <script src="js/components.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("school-title").textContent = ABOUT_SCHOOL.heading;
-  document.getElementById("school-body").textContent = ABOUT_SCHOOL.body;
-  document.getElementById("first-title").textContent = ABOUT_FIRST.heading;
-  document.getElementById("first-body").textContent = ABOUT_FIRST.body;
-  document.getElementById("mission-body").textContent = SITE.mission;
+onContent(() => {
+  // Sets an element's text (or Markdown-subset text) from a content field and tags it with data-ck.
+  const put = (id, path, value, isRich) => {
+    const el = document.getElementById(id);
+    el.setAttribute("data-ck", path);
+    if (isRich) { el.setAttribute("data-ck-type", "rich"); el.innerHTML = rich(value); }
+    else el.textContent = value;
+  };
+  put("school-title", "ABOUT_SCHOOL.heading", ABOUT_SCHOOL.heading);
+  put("school-body", "ABOUT_SCHOOL.body", ABOUT_SCHOOL.body, true);
+  put("first-title", "ABOUT_FIRST.heading", ABOUT_FIRST.heading);
+  put("first-body", "ABOUT_FIRST.body", ABOUT_FIRST.body, true);
+  put("mission-body", "SITE.mission", SITE.mission);
 
-  const cards = items => items.map(v => `<div class="mechanism"><h3>${v.name}</h3><p>${v.text}</p></div>`).join("");
-  document.getElementById("values-grid").innerHTML = cards(VALUES);
-  document.getElementById("strategy-grid").innerHTML = cards(STRATEGY);
+  const cards = (name, items) => items.map((v, i) => `<div class="mechanism"${ck(`${name}[${i}]`)}><h3${ck(`${name}[${i}].name`)}>${esc(v.name)}</h3><p${ck(`${name}[${i}].text`, "rich")}>${rich(v.text)}</p></div>`).join("");
+  const values = document.getElementById("values-grid");
+  values.setAttribute("data-ck", "VALUES");
+  values.innerHTML = cards("VALUES", VALUES);
+  const strategy = document.getElementById("strategy-grid");
+  strategy.setAttribute("data-ck", "STRATEGY");
+  strategy.innerHTML = cards("STRATEGY", STRATEGY);
 
   const t = HISTORY.today;
   document.getElementById("history").innerHTML = `
-    <ol class="timeline">
-      ${HISTORY.milestones.map(m => `
-        <li>
-          <span class="timeline-year">${m.year}</span>
+    <ol class="timeline"${ck("HISTORY.milestones")}>
+      ${HISTORY.milestones.map((m, i) => `
+        <li${ck(`HISTORY.milestones[${i}]`)}>
+          <span class="timeline-year"${ck(`HISTORY.milestones[${i}].year`)}>${esc(m.year)}</span>
           <div class="timeline-body">
-            <ul>${m.items.map(it => `<li>${it.text}</li>`).join("")}</ul>
-            ${m.image ? `<img src="${driveImg(m.image, 600)}" alt="${m.imageAlt || m.year}" loading="lazy" />` : ""}
+            <ul${ck(`HISTORY.milestones[${i}].items`)}>${m.items.map((it, j) => `<li${ck(`HISTORY.milestones[${i}].items[${j}].text`, "rich")}>${rich(it.text)}</li>`).join("")}</ul>
+            ${m.image ? `<img${imgAttrs(m.image, 600)}${ck(`HISTORY.milestones[${i}].image`)}${ckAlt(`HISTORY.milestones[${i}].imageAlt`)} alt="${esc(altFor(m.image, m.imageAlt || m.year))}" loading="lazy" />` : ""}
           </div>
         </li>`).join("")}
     </ol>
-    <article class="history-era${t.image ? "" : " no-image"}">
+    <article class="history-era${t.image ? "" : " no-image"}"${ck("HISTORY.today")}>
       <div>
-        <h3>${t.heading}</h3>
-        ${t.paragraphs.map(p => `<p>${p}</p>`).join("")}
+        <h3${ck("HISTORY.today.heading")}>${esc(t.heading)}</h3>
+        <div${ck("HISTORY.today.paragraphs")}>
+          ${t.paragraphs.map((p, j) => `<p${ck(`HISTORY.today.paragraphs[${j}]`, "rich")}>${rich(p)}</p>`).join("")}
+        </div>
       </div>
-      ${t.image ? `<img src="${driveImg(t.image, 800)}" alt="${t.imageAlt || t.heading}" loading="lazy" />` : ""}
+      ${t.image ? `<img${imgAttrs(t.image, 800)}${ck("HISTORY.today.image")}${ckAlt("HISTORY.today.imageAlt")} alt="${esc(altFor(t.image, t.imageAlt || t.heading))}" loading="lazy" />` : ""}
     </article>`;
 
-  document.getElementById("annual-list").innerHTML = ANNUAL_EVENTS.map(e => `
-    <li>
-      <span class="event-name">${e.name}</span>
-      <span class="event-loc">${e.when} · ${e.description}</span>
+  const annual = document.getElementById("annual-list");
+  annual.setAttribute("data-ck", "ANNUAL_EVENTS");
+  annual.innerHTML = ANNUAL_EVENTS.map((e, i) => `
+    <li${ck(`ANNUAL_EVENTS[${i}]`)}>
+      <span class="event-name"${ck(`ANNUAL_EVENTS[${i}].name`)}>${esc(e.name)}</span>
+      <span class="event-loc"><span${ck(`ANNUAL_EVENTS[${i}].when`)}>${esc(e.when)}</span> · <span${ck(`ANNUAL_EVENTS[${i}].description`)}>${esc(e.description)}</span></span>
     </li>
   `).join("");
-  document.getElementById("calendar-link").href = TEAM_CALENDAR_URL;
 
-  document.getElementById("schedule-list").innerHTML = SCHEDULE_2027.map(s => `
-    <li>
-      <span class="event-name">${s.event}</span>
-      <span class="event-loc">${s.dates} · ${s.location}</span>
+  const schedule = document.getElementById("schedule-list");
+  schedule.setAttribute("data-ck", "SCHEDULE_2027");
+  schedule.innerHTML = SCHEDULE_2027.map((s, i) => `
+    <li${ck(`SCHEDULE_2027[${i}]`)}>
+      <span class="event-name"${ck(`SCHEDULE_2027[${i}].event`)}>${esc(s.event)}</span>
+      <span class="event-loc"><span${ck(`SCHEDULE_2027[${i}].dates`)}>${esc(s.dates)}</span> · <span${ck(`SCHEDULE_2027[${i}].location`)}>${esc(s.location)}</span></span>
     </li>
   `).join("");
+
+  const cal = document.getElementById("calendar-link");
+  cal.href = safeUrl(contentGet("TEAM_CALENDAR_URL"));
+  cal.setAttribute("data-ck-href", "TEAM_CALENDAR_URL");
 });
 </script>
 </body>

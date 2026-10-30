@@ -13,7 +13,8 @@ D=localhost
 docker build -q -t "$IMAGE" . >/dev/null
 docker run -d --rm --name "$NAME" -p "127.0.0.1:$HOST_PORT:3001" \
   -e PORT=3001 -e SITE_DOMAIN=$D -e SITE_SCHEME=http -e PROXY_SHARED_SECRET=$SECRET \
-  -v "$PWD/test/fixtures/apps.json:/config/apps.json:ro" "$IMAGE" >/dev/null
+  -v "$PWD/test/fixtures/apps.json:/config/apps.json:ro" \
+  -v "$PWD/test/fixtures/content:/srv/content:ro" -v "$PWD/test/fixtures/media:/srv/media:ro" "$IMAGE" >/dev/null
 trap 'docker stop "$NAME" >/dev/null 2>&1 || true' EXIT
 
 URL="http://127.0.0.1:$HOST_PORT"
@@ -150,6 +151,57 @@ has_hdr "$nm" '^cache-control: no-store' && echo "ok   the portal page itself is
 oh=$(hdr_of -H "Host: $P" "$URL/offline.html")
 has_hdr "$oh" '^x-robots-tag: noindex' && echo "ok   the offline page is kept out of search results" || { echo "FAIL offline page robots header"; fail=1; }
 body_of -H "Host: $D" "$URL/offline.html" | grep -q "You're offline" && echo "ok   offline page says it" || { echo "FAIL offline page text"; fail=1; }
+
+echo "-- published content (read-only mounts from the site editor)"
+hdr_of() { curl -s -D - -o /dev/null "$@" | tr -d '\r'; }
+for h in $D www.$D; do
+  check 200 "$h /content/content.json" -H "Host: $h" "$URL/content/content.json"
+  check 200 "$h /media/00000000000000000001-400.webp" -H "Host: $h" "$URL/media/00000000000000000001-400.webp"
+done
+check 404 "the editor-only thumbnail is not served" -H "Host: $D" "$URL/media/00000000000000000001-thumb.webp"
+check 404 "a media file with a width that is not stored is not served" -H "Host: $D" "$URL/media/00000000000000000001-9999.webp"
+check 200 "direct host /content/content.json (public)" -H "Host: landing" "$URL/content/content.json"
+check 200 "portal host /content/content.json with the secret" -H "Host: portal.$D" $S "$URL/content/content.json"
+check 401 "portal host /content/content.json without the secret" -H "Host: portal.$D" "$URL/content/content.json"
+check 401 "portal host /media/00000000000000000001-400.webp without the secret" -H "Host: portal.$D" "$URL/media/00000000000000000001-400.webp"
+ct=$(hdr_of -H "Host: $D" "$URL/content/content.json")
+echo "$ct" | grep -qi '^content-type: application/json' && echo "ok   content.json is application/json" || { echo "FAIL content.json content type: $(echo "$ct" | grep -i '^content-type')"; fail=1; }
+echo "$ct" | grep -qi '^cache-control: no-cache' && echo "ok   content.json revalidates (Cache-Control: no-cache)" || { echo "FAIL content.json cache header: $(echo "$ct" | grep -i '^cache-control')"; fail=1; }
+echo "$ct" | grep -qi '^etag:' && echo "ok   content.json has an ETag" || { echo "FAIL content.json has no ETag"; fail=1; }
+echo "$ct" | grep -qi '^x-content-type-options: nosniff' && echo "ok   content.json sends nosniff" || { echo "FAIL content.json has no nosniff"; fail=1; }
+md=$(hdr_of -H "Host: $D" "$URL/media/00000000000000000001-400.webp")
+echo "$md" | grep -qi '^content-type: image/webp' && echo "ok   media is image/webp" || { echo "FAIL media content type: $(echo "$md" | grep -i '^content-type')"; fail=1; }
+echo "$md" | grep -qi '^cache-control: public, max-age=31536000, immutable' && echo "ok   media is cached for a year, immutable" || { echo "FAIL media cache header: $(echo "$md" | grep -i '^cache-control')"; fail=1; }
+echo "$md" | grep -qi '^x-content-type-options: nosniff' && echo "ok   media sends nosniff" || { echo "FAIL media has no nosniff"; fail=1; }
+body '' "no identity or secret in /content/content.json" -o /dev/null -H "Host: $D" "$URL/content/content.json"
+curl -s -H "Host: $D" "$URL/content/content.json" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["content"]["SITE"]["teamName"]' && echo "ok   content.json body is the mounted file" || { echo "FAIL content.json body"; fail=1; }
+
+# Only content.json and <id>-<w>.webp are reachable; everything else in those folders is not.
+for p in /content/ /content /content/other.json /content/content.json.tmp /content/content.json/ /media/ /media /media/nope-400.webp \
+         /media/00000000000000000001-400.png /media/00000000000000000001-400.webp.txt /media/.hidden.webp "/media/a%2Fb-400.webp" /media/test-image-400.WEBP; do
+  check 404 "public $p is not served" -H "Host: $D" "$URL$p"
+done
+miss=$(hdr_of -H "Host: $D" "$URL/media/nope-400.webp")
+echo "$miss" | grep -qi '^cache-control:.*immutable' && { echo "FAIL a missing media file is marked immutable"; fail=1; } || echo "ok   a missing media file is not marked immutable"
+# (Caddy cleans "/media/../content/content.json" to the public content.json, which is fine, so these aim at
+# files that must stay private: the portal page, the portal tile list, and the system.)
+for p in "/media/../site/portal/index.html" "/content/../site/portal/index.html" "/media/../../config/apps.json" \
+         "/content/../../etc/passwd" "/media/%2e%2e/%2e%2e/etc/passwd" "/media/..%2f..%2fconfig%2fapps.json" "/content/%2e%2e/site/portal/index.html"; do
+  got=$(curl -s --path-as-is -o /dev/null -w '%{http_code}' -H "Host: $D" "$URL$p")
+  case "$got" in 400|404) echo "ok   traversal $p refused ($got)" ;; *) echo "FAIL traversal $p got $got"; fail=1 ;; esac
+done
+
+echo "-- without the mounts the site still starts and serves its pages"
+NAME2=landing-test-nomount-$$
+docker run -d --rm --name "$NAME2" -p "127.0.0.1:$((HOST_PORT+1)):3001" \
+  -e PORT=3001 -e SITE_DOMAIN=$D -e SITE_SCHEME=http -e PROXY_SHARED_SECRET=$SECRET "$IMAGE" >/dev/null
+trap 'docker stop "$NAME" "$NAME2" >/dev/null 2>&1 || true' EXIT
+URL2="http://127.0.0.1:$((HOST_PORT+1))"
+i=0; until curl -fs "$URL2/healthz" >/dev/null 2>&1; do i=$((i+1)); [ $i -lt 50 ] || { docker logs "$NAME2"; exit 1; }; sleep 0.2; done
+check 200 "no mounts: / still served" -H "Host: $D" "$URL2/"
+check 404 "no mounts: /content/content.json is a plain 404" -H "Host: $D" "$URL2/content/content.json"
+check 404 "no mounts: /media/00000000000000000001-400.webp is a plain 404" -H "Host: $D" "$URL2/media/00000000000000000001-400.webp"
+check 200 "no mounts: /js/content-loader.js is served" -H "Host: $D" "$URL2/js/content-loader.js"
 
 echo "-- nothing private in the image"
 for f in /srv/site/README.md /srv/site/CLAUDE.md /srv/site/.git /srv/site/test /srv/site/docs /srv/site/container /srv/site/.env.example; do

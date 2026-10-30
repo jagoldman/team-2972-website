@@ -71,7 +71,7 @@
 <section class="block">
   <div class="block-inner">
     <div class="split">
-      <div class="pic" data-reveal><img id="split-img" alt="" loading="lazy" /></div>
+      <div class="pic" data-reveal data-ck="MEDIA_PHOTOS"><img id="split-img" alt="" loading="lazy" /></div>
       <div>
         <div class="kicker"><b>03</b>This season</div>
         <h2 class="section-title" data-reveal id="schedule-title">Where you'll<br /><span class="dim">find us.</span></h2>
@@ -103,57 +103,82 @@
 
 <script src="config.js"></script>
 <script src="js/content.js"></script>
+<script src="js/content-loader.js"></script>
 <script src="js/components.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+let homeWired = false;   // the page-level listeners below are added once, however often the page is re-rendered
+
+onContent(() => {
+  const tag = (id, path, type) => {
+    const el = document.getElementById(id);
+    el.setAttribute("data-ck", path);
+    if (type) el.setAttribute("data-ck-type", type);
+    return el;
+  };
+
   // Hero
-  document.getElementById("hero-bg").style.backgroundImage = `url("${driveImg(SITE.heroImage, 1600)}")`;
-  if (SITE.heroPosition) document.getElementById("hero-bg").style.backgroundPosition = SITE.heroPosition;
-  document.getElementById("founded").textContent = SITE.founded;
-  document.getElementById("hero-tagline").textContent = SITE.tagline;
-  document.getElementById("mission-text").textContent = SITE.mission;
-  document.getElementById("about-school-title").textContent = ABOUT_SCHOOL.heading;
-  document.getElementById("about-school-body").textContent = ABOUT_SCHOOL.body;
+  tag("hero-bg", "SITE.heroImage", "image").style.backgroundImage = `url("${imgUrl(SITE.heroImage, 1600).replace(/["\\()]/g, "")}")`;
+  const heroPos = safePosition(SITE.heroPosition);
+  if (heroPos) document.getElementById("hero-bg").style.backgroundPosition = heroPos;
+  tag("founded", "SITE.founded").textContent = SITE.founded;
+  tag("hero-tagline", "SITE.tagline").textContent = SITE.tagline;
+  tag("mission-text", "SITE.mission").textContent = SITE.mission;
+  tag("about-school-title", "ABOUT_SCHOOL.heading").textContent = ABOUT_SCHOOL.heading;
+  tag("about-school-body", "ABOUT_SCHOOL.body", "rich").innerHTML = rich(ABOUT_SCHOOL.body);
 
-  // Robots that have a photo, newest first (the reel and the marquee both use them)
-  const withPhoto = ROBOTS.filter((r) => r.image);
-  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  // Robots that have a photo, newest first. The index kept with each robot is its place in ROBOTS,
+  // so every data-ck path is right even though the reel only shows some of them.
+  const withPhoto = ROBOTS.map((r, i) => ({ r, i })).filter(({ r }) => r.image);
 
-  const names = withPhoto.filter((r) => r.name).map((r) => `<span class="solid">${esc(r.name)}</span><span><i>✦</i> ${r.year}</span>`).join("");
+  const names = withPhoto.filter(({ r }) => r.name).map(({ r, i }) =>
+    `<span class="solid"${ck(`ROBOTS[${i}].name`)}>${esc(r.name)}</span><span><i>✦</i> <span${ck(`ROBOTS[${i}].year`)}>${esc(r.year)}</span></span>`).join("");
   document.getElementById("marquee").innerHTML = names + names;
 
-  document.getElementById("robot-showcase").innerHTML = withPhoto.slice(0, 6).map((r) => `
-    <a class="bot tilt" href="${robotUrl(r)}">
-      <img src="${driveImg(r.image, 800)}"${imgPos(r)} alt="${esc(robotName(r))}, the ${r.year} robot" loading="lazy" width="420" height="525" />
-      ${r.status ? `<span class="pill">${esc(r.status)}</span>` : ""}
+  tag("robot-showcase", "ROBOTS").innerHTML = withPhoto.slice(0, 6).map(({ r, i }) => `
+    <a class="bot tilt" href="${robotUrl(r)}"${ck(`ROBOTS[${i}]`)}>
+      <img${imgAttrs(r.image, 800)}${imgPos(r)}${ck(`ROBOTS[${i}].image`)} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}" loading="lazy" width="420" height="525" />
+      ${r.status ? `<span class="pill"${ck(`ROBOTS[${i}].status`)}>${esc(r.status)}</span>` : ""}
       <div class="info">
-        <div class="yr">${r.year} · ${esc(r.game)}</div>
-        <h3>${esc(robotName(r))}</h3>
-        <p>${esc(r.tagline || "")}</p>
+        <div class="yr"><span${ck(`ROBOTS[${i}].year`)}>${esc(r.year)}</span> · <span${ck(`ROBOTS[${i}].game`)}>${esc(r.game)}</span></div>
+        <h3${ck(`ROBOTS[${i}].name`)}>${esc(robotName(r))}</h3>
+        <p${ck(`ROBOTS[${i}].tagline`)}>${esc(r.tagline || "")}</p>
       </div>
     </a>`).join("");
 
-  // Numbers that come straight from content.js
+  // Numbers: counted from the lists, except the founding year, which is a field.
   // Events where the result mentions an alliance, the playoffs, or an event win
   const playoffEvents = ROBOTS.reduce((n, r) =>
     n + r.results.filter(x => /alliance|playoffs|won the event/i.test(x.result)).length, 0);
   const stats = [
     { n: ROBOTS.length, label: "seasons on the field" },
-    { n: Number(SITE.founded), label: "year we started", plain: true },
+    { n: Number(SITE.founded), label: "year we started", plain: true, path: "SITE.founded" },
     { n: playoffEvents, label: "playoff appearances" },
     { n: SCHEDULE_2027.length, label: "events this season" },
   ];
   document.getElementById("stats").innerHTML = stats.map((s, i) => `
-    <div class="stat" data-reveal style="--ri:${i}"><div class="n"><span ${s.plain ? "" : `data-count="${s.n}"`}>${s.plain ? s.n : 0}</span></div><div class="l">${s.label}</div></div>`).join("");
+    <div class="stat" data-reveal style="--ri:${i}"><div class="n"><span${s.path ? ck(s.path) : ` data-count="${esc(s.n)}"`}>${s.path ? esc(s.n) : 0}</span></div><div class="l">${s.label}</div></div>`).join("");
 
-  document.getElementById("schedule-list").innerHTML = SCHEDULE_2027.map((s) => `
-    <li data-reveal>
-      <span class="event-name">${esc(s.event)}</span>
-      <span class="event-loc">${esc(s.dates)} · ${esc(s.location)}</span>
+  tag("schedule-list", "SCHEDULE_2027").innerHTML = SCHEDULE_2027.map((s, i) => `
+    <li data-reveal${ck(`SCHEDULE_2027[${i}]`)}>
+      <span class="event-name"${ck(`SCHEDULE_2027[${i}].event`)}>${esc(s.event)}</span>
+      <span class="event-loc"><span${ck(`SCHEDULE_2027[${i}].dates`)}>${esc(s.dates)}</span> · <span${ck(`SCHEDULE_2027[${i}].location`)}>${esc(s.location)}</span></span>
     </li>`).join("");
-  const photo = MEDIA_PHOTOS[1] || MEDIA_PHOTOS[0]; // a different photo than the hero
-  if (photo) document.getElementById("split-img").src = driveImg(photo, 1200);
-  else document.querySelector(".split .pic").remove();
+
+  // A second team photo beside the schedule (not the hero photo again)
+  const splitIndex = MEDIA_PHOTOS.length > 1 ? 1 : 0;
+  const splitImg = document.getElementById("split-img");
+  if (MEDIA_PHOTOS.length) {
+    splitImg.src = imgUrl(MEDIA_PHOTOS[splitIndex], 1200);
+    const set = imgSrcset(MEDIA_PHOTOS[splitIndex]);
+    if (set) { splitImg.srcset = set; splitImg.sizes = "(max-width: 900px) 100vw, 600px"; } else { splitImg.removeAttribute("srcset"); }
+    splitImg.setAttribute("data-ck", `MEDIA_PHOTOS[${splitIndex}]`);
+    splitImg.parentElement.hidden = false;
+  } else {
+    splitImg.parentElement.hidden = true;
+  }
+
+  if (homeWired) return;
+  homeWired = true;
 
   // Reel arrows
   document.querySelectorAll(".reel-ctrl button").forEach((b) => b.addEventListener("click", () => {
@@ -169,11 +194,10 @@ document.addEventListener("DOMContentLoaded", () => {
       hero.style.setProperty("--my", `${e.clientY - r.top}px`);
     });
     // Slow parallax on the photo
-    const img = document.getElementById("split-img");
-    const wrap = img.parentElement;
     addEventListener("scroll", () => {
+      const wrap = splitImg.parentElement;
       const r = wrap.getBoundingClientRect();
-      img.style.setProperty("--py", `${(r.top / innerHeight) * -50}px`);
+      splitImg.style.setProperty("--py", `${(r.top / innerHeight) * -50}px`);
     }, { passive: true });
   }
 });

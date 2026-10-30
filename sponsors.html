@@ -45,26 +45,35 @@
 
 <script src="config.js"></script>
 <script src="js/content.js"></script>
+<script src="js/content-loader.js"></script>
 <script src="js/components.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("packet-link").href = SPONSOR_PACKET_URL;
+onContent(() => {
+  const packet = document.getElementById("packet-link");
+  packet.href = safeUrl(contentGet("SPONSOR_PACKET_URL"));
+  packet.setAttribute("data-ck-href", "SPONSOR_PACKET_URL");
 
   const container = document.getElementById("sponsor-tiers");
+  container.setAttribute("data-ck", "SPONSOR_TIERS");
   container.innerHTML = SPONSOR_TIERS.map((tier, i) => `
-    <section class="block ${i % 2 === 1 ? "alt" : ""}">
+    <section class="block ${i % 2 === 1 ? "alt" : ""}"${ck(`SPONSOR_TIERS[${i}]`)}>
       <div class="block-inner">
-        <h2 class="section-title">${tier.tier}</h2>
-        ${tier.banner ? `<img class="sponsor-banner" src="${driveImg(tier.banner, 1600)}" alt="${tier.tier} banner" loading="lazy" />` : ""}
+        <h2 class="section-title"${ck(`SPONSOR_TIERS[${i}].tier`)}>${esc(tier.tier)}</h2>
+        ${tier.banner ? `<img class="sponsor-banner"${imgAttrs(tier.banner, 1600)}${ck(`SPONSOR_TIERS[${i}].banner`)} alt="${esc(altFor(tier.banner, tier.tier + " banner"))}" loading="lazy" />` : ""}
+        <div${ck(`SPONSOR_TIERS[${i}].sponsors`)}>
         ${tier.sponsors.length ? `
           <div class="sponsor-grid">
-            ${tier.sponsors.map(s => `
-              <div class="sponsor-tile">
-                <img src="${driveImg(s.logo, 400)}" alt="${s.name} logo" title="${s.name}" loading="lazy" />
+            ${tier.sponsors.map((s, j) => {
+              const img = `<img${imgAttrs(s.logo, 400)}${ck(`SPONSOR_TIERS[${i}].sponsors[${j}].logo`)}${ckAlt(`SPONSOR_TIERS[${i}].sponsors[${j}].name`)} alt="${esc(altFor(s.logo, s.name + " logo"))}" title="${esc(s.name)}" loading="lazy" />`;
+              const href = isSet(s.url) ? safeUrl(s.url) : "";
+              return `
+              <div class="sponsor-tile"${ck(`SPONSOR_TIERS[${i}].sponsors[${j}]`)}>
+                ${href ? `<a href="${esc(href)}" target="_blank" rel="noopener"${ckHref(`SPONSOR_TIERS[${i}].sponsors[${j}].url`)}>${img}</a>` : img}
               </div>
-            `).join("")}
+            `; }).join("")}
           </div>
         ` : `<p class="empty-note">Sponsors for this year are being finalized — check back soon.</p>`}
+        </div>
       </div>
     </section>
   `).join("");

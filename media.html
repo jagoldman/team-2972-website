@@ -60,25 +60,35 @@
 
 <script src="config.js"></script>
 <script src="js/content.js"></script>
+<script src="js/content-loader.js"></script>
 <script src="js/components.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("ig-link").href = SITE.instagram;
-  document.getElementById("ig-link").textContent = `Instagram ${SITE.instagramHandle}`;
+onContent(() => {
+  const ig = document.getElementById("ig-link");
+  ig.href = safeUrl(SITE.instagram);
+  ig.setAttribute("data-ck-href", "SITE.instagram");
+  ig.innerHTML = `Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span>`;
 
+  // Each grid's own data-ck is its list, so an empty list can still be given a first item.
   const photoGrid = document.getElementById("photo-grid");
+  photoGrid.setAttribute("data-ck", "MEDIA_PHOTOS");
   photoGrid.innerHTML = MEDIA_PHOTOS.length
-    ? MEDIA_PHOTOS.map(src => `<div class="card"><img src="${driveImg(src, 600)}" alt="Team photo" loading="lazy" /></div>`).join("")
+    ? MEDIA_PHOTOS.map((src, i) => `<div class="card"${ck(`MEDIA_PHOTOS[${i}]`)}><img${imgAttrs(src, 600)}${ck(`MEDIA_PHOTOS[${i}]`)} alt="${esc(altFor(src, "Team photo"))}" loading="lazy" /></div>`).join("")
     : `<p class="empty-note">Photo gallery coming soon.</p>`;
 
   const videoGrid = document.getElementById("video-grid");
-  videoGrid.innerHTML = MEDIA_VIDEOS.length
-    ? MEDIA_VIDEOS.map(v => typeof v === "string" ? { url: v } : v).map(v => `<div class="card"><iframe src="${v.url}" title="${v.caption || "Team video"}" style="width:100%;aspect-ratio:16/9;border:0;" allowfullscreen></iframe>${v.caption ? `<div class="card-body"><p>${v.caption}</p></div>` : ""}</div>`).join("")
+  videoGrid.setAttribute("data-ck", "MEDIA_VIDEOS");
+  const videos = MEDIA_VIDEOS
+    .map((v, i) => ({ src: youtubeEmbed(typeof v === "string" ? v : v.url), caption: typeof v === "string" ? "" : (v.caption || ""), i }))
+    .filter(v => v.src);
+  videoGrid.innerHTML = videos.length
+    ? videos.map(v => `<div class="card"${ck(`MEDIA_VIDEOS[${v.i}]`)}><iframe src="${esc(v.src)}" title="${esc(v.caption || "Team video")}" loading="lazy" allowfullscreen style="width:100%;aspect-ratio:16/9;border:0;"></iframe>${v.caption ? `<div class="card-body"><p${ck(`MEDIA_VIDEOS[${v.i}].caption`)}>${esc(v.caption)}</p></div>` : ""}</div>`).join("")
     : `<p class="empty-note">Video gallery coming soon.</p>`;
 
   const publicity = document.getElementById("publicity-list");
+  publicity.setAttribute("data-ck", "MEDIA_PUBLICITY");
   publicity.innerHTML = MEDIA_PUBLICITY.length
-    ? `<ul>${MEDIA_PUBLICITY.map(p => `<li><a href="${p.url}" target="_blank" rel="noopener">${p.title}</a> — ${p.outlet}</li>`).join("")}</ul>`
+    ? `<ul>${MEDIA_PUBLICITY.map((p, i) => `<li${ck(`MEDIA_PUBLICITY[${i}]`)}><a href="${esc(safeUrl(p.url))}" target="_blank" rel="noopener"${ck(`MEDIA_PUBLICITY[${i}].title`)}${ckHref(`MEDIA_PUBLICITY[${i}].url`)}>${esc(p.title)}</a> — <span${ck(`MEDIA_PUBLICITY[${i}].outlet`)}>${esc(p.outlet)}</span></li>`).join("")}</ul>`
     : `<p class="empty-note">No press coverage listed yet.</p>`;
 });
 </script>
