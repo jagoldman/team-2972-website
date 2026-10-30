@@ -191,6 +191,25 @@ for p in "/media/../site/portal/index.html" "/content/../site/portal/index.html"
   case "$got" in 400|404) echo "ok   traversal $p refused ($got)" ;; *) echo "FAIL traversal $p got $got"; fail=1 ;; esac
 done
 
+echo "-- Drive photos saved at build time (/img/drive)"
+# The manifest reaches pages inside config.js; every photo it lists must be served, cached for a year.
+dm=$(curl -s -H "Host: $D" "$URL/config.js" | sed -n "s/^  drivePhotos: '\(.*\)',\$/\1/p")
+dfile=$(printf '%s' "$dm" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next((f"{k}-{v[0]}" for k, v in d.items()), ""))' 2>/dev/null) \
+  && echo "ok   config.js carries the Drive manifest as JSON" || { echo "FAIL config.js Drive manifest: $dm"; fail=1; }
+if [ -n "$dfile" ]; then
+  for h in $D www.$D landing; do check 200 "$h /img/drive/$dfile.webp" -H "Host: $h" "$URL/img/drive/$dfile.webp"; done
+  dh=$(hdr_of -H "Host: $D" "$URL/img/drive/$dfile.webp")
+  echo "$dh" | grep -qi '^content-type: image/webp' && echo "ok   drive photo is image/webp" || { echo "FAIL drive photo content type"; fail=1; }
+  echo "$dh" | grep -qi '^cache-control: public, max-age=31536000, immutable' && echo "ok   drive photo is cached for a year, immutable" || { echo "FAIL drive photo cache header"; fail=1; }
+else
+  echo "note no Drive photo was saved in this build (offline?), so only the 404s are checked"
+fi
+for p in /img/drive/ /img/drive/manifest.json /img/drive/nope-400.webp /img/drive/1AbCdEfGhIjKlMnOpQrStUvWxYz012345-400.webp; do
+  check 404 "public $p is not served" -H "Host: $D" "$URL$p"
+done
+dmiss=$(hdr_of -H "Host: $D" "$URL/img/drive/1AbCdEfGhIjKlMnOpQrStUvWxYz012345-400.webp")
+echo "$dmiss" | grep -qi '^cache-control:.*immutable' && { echo "FAIL a missing drive photo is marked immutable"; fail=1; } || echo "ok   a missing drive photo is not marked immutable"
+
 echo "-- without the mounts the site still starts and serves its pages"
 NAME2=landing-test-nomount-$$
 docker run -d --rm --name "$NAME2" -p "127.0.0.1:$((HOST_PORT+1)):3001" \

@@ -156,12 +156,25 @@ function ckAlt(path) {
 //                  /media/<id>-<w>.webp, where <w> is the smallest stored width (400, 800 or 1600) that
 //                  is at least the width asked for; if the published media list says which widths exist,
 //                  only those are used. (<id>-thumb.webp is for the editor's own screens, not for pages.)
-//   a Google Drive image ID or lh3.googleusercontent.com/d/ID URL (any =w size on it is replaced)
+//   a Google Drive image ID or lh3.googleusercontent.com/d/ID URL (any =w size on it is replaced) ->
+//                  /img/drive/<id>-<w>.webp, the copy this server downloaded when the image was built, at the
+//                  smallest saved width that is at least the width asked for; if there is none (local preview,
+//                  a photo added later, a failed download), the lh3 URL as before
 //   any other http(s) URL or site path, such as an SVG placeholder, which is returned unchanged
 //   imgUrl("media:<id>", 600) -> "/media/<id>-800.webp"
-//   imgUrl("1AbC…", 400)      -> "https://lh3.googleusercontent.com/d/1AbC…=w400"
+//   imgUrl("1AbC…", 400)      -> "/img/drive/1AbC…-400.webp" or "https://lh3.googleusercontent.com/d/1AbC…=w400"
+// The Drive ID rule is also in scripts/drive-photos/fetch.cjs; keep the two in step.
 const MEDIA_WIDTHS = [400, 800, 1600];
 const MEDIA_REF = /^media:([a-f0-9]{20})$/;
+// { "<Drive id>": [widths saved, smallest first] } from config.js; {} when Caddy did not fill it in.
+const DRIVE_PHOTOS = (() => {
+  try {
+    const m = JSON.parse((window.SITE_ENV || {}).drivePhotos || "{}");
+    return m && typeof m === "object" && !Array.isArray(m) ? m : {};
+  } catch (e) {
+    return {};
+  }
+})();
 function imgUrl(src, width) {
   const s = String(src || "").trim();
   const media = s.match(MEDIA_REF);
@@ -172,7 +185,10 @@ function imgUrl(src, width) {
     return `/media/${media[1]}-${w}.webp`;
   }
   const id = /^[\w-]{20,}$/.test(s) ? s : (s.match(/^https:\/\/lh3\.googleusercontent\.com\/d\/([\w-]+)/) || [])[1];
-  return id ? `https://lh3.googleusercontent.com/d/${id}=w${width}` : safeUrl(s);
+  if (!id) return safeUrl(s);
+  const saved = Object.prototype.hasOwnProperty.call(DRIVE_PHOTOS, id) && Array.isArray(DRIVE_PHOTOS[id]) ? DRIVE_PHOTOS[id] : [];
+  const w = saved.find((x) => Number.isInteger(x) && x >= width);
+  return w ? `/img/drive/${id}-${w}.webp` : `https://lh3.googleusercontent.com/d/${id}=w${width}`;
 }
 
 // The srcset for an uploaded image (every stored width), so the browser can pick for the screen.
