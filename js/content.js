@@ -329,16 +329,6 @@ const ROBOTS = [
     ],
   },
   {
-    year: "2020",
-    game: "Infinite Recharge",
-    name: "", // FIRST records say "Helga" (carried over from 2018) — confirm
-    stats: "1 regional before the season was cut short by COVID-19",
-    gameSummary: "Infinite Recharge is the 2020 game. Robots shoot Power Cells into a Power Port, spin a Control Panel, and hang from a Generator Switch.",
-    results: [
-      { event: "Utah Regional", result: "Rank 49 of 54 (2-8-0)", tba: "2020utwv" },
-    ],
-  },
-  {
     year: "2019",
     game: "Destination: Deep Space",
     name: "", // FIRST records say "Helga" (carried over from 2018) — confirm
