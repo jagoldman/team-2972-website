@@ -48,6 +48,11 @@
 
   <div class="app-grid" id="app-grid"></div>
   <p class="app-empty" id="app-empty" hidden>No app matches that. Try a different word.</p>
+  <section id="access" hidden>
+    <h2 class="install-h2">Team Drive and Onshape</h2>
+    <p class="section-lead">These are shared by invitation only. Ask for access and an admin will add you.</p>
+    <div id="access-body"></div>
+  </section>
   <p class="app-note" id="app-note"></p>
   <p><a class="btn btn-outline" id="sign-out" data-signout href="#">Sign out</a></p>
 </main>
@@ -189,6 +194,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("no-group").hidden = false;
     return;
   }
+
+  // Request access to the Team Drive and Onshape, with the user's name and email filled in. They only reach the
+  // page as URL-encoded text inside a mailto: link (encodeURIComponent escapes < > " &), never as HTML.
+  document.getElementById("access-body").innerHTML = renderRequestAccess({ name: me.name, email: me.email });
+  document.getElementById("access").hidden = false;
 
   const shown = visibleTiles(Array.isArray(tiles) ? tiles : [], groups);
   const grid = document.getElementById("app-grid");

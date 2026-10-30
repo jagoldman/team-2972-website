@@ -29,7 +29,17 @@
   <div class="block-inner" id="resource-groups"></div>
 </section>
 
-<section class="block alt" id="cad-overview">
+<section class="block alt" id="request-access">
+  <div class="block-inner">
+    <h2 class="section-title">Team Drive and Onshape</h2>
+    <p class="section-lead">Anyone can view our robots in the <a id="onshape-public" target="_blank" rel="noopener">public
+    Onshape publication</a>. The team's Google Drive and the editable Onshape CAD are shared by invitation only. Team
+    members can ask for access here.</p>
+    <div id="request-access-body"></div>
+  </div>
+</section>
+
+<section class="block" id="cad-overview">
   <div class="block-inner">
     <h2 class="section-title">3D CAD/CAM Modeling Overview</h2>
     <div class="cad-overview" id="cad-body"></div>
@@ -56,6 +66,9 @@ document.addEventListener("DOMContentLoaded", () => {
         </ul>
       </div>
     `).join("");
+
+  document.getElementById("onshape-public").href = SITE.onshapePublic;
+  document.getElementById("request-access-body").innerHTML = renderRequestAccess();
 
   document.getElementById("cad-body").innerHTML = CAD_OVERVIEW.map(part => `
     <div class="cad-part">

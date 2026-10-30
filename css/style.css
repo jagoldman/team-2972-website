@@ -723,6 +723,8 @@ a.card:hover { color: inherit; border-color: var(--tint-line); }
 }
 .contact-card h3 { font: 700 26px/1.15 var(--display); letter-spacing: -0.02em; margin: 0 0 10px; }
 .contact-card p { color: var(--text-2); }
+.access-note { color: var(--mute); font-size: 15px; margin: 22px 0 0; max-width: 70ch; }
+.access-note a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
 
 /* ---------- Footer ---------- */
 .site-footer { position: relative; padding: 80px var(--gutter) 0; border-top: 1px solid var(--line); overflow: hidden; background: var(--ink); }

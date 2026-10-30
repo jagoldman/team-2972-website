@@ -53,7 +53,7 @@ run_user() {
 
   dom=$("$CHROME" --headless=new --disable-gpu --no-first-run --user-data-dir="$PROXY_CONF/chrome" \
     --virtual-time-budget=5000 --dump-dom "http://portal.localhost:$HOST_PORT/" 2>/dev/null)
-  got=$(printf '%s' "$dom" | tr '\n' ' ' | sed 's/.*id="app-grid"//; s/id="app-note".*//' \
+  got=$(printf '%s' "$dom" | tr '\n' ' ' | sed 's/.*id="app-grid"//; s/id="app-empty".*//' \
     | grep -o '<h3>[^<]*</h3>' | sed 's/<[^>]*>//g' | paste -sd, - || true)
   has_notice=no
   printf '%s' "$dom" | grep -q 'id="no-group">' && has_notice=yes

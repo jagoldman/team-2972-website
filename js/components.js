@@ -43,6 +43,36 @@ function isSet(url) {
   return Boolean(url) && url !== "#";
 }
 
+// "Request access" email for an invite-only resource (REQUEST_ACCESS in content.js). The portal passes the signed-in
+// user's name and email so the form arrives filled in; on public pages they are left blank.
+function requestAccessHref(resource, who = {}) {
+  const body = [
+    "Hello,",
+    "",
+    `I would like access to the ${resource.name} (Team ${SITE.teamNumber}).`,
+    "",
+    `My name: ${who.name || ""}`,
+    `My school email: ${who.email || ""}`,
+    "Why I need access: ",
+    "",
+    "Thank you.",
+  ].join("\n");
+  return `mailto:${SITE.email}?subject=${encodeURIComponent(`Access request: ${resource.name}`)}&body=${encodeURIComponent(body)}`;
+}
+
+function renderRequestAccess(who) {
+  return `
+    <div class="contact-grid">${REQUEST_ACCESS.map((r) => `
+      <div class="contact-card">
+        <h3>${r.name}</h3>
+        <p>${r.what} Access is by invitation.</p>
+        <a class="btn" href="${requestAccessHref(r, who)}">Request access</a>
+      </div>`).join("")}
+    </div>
+    <p class="access-note">Each button opens an email to <a href="mailto:${SITE.email}">${SITE.email}</a>. If no email app opens,
+    write to that address with your name, your school email and why you need access.</p>`;
+}
+
 // Photo URL at the width a spot needs. content.js may hold a bare Google Drive file ID or a full
 // lh3.googleusercontent.com/d/ID URL (any =w size on it is replaced). Anything else, such as an
 // SVG placeholder path, is returned unchanged.

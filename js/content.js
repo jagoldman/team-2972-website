@@ -29,6 +29,8 @@ const SITE = {
   tagline: "Real-world engineering, fundraising, and competition.",
   mission: "To build a confident and capable next generation through competitive robotics.",
   email: "robotics@dawsonschool.org",
+  // Public Onshape publication of our robots: anyone can view, no account needed (user, 2026-10-29).
+  onshapePublic: "https://cad.onshape.com/publications/27b8b2d91c3dcba99076bea5/w/6f7554126c007d8690fa9643/e/fd2bdc75e190c38dc9e2f4d9?configuration=default&renderMode=0&leftPanel=false",
   instagram: "https://www.instagram.com/frc2972/",
   instagramHandle: "@frc2972",
   github: "https://github.com/Gears-and-Buccaneers",
@@ -256,7 +258,7 @@ const ROBOTS = [
     videos: ["https://www.youtube.com/watch?v=CB1DmHxDGQw"],
     links: [
       { label: "Code (GitHub)", url: "https://github.com/Gears-and-Buccaneers/2025" },
-      { label: "CAD (Onshape)", url: "https://cad.onshape.com/documents/387aadf923da0d9d66a856c8/w/577516ee2b5ebb1d84a14e4d/e/7b791fb20206737e0edf2701" },
+      { label: "CAD (Onshape)", url: SITE.onshapePublic },
     ],
   },
   {
@@ -526,6 +528,7 @@ const RESOURCE_LINKS = [
     { label: "AprilTags", url: "https://docs.wpilib.org/en/stable/docs/software/vision-processing/apriltag/apriltag-intro.html" },
   ]},
   { category: "CAD & Manufacturing", items: [
+    { label: "Our robots in Onshape (public)", url: SITE.onshapePublic, note: "View Team 2972's robot CAD in your browser. No account needed." },
     { label: "Onshape for FRC (frcdesign.org)", url: "https://www.frcdesign.org", note: "Free Onshape lessons built for FRC, from first sketch to full robot." },
     { label: "Onshape Learning Center", url: "https://learn.onshape.com", note: "Onshape's own courses on parts, assemblies and drawings." },
     { label: "ReCalc", url: "https://www.reca.lc", note: "Calculators for gear ratios, belts, chains, arms and elevators." },
@@ -575,6 +578,13 @@ const RESOURCE_LINKS = [
   { category: "Workshop", items: [
     { label: "Workshop location & hours", url: "#" }, // TODO
   ]},
+];
+
+// Team resources that are invite-only (Google and Onshape won't give a public link). Each gets a "Request access"
+// button that opens an email to SITE.email with the subject and a short form filled in.
+const REQUEST_ACCESS = [
+  { name: "Team Google Drive", what: "Shared team documents, photos and files." },
+  { name: "Onshape (team CAD)", what: "Editing the team's robot CAD. (To just look, use the public view on the Resources page.)" },
 ];
 
 // 3D CAD/CAM overview (from the old Resources page)
