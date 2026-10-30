@@ -678,6 +678,7 @@ a.card:hover { color: inherit; border-color: var(--tint-line); }
   min-height: 100px;
   transition: transform 0.4s var(--ease);
 }
+.sponsor-banner { width: 100%; margin: 0 0 24px; border-radius: var(--radius); background: var(--ink-3); }
 .sponsor-tile:hover { transform: translateY(-3px); }
 .sponsor-tile img { height: 50px; width: auto; max-width: 100%; object-fit: contain; }
 .sponsor-tile span { color: #0b1224; font-weight: 600; text-align: center; }

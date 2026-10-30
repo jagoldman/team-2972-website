@@ -471,15 +471,18 @@ const ROBOTS = [
 ];
 
 // Sponsors — grouped by tier. Add/remove/reorder freely.
+// banner: optional photo of that year's sponsor banner (a Google Drive file ID, like other photos); "" shows nothing.
 const SPONSOR_TIERS = [
   {
     tier: "2025 Sponsors",
+    banner: "", // TODO: Drive ID of the 2025 sponsor banner photo
     sponsors: [
       // TODO: add current-year sponsor names + logos as they confirm
     ],
   },
   {
     tier: "2024 Sponsors",
+    banner: "", // TODO: Drive ID of the 2024 sponsor banner photo
     sponsors: [
       { name: "BAE Systems", logo: "assets/placeholder-sponsor.svg" },
       { name: "Syniti", logo: "assets/placeholder-sponsor.svg" },

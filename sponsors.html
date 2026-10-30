@@ -29,7 +29,8 @@
   <div class="block-inner">
     <h2 class="section-title">Become a Sponsor</h2>
     <p class="section-lead">Every dollar goes directly toward robot parts, competition fees,
-    travel, and outreach. Download our sponsorship packet to see how your organization can
+    travel, and outreach, and toward improving our shop: the tools, machines and workspace
+    where students build. Download our sponsorship packet to see how your organization can
     get involved.</p>
     <div class="btn-row">
       <a class="btn" id="packet-link" target="_blank" rel="noopener">Download Sponsorship Packet</a>
@@ -54,6 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <section class="block ${i % 2 === 1 ? "alt" : ""}">
       <div class="block-inner">
         <h2 class="section-title">${tier.tier}</h2>
+        ${tier.banner ? `<img class="sponsor-banner" src="${driveImg(tier.banner, 1600)}" alt="${tier.tier} banner" loading="lazy" />` : ""}
         ${tier.sponsors.length ? `
           <div class="sponsor-grid">
             ${tier.sponsors.map(s => `
