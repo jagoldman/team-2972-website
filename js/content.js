@@ -389,7 +389,7 @@ const ROBOTS = [
   {
     year: "2015",
     game: "Recycle Rush",
-    name: "George",
+    name: "Centaurian",
     stats: "2 regionals · best rank #23",
     gameSummary: "Recycle Rush is the 2015 game. Robots stack Totes and top them with Recycling Containers, with no defense between alliances.",
     results: [
