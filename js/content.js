@@ -35,7 +35,7 @@ const SITE = {
   instagramHandle: "@frc2972",
   github: "https://github.com/Gears-and-Buccaneers",
   logo: "brand/team-2972-logo-256.png",
-  heroImage: "assets/brand/team-2025.jpg",
+  heroImage: "1VgoMdevZH3syn0BvQq7QpFz09xrDS_rt",
   schoolLogo: "assets/brand/dawson-school.png",
   schoolUrl: "https://www.dawsonschool.org",
 };
@@ -151,7 +151,7 @@ const HISTORY = {
       building instead of waiting on orders. Students learn to design, make and wire a competition
       robot with mentors and parent volunteers beside them.`,
     ],
-    image: "assets/brand/team-2025.jpg",
+    image: "1-q5Dg3zWV_GR3CpRf2SWH2MIgj_qhf_7",
     imageAlt: "Team 2972 at a 2025 regional",
   },
 };
@@ -189,7 +189,7 @@ const ROBOTS = [
     game: "REBUILT",
     name: "Theseus",
     status: "In service",
-    image: "", // TODO: add a photo of Theseus
+    image: "1kJB7mksCbOY2aj5EwmAe_ai_jldiHMSM",
     tagline: "Utah Regional winners.",
     stats: "3 events · Utah Regional Winners · 2nd pick, Alliance 2",
     gameSummary: "", // TODO: describe the 2026 game, REBUILT
@@ -207,7 +207,7 @@ const ROBOTS = [
     game: "Reefscape",
     name: "Sea Bunny",
     status: "In service",
-    image: "assets/robots/2025-sea-bunny.jpg",
+    image: "1CIpymdntGF5P4Yk1CwaKKwD4YaUMh3Ty",
     tagline: "Three-stage elevator that scores Coral on every level.",
     stats: "2 events · best rank #27 at KCMT · 3rd pick, Alliance 5",
     gameSummary: `Reefscape is the 2025 game, themed around clean oceans. Two alliances of three
@@ -266,7 +266,7 @@ const ROBOTS = [
     game: "Crescendo",
     name: "Sea Shanty",
     status: "Retired",
-    image: "assets/robots/2024-sea-shanty.jpg",
+    image: "1cU0ckxw1iHt9KhHVH6k0FlrfafY9gYes",
     tagline: "Picked for playoff alliances at both regionals.",
     stats: "3 events · best rank #18 at KCMT · playoffs at both regionals",
     gameSummary: `Crescendo is the 2024 game, themed around music. Two alliances of three robots
@@ -285,7 +285,7 @@ const ROBOTS = [
     game: "Charged Up",
     name: "Scurvy",
     status: "Retired",
-    image: "assets/robots/2023-scurvy.jpg",
+    image: "1KFxccShn1-p-TFonT6Z0MKNz5ehb-oM3",
     tagline: "Telescoping arm and a 12-auto playbook.",
     stats: "2 regionals · rank #9 at Green Country · alliance captain",
     gameSummary: `Charged Up is the 2023 game. Two alliances of three robots each place cones and
@@ -320,20 +320,13 @@ const ROBOTS = [
     year: "2022",
     game: "Rapid React",
     name: "Kunagunda", // confirmed by the user 2026-10-30 (FIRST records said "Helga", carried over from 2018)
+    image: "1UJ8vY8joMgOt4XJFus7velWI3_kMPHJH",
     stats: "2 regionals · rebuilding year",
     gameSummary: "Rapid React is the 2022 game. Robots shoot Cargo balls into a central Hub and climb the rungs of a Hangar at the end of the match.",
     results: [
       { event: "Colorado Regional", result: "Rank 41 of 41 (1-12-0)", tba: "2022code" },
       { event: "Utah Regional", result: "Rank 32 of 40 (3-8-0)", tba: "2022utwv" },
     ],
-  },
-  {
-    year: "2021",
-    game: "Infinite Recharge at Home",
-    name: "", // FIRST records say "Helga" (carried over from 2018) — confirm
-    stats: "Remote season during COVID-19",
-    gameSummary: "In 2021, COVID-19 moved FRC online. Teams completed remote skills challenges with their 2020 robots instead of in-person events.",
-    results: [],
   },
   {
     year: "2020",
@@ -429,7 +422,7 @@ const ROBOTS = [
   {
     year: "2012",
     game: "Rebound Rumble",
-    name: "",
+    name: "Tim Tebot", // given by the user 2026-10-30
     stats: "1 regional",
     gameSummary: "Rebound Rumble is the 2012 game. Robots shoot foam basketballs into hoops and balance on bridges at the end of the match.",
     results: [
