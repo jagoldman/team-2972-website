@@ -507,7 +507,8 @@ const OUTREACH_EVENTS = [
   { name: "Hirsh Precision Products Visit", date: "", description: "A demo day with our sponsor Hirsh Precision Products.", image: "assets/placeholder-event.svg" }, // TODO: date, photo + write-up
 ];
 
-// Resources / documents — label + link. A url of "#" is hidden until it's set.
+// Resources / documents — label + link, and an optional one-line note on what it is for.
+// A url of "#" is hidden until it's set. Outside sites are linked, never copied.
 const RESOURCE_LINKS = [
   { category: "Team Documents", items: [
     { label: "Student, Family, and Mentor Handbook 2025–2026", url: "https://docs.google.com/document/d/1cmYxwgvPZEGiw9m3zzVnzU7u41QOKLFab4hHGOfGd5U/edit?usp=sharing" },
@@ -525,17 +526,41 @@ const RESOURCE_LINKS = [
     { label: "AprilTags", url: "https://docs.wpilib.org/en/stable/docs/software/vision-processing/apriltag/apriltag-intro.html" },
   ]},
   { category: "CAD & Manufacturing", items: [
-    { label: "Onshape for FRC (frcdesign.org)", url: "http://frcdesign.org" },
+    { label: "Onshape for FRC (frcdesign.org)", url: "https://www.frcdesign.org", note: "Free Onshape lessons built for FRC, from first sketch to full robot." },
+    { label: "Onshape Learning Center", url: "https://learn.onshape.com", note: "Onshape's own courses on parts, assemblies and drawings." },
+    { label: "ReCalc", url: "https://www.reca.lc", note: "Calculators for gear ratios, belts, chains, arms and elevators." },
+    { label: "Chief Delphi: CAD forum", url: "https://www.chiefdelphi.com/c/technical/cad/68", note: "Other teams' CAD releases and design questions." },
     { label: "3D CAD/CAM Modeling Overview", url: "#cad-overview" },
+  ]},
+  { category: "Build & Parts", items: [
+    { label: "WCP documentation", url: "https://docs.wcproducts.com", note: "West Coast Products: guides for its gearboxes, swerve and build system." },
+    { label: "WCP store", url: "https://wcproducts.com", note: "COTS mechanisms, gears, belts and structure." },
+    { label: "REV ION build system", url: "https://docs.revrobotics.com/ion-build", note: "REV's guides for its extrusion, brackets and motion parts." },
+    { label: "REV FRC Kickoff Concepts", url: "https://docs.revrobotics.com/frc-kickoff-concepts", note: "Example mechanisms REV designs for each new game." },
+    { label: "AndyMark", url: "https://www.andymark.com", note: "Kit of Parts chassis, wheels, gearboxes and field parts." },
+    { label: "Swerve Drive Specialties", url: "https://www.swervedrivespecialties.com", note: "MK4 swerve modules and their docs." },
+    { label: "The ThriftyBot", url: "https://www.thethriftybot.com", note: "Swerve, tubing and low-cost parts." },
   ]},
   { category: "Electronics", items: [
     { label: "FRC Wiring Basics", url: "https://docs.wpilib.org/en/stable/docs/zero-to-robot/step-1/intro-to-frc-robot-wiring.html" },
     { label: "Getting Started with Electronics", url: "https://www.chiefdelphi.com/t/how-to-get-started-with-electronics/507902/8" },
+    { label: "WPILib hardware basics", url: "https://docs.wpilib.org/en/stable/docs/hardware/hardware-basics/index.html", note: "The control system parts and how they connect." },
+    { label: "WPILib wiring best practices", url: "https://docs.wpilib.org/en/stable/docs/hardware/hardware-basics/wiring-best-practices.html", note: "Wire gauge, connectors and strain relief that survive a season." },
+    { label: "CAN addressing", url: "https://docs.wpilib.org/en/stable/docs/software/can-devices/can-addressing.html", note: "How motor controllers and sensors get their CAN IDs." },
+    { label: "REV Power Distribution Hub", url: "https://docs.revrobotics.com/ion-control/pdh/overview", note: "Breakers, channels and status lights." },
+    { label: "REV SPARK MAX", url: "https://docs.revrobotics.com/brushless/spark-max/overview", note: "Wiring and setup for the SPARK MAX motor controller." },
+    { label: "CTRE hardware reference", url: "https://v6.docs.ctr-electronics.com/en/stable/docs/hardware-reference/index.html", note: "Talon FX, CANcoder, Pigeon 2 and CANivore." },
+    { label: "FRC radio (Vivid-Hosting)", url: "https://frc-radio.vivid-hosting.net", note: "Setting up and updating the robot radio." },
   ]},
   { category: "Game Analysis and Strategy", items: [
     { label: "Game Analysis and Strategy Workshop (Team 1100)", url: "https://www.youtube.com/watch?v=CEKrkLYDAO0" },
     { label: "Strategic Design Workshop (Citrus Circuits)", url: "https://www.youtube.com/watch?v=G6X3SrMmX3g&list=PL6j32uphg3L9sVDfxSlGSCuZr67C7WBE5&index=1" },
-    { label: "Scouting", url: "#" }, // TODO
+  ]},
+  { category: "Scouting & Alliance Selection", items: [
+    { label: "Effective FIRST Strategies 2025 (Karthik Kanagasabapathy)", url: "https://www.youtube.com/watch?v=cemXDEzBMhM", note: "How strong teams think about strategy, from game analysis to match play." },
+    { label: "Alliance Selection Process (FIRST)", url: "https://www.youtube.com/watch?v=xr69EMH4BZM", note: "FIRST's own explanation of how alliance selection works." },
+    { label: "Scouting and Competition Strategy (Brian Maher and Joe Blay, Stuy Splash 2020)", url: "https://www.youtube.com/watch?v=LcYxxZJn15c", note: "Turning scouting data into match plans and a pick list." },
+    { label: "Scouting and Strategy Workshop (Team 5199)", url: "https://www.youtube.com/watch?v=IFDuudYQ230", note: "Setting up a scouting team: what to record and how to use it." },
   ]},
   { category: "General FRC", items: [
     { label: "FIRST", url: "https://www.firstinspires.org" },

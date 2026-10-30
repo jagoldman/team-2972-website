@@ -697,6 +697,7 @@ a.card:hover { color: inherit; border-color: var(--tint-line); }
   font-weight: 500;
   transition: padding 0.4s var(--ease), color 0.25s;
 }
+.resource-group li a .res-note { display: block; margin-top: 2px; font-size: 14px; font-weight: 400; color: var(--mute); }
 .resource-group li a::after { content: "↗"; color: var(--mute); transition: transform 0.3s var(--ease), color 0.3s; }
 .resource-group li a:hover { padding-left: 14px; }
 .resource-group li a:hover::after { color: var(--accent); transform: translate(2px, -2px); }
