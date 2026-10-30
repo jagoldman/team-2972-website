@@ -456,3 +456,8 @@ function mountLayout() {
 }
 
 document.addEventListener("DOMContentLoaded", mountLayout);
+
+// Inline style that keeps a robot in frame when its photo is cropped (ROBOTS[].imagePosition).
+function imgPos(r) {
+  return r.imagePosition ? ` style="object-position: ${r.imagePosition}"` : "";
+}

@@ -36,6 +36,7 @@ const SITE = {
   github: "https://github.com/Gears-and-Buccaneers",
   logo: "brand/team-2972-logo-256.png",
   heroImage: "1VgoMdevZH3syn0BvQq7QpFz09xrDS_rt",
+  heroPosition: "50% 100%", // keeps the people, trims the banners and screen at the top
   schoolLogo: "assets/brand/dawson-school.png",
   schoolUrl: "https://www.dawsonschool.org",
 };
@@ -178,6 +179,8 @@ const HISTORY = {
     gallery       [image urls]
     videos        [YouTube urls] embedded on the page.
     matchVideos   [{ label, url }] links to match videos.
+    imagePosition CSS object-position for the photo, e.g. "67% 84%" (x y). Centers the robot when the
+                  photo is cropped to a card. Optional; defaults to the middle.
     binder        Technical binder / info sheet URL.
     buildBlog     [{ label, url }] build threads and blog posts.
     links         [{ label, url }] CAD, code, and anything else.
@@ -208,6 +211,7 @@ const ROBOTS = [
     name: "Sea Bunny",
     status: "In service",
     image: "1CIpymdntGF5P4Yk1CwaKKwD4YaUMh3Ty",
+    imagePosition: "100% 70%",
     tagline: "Three-stage elevator that scores Coral on every level.",
     stats: "2 events · best rank #27 at KCMT · 3rd pick, Alliance 5",
     gameSummary: `Reefscape is the 2025 game, themed around clean oceans. Two alliances of three
@@ -267,6 +271,7 @@ const ROBOTS = [
     name: "Sea Shanty",
     status: "Retired",
     image: "1cU0ckxw1iHt9KhHVH6k0FlrfafY9gYes",
+    imagePosition: "67% 84%",
     tagline: "Picked for playoff alliances at both regionals.",
     stats: "3 events · best rank #18 at KCMT · playoffs at both regionals",
     gameSummary: `Crescendo is the 2024 game, themed around music. Two alliances of three robots
@@ -307,7 +312,7 @@ const ROBOTS = [
       { event: "Utah Regional", result: "Rank 24 of 44 (5-7-0)", tba: "2023utwv" },
       { event: "Green Country Regional", result: "Rank 9 of 47 — Captain, Alliance 7", tba: "2023oktu" },
     ],
-    binder: "assets/robots/2023-scurvy-info-sheet.png",
+    binder: "https://drive.google.com/file/d/1XdiwEkw05dp_5GzMkJupP0Q2C5FbEdBQ/view?usp=sharing",
     links: [],
   },
   /*
@@ -321,6 +326,7 @@ const ROBOTS = [
     game: "Rapid React",
     name: "Kunagunda", // confirmed by the user 2026-10-30 (FIRST records said "Helga", carried over from 2018)
     image: "1UJ8vY8joMgOt4XJFus7velWI3_kMPHJH",
+    imagePosition: "59% 64%",
     stats: "2 regionals · rebuilding year",
     gameSummary: "Rapid React is the 2022 game. Robots shoot Cargo balls into a central Hub and climb the rungs of a Hangar at the end of the match.",
     results: [
@@ -332,7 +338,8 @@ const ROBOTS = [
     year: "2019",
     game: "Destination: Deep Space",
     name: "", // FIRST records say "Helga" (carried over from 2018) — confirm
-    image: "assets/robots/2019-robot.jpg",
+    image: "1mK_hTbeBtqT47yl-X5NM6w7qKABjP_zH",
+    imagePosition: "66% 68%",
     stats: "2 regionals · rank #9 in Colorado · alliance captain",
     gameSummary: "Destination: Deep Space is the 2019 game. Robots place Hatch Panels and Cargo on Rockets and a Cargo Ship, starting with a vision-limited Sandstorm period, and climb onto the HAB platform at the end.",
     results: [
@@ -344,6 +351,7 @@ const ROBOTS = [
     year: "2018",
     game: "Power Up",
     name: "Helga",
+    image: "1c_s7bMx0XHSl4gLvWoy6dCZcjOTlgseg",
     stats: "1 regional · rank #15 · semifinalist",
     gameSummary: "Power Up is the 2018 game, themed as an arcade video game. Robots place Power Cubes on Switches and a Scale, and climb at the end of the match.",
     results: [
@@ -354,6 +362,8 @@ const ROBOTS = [
     year: "2017",
     game: "Steamworks",
     name: "", // FIRST records say "Sir Lancebot" (carried over from 2016) — confirm
+    image: "1Xpf5v83Iv8sfqBqJ1-qoxn_OE-X0w1hE",
+    imagePosition: "79% 89%",
     stats: "1 regional · rank #31",
     gameSummary: "Steamworks is the 2017 game, themed around steampunk airships. Robots deliver Gears to the Airship, shoot Fuel into the Boiler, and climb ropes at the end of the match.",
     results: [
@@ -364,6 +374,7 @@ const ROBOTS = [
     year: "2016",
     game: "Stronghold",
     name: "Sir Lancebot",
+    image: "15e4ofy6E9vPMFNslFfupueiwp_mnY2EL",
     stats: "2 regionals · best rank #17",
     gameSummary: "Stronghold is the 2016 game, themed as a medieval siege. Robots breach defenses, shoot Boulders into the opposing Castle tower, and scale it at the end of the match.",
     results: [
@@ -375,6 +386,7 @@ const ROBOTS = [
     year: "2015",
     game: "Recycle Rush",
     name: "Centaurian",
+    image: "1pkVp84ZN2LQ66qJ2CEetAG_PD0h0yQVv",
     stats: "2 regionals · best rank #23",
     gameSummary: "Recycle Rush is the 2015 game. Robots stack Totes and top them with Recycling Containers, with no defense between alliances.",
     results: [
@@ -386,6 +398,8 @@ const ROBOTS = [
     year: "2014",
     game: "Aerial Assist",
     name: "",
+    image: "1k3l8okOD-69VbqfliE72GiK75BeLX--R",
+    imagePosition: "86% 20%",
     stats: "2 regionals · rank #7 in Colorado · alliance captain",
     gameSummary: "Aerial Assist is the 2014 game. Alliance partners pass large exercise balls to each other and score them in goals, earning bonus points for assists and truss shots.",
     results: [
@@ -397,6 +411,8 @@ const ROBOTS = [
     year: "2013",
     game: "Ultimate Ascent",
     name: "Odd-Job",
+    image: "14268bnptdGCGX62rJUxzgNaVPMkL8pkS",
+    imagePosition: "66% 93%",
     stats: "1 regional · rank #17 · playoffs",
     gameSummary: "Ultimate Ascent is the 2013 game. Robots shoot flying discs into goals and climb a metal pyramid at the end of the match.",
     description: `Our best robot to date at the time, moving the team into the top 25. Our alliance was the
@@ -413,6 +429,7 @@ const ROBOTS = [
     year: "2012",
     game: "Rebound Rumble",
     name: "Tim Tebot", // given by the user 2026-10-30
+    image: "1pb7riqwgo_YCa1o4iMNu62MQ_DSvFF5R",
     stats: "1 regional",
     gameSummary: "Rebound Rumble is the 2012 game. Robots shoot foam basketballs into hoops and balance on bridges at the end of the match.",
     results: [
@@ -486,10 +503,10 @@ const SPONSOR_PACKET_URL = "https://drive.google.com/file/d/1pQur7KkQSo5CY8GExVn
 
 // Outreach / community events — add one object per event
 const OUTREACH_EVENTS = [
-  { name: "Broomfield Days", date: "Annual", description: "Robot demos for the Broomfield community.", image: "assets/placeholder-event.svg" }, // TODO: photo + write-up
-  { name: "Dawson Fest", date: "Annual", description: "Showing our robot to Dawson families.", image: "assets/placeholder-event.svg" }, // TODO: photo + write-up
-  { name: "Qualcomm Demo Day", date: "", description: "A robot demo and visit with Qualcomm.", image: "assets/placeholder-event.svg" }, // TODO: date, photo + write-up
-  { name: "Hirsh Precision Products Visit", date: "", description: "A demo day with our sponsor Hirsh Precision Products.", image: "assets/placeholder-event.svg" }, // TODO: date, photo + write-up
+  { name: "Broomfield Days", date: "Annual", description: "Robot demos for the Broomfield community.", image: "19NBd6oMYEdIqkxz0t--S6fS_LUUsJJuK" }, // TODO: write-up
+  { name: "Dawson Fest", date: "Annual", description: "Showing our robot to Dawson families.", image: "1myYx0DVTaDLAlM2STzcfk8QEXSlt6HfE" }, // TODO: write-up
+  { name: "Qualcomm Demo Day", date: "", description: "A robot demo and visit with Qualcomm.", image: "1x34veuG0PSRTlf1Xokah3iYOT6kgxJ8z" }, // TODO: date, write-up
+  { name: "Hirsh Precision Products Visit", date: "", description: "A demo day with our sponsor Hirsh Precision Products.", image: "1K0lN_nOs75TIF8CLyCUBSioZpojK9aJC" }, // TODO: date, write-up
 ];
 
 // Resources / documents — label + link, and an optional one-line note on what it is for.

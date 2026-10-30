@@ -85,7 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
         <figure class="robot-hero-image">
           ${r.image
-            ? `<img src="${driveImg(r.image, 1200)}" alt="${robotName(r)}, the ${r.year} robot" />`
+            ? `<img src="${driveImg(r.image, 1200)}"${imgPos(r)} alt="${robotName(r)}, the ${r.year} robot" />`
             : `<div class="photo-wanted"><span aria-hidden="true">${r.year}</span>Photo wanted</div>`}
           ${r.photoSource ? `<figcaption>${r.photoSource}</figcaption>` : ""}
         </figure>
