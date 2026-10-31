@@ -298,7 +298,10 @@ const run = (ctx, expr) => vm.runInContext(expr, ctx);
 
     const y = (u) => e(`youtubeEmbed(${JSON.stringify(u)})`);
     check("youtubeEmbed: watch URL", y("https://www.youtube.com/watch?v=YWbxcjlY9JY") === "https://www.youtube.com/embed/YWbxcjlY9JY");
-    check("youtubeEmbed: short URL with time", y("https://youtu.be/xhr9v2J8u3k?t=110") === "https://www.youtube.com/embed/xhr9v2J8u3k");
+    check("youtubeEmbed: short URL with time", y("https://youtu.be/xhr9v2J8u3k?t=110") === "https://www.youtube.com/embed/xhr9v2J8u3k?start=110");
+    check("youtubeEmbed: watch URL with t=9s", y("https://www.youtube.com/watch?v=ysP5KEcw9FU&t=9s") === "https://www.youtube.com/embed/ysP5KEcw9FU?start=9");
+    check("youtubeEmbed: t=1m30s and start=", y("https://youtu.be/xhr9v2J8u3k?t=1m30s") === "https://www.youtube.com/embed/xhr9v2J8u3k?start=90" && y("https://www.youtube.com/embed/CB1DmHxDGQw?start=42") === "https://www.youtube.com/embed/CB1DmHxDGQw?start=42");
+    check("youtubeEmbed: a bad time is ignored", y("https://youtu.be/xhr9v2J8u3k?t=abc") === "https://www.youtube.com/embed/xhr9v2J8u3k");
     check("youtubeEmbed: embed URL", y("https://www.youtube.com/embed/CB1DmHxDGQw") === "https://www.youtube.com/embed/CB1DmHxDGQw");
     check("youtubeEmbed: refuses other sites", y("https://evil.example.com/embed/aaaaaaaaaaa") === "" && y("https://example.com/watch?v=aaaaaaaaaaa") === "");
     check("youtubeEmbed: refuses javascript:", y("javascript:alert(1)") === "");

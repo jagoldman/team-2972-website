@@ -50,6 +50,9 @@ const SITE = {
   logo: "brand/team-2972-logo-256.png",
   heroImage: "1VgoMdevZH3syn0BvQq7QpFz09xrDS_rt",
   heroPosition: "50% 100%", // keeps the people, trims the banners and screen at the top
+  // Photo beside the text on "Become a Team Member" (member.html), a Drive ID. Empty: no photo there.
+  memberImage: "", // TODO: Drive ID from the photo sheet (docs/photo-ids.csv, row 77)
+  memberImageAlt: "Team 2972 students working on a robot",
   schoolLogo: "assets/brand/dawson-school.png",
   schoolUrl: "https://www.dawsonschool.org",
 };
@@ -409,6 +412,7 @@ const ROBOTS = [
     image: "1pkVp84ZN2LQ66qJ2CEetAG_PD0h0yQVv",
     stats: "2 regionals · best rank #23",
     gameSummary: "Recycle Rush is the 2015 game. Robots stack Totes and top them with Recycling Containers, with no defense between alliances.",
+    videos: ["https://www.youtube.com/watch?v=DmapW3sVOgU"],
     results: [
       { event: "Arkansas Rock City Regional", result: "Rank 32 — 2nd pick in playoffs", tba: "2015arfa" },
       { event: "Colorado Regional", result: "Rank 23", tba: "2015code" },
@@ -442,7 +446,7 @@ const ROBOTS = [
     results: [
       { event: "Colorado Regional", result: "Rank 17 (6-7-0) — 2nd pick in playoffs", tba: "2013code" },
     ],
-    videos: ["https://www.youtube.com/watch?v=ysP5KEcw9FU"],
+    videos: ["https://www.youtube.com/watch?v=ysP5KEcw9FU&t=9s"],
     matchVideos: [
       { label: "Quarterfinal 1-2: blocking 2169's frisbee shots", url: "https://youtu.be/xhr9v2J8u3k?t=110" },
     ],

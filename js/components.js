@@ -232,9 +232,14 @@ function imgPos(r) {
 }
 
 // "https://www.youtube.com/watch?v=ID" or "https://youtu.be/ID" -> embed URL, or "" if it is not YouTube
+// A start time on the link (t=9s, t=110, t=1m30s or start=90) carries over as ?start=<seconds>.
 function youtubeEmbed(url) {
-  const m = String(url).match(/^https:\/\/(?:www\.youtube\.com|youtu\.be)\/(?:embed\/|watch\?(?:[^#]*&)?v=)?([\w-]{11})(?:[?&#]|$)/);
-  return m ? `https://www.youtube.com/embed/${m[1]}` : "";
+  const u = String(url);
+  const m = u.match(/^https:\/\/(?:www\.youtube\.com|youtu\.be)\/(?:embed\/|watch\?(?:[^#]*&)?v=)?([\w-]{11})(?:[?&#]|$)/);
+  if (!m) return "";
+  const t = u.match(/[?&](?:t|start)=(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?(?:&|#|$)/);
+  const start = t ? (+t[1] || 0) * 3600 + (+t[2] || 0) * 60 + (+t[3] || 0) : 0;
+  return `https://www.youtube.com/embed/${m[1]}${start ? `?start=${start}` : ""}`;
 }
 
 function robotName(r) {
