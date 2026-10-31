@@ -60,8 +60,7 @@ function requestAccessHref(resource, who = {}) {
   return `mailto:${SITE.email}?subject=${encodeURIComponent(`Access request: ${resource.name}`)}&body=${encodeURIComponent(body)}`;
 }
 
-// Buttons for the team's code and CAD, above the access requests. The portal also gets Onshape itself (team members
-// sign in there to edit) and a way back to the public Resources page.
+// Buttons for the team's public code and CAD, above the access requests on the Resources page.
 function renderTeamTools() {
   const arrow = `<svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg>`;
   const out = (path, label) => {
@@ -70,9 +69,7 @@ function renderTeamTools() {
   };
   return `<div class="btn-row team-tools">
       ${out("SITE.github", "Robot code on GitHub")}
-      ${isPortalPage() ? out("SITE.onshapeApp", "Onshape") : ""}
       ${out("SITE.onshapePublic", "Robot CAD (public view)")}
-      ${isPortalPage() ? `<a class="btn btn-outline" href="${esc(pageHref("resources.html"))}">Team resources</a>` : ""}
     </div>`;
 }
 

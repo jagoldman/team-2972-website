@@ -47,5 +47,13 @@
     "url": "https://example.com/code",
     "groups": ["admin", "mentor", "student"],
     "audience": "Programmers"
+  },
+  {
+    "id": "resources",
+    "name": "Team resources",
+    "description": "Fake tile for a page on the public site (path only, no host).",
+    "path": "/resources.html",
+    "groups": [],
+    "audience": "Everyone"
   }
 ]

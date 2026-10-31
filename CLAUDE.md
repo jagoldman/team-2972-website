@@ -19,8 +19,10 @@ build step. Almost all content lives in `js/content.js` (see README).
   `PROXY_SHARED_SECRET`. Build every host URL from `SITE_SCHEME` and `SITE_DOMAIN`, so `localhost`
   and `2972robotics.com` both work.
 - Portal tiles come from `infra/config/apps.json`, mounted read-only into the container.
-  Shape: `[{ "id", "name", "description", "url", "groups": [..], "audience" }]`. `groups: []` means
-  every logged-in user. Show a tile when the user's groups overlap `groups`.
+  Shape: `[{ "id", "name", "description", "url" | "host" (+ "path") | "path", "groups": [..], "audience" }]`.
+  `url` is an outside link (new tab); `host` a subdomain app; `path` alone a page on the public site. `groups: []`
+  means every logged-in user. Show a tile when the user's groups overlap `groups`. GitHub and Onshape are not tiles
+  (Onshape and the Team Drive are "Get access" requests below the tiles).
 - Taskapp lives at `tasks.SITE_DOMAIN`.
 
 ## Identity (portal host only)

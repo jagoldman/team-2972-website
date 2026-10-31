@@ -43,9 +43,7 @@ const SITE = {
   mission: "To build a confident and capable next generation through competitive robotics.",
   email: "robotics@dawsonschool.org",
   // Public Onshape publication of our robots: anyone can view, no account needed (user, 2026-10-29).
-  // Onshape itself, for team members who edit the CAD (portal button "Onshape").
-  onshapeApp: "https://cad.onshape.com",
-  onshapePublic: "https://cad.onshape.com/publications/27b8b2d91c3dcba99076bea5/w/6f7554126c007d8690fa9643/e/fd2bdc75e190c38dc9e2f4d9?configuration=default&renderMode=0&leftPanel=false",
+  onshapePublic: "https://cad.onshape.com/publications/27b8b2d91c3dcba99076bea5/w/6f7554126c007d8690fa9643/e/fd2bdc75e190c38dc9e2f4d9",
   instagram: "https://www.instagram.com/frc2972/",
   instagramHandle: "@frc2972",
   github: "https://github.com/Gears-and-Buccaneers",
@@ -551,7 +549,7 @@ const RESOURCE_LINKS = [
     { label: "Team logo (PNG, 2400 × 2400, white on black)", url: "brand/team-2972-logo.png", download: "team-2972-logo.png" },
   ]},
   { category: "Software & Controls", items: [
-    { label: "Team GitHub", url: "https://github.com/Gears-and-Buccaneers" },
+    { label: "Team GitHub", url: SITE.github },
     { label: "WPILib documentation", url: "https://docs.wpilib.org" },
     { label: "Driver Station", url: "https://docs.wpilib.org/en/stable/docs/software/driverstation/driver-station.html" },
     { label: "CTRE Phoenix Tuner X", url: "https://v6.docs.ctr-electronics.com/en/stable/docs/tuner/index.html" },

@@ -59,6 +59,11 @@ run_user() {
   printf '%s' "$dom" | grep -q 'id="no-group">' && has_notice=yes
   greet=$(printf '%s' "$dom" | tr '\n' ' ' | grep -o '<span[^>]*id="name"[^>]*>[^<]*' | sed 's/.*>//')
   label=${groups:-"(no group)"}
+  case "$want" in *"Team resources"*)
+    link=$(printf '%s' "$dom" | tr '\n' ' ' | grep -o '<a[^>]*href="[^"]*/resources\.html"[^>]*>' | head -1)
+    case "$link" in *'://localhost'*/resources.html*) case "$link" in *target=*) echo "FAIL $groups: Team resources opens a new tab"; fail=1 ;; esac ;;
+      *) echo "FAIL $groups: Team resources tile does not link the public site: $link"; fail=1 ;; esac ;;
+  esac
   if [ "$got" = "$want" ] && [ "$has_notice" = "$notice" ]; then
     echo "ok   $label: [$got] notice=$has_notice greeting='$greet'"
   else
@@ -66,13 +71,14 @@ run_user() {
   fi
 }
 
-ALL="Task App,Admin,Everyone Link,Alumni News,Scouting"
-run_user "admin"            "Task App,Admin,Everyone Link"                    no
-run_user "mentor"           "Task App,Everyone Link,Alumni News,Scouting"     no
-run_user "student"          "Task App,Everyone Link,Scouting"                 no
-run_user "parent"           "Task App,Everyone Link"                          no
-run_user "alumni"           "Everyone Link,Alumni News"                       no
-run_user "mentor|parent"    "Task App,Everyone Link,Alumni News,Scouting"     no
+# The fake "github" tile is never shown (GitHub is not a portal tile). "Team resources" has only a path: it links
+# the public site's page, in the same tab.
+run_user "admin"            "Task App,Admin,Everyone Link,Team resources"                    no
+run_user "mentor"           "Task App,Everyone Link,Alumni News,Scouting,Team resources"     no
+run_user "student"          "Task App,Everyone Link,Scouting,Team resources"                 no
+run_user "parent"           "Task App,Everyone Link,Team resources"                          no
+run_user "alumni"           "Everyone Link,Alumni News,Team resources"                       no
+run_user "mentor|parent"    "Task App,Everyone Link,Alumni News,Scouting,Team resources"     no
 run_user ""                 ""                                                yes
 run_user "authentik Admins" ""                                                yes
 
