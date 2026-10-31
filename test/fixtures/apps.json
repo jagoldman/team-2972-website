@@ -43,10 +43,18 @@
   {
     "id": "github",
     "name": "GitHub",
-    "description": "Fake tile: the portal shows GitHub as a button, never as a tile.",
+    "description": "Fake outside tile for programmers.",
     "url": "https://example.com/code",
     "groups": ["admin", "mentor", "student"],
     "audience": "Programmers"
+  },
+  {
+    "id": "team-drive",
+    "name": "Team Drive",
+    "description": "Fake outside tile for the drive (checks its icon).",
+    "url": "https://example.com/drive",
+    "groups": ["admin", "mentor", "student"],
+    "audience": "Students, mentors"
   },
   {
     "id": "resources",

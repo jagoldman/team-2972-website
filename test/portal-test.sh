@@ -59,6 +59,11 @@ run_user() {
   printf '%s' "$dom" | grep -q 'id="no-group">' && has_notice=yes
   greet=$(printf '%s' "$dom" | tr '\n' ' ' | grep -o '<span[^>]*id="name"[^>]*>[^<]*' | sed 's/.*>//')
   label=${groups:-"(no group)"}
+  # Team Drive is an outside link (new tab) with the folder icon, not the generic one.
+  case "$want" in *"Team Drive"*)
+    drive=$(printf '%s' "$dom" | tr '\n' ' ' | sed -n 's/.*\(<a[^>]*href="https:\/\/example.com\/drive"\)/\1/p' | cut -c1-700)
+    case "$drive" in *'target="_blank"'*'M3 6.5A1.5'*) ;; *) echo "FAIL $groups: Team Drive tile is not a new-tab link with the folder icon"; fail=1 ;; esac ;;
+  esac
   case "$want" in *"Team resources"*)
     link=$(printf '%s' "$dom" | tr '\n' ' ' | grep -o '<a[^>]*href="[^"]*/resources\.html"[^>]*>' | head -1)
     case "$link" in *'://localhost'*/resources.html*) case "$link" in *target=*) echo "FAIL $groups: Team resources opens a new tab"; fail=1 ;; esac ;;
@@ -71,14 +76,14 @@ run_user() {
   fi
 }
 
-# The fake "github" tile is never shown (GitHub is not a portal tile). "Team resources" has only a path: it links
+# "Team resources" has only a path: it links
 # the public site's page, in the same tab.
-run_user "admin"            "Task App,Admin,Everyone Link,Team resources"                    no
-run_user "mentor"           "Task App,Everyone Link,Alumni News,Scouting,Team resources"     no
-run_user "student"          "Task App,Everyone Link,Scouting,Team resources"                 no
+run_user "admin"            "Task App,Admin,Everyone Link,GitHub,Team Drive,Team resources"                    no
+run_user "mentor"           "Task App,Everyone Link,Alumni News,Scouting,GitHub,Team Drive,Team resources"     no
+run_user "student"          "Task App,Everyone Link,Scouting,GitHub,Team Drive,Team resources"                 no
 run_user "parent"           "Task App,Everyone Link,Team resources"                          no
 run_user "alumni"           "Everyone Link,Alumni News,Team resources"                       no
-run_user "mentor|parent"    "Task App,Everyone Link,Alumni News,Scouting,Team resources"     no
+run_user "mentor|parent"    "Task App,Everyone Link,Alumni News,Scouting,GitHub,Team Drive,Team resources"     no
 run_user ""                 ""                                                yes
 run_user "authentik Admins" ""                                                yes
 
