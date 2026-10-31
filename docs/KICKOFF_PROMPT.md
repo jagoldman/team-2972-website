@@ -33,10 +33,10 @@ One setting builds every host URL from SITE_SCHEME and SITE_DOMAIN, so localhost
 Dockerfile with a pinned static Caddy on PORT 3001. GET /healthz returns 200 {"status":"ok"} with no secret. Portal requests need X-Proxy-Secret equal to PROXY_SHARED_SECRET, otherwise 401; the public host never serves portal files or identity. Test it alone with docker run and hand-sent headers.
 
 ## Step 5: portal home
-On portal.SITE_DOMAIN: "Hi, <name>" (textContent), tiles from the read-only apps.json filtered by the pipe-separated X-Authentik-Groups (groups [] = any logged-in user), the "your account is waiting for an admin to assign your group" notice when there are no groups, and a sign-out link (INTEGRATION §1). Keep it no-build, for example a Caddy-templated identity JSON plus client-side filtering. Filtering is convenience only; Authentik is the real gate. Then remove TEAM_APPS from content.js (it seeds infra's apps.json; mouro.ai/2972 becomes tasks.SITE_DOMAIN).
+On portal.SITE_DOMAIN: "Hi, <name>" (textContent), tiles from the read-only apps.json filtered by the pipe-separated X-Authentik-Groups (groups [] = any logged-in user), the "your account is waiting for an admin to assign your group" notice when there are no groups, and a sign-out link (INTEGRATION §1). Keep it no-build, for example a Caddy-templated identity JSON plus client-side filtering. Filtering is convenience only; Authentik is the real gate. Then remove TEAM_APPS from content.js (it seeds infra's apps.json; the Task App tile points at tasks.SITE_DOMAIN).
 
 ## Step 6: README and infra hand-off
-Rewrite README: plain "what is this" paragraph first, "edit content.js" front and center, Drive size suffixes, remove the stale /Users/.../Robotics/Website path, mouro.ai and the GitHub Pages/Netlify deploy section ("this runs inside the infra stack; production updates only via infra/scripts/deploy.sh"). Then tell me exactly what infra needs: compose service, env, apps.json mount path, Caddy blocks. Do not edit ../infra yourself.
+Rewrite README: plain "what is this" paragraph first, "edit content.js" front and center, Drive size suffixes, remove the stale /Users/.../Robotics/Website path and the GitHub Pages/Netlify deploy section ("this runs inside the infra stack; production updates only via infra/scripts/deploy.sh"). Then tell me exactly what infra needs: compose service, env, apps.json mount path, Caddy blocks. Do not edit ../infra yourself.
 
 ## Phase 3 test checklist
 - [ ] The root domain loads with no login and no broken images from a clean clone.

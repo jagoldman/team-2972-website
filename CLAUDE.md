@@ -21,7 +21,7 @@ build step. Almost all content lives in `js/content.js` (see README).
 - Portal tiles come from `infra/config/apps.json`, mounted read-only into the container.
   Shape: `[{ "id", "name", "description", "url", "groups": [..], "audience" }]`. `groups: []` means
   every logged-in user. Show a tile when the user's groups overlap `groups`.
-- Taskapp lives at `tasks.SITE_DOMAIN`. The old mouro.ai/2972 link goes away (D2).
+- Taskapp lives at `tasks.SITE_DOMAIN`.
 
 ## Identity (portal host only)
 - Trust `X-Authentik-Email`, `-Name`, `-Username`, `-Groups`, `-Uid` only when `X-Proxy-Secret` equals

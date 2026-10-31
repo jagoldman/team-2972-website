@@ -87,19 +87,18 @@ Also:
 - [ ] Uses the shared header/footer from `components.js` so it looks like the public site.
 
 ### 5. Retire `TEAM_APPS`
-- [ ] `content.js` l.665–719 (`TEAM_APPS`) is the seed for `infra/config/apps.json` (the infra kickoff
-      copies it, plus Tasks and Admin). Once apps.json exists, delete `TEAM_APPS` here.
-- [ ] Mapping: add `id` and `groups` to each entry; `audience` stays as the label. "Task App"
-      (`https://mouro.ai/2972`, l.674) becomes `tasks.SITE_DOMAIN` with groups
-      `admin, mentor, student, parent`. Entries with `url: "#"` (Scouting, Team Drive) need a decision
-      (open question 5).
+- [x] `content.js` l.665–719 (`TEAM_APPS`) is the seed for `infra/config/apps.json` (the infra kickoff
+      copies it, plus Tasks and Admin). Once apps.json exists, delete `TEAM_APPS` here. (Done: `TEAM_APPS` is gone.)
+- [x] Mapping: add `id` and `groups` to each entry; `audience` stays as the label. "Task App"
+      points at `tasks.SITE_DOMAIN` with groups `admin, mentor, student, parent`. Entries with `url: "#"`
+      (Scouting, Team Drive) need a decision (open question 5).
 - [ ] `TEAM_CALENDAR_URL` (l.59–61) is also used on the public About page (`about.html`
       `calendar-link`); keep it in `content.js`.
 
 ### 6. README
 - [ ] Start with a plain "what is this" paragraph (Phase 5 asks for it in every repo).
 - [ ] Structure list: `team-login.html` (l.15) is now a redirect; add the portal page, `Dockerfile`, `docs/`.
-- [ ] "Team Login" section (l.61–67): remove mouro.ai; say tiles now live in `infra/config/apps.json`.
+- [x] "Team Login" section: say tiles now live in `infra/config/apps.json`. (Done.)
 - [ ] "Adding images from Google Drive" (l.69–76): add the `=w<size>` suffix and the sizes to use.
 - [ ] "Previewing locally" (l.84): `/Users/jacobgoldman/Documents/Robotics/Website` is a stale personal
       path. Use "from this folder". Say the portal only works inside the infra stack.
