@@ -339,6 +339,7 @@ const ROBOTS = [
     year: "2022",
     game: "Rapid React",
     name: "Kunagunda", // confirmed by the user 2026-10-30 (FIRST records said "Helga", carried over from 2018)
+    status: "Retired",
     image: "1UJ8vY8joMgOt4XJFus7velWI3_kMPHJH",
     imagePosition: "59% 64%",
     stats: "2 regionals · rebuilding year",
@@ -352,6 +353,7 @@ const ROBOTS = [
     year: "2019",
     game: "Destination: Deep Space",
     name: "", // FIRST records say "Helga" (carried over from 2018) — confirm
+    status: "Retired",
     image: "1mK_hTbeBtqT47yl-X5NM6w7qKABjP_zH",
     imagePosition: "66% 68%",
     stats: "2 regionals · rank #9 in Colorado · alliance captain",
@@ -365,6 +367,7 @@ const ROBOTS = [
     year: "2018",
     game: "Power Up",
     name: "Helga",
+    status: "Retired",
     image: "1c_s7bMx0XHSl4gLvWoy6dCZcjOTlgseg",
     stats: "1 regional · rank #15 · semifinalist",
     gameSummary: "Power Up is the 2018 game, themed as an arcade video game. Robots place Power Cubes on Switches and a Scale, and climb at the end of the match.",
@@ -376,6 +379,7 @@ const ROBOTS = [
     year: "2017",
     game: "Steamworks",
     name: "", // FIRST records say "Sir Lancebot" (carried over from 2016) — confirm
+    status: "Retired",
     image: "1Xpf5v83Iv8sfqBqJ1-qoxn_OE-X0w1hE",
     imagePosition: "79% 89%",
     stats: "1 regional · rank #31",
@@ -388,6 +392,7 @@ const ROBOTS = [
     year: "2016",
     game: "Stronghold",
     name: "Sir Lancebot",
+    status: "Retired",
     image: "15e4ofy6E9vPMFNslFfupueiwp_mnY2EL",
     stats: "2 regionals · best rank #17",
     gameSummary: "Stronghold is the 2016 game, themed as a medieval siege. Robots breach defenses, shoot Boulders into the opposing Castle tower, and scale it at the end of the match.",
@@ -400,6 +405,7 @@ const ROBOTS = [
     year: "2015",
     game: "Recycle Rush",
     name: "Centaurian",
+    status: "Retired",
     image: "1pkVp84ZN2LQ66qJ2CEetAG_PD0h0yQVv",
     stats: "2 regionals · best rank #23",
     gameSummary: "Recycle Rush is the 2015 game. Robots stack Totes and top them with Recycling Containers, with no defense between alliances.",
@@ -412,6 +418,7 @@ const ROBOTS = [
     year: "2014",
     game: "Aerial Assist",
     name: "",
+    status: "Retired",
     image: "1k3l8okOD-69VbqfliE72GiK75BeLX--R",
     imagePosition: "86% 20%",
     stats: "2 regionals · rank #7 in Colorado · alliance captain",
@@ -425,6 +432,7 @@ const ROBOTS = [
     year: "2013",
     game: "Ultimate Ascent",
     name: "Odd-Job",
+    status: "Retired",
     image: "14268bnptdGCGX62rJUxzgNaVPMkL8pkS",
     imagePosition: "66% 93%",
     stats: "1 regional · rank #17 · playoffs",
@@ -443,6 +451,7 @@ const ROBOTS = [
     year: "2012",
     game: "Rebound Rumble",
     name: "Tim Tebot", // given by the user 2026-10-30
+    status: "Retired",
     image: "1pb7riqwgo_YCa1o4iMNu62MQ_DSvFF5R",
     stats: "1 regional",
     gameSummary: "Rebound Rumble is the 2012 game. Robots shoot foam basketballs into hoops and balance on bridges at the end of the match.",
@@ -454,6 +463,7 @@ const ROBOTS = [
     year: "2011",
     game: "Logo Motion",
     name: "",
+    status: "Retired",
     stats: "Colorado Regional Winners · Championship qualifier",
     gameSummary: "Logo Motion is the 2011 game. Robots hang inflatable tubes on pegs to form the FIRST logo, then deploy minibots that race up poles at the end of the match.",
     description: `Our motto was "Is that fear I see?" Despite a barely operational robot, we won
@@ -468,6 +478,7 @@ const ROBOTS = [
     year: "2010",
     game: "Breakaway",
     name: "",
+    status: "Retired",
     stats: "1 regional",
     gameSummary: "Breakaway is the 2010 game. Robots kick soccer balls into goals over a field divided by bumps, and hang from a tower at the end of the match.",
     results: [
@@ -478,6 +489,7 @@ const ROBOTS = [
     year: "2009",
     game: "Lunacy",
     name: "",
+    status: "Retired",
     stats: "Rookie season",
     gameSummary: "Lunacy is the 2009 game, played on a slippery floor that simulates the moon's low gravity. Robots tow trailers and score Orbit Balls into the opposing alliance's trailers.",
     results: [

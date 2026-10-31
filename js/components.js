@@ -578,11 +578,13 @@ function mountLayout() {
     });
   }
 
-  // "Join the Team" dropdown: opens on hover or focus by CSS; a click or tap toggles it, Escape or an outside click closes it.
+  // Dropdowns open on hover, or on keyboard focus (CSS). A click does not keep one open; only a screen that
+  // cannot hover (a tablet) opens one with a tap. Escape or an outside tap closes it.
+  const canHover = matchMedia("(hover: hover)");
   document.querySelectorAll(".nav-drop").forEach((btn) => {
     const group = btn.parentElement;
     const set = (open) => { group.classList.toggle("open", open); btn.setAttribute("aria-expanded", String(open)); };
-    btn.addEventListener("click", () => set(!group.classList.contains("open")));
+    btn.addEventListener("click", () => { if (!canHover.matches) set(!group.classList.contains("open")); });
     document.addEventListener("click", (e) => { if (!group.contains(e.target)) set(false); });
     group.addEventListener("keydown", (e) => { if (e.key === "Escape") { set(false); btn.focus(); } });
   });
