@@ -1,6 +1,8 @@
 # Only the site goes into the image. Photos come from Google Drive.
 .git
 .github
+# Claude Code's local files, including session worktrees (whole checkouts) under .claude/worktrees.
+.claude
 .gitignore
 .gitleaks.toml
 .dockerignore

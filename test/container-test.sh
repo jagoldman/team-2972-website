@@ -223,7 +223,7 @@ check 404 "no mounts: /media/00000000000000000001-400.webp is a plain 404" -H "H
 check 200 "no mounts: /js/content-loader.js is served" -H "Host: $D" "$URL2/js/content-loader.js"
 
 echo "-- nothing private in the image"
-for f in /srv/site/README.md /srv/site/CLAUDE.md /srv/site/.git /srv/site/test /srv/site/docs /srv/site/container /srv/site/.env.example; do
+for f in /srv/site/README.md /srv/site/CLAUDE.md /srv/site/.git /srv/site/test /srv/site/docs /srv/site/container /srv/site/.env.example /srv/site/.claude; do
   if docker exec "$NAME" test -e "$f"; then echo "FAIL image contains $f"; fail=1; fi
 done
 if docker exec "$NAME" sh -c 'find /srv/site \( -path /srv/site/pwa-icons -o -path /srv/site/brand \) -prune -o \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print | grep -q .'; then
