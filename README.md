@@ -48,6 +48,14 @@ Photos are **not** stored in this repo (only SVG placeholders are). They're serv
 | Mentor headshots, sponsor logos | `=w400` |
 | Gallery thumbnails (link the full photo with `=w2000`) | `=w600` |
 
+The live site doesn't make visitors wait on Google: each deploy downloads every Drive photo in `js/content.js`
+once, saves it as WebP at 400, 800, 1200 and 1600 px, and serves those copies itself from `/img/drive/`
+(`scripts/drive-photos/fetch.cjs`, run by the `Dockerfile`). A photo that can't be downloaded, or one added
+after the last deploy, still loads from Drive as before, and so does every photo in a local preview. To try
+the download by hand: `cd scripts/drive-photos && npm ci && node fetch.cjs` (writes `img/drive/`, which git
+ignores). A changed photo needs a new Drive file, not an edit of the old one, because visitors' browsers keep
+the saved copy for a year.
+
 ## Light and dark mode
 
 The site follows each visitor's system setting (light or dark) and also has a **Light / Dark / System** switch
@@ -111,6 +119,7 @@ fonts/             The two fonts (Bricolage Grotesque, Inter) and their licenses
 assets/            SVG placeholders only
 
 Dockerfile, container/   How the server runs (see below)
+scripts/drive-photos/    Downloads the Drive photos when the image is built
 test/                    Container and portal checks
 docs/                    Work plans for developers
 ```
@@ -147,6 +156,7 @@ test/container-test.sh
 test/portal-test.sh
 test/theme-test.sh     # light and dark themes (needs Chrome)
 node test/pwa-test.cjs # installable app: icons, manifests, service worker
+node test/drive-photos-test.cjs  # Drive photos saved at build time (needs `npm ci` in scripts/drive-photos)
 ```
 
 ## Deploying

@@ -27,6 +27,10 @@ Thumbs.db
 !/brand/team-2972-logo.png
 !/brand/team-2972-logo-256.png
 
+# Drive photos downloaded by scripts/drive-photos/fetch.cjs (at image build time, or by hand), and its packages.
+/img/drive/
+/scripts/drive-photos/node_modules/
+
 # --- 2972 standard: never commit secrets or data (infra/docs/CONVENTIONS.md §9) ---
 .env
 .env.*

@@ -22,3 +22,6 @@ assets/**/*.JPG
 assets/**/*.JPEG
 assets/**/*.PNG
 assets/**/*.HEIC
+# Built in the image's first stage instead (scripts/drive-photos/fetch.cjs).
+scripts/drive-photos/node_modules
+img/

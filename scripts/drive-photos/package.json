@@ -1,0 +1,9 @@
+{
+  "name": "landing-drive-photos",
+  "private": true,
+  "description": "Downloads the site's Google Drive photos as resized WebP at Docker build time (see fetch.cjs).",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "sharp": "0.35.5"
+  }
+}

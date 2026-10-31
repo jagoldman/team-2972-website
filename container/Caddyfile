@@ -12,6 +12,7 @@
 #                                                    portal/manifest.webmanifest (name "2972 Portal").
 #   Everything else                                  -> the public static site (identity ignored)
 #   /content/content.json, /media/<id>-<w>.webp      -> published content (read-only mounts), any host
+#   /img/drive/<drive id>-<w>.webp                   -> Drive photos saved at image build time (public and direct hosts)
 #
 # The secret check is a plain header match, not constant-time. CONVENTIONS §4 allows this for
 # landing: it is reachable only on the Docker network and guards only the viewer's own identity.
@@ -100,6 +101,26 @@
 	respond @published_other 404
 }
 
+# Google Drive photos downloaded when the image was built (scripts/drive-photos/fetch.cjs), so pages do not
+# wait on lh3.googleusercontent.com. The name holds the Drive ID, and a changed photo gets a new ID, so a
+# file never changes: cache it for a year. As with /media, only files that exist get that header, and only
+# this one name shape is served (the manifest reaches pages through /config.js instead).
+(drive_photos) {
+	@drive_photo {
+		path_regexp drive ^/img/drive/[A-Za-z0-9_-]{20,}-(400|800|1200|1600)\.webp$
+		file {
+			try_files {http.request.uri.path}
+		}
+	}
+	handle @drive_photo {
+		header Cache-Control "public, max-age=31536000, immutable"
+		header X-Content-Type-Options "nosniff"
+		file_server
+	}
+	@drive_other path /img/drive /img/drive/*
+	respond @drive_other 404
+}
+
 # Identity and tiles. Import only after the gate.
 # no-store on everything behind login, so after sign-out the browser can't show a stored
 # (or back/forward-cached) portal page with the old name and tiles.
@@ -181,6 +202,7 @@
 			}
 			import config_js
 			import published
+			import drive_photos
 			file_server
 		}
 	}
@@ -213,6 +235,7 @@
 			}
 			import config_js
 			import published
+			import drive_photos
 			file_server
 		}
 	}
