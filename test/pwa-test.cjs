@@ -235,6 +235,26 @@ const okNetwork = async () => basic("from the network");
     await new Promise((res) => setTimeout(res, 10));
     check(`${p}: not handled and not stored`, !r.handled && x.pathsStored().length === 0, `handled=${r.handled}, stored=${x.pathsStored()}`);
   }
+  // Styles and scripts come from the network first (an old cached copy must not outlive a deploy);
+  // fonts and icons are answered from the cache.
+  for (const p of ["/css/style.css", "/js/components.js"]) {
+    const x = makeWorker({ fetchImpl: okNetwork });
+    await x.dispatch("install");
+    await (await caches_open(x, [...x.store.keys()][0])).add(p);
+    const r = await x.request(origin + p);
+    check(`${p}: a fresh copy from the network even when an old one is cached`, r.handled && (await r.response.text()) !== "old");
+    const off = makeWorker({ fetchImpl: async () => { throw new TypeError("offline"); } });
+    await (await caches_open(off, `2972-static-${swSource.match(/const VERSION = "(v\d+)"/)[1]}`)).add(p);
+    const o = await off.request(origin + p);
+    check(`${p}: the cached copy while offline`, o.handled && (await o.response.text()) === "old");
+  }
+  {
+    const x = makeWorker({ fetchImpl: okNetwork });
+    await x.dispatch("install");
+    await (await caches_open(x, [...x.store.keys()][0])).add("/fonts/inter-latin.woff2");
+    const r = await x.request(origin + "/fonts/inter-latin.woff2");
+    check("a font is answered from the cache", r.handled && (await r.response.text()) === "old");
+  }
   {
     const x = makeWorker({ fetchImpl: okNetwork });
     const post = await x.request(origin + "/css/style.css", { method: "POST" });

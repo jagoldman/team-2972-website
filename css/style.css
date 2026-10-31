@@ -146,6 +146,13 @@ a:hover { color: var(--accent); }
   -webkit-backdrop-filter: blur(14px) saturate(1.4);
   border-bottom-color: var(--line);
 }
+/* On phones the scrolled header is solid. Safari on iPhone shows the page under the status bar and colours
+   that strip from a fixed header at the top, but only an opaque one: with the glass, the page showed through
+   above the header. */
+@media (pointer: coarse) {
+  .site-header.scrolled,
+  .site-header.solid { background: var(--ink); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
 .header-inner {
   max-width: calc(var(--max-width) + 2 * var(--gutter));
   margin: 0 auto;

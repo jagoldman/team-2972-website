@@ -1,8 +1,7 @@
 // Service worker for the public site and the portal (the same file is served on both hosts).
 //
 // What it does, and nothing more:
-//   - keeps styles, scripts, fonts, icons and placeholder images, so the site opens fast and an installed app
-//     starts without a network wait;
+//   - keeps styles, scripts, fonts, icons and placeholder images, so the site opens fast and works offline;
 //   - shows /offline.html when a page is requested while offline.
 // What it never does: store a page. Every HTML page, /me.json, /apps.json, the sign-in and sign-out addresses,
 // published content and anything else not listed below goes straight to the network, untouched. The portal's pages
@@ -11,7 +10,7 @@
 //
 // Change VERSION when this file's rules or the precached list change. Old caches are deleted on activate.
 
-const VERSION = "v1";
+const VERSION = "v2";   // v2: styles and scripts come from the network first (an old copy no longer outlives a deploy)
 const CACHE = `2972-static-${VERSION}`;     // every cache this worker makes starts with "2972-"
 const OFFLINE_URL = "/offline.html";
 
@@ -27,6 +26,7 @@ const PRECACHE = [
 // Only files that are the same for everyone may be stored: a path under one of these folders AND a file type below.
 const STATIC_FOLDERS = ["/css/", "/js/", "/fonts/", "/pwa-icons/", "/assets/"];
 const STATIC_TYPES = /\.(?:css|js|woff2|png|svg|webp|ico)$/i;
+const CODE_TYPES = /\.(?:css|js)$/i;        // network first; see the fetch handler
 // Never stored, even if a path above would match.
 const NEVER_STORE = [
   /^\/me\.json$/, /^\/apps\.json$/,            // who is signed in, and what they may open
@@ -73,7 +73,27 @@ self.addEventListener("fetch", (event) => {
 
   if (!storable(url)) return;                                        // /me.json, /apps.json and the rest: not handled at all
 
-  // A shared file: answer from the cache if there is a copy, and refresh the copy in the background.
+  // Styles and scripts: from the network, so they always match the page (which is never cached), and the
+  // stored copy only when offline. Their addresses never change between deploys, so a cache-first copy
+  // would show new pages with old styles until a second visit.
+  if (CODE_TYPES.test(url.pathname)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      try {
+        // "no-cache" revalidates with the server (a 304 is cheap), so the browser's own HTTP cache cannot
+        // hand back an old copy either: the container sends these files with no Cache-Control.
+        const response = await fetch(request, { cache: "no-cache" });
+        if (response.ok && response.status === 200 && response.type === "basic") cache.put(request, response.clone());
+        return response;
+      } catch (err) {
+        return (await cache.match(request)) || Response.error();
+      }
+    })());
+    return;
+  }
+
+  // Any other shared file (fonts, icons, images): answer from the cache if there is a copy, and refresh the
+  // copy in the background.
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(request);
