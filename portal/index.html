@@ -79,9 +79,13 @@ function userGroups(raw) {
 }
 
 // groups: [] means anyone with a group. Users with no group see no tiles (MASTER_PLAN D27).
+// GitHub and Onshape are buttons in "Code, CAD and the Team Drive" (renderTeamTools), not app tiles, even while
+// infra's apps.json still lists them.
+const NOT_TILES = new Set(["github", "onshape"]);
+
 function visibleTiles(tiles, groups) {
   if (groups.length === 0) return [];
-  return tiles.filter((t) => !t.groups || t.groups.length === 0 || t.groups.some((g) => groups.includes(g)));
+  return tiles.filter((t) => !NOT_TILES.has(t.id) && (!t.groups || t.groups.length === 0 || t.groups.some((g) => groups.includes(g))));
 }
 
 // Site tiles name a subdomain ("host" + "path"); outside tiles give a full "url".
@@ -96,8 +100,6 @@ const ICONS = {
   kickoff: '<path d="M5 15c-1 1-1.5 3.5-1.5 5.5 2 0 4.5-.5 5.5-1.5"/><path d="M9 15l-3-3c2-6 6-9 14-9 0 8-3 12-9 14z"/><circle cx="15" cy="9" r="1.6"/>',
   calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   handbook: '<path d="M4 4.5h6a2 2 0 012 2V20a1.5 1.5 0 00-1.5-1.5H4zM20 4.5h-6a2 2 0 00-2 2V20a1.5 1.5 0 011.5-1.5H20z"/>',
-  github: '<path d="M8.5 7L3.5 12l5 5M15.5 7l5 5-5 5M13.5 4.5l-3 15"/>',
-  onshape: '<path d="M12 2.8l8.5 4.7v9L12 21.2l-8.5-4.7v-9z"/><path d="M3.5 7.5L12 12.2l8.5-4.7M12 12.2v9"/>',
   scouting: '<path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   drive: '<path d="M3 6.5A1.5 1.5 0 014.5 5h4.6l2 2.2h8.4A1.5 1.5 0 0121 8.7v9.8a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18.5z"/>',
   admin: '<path d="M12 3l7.5 3v5.5c0 4.5-3 8-7.5 9.5-4.5-1.5-7.5-5-7.5-9.5V6z"/><path d="M9 12l2.2 2.2L15.5 10"/>',

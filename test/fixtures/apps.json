@@ -39,5 +39,13 @@
     "comingSoon": true,
     "groups": ["student", "mentor"],
     "audience": "Scouts"
+  },
+  {
+    "id": "github",
+    "name": "GitHub",
+    "description": "Fake tile: the portal shows GitHub as a button, never as a tile.",
+    "url": "https://example.com/code",
+    "groups": ["admin", "mentor", "student"],
+    "audience": "Programmers"
   }
 ]

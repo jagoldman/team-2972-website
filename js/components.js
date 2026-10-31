@@ -65,8 +65,8 @@ function requestAccessHref(resource, who = {}) {
 function renderTeamTools() {
   const arrow = `<svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg>`;
   const out = (path, label) => {
-    const href = safeUrl(contentGet(path));
-    return href ? `<a class="btn btn-outline" href="${esc(href)}" target="_blank" rel="noopener"${ckHref(path)}>${label} ${arrow}</a>` : "";
+    const href = safeUrl(contentGet(path));   // "#" means "not set yet", as in the editor
+    return href && href !== "#" ? `<a class="btn btn-outline" href="${esc(href)}" target="_blank" rel="noopener"${ckHref(path)}>${label} ${arrow}</a>` : "";
   };
   return `<div class="btn-row team-tools">
       ${out("SITE.github", "Robot code on GitHub")}
