@@ -31,10 +31,11 @@
 
 <section class="block alt" id="request-access">
   <div class="block-inner">
-    <h2 class="section-title">Team Drive and Onshape</h2>
-    <p class="section-lead">Anyone can view our robots in the <a id="onshape-public" target="_blank" rel="noopener">public
+    <h2 class="section-title">Code, CAD and the Team Drive</h2>
+    <p class="section-lead">Anyone can read our robot code on GitHub and view our robots in the <a id="onshape-public" target="_blank" rel="noopener">public
     Onshape publication</a>. The team's Google Drive and the editable Onshape CAD are shared by invitation only. Team
     members can ask for access here.</p>
+    <div id="team-tools"></div>
     <div id="request-access-body"></div>
   </div>
 </section>
@@ -79,6 +80,7 @@ onContent(() => {
   const onshape = document.getElementById("onshape-public");
   onshape.href = safeUrl(SITE.onshapePublic);
   onshape.setAttribute("data-ck-href", "SITE.onshapePublic");
+  document.getElementById("team-tools").innerHTML = renderTeamTools();
   document.getElementById("request-access-body").innerHTML = renderRequestAccess();
 
   const cad = document.getElementById("cad-body");

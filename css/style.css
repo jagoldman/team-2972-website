@@ -494,6 +494,7 @@ h2.section-title .dim { color: var(--dim); }
 .btn.btn-outline { background: transparent; color: var(--text); border-color: var(--line-2); box-shadow: none; }
 .btn.btn-outline:hover { background: var(--text); border-color: var(--text); color: var(--ink); }
 .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+.btn-row.team-tools { margin-bottom: 28px; }   /* above the access cards */
 .btn { max-width: 100%; overflow-wrap: anywhere; }   /* a long label (an email address) wraps rather than spilling out of its card */
 @media (max-width: 420px) { .btn { padding: 14px 20px; } }
 .btn-disabled, .btn-disabled:hover { background: transparent; border: 1px dashed var(--line-2); color: var(--mute); box-shadow: none; cursor: default; }
@@ -727,7 +728,10 @@ a.card:hover { color: inherit; border-color: var(--tint-line); }
   border-radius: var(--radius);
   padding: clamp(22px, 6vw, 30px);
   overflow: hidden;
+  display: flex; flex-direction: column;
 }
+/* The card's button sits at its bottom, so buttons line up across cards whose text runs to different lengths. */
+.contact-card > .btn { margin-top: auto; align-self: flex-start; }
 .contact-card h3 { font: 700 26px/1.15 var(--display); letter-spacing: -0.02em; margin: 0 0 10px; }
 .contact-card p { color: var(--text-2); }
 .access-note { color: var(--mute); font-size: 15px; margin: 22px 0 0; max-width: 70ch; }

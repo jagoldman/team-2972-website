@@ -29,6 +29,7 @@
   <div class="block-inner">
     <h2 class="section-title" id="school-title"></h2>
     <p class="section-lead" id="school-body"></p>
+    <div class="btn-row"><a class="btn btn-outline" id="school-link" data-ck-href="SITE.schoolUrl" target="_blank" rel="noopener" hidden>Visit Dawson School <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
   </div>
 </section>
 
@@ -96,6 +97,9 @@ onContent(() => {
   };
   put("school-title", "ABOUT_SCHOOL.heading", ABOUT_SCHOOL.heading);
   put("school-body", "ABOUT_SCHOOL.body", ABOUT_SCHOOL.body, true);
+  const schoolLink = document.getElementById("school-link");
+  schoolLink.href = safeUrl(SITE.schoolUrl);
+  schoolLink.hidden = !safeUrl(SITE.schoolUrl);
   put("first-title", "ABOUT_FIRST.heading", ABOUT_FIRST.heading);
   put("first-body", "ABOUT_FIRST.body", ABOUT_FIRST.body, true);
   put("mission-body", "SITE.mission", SITE.mission);

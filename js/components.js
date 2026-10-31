@@ -60,6 +60,22 @@ function requestAccessHref(resource, who = {}) {
   return `mailto:${SITE.email}?subject=${encodeURIComponent(`Access request: ${resource.name}`)}&body=${encodeURIComponent(body)}`;
 }
 
+// Buttons for the team's code and CAD, above the access requests. The portal also gets Onshape itself (team members
+// sign in there to edit) and a way back to the public Resources page.
+function renderTeamTools() {
+  const arrow = `<svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg>`;
+  const out = (path, label) => {
+    const href = safeUrl(contentGet(path));
+    return href ? `<a class="btn btn-outline" href="${esc(href)}" target="_blank" rel="noopener"${ckHref(path)}>${label} ${arrow}</a>` : "";
+  };
+  return `<div class="btn-row team-tools">
+      ${out("SITE.github", "Robot code on GitHub")}
+      ${isPortalPage() ? out("SITE.onshapeApp", "Onshape") : ""}
+      ${out("SITE.onshapePublic", "Robot CAD (public view)")}
+      ${isPortalPage() ? `<a class="btn btn-outline" href="${esc(pageHref("resources.html"))}">Team resources</a>` : ""}
+    </div>`;
+}
+
 function renderRequestAccess(who) {
   return `
     <div class="contact-grid"${ck("REQUEST_ACCESS")}>${REQUEST_ACCESS.map((r, i) => `
@@ -337,7 +353,6 @@ function renderHeader() {
 }
 
 function renderFooter() {
-  const igHref = safeUrl(SITE.instagram);
   return `
   <footer class="site-footer">
     <div class="footer-inner">
@@ -348,7 +363,6 @@ function renderFooter() {
       <div class="footer-col">
         <a href="${pageHref("contact.html")}">Contact us</a>
         <a href="mailto:${esc(SITE.email)}"${ck("SITE.email")}>${esc(SITE.email)}</a>
-        <a href="${esc(igHref)}" target="_blank" rel="noopener"${ckHref("SITE.instagram")}>Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span></a>
       </div>
       <div class="footer-col">
         <a href="${pageHref("sponsors.html")}">Become a Sponsor</a>

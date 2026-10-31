@@ -44,7 +44,7 @@
   <div class="block-inner">
     <div class="kicker"><b>01</b>Who we are</div>
     <div class="mission">
-      <h2 class="section-title" data-reveal>We build robots.<br /><span class="dim">And the people who build them.</span></h2>
+      <h2 class="section-title" data-reveal>More than robots.<br /><span class="dim">We build people.</span></h2>
       <div>
         <p class="section-lead" id="mission-text" data-reveal style="--ri:1"></p>
         <div class="btn-row" data-reveal style="--ri:2"><a class="btn magnetic" href="member.html">Join the team <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
@@ -89,7 +89,7 @@
     <div class="kicker"><b>04</b>About us</div>
     <h2 class="section-title" id="about-school-title" data-reveal></h2>
     <p class="section-lead" id="about-school-body" data-reveal style="--ri:1"></p>
-    <div class="btn-row"><a class="btn btn-outline" href="about.html">More about us</a></div>
+    <div class="btn-row"><a class="btn btn-outline" href="about.html">More about us</a><a class="btn btn-outline" id="school-link" data-ck-href="SITE.schoolUrl" target="_blank" rel="noopener" hidden>Visit Dawson School <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
   </div>
 </section>
 
@@ -128,6 +128,9 @@ onContent(() => {
   tag("mission-text", "SITE.mission").textContent = SITE.mission;
   tag("about-school-title", "ABOUT_SCHOOL.heading").textContent = ABOUT_SCHOOL.heading;
   tag("about-school-body", "ABOUT_SCHOOL.body", "rich").innerHTML = rich(ABOUT_SCHOOL.body);
+  const schoolLink = document.getElementById("school-link");
+  schoolLink.href = safeUrl(SITE.schoolUrl);
+  schoolLink.hidden = !safeUrl(SITE.schoolUrl);
 
   // Robots that have a photo, newest first. The index kept with each robot is its place in ROBOTS,
   // so every data-ck path is right even though the reel only shows some of them.

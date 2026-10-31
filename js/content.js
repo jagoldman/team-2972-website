@@ -43,6 +43,8 @@ const SITE = {
   mission: "To build a confident and capable next generation through competitive robotics.",
   email: "robotics@dawsonschool.org",
   // Public Onshape publication of our robots: anyone can view, no account needed (user, 2026-10-29).
+  // Onshape itself, for team members who edit the CAD (portal button "Onshape").
+  onshapeApp: "https://cad.onshape.com",
   onshapePublic: "https://cad.onshape.com/publications/27b8b2d91c3dcba99076bea5/w/6f7554126c007d8690fa9643/e/fd2bdc75e190c38dc9e2f4d9?configuration=default&renderMode=0&leftPanel=false",
   instagram: "https://www.instagram.com/frc2972/",
   instagramHandle: "@frc2972",
@@ -589,6 +591,7 @@ const RESOURCE_LINKS = [
   { category: "Game Analysis and Strategy", items: [
     { label: "Game Analysis and Strategy Workshop (Team 1100)", url: "https://www.youtube.com/watch?v=CEKrkLYDAO0" },
     { label: "Strategic Design Workshop (Citrus Circuits)", url: "https://www.youtube.com/watch?v=G6X3SrMmX3g&list=PL6j32uphg3L9sVDfxSlGSCuZr67C7WBE5&index=1" },
+    { label: "Effective FIRST Strategies 2025 (Karthik Kanagasabapathy)", url: "https://www.youtube.com/watch?v=cemXDEzBMhM&t=4717s", note: "Opens at 1:18:37." },
   ]},
   { category: "Scouting & Alliance Selection", items: [
     { label: "Effective FIRST Strategies 2025 (Karthik Kanagasabapathy)", url: "https://www.youtube.com/watch?v=cemXDEzBMhM", note: "How strong teams think about strategy, from game analysis to match play." },
@@ -602,6 +605,15 @@ const RESOURCE_LINKS = [
     { label: "The Blue Alliance", url: "https://www.thebluealliance.com" },
     { label: "Statbotics", url: "https://www.statbotics.io" },
     { label: "Help Now Call Center (Compass Alliance)", url: "https://www.thecompassalliance.org/call-center" },
+  ]},
+  // Other teams that publish guides, code and CAD for everyone (links checked 2026-10-31).
+  { category: "Other teams' resources", items: [
+    { label: "Spectrum 3847", url: "https://www.spectrum3847.org/resources/", note: "Guides and lessons the team shares with other teams, plus an archive of older ones." },
+    { label: "The Cheesy Poofs (254)", url: "https://www.team254.com/resources/", note: "Technical binders, robot code and documents for every season." },
+    { label: "Robonauts Everybot (118)", url: "https://www.118everybot.org/", note: "A simple, low-cost robot design for each FRC and FTC game." },
+    { label: "Citrus Circuits (1678)", url: "https://www.citruscircuits.org/resources", note: "Competition resources and technical references." },
+    { label: "Mechanical Advantage (6328)", url: "https://www.littletonrobotics.org/about-6328/resources-2/", note: "Team documents (business plans, award submissions) and links for FRC teams." },
+    { label: "NASA FRC resources", url: "https://robotics.nasa.gov/frc-resources/", note: "A long list of resources from many teams and sponsors." },
   ]},
   { category: "Branding", items: [
     { label: "Logo & brand assets", url: "#" }, // TODO

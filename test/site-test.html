@@ -23,7 +23,8 @@ const norm = (s) => String(s).replace(/\s+/g, " ").trim();
 // Visible text of a rich-text string: [text](url) -> text, ** and * removed
 const plain = (s) => norm(String(s).replace(/\[([^\]]+)\]\((?:[^()\s]|\([^()\s]*\))+\)/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1$2"));
 
-// Pages and the list containers each one must have (so an editor can always add an item).
+// Pages and the list containers each one must have (so an editor can always add an item),
+// plus any single fields only that page shows (keys).
 // Robot pages are chosen per mode, below.
 const PAGES = [
   { url: "index.html", lists: ["ROBOTS", "SCHEDULE_2027"] },
@@ -31,12 +32,12 @@ const PAGES = [
   { url: "robots.html", lists: ["ROBOTS"] },
   { url: "sponsors.html", lists: ["SPONSOR_TIERS", "SPONSOR_TIERS[0].sponsors"] },
   { url: "outreach.html", lists: ["OUTREACH_EVENTS"] },
-  { url: "media.html", lists: ["MEDIA_PHOTOS", "MEDIA_VIDEOS", "MEDIA_PUBLICITY"] },
+  { url: "media.html", lists: ["MEDIA_PHOTOS", "MEDIA_VIDEOS", "MEDIA_PUBLICITY"], keys: ["SITE.instagramHandle"] },
   { url: "resources.html", lists: ["RESOURCE_LINKS", "CAD_OVERVIEW", "REQUEST_ACCESS"] },
-  { url: "contact.html", lists: [] },
+  { url: "contact.html", lists: [], keys: ["SITE.instagramHandle"] },
 ];
-// Header and footer fields every page shows
-const COMMON = ["SITE.logo", "SITE.teamNumber", "SITE.teamName", "SITE.email", "SITE.instagramHandle", "SITE.school", "SITE.location", "SITE.founded"];
+// Header and footer fields every page shows (Instagram is only on Contact and Media, not in the footer)
+const COMMON = ["SITE.logo", "SITE.teamNumber", "SITE.teamName", "SITE.email", "SITE.school", "SITE.location", "SITE.founded"];
 const ROBOT_PAGES = MODE === "fixture"
   ? [{ url: "robot.html?year=2030", lists: ["ROBOTS[0].awards", "ROBOTS[0].results", "ROBOTS[0].specs", "ROBOTS[0].mechanisms", "ROBOTS[0].gallery", "ROBOTS[0].videos", "ROBOTS[0].matchVideos", "ROBOTS[0].buildBlog"] },
      { url: "robot.html?year=2029", lists: [] }]
@@ -101,9 +102,9 @@ async function checkPage(p) {
     }
     report(bad.length === 0, `${label}: every key resolves to a content value`, bad.slice(0, 5).join(", "));
 
-    // 2) the header/footer fields and this page's lists are marked
+    // 2) the header/footer fields, this page's own fields (keys) and its lists are marked
     const present = new Set(cks.map((e) => e.getAttribute("data-ck")));
-    const missing = [...COMMON, ...p.lists].filter((k) => !present.has(k));
+    const missing = [...COMMON, ...(p.keys || []), ...p.lists].filter((k) => !present.has(k));
     report(missing.length === 0, `${label}: required keys present`, "missing " + missing.join(", "));
     const notLists = p.lists.filter((k) => !Array.isArray(win.contentGet(k)));
     report(notLists.length === 0, `${label}: list containers point at lists`, notLists.join(", "));
