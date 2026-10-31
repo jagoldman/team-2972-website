@@ -7,7 +7,7 @@
 # Stage 1: download the Google Drive photos named in js/content.js and save them as WebP in img/drive
 # (scripts/drive-photos/fetch.cjs). A photo that fails is left out and loads from Google as before; the
 # build goes on. Docker reuses this layer until content.js or the script changes.
-FROM node:24.22.0-alpine3.23 AS drive-photos
+FROM node:24.22.2-alpine3.24 AS drive-photos
 WORKDIR /build/scripts/drive-photos
 COPY scripts/drive-photos/package.json scripts/drive-photos/package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
