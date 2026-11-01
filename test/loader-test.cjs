@@ -106,13 +106,13 @@ const run = (ctx, expr) => vm.runInContext(expr, ctx);
     check("the fixture's values are live", run(env, "SITE.teamName") === "Fixture Robotics" && run(env, "HISTORY.today.heading") === "Fixture today");
     check("contentGet resolves paths", run(env, 'contentGet("HISTORY.milestones[0].image")') === "media:00000000000000000004" && run(env, 'contentGet("ROBOTS[0].gallery[1]")') === "media:00000000000000000007");
     check("a string section (a URL) is updated and read with contentGet", run(env, 'contentGet("TEAM_CALENDAR_URL")') === "https://example.com/calendar" && run(env, 'contentGet("SPONSOR_PACKET_URL")') === "https://example.com/packet.pdf");
-    check("media metadata from the envelope is available", run(env, "Object.keys(CONTENT_MEDIA).length") === 10 && run(env, 'CONTENT_MEDIA["00000000000000000004"].alt') === "Pat Example smiling");
+    check("media metadata from the envelope is available, with the built-in uploads'", run(env, "Object.keys(CONTENT_MEDIA).length") === 10 + run(env, "Object.keys(contentMedia).length") && run(env, 'CONTENT_MEDIA["00000000000000000004"].alt') === "Pat Example smiling");
     L.restoreDefaults();
-    check("restoreDefaults also clears the media metadata", run(env, "Object.keys(CONTENT_MEDIA).length") === 0 && run(env, 'contentGet("TEAM_CALENDAR_URL")').startsWith("https://calendar.google.com"));
+    check("restoreDefaults also goes back to the built-in media metadata", same(run(env, "Object.keys(CONTENT_MEDIA)"), run(env, "Object.keys(contentMedia)")) && run(env, 'contentGet("TEAM_CALENDAR_URL")').startsWith("https://calendar.google.com"));
 
     // The two accepted shapes, and shapes that must be refused
     check("the sections alone (no envelope) are accepted too", L.useContent(FIXTURE_FLAT) === true && run(env, "SITE.teamName") === "Fixture Robotics");
-    check("a flat document has no media metadata", run(env, "Object.keys(CONTENT_MEDIA).length") === 0);
+    check("a flat document has only the built-in media metadata", same(run(env, "Object.keys(CONTENT_MEDIA)"), run(env, "Object.keys(contentMedia)")));
     L.restoreDefaults();
     const env1 = JSON.parse(FIXTURE);
     check("an envelope of an unknown format is refused", L.useContent(JSON.stringify({ ...env1, format: 2 })) === false);
@@ -129,7 +129,7 @@ const run = (ctx, expr) => vm.runInContext(expr, ctx);
       "00000000000000000002": { alt: 42, widths: "nope" },
       "00000000000000000003": { alt: "x".repeat(900), widths: [800] },
     } }));
-    check("media: a bad id is dropped", run(env, 'Object.keys(CONTENT_MEDIA).sort().join(",")') === "00000000000000000001,00000000000000000002,00000000000000000003");
+    check("media: a bad id is dropped", run(env, 'Object.keys(CONTENT_MEDIA).filter((k) => k.startsWith("0000000000")).sort().join(",")') === "00000000000000000001,00000000000000000002,00000000000000000003");
     check("media: unknown widths are dropped", run(env, 'CONTENT_MEDIA["00000000000000000001"].widths.join(",")') === "400,1600");
     check("media: a non-string alt becomes empty and bad widths become none", run(env, 'CONTENT_MEDIA["00000000000000000002"].alt') === "" && run(env, 'CONTENT_MEDIA["00000000000000000002"].widths.length') === 0);
     check("media: alt text is capped", run(env, 'CONTENT_MEDIA["00000000000000000003"].alt.length') === 500);

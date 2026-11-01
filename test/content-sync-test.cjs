@@ -36,7 +36,7 @@ function evaluate(src) {
     media: JSON.parse(vm.runInContext('typeof contentMedia === "object" ? JSON.stringify(contentMedia) : "null"', ctx)),
   };
 }
-const DEFAULTS = evaluate(read("js/content.js")).sections;
+const { sections: DEFAULTS, media: DEFAULT_MEDIA } = evaluate(read("js/content.js"));
 
 // A small fake WebP (RIFF header, then padding).
 const webp = (n = 64) => { const b = Buffer.alloc(n, 1); b.write("RIFF", 0, "latin1"); b.writeUInt32LE(n - 8, 4); b.write("WEBPVP8L", 8, "latin1"); return b; };
@@ -60,8 +60,10 @@ function checkout() {
   fs.copyFileSync(path.join(root, "js/content-loader.js"), path.join(dir, "js/content-loader.js"));
   return dir;
 }
-// An envelope from the current defaults with `edit` applied to its content.
-function envelope(edit, media = {}) {
+// An envelope from the current defaults with `edit` applied to its content. Like the editor's, its media map
+// covers the uploads the content uses (the built-in ones, plus any `extra`).
+function envelope(edit, extra = {}) {
+  const media = { ...clone(DEFAULT_MEDIA), ...extra };
   const content = clone(DEFAULTS);
   edit(content);
   return { format: 1, version: 3, publishedAt: "2026-10-31T12:00:00.000Z", content, media };
@@ -180,7 +182,8 @@ async function refused(name, fn, pattern) {
     check("fixture: contentMedia keeps alt text and widths", got.media["00000000000000000004"].alt === "Pat Example smiling" && same(got.media["00000000000000000006"].widths, [400, 800]));
 
     check("fixture: no image is downloaded or written (the files stay on the server)", !state.hits.some((h) => h.startsWith("/media/")) && !fs.existsSync(path.join(dir, "media")));
-    check("fixture: the new uploads are reported", same(r.added, referenced) && r.removed.length === 0);
+    const dropped = Object.keys(DEFAULT_MEDIA).filter((id) => !referenced.includes(id)).sort();
+    check("fixture: the new uploads and the ones no longer used are reported", same(r.added, referenced) && same(r.removed, dropped), JSON.stringify([r.added, r.removed]));
     check("fixture: the PR body lists sections and uploads", (() => {
       const body = S.prBody(r, site);
       return body.includes("`HISTORY`") && body.includes("now used: `media:00000000000000000004`") && body.includes("version: **7**");
@@ -200,8 +203,8 @@ async function refused(name, fn, pattern) {
     // Back to content with no uploads: the image files and contentMedia go.
     state.content = JSON.stringify(envelope(() => {}));
     const back = await S.syncInto(dir, { site });
-    check("uploads nothing refers to any more are reported", same(back.removed, referenced) && back.added.length === 0);
-    check("contentMedia is emptied again", same(evaluate(fs.readFileSync(path.join(dir, "js/content.js"), "utf8")).media, {}));
+    check("uploads nothing refers to any more are reported", same(back.removed, referenced) && same(back.added, dropped));
+    check("contentMedia is back to the built-in uploads", equal(evaluate(fs.readFileSync(path.join(dir, "js/content.js"), "utf8")).media, DEFAULT_MEDIA));
   }
 
   // ---------- a new upload: content.js only ----------

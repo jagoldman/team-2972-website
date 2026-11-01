@@ -1,6 +1,7 @@
 // Every local image the site refers to must reach production: present, tracked by git (the server builds from
 // a git clone) and not left out of the image by .dockerignore. Photos were once excluded by .dockerignore and
-// ignored by git while content.js still used them, so 30 images were 404 on the live site.
+// ignored by git while content.js still used them, so 30 images were 404 on the live site. Photos now live on
+// the server (media:<id>) or on Drive; every media:<id> in content.js needs its alt text in contentMedia.
 // Run: node test/assets-test.cjs          (no dependencies)
 //      node test/assets-test.cjs --list   print the referenced paths (test/container-test.sh fetches each one)
 "use strict";
@@ -70,8 +71,21 @@ function check(name, cond) {
 // The test's own rules, so a broken matcher cannot pass everything.
 check(".dockerignore matcher: excludes a JPEG in assets", dockerIgnored("assets/brand/x.jpg"));
 check(".dockerignore matcher: excludes everything under img/", dockerIgnored("img/drive/a.webp"));
-check(".dockerignore matcher: keeps a WebP in assets", !dockerIgnored("assets/gallery/a.webp"));
-check("the scan finds the site's images", refs.size >= 30);
+check(".dockerignore matcher: keeps an SVG in assets", !dockerIgnored("assets/placeholder-robot.svg"));
+check("the scan finds the site's images", refs.size >= 5);
+
+// Uploads on the server: each one content.js uses has its alt text and widths in contentMedia.
+{
+  const vm = require("vm");
+  const ctx = {};
+  vm.createContext(ctx);
+  vm.runInContext(read("js/content.js"), ctx);
+  const sections = JSON.parse(vm.runInContext("JSON.stringify(contentSections)", ctx));
+  const media = JSON.parse(vm.runInContext('typeof contentMedia === "object" ? JSON.stringify(contentMedia) : "{}"', ctx));
+  const ids = new Set((JSON.stringify(sections).match(/"media:[a-f0-9]{20}"/g) || []).map((s) => s.slice(7, -1)));
+  for (const id of ids) check(`media:${id} has alt text in contentMedia`, media[id] && typeof media[id].alt === "string" && media[id].alt.length > 0);
+  for (const id of Object.keys(media)) check(`contentMedia ${id} is used by the content`, ids.has(id));
+}
 
 for (const [p, from] of refs) {
   check(`${p} (named in ${from}) exists`, fs.existsSync(path.join(root, p)));
