@@ -153,9 +153,6 @@ a:hover { color: var(--accent); }
   .site-header.scrolled,
   .site-header.solid { background: var(--ink); backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
-/* Whatever Safari leaves above the fixed header (the status-bar strip) gets the header's colour too. */
-.site-header.scrolled::before,
-.site-header.solid::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 100vh; background: var(--ink); pointer-events: none; }
 .header-inner {
   max-width: calc(var(--max-width) + 2 * var(--gutter));
   margin: 0 auto;
