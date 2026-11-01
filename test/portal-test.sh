@@ -79,11 +79,11 @@ run_user() {
 # "Team resources" has only a path: it links
 # the public site's page, in the same tab.
 run_user "admin"            "Task App,Admin,Everyone Link,GitHub,Team Drive,Team resources"                    no
-run_user "mentor"           "Task App,Everyone Link,Alumni News,Scouting,GitHub,Team Drive,Team resources"     no
-run_user "student"          "Task App,Everyone Link,Scouting,GitHub,Team Drive,Team resources"                 no
+run_user "mentor"           "Task App,Everyone Link,Alumni News,GitHub,Team Drive,Team resources,Scouting"     no
+run_user "student"          "Task App,Everyone Link,GitHub,Team Drive,Team resources,Scouting"                 no
 run_user "parent"           "Task App,Everyone Link,Team resources"                          no
 run_user "alumni"           "Everyone Link,Alumni News,Team resources"                       no
-run_user "mentor|parent"    "Task App,Everyone Link,Alumni News,Scouting,GitHub,Team Drive,Team resources"     no
+run_user "mentor|parent"    "Task App,Everyone Link,Alumni News,GitHub,Team Drive,Team resources,Scouting"     no
 run_user ""                 ""                                                yes
 run_user "authentik Admins" ""                                                yes
 

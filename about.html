@@ -73,9 +73,8 @@
 <section class="block">
   <div class="block-inner">
     <h2 class="section-title">Our Year</h2>
+    <p class="section-lead">The 2026–27 school year, from fall to spring.</p>
     <ul class="schedule-list" id="annual-list"></ul>
-    <h3 class="subsection-title">2027 Competition Schedule</h3>
-    <ul class="schedule-list" id="schedule-list"></ul>
     <div class="btn-row"><a class="btn btn-outline" id="calendar-link" target="_blank" rel="noopener">Team calendar</a></div>
   </div>
 </section>
@@ -140,15 +139,6 @@ onContent(() => {
     <li${ck(`ANNUAL_EVENTS[${i}]`)}>
       <span class="event-name"${ck(`ANNUAL_EVENTS[${i}].name`)}>${esc(e.name)}</span>
       <span class="event-loc"><span${ck(`ANNUAL_EVENTS[${i}].when`)}>${esc(e.when)}</span> · <span${ck(`ANNUAL_EVENTS[${i}].description`)}>${esc(e.description)}</span></span>
-    </li>
-  `).join("");
-
-  const schedule = document.getElementById("schedule-list");
-  schedule.setAttribute("data-ck", "SCHEDULE_2027");
-  schedule.innerHTML = SCHEDULE_2027.map((s, i) => `
-    <li${ck(`SCHEDULE_2027[${i}]`)}>
-      <span class="event-name"${ck(`SCHEDULE_2027[${i}].event`)}>${esc(s.event)}</span>
-      <span class="event-loc"><span${ck(`SCHEDULE_2027[${i}].dates`)}>${esc(s.dates)}</span> · <span${ck(`SCHEDULE_2027[${i}].location`)}>${esc(s.location)}</span></span>
     </li>
   `).join("");
 

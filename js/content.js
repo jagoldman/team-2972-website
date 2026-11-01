@@ -40,7 +40,7 @@ const SITE = {
   location: "Lafayette, Colorado",
   founded: "2008",
   tagline: "Real-world engineering, fundraising, and competition.",
-  mission: "To build a confident and capable next generation through competitive robotics.",
+  mission: "Building a confident and capable next generation through competitive robotics.",
   email: "robotics@dawsonschool.org",
   // Public Onshape publication of our robots: anyone can view, no account needed (user, 2026-10-29).
   onshapePublic: "https://cad.onshape.com/publications/27b8b2d91c3dcba99076bea5/w/6f7554126c007d8690fa9643/e/fd2bdc75e190c38dc9e2f4d9",
@@ -67,12 +67,12 @@ const SCHEDULE_2027 = [
   { event: "Intermountain West Regional", dates: "Spring 2027, dates to come", location: "Utah" }, // TODO: exact dates and city
 ];
 
-// Events the team goes to most years (from the old Calendar page)
+// Our year, framed around the school year (shown on the About page, in order)
 const ANNUAL_EVENTS = [
-  { name: "Denver Regional", when: "Spring", description: "Our home regional." },
-  { name: "Out-of-state Regional", when: "Spring", description: "A second regional each season, recently Utah, Kansas City, Oklahoma, and Minnesota." },
-  { name: "KCMT Offseason Tournament", when: "Fall", description: "The Kendrick Castillo Memorial Tournament, a Colorado offseason event." },
-  { name: "Broomfield Days", when: "Fall", description: "Robot demos for the local community." },
+  { name: "Fall competition", when: "October", description: "The KCMT Offseason Tournament (the Kendrick Castillo Memorial Tournament, a Colorado offseason event), plus robot demos at Broomfield Days." },
+  { name: "Official season begins", when: "November", description: "New students join, we train on the shop and software, and build season starts, running until spring break in March or April." },
+  { name: "Kickoff", when: "January", description: "FIRST reveals the new game. We pick a strategy and design the robot." },
+  { name: "Two regionals", when: "Spring 2027, dates to come", description: "The Denver Regional, our home event, and a second regional out of state. Recently that has been Utah, Kansas City, Oklahoma, or Minnesota." },
 ];
 
 

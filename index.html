@@ -138,7 +138,7 @@ onContent(() => {
 
   const names = withPhoto.filter(({ r }) => r.name).map(({ r, i }) =>
     `<span class="solid"${ck(`ROBOTS[${i}].name`)}>${esc(r.name)}</span><span><i>✦</i> <span${ck(`ROBOTS[${i}].year`)}>${esc(r.year)}</span></span>`).join("");
-  document.getElementById("marquee").innerHTML = names + names;
+  document.getElementById("marquee").innerHTML = `<div class="marquee-group">${names}</div><div class="marquee-group" aria-hidden="true">${names}</div>`;
 
   tag("robot-showcase", "ROBOTS").innerHTML = withPhoto.slice(0, 6).map(({ r, i }) => `
     <a class="bot tilt" href="${robotUrl(r)}"${ck(`ROBOTS[${i}]`)}>

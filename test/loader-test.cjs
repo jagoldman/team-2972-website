@@ -147,7 +147,7 @@ const run = (ctx, expr) => vm.runInContext(expr, ctx);
     await tick(5);
     return env;
   }
-  const DEFAULT_MISSION = "To build a confident and capable next generation through competitive robotics.";
+  const DEFAULT_MISSION = "Building a confident and capable next generation through competitive robotics.";
   {
     let env = makeEnv({ fetchImpl: ok200(JSON.stringify({ SITE: { mission: "Published mission" } })) });
     run(env, "var SEEN = []; onContent(() => SEEN.push(SITE.mission));");

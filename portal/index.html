@@ -205,7 +205,8 @@ onContent(async () => {
   document.getElementById("access-body").innerHTML = renderRequestAccess({ name: me.name, email: me.email });
   document.getElementById("access").hidden = false;
 
-  const shown = visibleTiles(Array.isArray(tiles) ? tiles : [], groups);
+  // Coming-soon tiles go last (the sort is stable, so each group keeps its order).
+  const shown = visibleTiles(Array.isArray(tiles) ? tiles : [], groups).sort((a, b) => !!a.comingSoon - !!b.comingSoon);
   const grid = document.getElementById("app-grid");
   shown.forEach((t, i) => {
     const size = shown.length >= 3 && i === 0 ? "big" : shown.length >= 5 && i === 1 ? "wide" : "";

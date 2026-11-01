@@ -28,7 +28,7 @@ const plain = (s) => norm(String(s).replace(/\[([^\]]+)\]\((?:[^()\s]|\([^()\s]*
 // Robot pages are chosen per mode, below.
 const PAGES = [
   { url: "index.html", lists: ["ROBOTS", "SCHEDULE_2027"] },
-  { url: "about.html", lists: ["VALUES", "STRATEGY", "HISTORY.milestones", "ANNUAL_EVENTS", "SCHEDULE_2027"] },
+  { url: "about.html", lists: ["VALUES", "STRATEGY", "HISTORY.milestones", "ANNUAL_EVENTS"] },
   { url: "robots.html", lists: ["ROBOTS"] },
   { url: "sponsors.html", lists: ["SPONSOR_TIERS", "SPONSOR_TIERS[0].sponsors"] },
   { url: "outreach.html", lists: ["OUTREACH_EVENTS"] },
@@ -232,7 +232,7 @@ async function checkPage(p) {
   if (MODE === "broken") {
     const { doc, win, frame } = await get("index.html");
     report(win.CONTENT_SOURCE === "default", "invalid content.json: page uses the built-in content", win.CONTENT_SOURCE);
-    report(doc.getElementById("mission-text").textContent.startsWith("To build a confident"), "invalid content.json: the page still has its text");
+    report(doc.getElementById("mission-text").textContent.startsWith("Building a confident"), "invalid content.json: the page still has its text");
     frame.remove();
   }
 
