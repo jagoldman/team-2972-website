@@ -296,6 +296,24 @@ function isPortalPage() {
   return document.body.hasAttribute("data-portal");
 }
 
+// Public pages never see who is signed in (Caddy strips the identity headers), so the portal leaves a
+// plain hint cookie on the whole site domain: only "1", no name, no group, nothing to trust. It lets the
+// public "Team Login" link say "Portal". It is a label only; the portal still checks the real session.
+const SIGNED_IN_HINT = "2972_in";
+function hintCookieAttrs() {
+  const { scheme, domain } = siteBase();
+  const host = domain.replace(/:\d+$/, "");
+  return `; path=/${host.includes(".") ? `; domain=${host}` : ""}; samesite=lax${scheme === "https" ? "; secure" : ""}`;
+}
+function setSignedInHint(on) {
+  try {
+    document.cookie = `${SIGNED_IN_HINT}=${on ? "1" : ""}${hintCookieAttrs()}; max-age=${on ? 43200 : 0}`;
+  } catch (e) { /* cookies blocked: the link just keeps saying Team Login */ }
+}
+function loginLabel() {
+  return document.cookie.split("; ").includes(`${SIGNED_IN_HINT}=1`) ? "Portal" : "Team Login";
+}
+
 function pageHref(page) {
   return isPortalPage() ? hostUrl("", `/${page}`) : page;
 }
@@ -343,7 +361,7 @@ function renderHeader() {
       <nav class="site-nav">
         ${links}
         ${renderThemeSwitch()}
-        <a href="${PORTAL_URL}" class="nav-login">Team Login</a>
+        <a href="${PORTAL_URL}" class="nav-login">${loginLabel()}</a>
       </nav>
     </div>
   </header>`;
@@ -365,7 +383,7 @@ function renderFooter() {
         <a href="${pageHref("sponsors.html")}">Become a Sponsor</a>
         <a href="${pageHref("mentor.html")}">Become a Mentor</a>
         <a href="${pageHref("member.html")}">Become a Team Member</a>
-        ${isPortalPage() ? `<a href="/install">Install the app</a>` : `<a href="${PORTAL_URL}">Team Login</a>
+        ${isPortalPage() ? `<a href="/install">Install the app</a>` : `<a href="${PORTAL_URL}">${loginLabel()}</a>
         <a href="${REQUEST_URL}">Request an account</a>`}
       </div>
     </div>
@@ -607,11 +625,13 @@ function mountLayout() {
 
   // The installable app: register the service worker, and clear what it stored when someone signs out.
   registerServiceWorker();
+  if (isPortalPage()) setSignedInHint(true);
   // A sign-out link clears the stored files first (waiting at most a second), then goes on to sign out.
   document.addEventListener("click", (e) => {
     const link = e.target.closest && e.target.closest("a[data-signout]");
     if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
     e.preventDefault();
+    setSignedInHint(false);
     Promise.race([clearOfflineCaches(), new Promise((r) => setTimeout(r, 1000))]).then(() => { location.href = link.href; });
   });
 
