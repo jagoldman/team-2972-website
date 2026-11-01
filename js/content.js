@@ -716,3 +716,11 @@ const contentSections = {
   MEDIA_VIDEOS,
   MEDIA_PUBLICITY,
 };
+
+/*
+  contentMedia — alt text and sizes of the images uploaded through the site editor (the
+  "media:<id>" values above), so the built-in content keeps their alt text. Written by
+  scripts/content-sync/sync.cjs from the published file; the image files are in media/.
+  (camelCase on purpose, like contentSections: the editor imports every UPPER_SNAKE name.)
+*/
+const contentMedia = {};

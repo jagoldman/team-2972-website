@@ -82,7 +82,9 @@ A field holds `media:<20 hex chars>`, a Google Drive ID or URL, an `https:` URL,
 - `media:<id>` becomes `/media/<id>-<w>.webp`, where `w` is the smallest of 400, 800, 1600 that is at least
   the width the spot needs (the largest if none is). Uploaded images also get `srcset` of the stored widths.
   `<id>-thumb.webp` is for the editor's screens and is not served.
-- Alt text comes from the `media` map when there is one, else from a nearby field (a name, a robot).
+- Alt text comes from the `media` map when there is one, else from a nearby field (a name, a robot). For
+  `media:` values in the built-in content, the map is `contentMedia` at the bottom of `js/content.js` (written by
+  the content sync).
 - Drive images keep working: `imgUrl()` adds the `=w<size>` suffix as before.
 - **Framing a cropped photo:** `SITE.heroPosition` (the hero background) and `ROBOTS[].imagePosition` (the robot's
   photo on cards and its page) are optional CSS positions, `"<x> <y>"` such as `"67% 84%"`. One or two parts, each a
@@ -103,6 +105,64 @@ other names, other widths all give 404). Both are public on the public hosts. On
 the portal's login rule. Without the mounts every request is a plain 404 and the built-in content is used.
 The pages never set `X-Frame-Options`, and the editor reads them server-side, so no framing is needed.
 
+## Content sync: copying published edits back into git
+
+The editor publishes straight to the live site, so git falls behind. `scripts/content-sync/sync.cjs` copies the
+**published** content back into this repo and opens a pull request. It runs on a person's computer with their own
+`gh` login; the server never gets a GitHub credential (the user chose this over editor auto-commits, 2026-10-31).
+
+```bash
+node scripts/content-sync/sync.cjs --dry-run   # show the diff and the PR text; changes nothing
+node scripts/content-sync/sync.cjs             # commit on content-sync/<date>, push it, open a PR
+node scripts/content-sync/sync.cjs --no-push   # commit on a local content-sync/<date> branch only
+```
+
+Needs Node 20+, `git`, `gh` signed in (`gh auth login`), and gitleaks or Docker for the secret scan. Run it from
+any landing checkout; it works in a temporary `git worktree` on `origin/main`, so your checkout and its branch
+(which infra builds) are never touched. `--site <url>` reads another site.
+
+What it does:
+
+1. Downloads `https://2972robotics.com/content/content.json`. A 404 means nothing is published yet: it says so
+   and exits 0. The file is checked by running `js/content-loader.js` itself (anything the site would ignore is
+   refused), plus stricter rules: the editor's envelope, `format: 1`, no `draft`/`rev` fields, at most 2 MB,
+   no redirects. Any refusal exits non-zero and writes nothing.
+2. Updates `js/content.js` to what the site shows (published sections laid over the built-ins, exactly as the
+   loader does), changing as little as it can: a value that did not change keeps its source text and its
+   comments; a list or object written over several lines is patched item by item and key by key (equal items
+   are matched, so adding a robot at the top touches only the new lines); anything else that changed is written
+   fresh in the file's style. It then checks that the new file evaluates to exactly the published content.
+3. Writes the alt text and sizes of the uploads the content refers to into `contentMedia` (bottom of
+   `js/content.js`); the loader uses it for the built-in content, so the fallback keeps its alt text.
+4. Downloads every stored width of each referenced upload (`/media/<id>-<w>.webp`) into `media/`, and deletes
+   files there that nothing refers to any more. Uploads nothing refers to are never downloaded. Limits: each
+   file must be WebP and at most 2 MB, and at most 50 MB of new images per run.
+5. No difference: prints "no changes". Otherwise runs gitleaks, commits, pushes `content-sync/YYYY-MM-DD`
+   (`-2`, `-3`, … if taken) and opens a PR against `main` listing the changed sections and images. It never
+   pushes to `main` and never merges.
+
+`media/` is the one place photos are committed: the user made editor uploads an exception to "no photos in
+git" (2026-10-31), so a clean clone has them. `.gitignore` allows `media/*.webp`, and `.dockerignore` keeps
+them out of the image (the container serves `/media/` from the editor's volume).
+
+**How often:** after a batch of edits in the editor, or weekly. Running it twice is harmless: the second run
+says "no changes" (or, if the first PR is not merged yet, opens a second PR with the same changes, so merge
+or close the open one first).
+
+**What to review in the PR:**
+
+- The changes are ones the team meant to publish (the editor's history shows who published what).
+- Nothing private on a public page: no student names with contact details, emails, or private links
+  (CONVENTIONS §9). The repo is public; the PR is the last check before the text is in git history.
+- New images are fine to keep in a public repo.
+- A value written fresh loses the comments inside it, and a changed value that was computed is written as
+  plain text (`${SITE.teamNumber}` becomes `2972`; `SITE.github` becomes the URL if `SITE.github` itself
+  changed). Put back any comment worth keeping.
+- A section listed under "Ignored" is one the editor has but landing does not know: landing needs a code change.
+
+Merging changes nothing on the live site (it already shows the published content); it updates the built-in
+fallback and keeps the editor's import (`editor/src/lib/content/importer.ts`) in step with git.
+
 ## Tests
 
 ```bash
@@ -110,6 +170,7 @@ node test/loader-test.cjs      # loader fallback, validation, media, escaping, r
 test/site-test.sh              # every page in headless Chrome: keys, escaping, media, 3 scenarios
 test/container-test.sh         # the container: gates, /content and /media routes (needs docker)
 test/portal-test.sh            # the portal per group (needs docker and Chrome)
+node test/content-sync-test.cjs  # the content sync: refusals, rewrites, images, git (local server, no network)
 ```
 
 `test/fixtures/content/content.json` is a fake-people envelope with a few deliberately hostile values (an HTML

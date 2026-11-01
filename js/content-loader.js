@@ -38,6 +38,8 @@
   // window.CONTENT_MEDIA is updated in place; components.js reads it for alt text and srcset.
   const MEDIA_ID = /^[a-f0-9]{20}$/;
   const mediaInfo = window.CONTENT_MEDIA = {};
+  // The built-in content's own uploads (contentMedia at the bottom of js/content.js, written by the content sync).
+  const builtInMedia = typeof contentMedia === "object" && contentMedia ? JSON.parse(JSON.stringify(contentMedia)) : {};
 
   function setMedia(raw) {
     Object.keys(mediaInfo).forEach((k) => delete mediaInfo[k]);
@@ -49,6 +51,8 @@
       mediaInfo[id] = { alt: typeof m.alt === "string" ? m.alt.slice(0, 500) : "", widths };
     });
   }
+
+  setMedia(builtInMedia);
 
   // The sections and media map of a document, in either shape; null if it is not usable.
   function unwrap(doc) {
@@ -103,7 +107,7 @@
 
   function restoreDefaults() {
     names.forEach((n) => setSection(n, JSON.parse(JSON.stringify(pristine[n])), false));
-    setMedia({});
+    setMedia(builtInMedia);
   }
 
   // Turn text into a content update, or return false (and change nothing) if it is not usable.
@@ -115,7 +119,7 @@
       if (!sections) return false;
       restoreDefaults(); // start from the built-ins, then lay the published sections over them
       Object.keys(sections).forEach((n) => setSection(n, sections[n], true));
-      setMedia(doc.media);
+      setMedia(Object.assign({}, builtInMedia, doc.media));
       return true;
     } catch (err) {
       return false;
