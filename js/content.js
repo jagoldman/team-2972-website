@@ -51,8 +51,8 @@ const SITE = {
   heroImage: "1VgoMdevZH3syn0BvQq7QpFz09xrDS_rt",
   heroPosition: "50% 100%", // keeps the people, trims the banners and screen at the top
   // Photo beside the text on "Become a Team Member" (member.html), a Drive ID. Empty: no photo there.
-  memberImage: "", // TODO: Drive ID from the photo sheet (docs/photo-ids.csv, row 77)
-  memberImageAlt: "Team 2972 students working on a robot",
+  memberImage: "1-q5Dg3zWV_GR3CpRf2SWH2MIgj_qhf_7", // photo sheet row 77
+  memberImageAlt: "Two Team 2972 students at the driver station during a match",
   schoolLogo: "assets/brand/dawson-school.png",
   schoolUrl: "https://www.dawsonschool.org",
 };
@@ -143,14 +143,14 @@ const HISTORY = {
     { year: "2019", items: [
       { kind: "comp", text: "Ranked 9th in qualifiers and captained alliance 8 in Colorado." },
     ] },
-    { year: "2021", items: [
+    { year: "2021", image: "1aBbDWG2tuJ3VwmgRu7d5c8v3AjjY5sBQ", imageAlt: "The team's workshop in 2021", items: [
       { kind: "team", text: "Moved out of the physics room and into a new, larger space." },
     ] },
     { year: "2023", items: [
       { kind: "comp", text: "Ranked 9th and led alliance 7 at the Green Country Regional." },
       { kind: "team", text: "Started a machine shop and wrote the team's first handbook." },
     ] },
-    { year: "2025", items: [
+    { year: "2025", image: "1MvSZKOWXEgQyI3YVKohD3G8pgHHkUVPk", imageAlt: "The shop with its CNC router, bandsaw and tool cabinets", items: [
       { kind: "team", text: "Added a lathe and a CNC router to the shop." },
     ] },
     { year: "2026", items: [
@@ -169,8 +169,8 @@ const HISTORY = {
       building instead of waiting on orders. Students learn to design, make and wire a competition
       robot with mentors and parent volunteers beside them.`,
     ],
-    image: "1-q5Dg3zWV_GR3CpRf2SWH2MIgj_qhf_7",
-    imageAlt: "Team 2972 at a 2025 regional",
+    image: "1vbL6lHeviIg9wOlDE50PeHCVIAfGmPYN",
+    imageAlt: "Team 2972 students cheering in the stands with 2 9 7 2 number signs",
   },
 };
 
@@ -409,7 +409,7 @@ const ROBOTS = [
     game: "Recycle Rush",
     name: "Centaurian",
     status: "Retired",
-    image: "1pkVp84ZN2LQ66qJ2CEetAG_PD0h0yQVv",
+    image: "1l7EbpBSz5Noi0CpJw3Edk1-Nuitwtr7d",
     stats: "2 regionals · best rank #23",
     gameSummary: "Recycle Rush is the 2015 game. Robots stack Totes and top them with Recycling Containers, with no defense between alliances.",
     videos: ["https://www.youtube.com/watch?v=DmapW3sVOgU"],
