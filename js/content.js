@@ -683,7 +683,9 @@ const MEDIA_VIDEOS = [
   "https://www.youtube.com/embed/ysP5KEcw9FU",
 ];
 const MEDIA_PUBLICITY = [
-  // TODO: add press/publicity links, e.g. { title: "...", url: "#", outlet: "..." }
+  { title: "Dawson School team gears up for first robotics contest", url: "https://www.denverpost.com/2014/02/03/dawson-school-team-gears-up-for-first-robotics-contest/", outlet: "The Denver Post, Feb 2014" },
+  { title: "Dawson students design, build robots for competition", url: "https://www.dailycamera.com/2014/01/31/dawson-students-design-build-robots-for-competition/", outlet: "Daily Camera, Jan 2014" },
+  { title: "Dawson School students use Lego robots to learn simple coding skills", url: "https://www.coloradohometownweekly.com/2015/12/13/dawson-school-students-use-lego-robots-to-learn-simple-coding-skills/", outlet: "Colorado Hometown Weekly, Dec 2015" },
 ];
 
 /*
