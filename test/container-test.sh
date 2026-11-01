@@ -230,4 +230,12 @@ if docker exec "$NAME" sh -c 'find /srv/site \( -path /srv/site/pwa-icons -o -pa
   echo "FAIL image contains photos"; fail=1
 else echo "ok   no photos or repo files in the image (the app icons in pwa-icons/ and the logo in brand/ are meant to be there)"; fi
 
+# Every local image the pages and content.js name is in the image and served (test/assets-test.cjs lists them).
+missing=0
+for p in $(node test/assets-test.cjs --list); do
+  got=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $D" "$URL/$p")
+  [ "$got" = 200 ] || { echo "FAIL /$p is $got from the image"; missing=$((missing+1)); }
+done
+[ $missing -eq 0 ] && echo "ok   every image the site names is served from the image" || fail=1
+
 [ $fail -eq 0 ] && echo "ALL PASSED" || { echo "SOME CHECKS FAILED"; exit 1; }

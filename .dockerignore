@@ -14,11 +14,11 @@ Dockerfile
 *.md
 docs/
 test/
+# Originals stay out; the site's own images are WebP copies (assets/**/*.webp), which are shipped.
 assets/**/*.jpg
 assets/**/*.jpeg
 assets/**/*.png
 assets/**/*.gif
-assets/**/*.webp
 assets/**/*.heic
 assets/**/*.JPG
 assets/**/*.JPEG

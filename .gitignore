@@ -27,6 +27,10 @@ Thumbs.db
 !/brand/team-2972-logo.png
 !/brand/team-2972-logo-256.png
 
+# The local site images js/content.js uses, as WebP at most 1600 px wide (the user, 2026-11-01). The originals
+# (JPEG/PNG) stay out of git; test/assets-test.cjs checks that every referenced file is tracked and shipped.
+!/assets/**/*.webp
+
 # Images uploaded in the site editor, copied from the live site by scripts/content-sync/sync.cjs (the user, 2026-10-31).
 !/media/*.webp
 

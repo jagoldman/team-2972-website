@@ -40,8 +40,10 @@ build step. Almost all content lives in `js/content.js` (see README).
 ## Must not
 - Add a framework or build step without agreement. Editing should stay "change `content.js`".
 - Handle sign-in. "Team login" links to the portal, and "Request an account" links to `admin.SITE_DOMAIN/request`.
-- Commit photos. Images are served from Google Drive (`lh3.googleusercontent.com/d/<ID>=w<size>`), and
-  only SVG placeholders are tracked. The image build saves copies under `img/drive/` (gitignored) and
+- Commit photos, with two exceptions the user approved: WebP copies (at most 1600 px wide) of the local
+  images `js/content.js` still uses, in `assets/**/*.webp`, and editor uploads in `media/` (the content sync).
+  New photos go on Google Drive (`lh3.googleusercontent.com/d/<ID>=w<size>`). `test/assets-test.cjs` fails if
+  a referenced local image is not tracked or is left out by `.dockerignore`. The image build saves copies under `img/drive/` (gitignored) and
   `imgUrl()` prefers them; see `scripts/drive-photos/fetch.cjs`. Keep its Drive ID rule in step with `imgUrl()`.
 - Publish student names, emails or private links on public pages. No real people in tests or docs; use
   `@example.com` (CONVENTIONS §9).
