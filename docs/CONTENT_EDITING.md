@@ -134,16 +134,13 @@ What it does:
    fresh in the file's style. It then checks that the new file evaluates to exactly the published content.
 3. Writes the alt text and sizes of the uploads the content refers to into `contentMedia` (bottom of
    `js/content.js`); the loader uses it for the built-in content, so the fallback keeps its alt text.
-4. Downloads every stored width of each referenced upload (`/media/<id>-<w>.webp`) into `media/`, and deletes
-   files there that nothing refers to any more. Uploads nothing refers to are never downloaded. Limits: each
-   file must be WebP and at most 2 MB, and at most 50 MB of new images per run.
-5. No difference: prints "no changes". Otherwise runs gitleaks, commits, pushes `content-sync/YYYY-MM-DD`
-   (`-2`, `-3`, … if taken) and opens a PR against `main` listing the changed sections and images. It never
-   pushes to `main` and never merges.
+4. No difference: prints "no changes". Otherwise runs gitleaks, commits `js/content.js`, pushes
+   `content-sync/YYYY-MM-DD` (`-2`, `-3`, … if taken) and opens a PR against `main` listing the changed sections
+   and the uploads now used or no longer used (with a link to each). It never pushes to `main` and never merges.
 
-`media/` is the one place photos are committed: the user made editor uploads an exception to "no photos in
-git" (2026-10-31), so a clean clone has them. `.gitignore` allows `media/*.webp`, and `.dockerignore` keeps
-them out of the image (the container serves `/media/` from the editor's volume).
+**Images stay on the server.** Uploaded image files live only in the editor's `site_media` volume, served at
+`/media/`; the sync never downloads them or puts them in git (the user, 2026-11-01). A clean clone shows
+`media:<id>` images only where a server has that volume.
 
 **How often:** after a batch of edits in the editor, or weekly. Running it twice is harmless: the second run
 says "no changes" (or, if the first PR is not merged yet, opens a second PR with the same changes, so merge
@@ -154,7 +151,7 @@ or close the open one first).
 - The changes are ones the team meant to publish (the editor's history shows who published what).
 - Nothing private on a public page: no student names with contact details, emails, or private links
   (CONVENTIONS §9). The repo is public; the PR is the last check before the text is in git history.
-- New images are fine to keep in a public repo.
+- New images (linked in the PR) are fine on the public site.
 - A value written fresh loses the comments inside it, and a changed value that was computed is written as
   plain text (`${SITE.teamNumber}` becomes `2972`; `SITE.github` becomes the URL if `SITE.github` itself
   changed). Put back any comment worth keeping.

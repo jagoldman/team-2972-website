@@ -31,9 +31,6 @@ Thumbs.db
 # (JPEG/PNG) stay out of git; test/assets-test.cjs checks that every referenced file is tracked and shipped.
 !/assets/**/*.webp
 
-# Images uploaded in the site editor, copied from the live site by scripts/content-sync/sync.cjs (the user, 2026-10-31).
-!/media/*.webp
-
 # Drive photos downloaded by scripts/drive-photos/fetch.cjs (at image build time, or by hand), and its packages.
 /img/drive/
 /scripts/drive-photos/node_modules/

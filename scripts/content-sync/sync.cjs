@@ -17,8 +17,8 @@
 //    plus a few stricter rules: it must be the editor's envelope, format 1, with no draft fields.
 // 2. In a temporary git worktree on origin/main (your checkout and its branch are never touched):
 //    patches js/content.js to what the site shows, rewriting only the values that changed (comments around
-//    them stay), writes the alt text of uploaded images into `contentMedia`, and downloads the /media/ images
-//    the content refers to into media/ (and deletes ones nothing refers to any more).
+//    them stay), and writes the alt text of uploaded images into `contentMedia`. The image files themselves
+//    stay on the server (/media/, the editor's site_media volume); the user wants no photos in git (2026-11-01).
 // 3. No difference: prints "no changes". Otherwise scans for secrets, commits, pushes and runs
 //    `gh pr create`. It never pushes to main and never merges.
 "use strict";
@@ -31,11 +31,8 @@ const { execFileSync } = require("child_process");
 
 const DEFAULT_SITE = "https://2972robotics.com";
 const MAX_CONTENT_BYTES = 2 * 1024 * 1024;          // the loader's own limit
-const MAX_IMAGE_BYTES = 2 * 1024 * 1024;            // one image file
-const MAX_TOTAL_IMAGE_BYTES = 50 * 1024 * 1024;     // all images downloaded in one run
 const MEDIA_WIDTHS = [400, 800, 1600];
 const MEDIA_REF = /^media:([a-f0-9]{20})$/;
-const MEDIA_FILE = /^([a-f0-9]{20})-(400|800|1600)\.webp$/;
 const TIMEOUT_MS = 20000;
 const GITLEAKS_IMAGE = "ghcr.io/gitleaks/gitleaks:v8.30.1"; // CONVENTIONS pins this version
 const LINE = 200;                                     // longest line an inline object or list may make (the file has long ones)
@@ -329,7 +326,7 @@ function patch(src, node, before, after) {
 const MEDIA_COMMENT = `/*
   contentMedia — alt text and sizes of the images uploaded through the site editor (the
   "media:<id>" values above), so the built-in content keeps their alt text. Written by
-  scripts/content-sync/sync.cjs from the published file; the image files are in media/.
+  scripts/content-sync/sync.cjs from the published file; the image files stay on the server (/media/).
   (camelCase on purpose, like contentSections: the editor imports every UPPER_SNAKE name.)
 */`;
 
@@ -345,7 +342,7 @@ function setConst(src, name, after, before) {
   return src.slice(0, at.node.start) + value + src.slice(at.node.end);
 }
 
-// ---------- images ----------
+// ---------- fetching ----------
 
 async function get(url) {
   const res = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(TIMEOUT_MS), headers: { "cache-control": "no-cache" } });
@@ -353,20 +350,10 @@ async function get(url) {
   return res;
 }
 
-async function getImage(url) {
-  const res = await get(url);
-  if (res.status !== 200) refuse(`${url} returned ${res.status}; the content refers to an image the site does not have`);
-  if (Number(res.headers.get("content-length")) > MAX_IMAGE_BYTES) refuse(`${url} is larger than ${MAX_IMAGE_BYTES} bytes`);
-  const buf = Buffer.from(await res.arrayBuffer());
-  if (buf.length > MAX_IMAGE_BYTES) refuse(`${url} is larger than ${MAX_IMAGE_BYTES} bytes`);
-  if (buf.length < 12 || buf.toString("latin1", 0, 4) !== "RIFF" || buf.toString("latin1", 8, 12) !== "WEBP") refuse(`${url} is not a WebP image`);
-  return buf;
-}
-
 // ---------- one sync into a checkout (no git) ----------
 
 // Reads the published content and updates `dir` (a landing checkout) to match it. Everything is
-// downloaded and checked before the first file is written, so a refusal leaves `dir` as it was.
+// checked before js/content.js is written, so a refusal leaves `dir` as it was.
 // Returns { published: false } when nothing is published, else a summary for the PR.
 async function syncInto(dir, { site = DEFAULT_SITE, log = () => {} } = {}) {
   const base = siteUrl(site);
@@ -402,30 +389,12 @@ async function syncInto(dir, { site = DEFAULT_SITE, log = () => {} } = {}) {
   const check = loaderEnv(next, loaderJs);
   if (wrong().length || !equal(check.media() || {}, media)) refuse("internal error: the rewritten js/content.js does not match the published content");
 
-  // Images: every stored width of every referenced upload. Files are named by content id, so one already here is kept.
-  const mediaDir = path.join(dir, "media");
-  const want = new Set();
-  ids.forEach((id) => {
-    const widths = media[id] && media[id].widths.length ? media[id].widths : MEDIA_WIDTHS;
-    widths.forEach((w) => want.add(`${id}-${w}.webp`));
-  });
-  const have = fs.existsSync(mediaDir) ? fs.readdirSync(mediaDir).filter((f) => MEDIA_FILE.test(f)) : [];
-  const added = [];
-  let total = 0;
-  for (const f of [...want].sort()) {
-    if (have.includes(f)) continue;
-    log(`Downloading /media/${f}`);
-    const buf = await getImage(`${base}/media/${f}`);
-    total += buf.length;
-    if (total > MAX_TOTAL_IMAGE_BYTES) refuse(`more than ${MAX_TOTAL_IMAGE_BYTES} bytes of new images in one run; check what was uploaded`);
-    added.push({ file: f, buf });
-  }
-  const removed = have.filter((f) => !want.has(f)).sort();
+  // Uploads the content now uses or no longer uses, for the PR (the files stay on the server).
+  const before = Object.keys(env.media() || {});
+  const added = ids.filter((id) => !before.includes(id));
+  const removed = before.filter((id) => !ids.includes(id));
 
   if (next !== contentJs) fs.writeFileSync(contentPath, next);
-  if (added.length) fs.mkdirSync(mediaDir, { recursive: true });
-  added.forEach(({ file, buf }) => fs.writeFileSync(path.join(mediaDir, file), buf));
-  removed.forEach((f) => fs.unlinkSync(path.join(mediaDir, f)));
 
   return {
     published: true,
@@ -433,10 +402,10 @@ async function syncInto(dir, { site = DEFAULT_SITE, log = () => {} } = {}) {
     publishedAt: pub.doc.publishedAt,
     changed: changed.map((n) => ({ name: n, detail: describe(current[n], pub.sections[n]) })),
     mediaChanged,
-    added: added.map(({ file, buf }) => ({ file, bytes: buf.length })),
+    added,
     removed,
     ignored: pub.ignored,
-    changes: next !== contentJs || added.length > 0 || removed.length > 0,
+    changes: next !== contentJs,
   };
 }
 
@@ -467,7 +436,6 @@ function siteUrl(site) {
 // ---------- git, gitleaks and the PR ----------
 
 function prBody(r, site) {
-  const kb = (n) => `${Math.round(n / 1024)} KB`;
   const lines = [
     `Content published in the site editor, copied from ${site}/content/content.json by \`scripts/content-sync/sync.cjs\`.`,
     "",
@@ -477,10 +445,10 @@ function prBody(r, site) {
     ...(r.changed.length ? r.changed.map((c) => `- \`${c.name}\`: ${c.detail}`) : ["- none"]),
   ];
   if (r.mediaChanged) lines.push("- `contentMedia` (alt text and sizes of uploaded images)");
-  lines.push("", "### Images in `media/`");
+  lines.push("", "### Uploaded images (the files stay on the server, not in git)");
   if (!r.added.length && !r.removed.length) lines.push("- no change");
-  r.added.forEach((a) => lines.push(`- added \`${a.file}\` (${kb(a.bytes)})`));
-  r.removed.forEach((f) => lines.push(`- removed \`${f}\` (nothing refers to it any more)`));
+  r.added.forEach((id) => lines.push(`- now used: \`media:${id}\` (${site}/media/${id}-800.webp)`));
+  r.removed.forEach((id) => lines.push(`- no longer used: \`media:${id}\``));
   if (r.ignored.length) {
     lines.push("", "### Ignored", `Sections landing does not know (the site ignores them too): ${r.ignored.map((n) => `\`${n}\``).join(", ")}. landing needs a code change before these can show.`);
   }
@@ -489,7 +457,7 @@ function prBody(r, site) {
     "### Review",
     "- [ ] The changes are ones the team meant to publish (see the editor's history).",
     "- [ ] No student names, emails or private links on public pages (CONVENTIONS §9).",
-    "- [ ] New images are fine to keep in a public repo.",
+    "- [ ] New images (linked above) are fine on the public site.",
     "- [ ] No comment worth keeping was lost inside a rewritten value.",
     "",
     "The live site already shows this content; merging only updates the built-in fallback in git.",
@@ -555,8 +523,7 @@ async function main(argv) {
     if (!r.published) { log(`Nothing published yet (${site}/content/content.json is 404). No changes.`); return 0; }
     if (!r.changes) { log(`Published version ${r.version} matches origin/main. No changes.`); return 0; }
 
-    git(tmp, ["add", "-A", "js/content.js", "media"]);
-    if (r.added.length) git(tmp, ["add", "--force", "--", ...r.added.map((a) => `media/${a.file}`)]);   // even where .gitignore predates media/
+    git(tmp, ["add", "js/content.js"]);
     const body = prBody(r, site);
     if (opt.dryRun) {
       log("\n----- diff (dry run: nothing is committed) -----");
@@ -586,7 +553,7 @@ async function main(argv) {
   }
 }
 
-module.exports = { syncInto, readPublished, literal, findConst, setConst, patch, prBody, SyncError, MAX_IMAGE_BYTES };
+module.exports = { syncInto, readPublished, literal, findConst, setConst, patch, prBody, SyncError };
 
 if (require.main === module) {
   main(process.argv.slice(2)).then((code) => process.exit(code), (err) => {

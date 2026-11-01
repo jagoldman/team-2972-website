@@ -41,14 +41,14 @@ const DEFAULTS = evaluate(read("js/content.js")).sections;
 // A small fake WebP (RIFF header, then padding).
 const webp = (n = 64) => { const b = Buffer.alloc(n, 1); b.write("RIFF", 0, "latin1"); b.writeUInt32LE(n - 8, 4); b.write("WEBPVP8L", 8, "latin1"); return b; };
 
-// The "live site": state.content is the body of /content/content.json (null: 404); state.media maps file names to bytes.
-const state = { content: null, media: {}, hits: [] };
+// The "live site": state.content is the body of /content/content.json (null: 404). It also serves any /media/
+// file, so a test can tell if the script asked for one (it must not).
+const state = { content: null, hits: [] };
 const server = http.createServer((req, res) => {
   state.hits.push(req.url);
   if (state.redirect) { res.writeHead(302, { location: "https://example.com/" }); return res.end(); }
   if (req.url === "/content/content.json" && state.content !== null) { res.writeHead(200, { "content-type": "application/json" }); return res.end(state.content); }
-  const m = req.url.match(/^\/media\/([\w-]+\.webp)$/);
-  if (m && state.media[m[1]]) { res.writeHead(200, { "content-type": "image/webp" }); return res.end(state.media[m[1]]); }
+  if (/^\/media\/[\w-]+\.webp$/.test(req.url)) { res.writeHead(200, { "content-type": "image/webp" }); return res.end(webp()); }
   res.writeHead(404); res.end();
 });
 
@@ -59,11 +59,6 @@ function checkout() {
   fs.copyFileSync(path.join(root, "js/content.js"), path.join(dir, "js/content.js"));
   fs.copyFileSync(path.join(root, "js/content-loader.js"), path.join(dir, "js/content-loader.js"));
   return dir;
-}
-// Every stored width of every upload in an envelope, as the site would serve them.
-function serveMediaFor(doc) {
-  state.media = {};
-  Object.keys(doc.media || {}).forEach((id) => (doc.media[id].widths || []).forEach((w) => { state.media[`${id}-${w}.webp`] = webp(); }));
 }
 // An envelope from the current defaults with `edit` applied to its content.
 function envelope(edit, media = {}) {
@@ -168,7 +163,6 @@ async function refused(name, fn, pattern) {
   {
     const dir = checkout();
     state.content = JSON.stringify(FIXTURE);
-    serveMediaFor(FIXTURE);
     state.hits = [];
     const r = await S.syncInto(dir, { site });
     const after = fs.readFileSync(path.join(dir, "js/content.js"), "utf8");
@@ -185,14 +179,11 @@ async function refused(name, fn, pattern) {
     check("fixture: contentMedia holds exactly the referenced uploads", same(Object.keys(got.media), referenced), Object.keys(got.media).join(","));
     check("fixture: contentMedia keeps alt text and widths", got.media["00000000000000000004"].alt === "Pat Example smiling" && same(got.media["00000000000000000006"].widths, [400, 800]));
 
-    const files = fs.readdirSync(path.join(dir, "media")).sort();
-    const want = referenced.flatMap((id) => FIXTURE.media[id].widths.map((w) => `${id}-${w}.webp`)).sort();
-    check("fixture: every stored width of every referenced upload is in media/", same(files, want), files.join(","));
-    check("fixture: no width the editor did not store is asked for", !state.hits.includes("/media/00000000000000000006-1600.webp"));
-    check("fixture: unreferenced uploads are not downloaded", !files.some((f) => f.startsWith("0000000000000000000b")));
-    check("fixture: the PR body lists sections and images", (() => {
+    check("fixture: no image is downloaded or written (the files stay on the server)", !state.hits.some((h) => h.startsWith("/media/")) && !fs.existsSync(path.join(dir, "media")));
+    check("fixture: the new uploads are reported", same(r.added, referenced) && r.removed.length === 0);
+    check("fixture: the PR body lists sections and uploads", (() => {
       const body = S.prBody(r, site);
-      return body.includes("`HISTORY`") && body.includes("added `00000000000000000004-400.webp`") && body.includes("version: **7**");
+      return body.includes("`HISTORY`") && body.includes("now used: `media:00000000000000000004`") && body.includes("version: **7**");
     })());
 
     // The loader now gives the built-in content its alt text when nothing is published.
@@ -209,30 +200,18 @@ async function refused(name, fn, pattern) {
     // Back to content with no uploads: the image files and contentMedia go.
     state.content = JSON.stringify(envelope(() => {}));
     const back = await S.syncInto(dir, { site });
-    check("uploads nothing refers to any more are removed", fs.readdirSync(path.join(dir, "media")).length === 0 && back.removed.length === want.length);
+    check("uploads nothing refers to any more are reported", same(back.removed, referenced) && back.added.length === 0);
     check("contentMedia is emptied again", same(evaluate(fs.readFileSync(path.join(dir, "js/content.js"), "utf8")).media, {}));
   }
 
-  // ---------- image checks (nothing is written when one fails) ----------
+  // ---------- a new upload: content.js only ----------
   {
     const doc = envelope((c) => { c.SITE.heroImage = "media:0123456789abcdef0123"; }, { "0123456789abcdef0123": { alt: "Hero", width: 3000, height: 2000, widths: [400, 800, 1600] } });
     state.content = JSON.stringify(doc);
-    const tryMedia = async (name, media, pattern) => {
-      const dir = checkout();
-      state.media = media;
-      await refused(name, () => S.syncInto(dir, { site }), pattern);
-      check(`${name}: nothing written`, !fs.existsSync(path.join(dir, "media")) && fs.readFileSync(path.join(dir, "js/content.js"), "utf8") === read("js/content.js"));
-    };
-    const ok = { "0123456789abcdef0123-400.webp": webp(), "0123456789abcdef0123-800.webp": webp(), "0123456789abcdef0123-1600.webp": webp() };
-    await tryMedia("a missing image is refused", { ...ok, "0123456789abcdef0123-1600.webp": undefined }, /returned 404/);
-    await tryMedia("an image over the size limit is refused", { ...ok, "0123456789abcdef0123-800.webp": webp(S.MAX_IMAGE_BYTES + 1) }, /larger/);
-    await tryMedia("a file that is not WebP is refused", { ...ok, "0123456789abcdef0123-400.webp": Buffer.from("<html>not an image</html>") }, /not a WebP/);
-
     const dir = checkout();
-    state.media = ok;
     const r = await S.syncInto(dir, { site });
-    check("a new hero upload: SITE changed, 3 files added", same(r.changed.map((c) => c.name), ["SITE"]) && r.added.length === 3 && r.mediaChanged);
-    check("a new hero upload: other SITE comments are lost only inside SITE", fs.readFileSync(path.join(dir, "js/content.js"), "utf8").includes("// Upcoming competitions"));
+    check("a new hero upload: SITE and contentMedia change, the upload is reported", same(r.changed.map((c) => c.name), ["SITE"]) && same(r.added, ["0123456789abcdef0123"]) && r.mediaChanged);
+    check("a new hero upload: other comments are kept", fs.readFileSync(path.join(dir, "js/content.js"), "utf8").includes("// Upcoming competitions"));
   }
 
   // ---------- literal(): strings can never become code ----------
@@ -272,18 +251,14 @@ async function refused(name, fn, pattern) {
 
     const doc = envelope((c) => { c.SITE.heroImage = "media:0123456789abcdef0123"; c.VALUES.push({ name: "Curiosity", text: "Ask why." }); }, { "0123456789abcdef0123": { alt: "Hero", width: 3000, height: 2000, widths: [400, 800, 1600] } });
     state.content = JSON.stringify(doc);
-    serveMediaFor(doc);
     const dry = await cli("--dry-run");
-    check("cli: dry run shows the diff and the PR body", dry.includes('+  { name: "Curiosity", text: "Ask why." },') && dry.includes("media/0123456789abcdef0123-400.webp") && dry.includes("### Changed sections"), dry);
+    check("cli: dry run shows the diff and the PR body", dry.includes('+  { name: "Curiosity", text: "Ask why." },') && dry.includes("now used: `media:0123456789abcdef0123`") && dry.includes("### Changed sections"), dry);
     check("cli: dry run leaves no branch and no worktree", !g(work, "branch", "--list", "content-sync/*") && g(work, "worktree", "list").split("\n").length === 1);
 
     const out = await cli("--no-push");
     const branch = g(work, "branch", "--list", "content-sync/*").replace(/^[*+ ]+/, "");
     check("cli: --no-push commits on a content-sync branch", /^content-sync\/\d{4}-\d{2}-\d{2}$/.test(branch) && out.includes(branch), out);
-    check("cli: the commit has content.js and the three images", (() => {
-      const files = g(work, "show", "--name-only", "--format=", branch).split("\n").sort();
-      return same(files, ["js/content.js", "media/0123456789abcdef0123-1600.webp", "media/0123456789abcdef0123-400.webp", "media/0123456789abcdef0123-800.webp"]);
-    })());
+    check("cli: the commit has only js/content.js (no images)", g(work, "show", "--name-only", "--format=", branch) === "js/content.js");
     check("cli: your checkout stays on main and clean", g(work, "rev-parse", "--abbrev-ref", "HEAD") === "main" && g(work, "status", "--porcelain") === "");
     check("cli: nothing was pushed", g(origin, "branch", "--list").trim() === "main" || g(origin, "branch", "--list").trim() === "* main");
     check("cli: a second run picks the next branch name", /content-sync\/\d{4}-\d{2}-\d{2}-2/.test(await cli("--no-push")));
