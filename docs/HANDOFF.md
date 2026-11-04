@@ -141,6 +141,11 @@ Chrome path defaults to macOS Google Chrome (`CHROME=` overrides). Fixtures use 
 6. **Constant-time secret compare** is an accepted exception (CONVENTIONS §4), listed in `docs/PHASE3_TASKS.md`; revisit
    only if landing ever becomes reachable outside the Docker network.
 
+7a. **Dawson brand (D99, 2026-11-03).** About page shows `SITE.schoolLogo` on a white tile (`.school-logo`), linked to
+   `SITE.schoolUrl`, hidden if unset or the image fails (locally `/media/` is not served, so it hides there). Media page
+   Publicity has a press-inquiry line (coordinated with Dawson). Home and footer already name Dawson; left as is. No new
+   content keys, so no editor-schema change. Hero and student photos untouched (pending parent permission).
+
 ## 8. Rules that bit us
 
 - Never commit photos, `.env`, secrets or private Drive IDs; no real people in tests (`@example.com`); keep the gitleaks

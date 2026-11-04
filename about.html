@@ -27,6 +27,7 @@
 
 <section class="block">
   <div class="block-inner">
+    <div id="school-logo" class="school-logo" hidden></div>
     <h2 class="section-title" id="school-title"></h2>
     <p class="section-lead" id="school-body"></p>
     <div class="btn-row"><a class="btn btn-outline" id="school-link" data-ck-href="SITE.schoolUrl" target="_blank" rel="noopener" hidden>Visit Dawson School <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
@@ -96,6 +97,15 @@ onContent(() => {
   };
   put("school-title", "ABOUT_SCHOOL.heading", ABOUT_SCHOOL.heading);
   put("school-body", "ABOUT_SCHOOL.body", ABOUT_SCHOOL.body, true);
+  // Dawson logo on a white tile (readable in both themes). Hidden if SITE.schoolLogo is unset or fails to load.
+  const logoBox = document.getElementById("school-logo");
+  if (isSet(SITE.schoolLogo)) {
+    const href = isSet(SITE.schoolUrl) ? safeUrl(SITE.schoolUrl) : "";
+    const img = `<img${imgAttrs(SITE.schoolLogo, 400)}${ck("SITE.schoolLogo")} alt="${esc(altFor(SITE.schoolLogo, "Dawson School logo"))}" width="240" height="80" />`;
+    logoBox.innerHTML = href ? `<a href="${esc(href)}" target="_blank" rel="noopener"${ckHref("SITE.schoolUrl")}>${img}</a>` : img;
+    logoBox.querySelector("img").addEventListener("error", () => { logoBox.hidden = true; });
+    logoBox.hidden = false;
+  }
   const schoolLink = document.getElementById("school-link");
   schoolLink.href = safeUrl(SITE.schoolUrl);
   schoolLink.hidden = !safeUrl(SITE.schoolUrl);

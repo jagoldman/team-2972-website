@@ -696,6 +696,9 @@ a.card:hover { color: inherit; border-color: var(--tint-line); }
 .sponsor-banner { width: 100%; margin: 0 0 24px; border-radius: var(--radius); background: var(--ink-3); }
 .sponsor-tile:hover { transform: translateY(-3px); }
 .sponsor-tile img { height: 50px; width: auto; max-width: 100%; object-fit: contain; }
+.school-logo { display: inline-block; background: #ffffff; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 14px 20px; margin: 0 0 24px; }
+.school-logo[hidden] { display: none; }
+.school-logo img { display: block; height: 80px; width: auto; max-width: 100%; object-fit: contain; }
 .sponsor-tile span { color: #0b1224; font-weight: 600; text-align: center; }
 
 /* ---------- Resource list ---------- */
