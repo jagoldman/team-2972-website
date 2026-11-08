@@ -284,7 +284,8 @@ const okNetwork = async () => basic("from the network");
 
   // components.js: sign-out links clear the caches first
   const comp = read("js/components.js");
-  check("the sign-out link is marked data-signout in the portal header and page", /class="nav-login" data-signout>Sign out/.test(comp) && /id="sign-out" data-signout/.test(read("portal/index.html")));
+  // The portal's header is the shell kit's app bar (no sign-out of its own); the page's Sign out link is the one.
+  check("the portal page's sign-out link is marked data-signout, and the click handler is delegated", /id="sign-out" data-signout/.test(read("portal/index.html")) && /closest\("a\[data-signout\]"\)/.test(comp));
   check("a click on a sign-out link clears the caches before going on, but never waits more than a second", /Promise\.race\(\[clearOfflineCaches\(\), new Promise\(\(r\) => setTimeout\(r, 1000\)\)\]\)/.test(comp) && /n\.startsWith\("2972-"\)/.test(comp) && /type: "clear-caches"/.test(comp));
   check("the service worker is only registered where browsers allow it (https or localhost)", /location\.protocol === "https:" \|\| \/\^\(localhost\|127/.test(comp));
 
