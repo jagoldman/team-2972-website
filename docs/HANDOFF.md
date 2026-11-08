@@ -148,7 +148,7 @@ Chrome path defaults to macOS Google Chrome (`CHROME=` overrides). Fixtures use 
    white keyline, made from an image the user supplied) left of the team logo, its own link to `SITE.schoolUrl`.
    Wordmark used: Home "About us" and About page (right column with a
    gold divider; above the heading on phones), and the footer under "FRC Team 2972 · Dawson School" (muted). Media page
-   Publicity has a press-inquiry line. No new content keys (no editor-schema
+   Publicity has a press-inquiry line. Stats row on Home: the top line is gone; thin `--line-2` dividers sit between stats with a 40px gap (24px on phones, between the two columns only). No new content keys (no editor-schema
    change); `SITE.schoolLogo` (media) still feeds the sponsors list. Hero and student photos untouched.
 
 ## 8. Rules that bit us
