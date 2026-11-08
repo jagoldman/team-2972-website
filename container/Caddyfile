@@ -171,7 +171,8 @@
 				rewrite * /portal/install.html
 				file_server
 			}
-			@shared path /css/* /js/* /assets/* /fonts/* /brand/*
+			# /shell/* is infra's synced shell kit (tokens, app bar): the portal page imports it.
+			@shared path /css/* /js/* /assets/* /fonts/* /brand/* /shell/*
 			handle @shared {
 				file_server
 			}

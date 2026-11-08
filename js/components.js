@@ -494,8 +494,12 @@ function bindThemeSwitch() {
   document.querySelectorAll(".theme-switch button").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.theme)));
 }
 
-// Another tab changed the theme: follow it.
-addEventListener("storage", (e) => { if (e.key === THEME_KEY || e.key === null) applyTheme(storedTheme()); });
+// Another tab changed the theme: follow it. Not on the portal, where the shell kit's app bar owns the theme
+// (cookie first, D92) and reapplies it whenever the tab comes back.
+addEventListener("storage", (e) => {
+  if (isPortalPage()) return;
+  if (e.key === THEME_KEY || e.key === null) applyTheme(storedTheme());
+});
 
 // ---------- Motion and effects ----------
 // All of it is decoration: pages work without it, and none of it runs when the visitor

@@ -81,7 +81,8 @@ const blocked = { getItem() { throw new Error("SecurityError"); }, setItem() { t
 }
 
 // ---------- every page: the no-flash snippet comes before the stylesheet ----------
-const pages = fs.readdirSync(root).filter((f) => f.endsWith(".html")).concat(["portal/index.html", "portal/install.html"]);
+// Public pages keep landing's localStorage snippet; the portal pages use the shell kit's (checked further down).
+const pages = fs.readdirSync(root).filter((f) => f.endsWith(".html"));
 for (const page of pages) {
   const html = read(page);
   const css = html.indexOf('<link rel="stylesheet"');
@@ -90,6 +91,66 @@ for (const page of pages) {
   check(`${page}: snippet is guarded by try/catch and only accepts light or dark`, /try\{var t=localStorage\.getItem\("theme"\);if\(t==="light"\|\|t==="dark"\)document\.documentElement\.dataset\.theme=t\}catch\(e\)\{\}/.test(html));
   check(`${page}: declares color-scheme light dark`, /<meta name="color-scheme" content="light dark" \/>/.test(html));
 }
+
+for (const page of ["portal/index.html", "portal/install.html"]) {
+  const html = read(page);
+  check(`${page}: declares color-scheme light dark`, /<meta name="color-scheme" content="light dark" \/>/.test(html));
+}
+
+// ---------- the portal pages: the shell kit's theme script (D92 cookie, then the old localStorage key) ----------
+// Runs the head script from each portal page in a sandbox, for the cases the Sol review of 0b0f687 reproduced.
+function runHeadScript(html, { cookie = "", stored = null, host = "portal.example.org", https = true, sysDark = false }) {
+  const m = html.match(/<!-- theme-init: [^\n]*-->\n<script>([^\n]*)<\/script>/);
+  if (!m) return null;
+  const attrs = {}; const classes = new Set(); const writes = [];
+  const jar = new Map(cookie ? cookie.split(";").map((c) => c.trim().split("=")) : []);
+  const r = {
+    setAttribute: (k, v) => { attrs[k] = v; }, removeAttribute: (k) => { delete attrs[k]; },
+    classList: { toggle: (c, on) => (on ? classes.add(c) : classes.delete(c)) }, style: {},
+  };
+  const document = { documentElement: r };
+  Object.defineProperty(document, "cookie", {
+    get: () => [...jar].map(([k, v]) => `${k}=${v}`).join("; "),
+    set: (v) => { writes.push(v); const [kv] = v.split(";"); const [k, val] = kv.split("="); jar.set(k.trim(), val); },
+  });
+  const store = new Map(stored ? [["theme", stored]] : []);
+  const window = { localStorage: { getItem: (k) => (store.has(k) ? store.get(k) : null) }, matchMedia: () => ({ matches: sysDark, addEventListener() {} }) };
+  const ctx = { document, window, location: { hostname: host, protocol: https ? "https:" : "http:" } };
+  vm.createContext(ctx);
+  vm.runInContext(m[1], ctx);
+  return { theme: attrs["data-theme"], dark: classes.has("dark"), scheme: r.style.colorScheme, writes };
+}
+for (const page of ["portal/index.html", "portal/install.html"]) {
+  const html = read(page);
+  const at = html.indexOf("<!-- theme-init: ");
+  check(`${page}: the kit's theme script is in <head>, before the stylesheets`, at > 0 && at < html.indexOf('<link rel="stylesheet"') && at < html.indexOf("</head>"));
+  check(`${page}: no second (localStorage-only) theme snippet`, !html.includes('try{var t=localStorage.getItem("theme")'));
+  let r = runHeadScript(html, { cookie: "theme=dark", stored: "light" });
+  check(`${page}: cookie dark + old key light → dark (the cookie wins, as in the app bar)`, r && r.theme === "dark" && r.dark && r.scheme === "dark" && r.writes.length === 0, JSON.stringify(r));
+  r = runHeadScript(html, { stored: "light", sysDark: true });
+  check(`${page}: no cookie + old key light → light, and the key moves into a site-wide cookie`, r && r.theme === "light" && !r.dark && r.writes.length === 1 && /^theme=light; Path=\/; Max-Age=34560000; SameSite=Lax; Domain=\.example\.org; Secure$/.test(r.writes[0]), JSON.stringify(r));
+  r = runHeadScript(html, { cookie: "theme=purple", sysDark: true });
+  check(`${page}: nothing valid stored → follows the system, sets no data-theme`, r && r.theme === undefined && r.dark && r.writes.length === 0, JSON.stringify(r));
+}
+
+// The generator's browser-side cookie attributes equal the kit's cookieAttributes for every kind of host, and the
+// pages hold the generator's current output (re-run it after a shell sync).
+(async () => {
+  const gen = await import(path.join(root, "scripts/theme-init.mjs"));
+  const kit = await import(path.join(root, "shell/core.js"));
+  const cases = [
+    ["portal.2972robotics.example", "https", "2972robotics.example"], ["www.example.org", "https", "example.org"],
+    ["portal.localhost", "http", "localhost"], ["localhost", "http", "localhost"], ["127.0.0.1", "http", "127.0.0.1"],
+    ["portal.example.org", "http", "example.org"],
+  ];
+  for (const [hostname, scheme, domain] of cases) {
+    const got = vm.runInNewContext(gen.RUNTIME_ATTRS, { location: { hostname, protocol: `${scheme}:` } });
+    const want = kit.cookieAttributes({ scheme, domain }, kit.COOKIE_MAX_AGE);
+    check(`theme cookie attributes on ${scheme}://${hostname} match the kit's`, got === want, `${got} vs ${want}`);
+  }
+  for (const page of gen.PAGES) check(`${page}: holds the current scripts/theme-init.mjs output`, read(page).includes(gen.snippet()));
+  finish();
+})();
 
 // ---------- the stylesheet: colours are defined once ----------
 const css = read("css/style.css");
@@ -123,5 +184,7 @@ const onGold = after.split("\n").filter((l) => /background: var\(--gold(-2)?\)/.
 check("text on a gold fill uses --on-gold, not the page colour", onGold.length === 0, onGold.slice(0, 3).map((l) => l.trim().slice(0, 70)).join(" | "));
 check("the film grain is switched off in the light theme", /:root\[data-theme="light"\] \{ --grain: 0; \}/.test(css) && /prefers-color-scheme: light\) \{ :root:not\(\[data-theme="dark"\]\) \{ --grain: 0; \}/.test(css));
 
-console.log(failed === 0 ? `ALL PASSED (${passed})` : `${failed} FAILED, ${passed} passed`);
-process.exit(failed === 0 ? 0 : 1);
+function finish() {
+  console.log(failed === 0 ? `ALL PASSED (${passed})` : `${failed} FAILED, ${passed} passed`);
+  process.exit(failed === 0 ? 0 : 1);
+}
