@@ -63,8 +63,8 @@ const tbaEvent = (key) => `https://www.thebluealliance.com/event/${key}`;
 
 // Upcoming competitions — edit dates/events each season
 const SCHEDULE_2027 = [
-  { event: "Denver Regional", dates: "Spring 2027, dates to come", location: "Denver, CO" }, // TODO: exact dates when FIRST posts them
-  { event: "Intermountain West Regional", dates: "Spring 2027, dates to come", location: "Utah" }, // TODO: exact dates and city
+  { event: "Intermountain West Regional", dates: "March 24-27, 2027", location: "Ford Idaho Center, Nampa, ID" },
+  { event: "Denver Regional", dates: "April 7-10, 2027", location: "Denver, CO" },
 ];
 
 // Our year, framed around the school year (shown on the About page, in order)
@@ -72,7 +72,7 @@ const ANNUAL_EVENTS = [
   { name: "Fall competition", when: "October", description: "The KCMT Offseason Tournament (the Kendrick Castillo Memorial Tournament, a Colorado offseason event), plus robot demos at Broomfield Days." },
   { name: "Official season begins", when: "November", description: "New students join, we train on the shop and software, and build season starts, running until spring break in March or April." },
   { name: "Kickoff", when: "January", description: "FIRST reveals the new game. We pick a strategy and design the robot." },
-  { name: "Two regionals", when: "Spring 2027, dates to come", description: "The Denver Regional, our home event, and a second regional out of state. Recently that has been Utah, Kansas City, Oklahoma, or Minnesota." },
+  { name: "Two regionals", when: "March and April 2027", description: "The Intermountain West Regional in Nampa, Idaho (March 24-27), then the Denver Regional, our home event (April 7-10)." },
 ];
 
 

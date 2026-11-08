@@ -135,7 +135,7 @@ Chrome path defaults to macOS Google Chrome (`CHROME=` overrides). Fixtures use 
    in-browser tests. The merge kept main's photo work (Drive photos for 2012-2019, outreach photos, the 2020 and 2021 robots removed)
    and adds the new framing fields `SITE.heroPosition` and `ROBOTS[].imagePosition` (checked by `safePosition()` in `js/components.js`).
    Schema changes for the editor are listed at the end of `docs/CONTENT_EDITING.md`. Lead session to log the change to D55 in MASTER_PLAN.
-4. **BACKLOG** (`docs/BACKLOG.md`): History is now a timeline (done 2026-10-27) and the mentor listing is gone. "Role of the mentors" section is on `mentor.html` (done 2026-10-27). Open: 2027 regional dates, and Theseus/Sea Shanty/sponsor/outreach content.
+4. **BACKLOG** (`docs/BACKLOG.md`): History is now a timeline (done 2026-10-27) and the mentor listing is gone. "Role of the mentors" section is on `mentor.html` (done 2026-10-27). 2027 regional dates are in (2026-11-07: Intermountain West, Nampa ID, March 24-27; Denver April 7-10). Open: Theseus/Sea Shanty/sponsor/outreach content.
 5. **Deploy and verify (infra).** Deploy `459dd21` and check installability on both hosts (section 4). Also open: should
    the public "Game Analysis Template" link stay now that Kickoff replaces it on the portal (default: leave it).
 6. **Constant-time secret compare** is an accepted exception (CONVENTIONS §4), listed in `docs/PHASE3_TASKS.md`; revisit
