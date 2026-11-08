@@ -97,6 +97,23 @@ export function parseTheme(v) {
   return v === "light" || v === "dark" ? v : "system";
 }
 
+/**
+ * The stored theme choice, by D92 precedence: cookie, then the app's old localStorage value, then the app's own
+ * fallback (taskapp's saved per-person value), else "system". Used at load and whenever a tab returns, so a
+ * choice survives even when the cookie can't be written. Browser only.
+ */
+export function resolveTheme(doc = document, win = window, fallback = null) {
+  const c = parseTheme(readCookie(doc.cookie, THEME_COOKIE));
+  if (c !== "system") return c;
+  try {
+    const s = parseTheme(win.localStorage.getItem(THEME_COOKIE));
+    if (s !== "system") return s;
+  } catch {
+    // storage blocked
+  }
+  return parseTheme(fallback);
+}
+
 /** One cookie from a Cookie header or document.cookie. */
 export function readCookie(cookieString, name) {
   if (typeof cookieString !== "string") return null;
@@ -192,6 +209,7 @@ export function themeInitScript(site) {
     "}}catch(e){}}" +
     "var q=w.matchMedia?w.matchMedia('(prefers-color-scheme: dark)'):null;" +
     "function a(){var c=null;try{var m=d.cookie.match(/(?:^|;\\s*)theme=(light|dark)(?:;|$)/);if(m)c=m[1]}catch(e){}" +
+    "if(!c){try{var l=w.localStorage.getItem('theme');if(l==='light'||l==='dark')c=l}catch(e){}}if(!c)c=t;" +
     "var k=c==='dark'||(!c&&q&&q.matches);if(c)r.setAttribute('data-theme',c);else r.removeAttribute('data-theme');" +
     "r.classList.toggle('dark',k);r.classList.toggle('light',!k);r.style.colorScheme=k?'dark':'light'}" +
     "a();if(q&&q.addEventListener)q.addEventListener('change',a)})();"

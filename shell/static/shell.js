@@ -26,6 +26,7 @@ import {
   parseTheme,
   portalHref,
   readCookie,
+  resolveTheme,
   resolveTiles,
   setTheme,
 } from "../core.js";
@@ -109,7 +110,7 @@ export function mountAppBar(root, opts) {
   const state = {
     panel: null,
     mode: parseMode(readCookie(document.cookie, MODE_COOKIE)),
-    theme: parseTheme(readCookie(document.cookie, THEME_COOKIE)),
+    theme: resolveTheme(document, window, opts.themeFallback),
     tiles: opts.tiles || null,
     failed: false,
     user: opts.user || null,
@@ -180,6 +181,8 @@ export function mountAppBar(root, opts) {
     acct,
   );
   root.textContent = "";
+  // The mount wrapper must not become the sticky header's containing block, or the bar scrolls away.
+  root.classList.add("shbar-mount");
   root.append(header);
 
   // ---- patch ----
@@ -259,7 +262,7 @@ export function mountAppBar(root, opts) {
   const onVis = () => {
     if (document.visibilityState !== "visible") return;
     const mode = parseMode(readCookie(document.cookie, MODE_COOKIE));
-    state.theme = parseTheme(readCookie(document.cookie, THEME_COOKIE));
+    state.theme = resolveTheme(document, window, opts.themeFallback);
     applyTheme(state.theme);
     if (mode !== state.mode) {
       state.mode = mode;

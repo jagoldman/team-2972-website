@@ -186,6 +186,11 @@
   font-weight: 700;
 }
 
+/* The static mount element: let the sticky header stick to the page, not to its one-child wrapper. */
+.shbar-mount {
+  display: contents;
+}
+
 /* ---------- Menus (disclosure panels below the bar) ---------- */
 .shbar-disclosure {
   display: contents;

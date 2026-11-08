@@ -70,6 +70,8 @@ export function filterByMode(tiles: readonly ShellTile[], mode: string | null | 
 export function parseMode(v: string | null | undefined): Mode;
 export function parseTheme(v: string | null | undefined): ThemeChoice;
 export function readCookie(cookieString: string | null | undefined, name: string): string | null;
+/** Stored theme by D92 precedence: cookie, old localStorage, app fallback, else "system". Browser only. */
+export function resolveTheme(doc?: Document, win?: Window, fallback?: ThemeChoice | null): ThemeChoice;
 export function cookieAttributes(site: Site, maxAge: number): string;
 export function themeCookie(choice: ThemeChoice, site: Site): string;
 export function modeCookie(mode: Mode, site: Site): string;

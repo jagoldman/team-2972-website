@@ -1,12 +1,12 @@
 {
-  "version": "0.1.1",
+  "version": "0.1.2",
   "profile": "static",
   "files": {
-    "shell/VERSION": "80447316529fc62014fbaa047fb67c51ac30e32830cda370405349d8d66d196c",
+    "shell/VERSION": "297b50f08386d3521f8fdaf2f78eb8d9d0acdf452d2e61596905fba37208c792",
     "shell/tokens.css": "8415af11b3abd9021a2cd9ca679e25b4ccd54a9e92e45d5832dca45c4b3cd295",
-    "shell/app-bar.css": "25fbb2a60b3527d405b153ba5c22fbbe73ba4994c150c66ee839ad51de3d4e22",
-    "shell/core.js": "3f5f2dba2f3ffae974b7ac883fab9dce78ebcec5f616551c4aa5aae41a061811",
-    "shell/core.d.ts": "eba8346371baff05094d1094e6f00fe10d4a54caf143f07c88f9b7595431a8c1",
-    "shell/static/shell.js": "1edc0fa98878252321c9f30e260a87f711aa53e596c214ffaf8a8d38d93fa9a8"
+    "shell/app-bar.css": "fcb8dff3ea4ae01322b50cbbd74fc731b1d573eb183fa3449deb8ce97bec9745",
+    "shell/core.js": "4de1335a5743100bcdb625fe308136b2baa487d179b074a0e8c3f5e528c272d6",
+    "shell/core.d.ts": "8bd2b0f380214d86f348c8aaabcfb9d61026479b6b4080d2c89c949829f0dc57",
+    "shell/static/shell.js": "ef71119e0cefe35af3391907700e475d9f069508c7c322c8d018a163f9e13d7c"
   }
 }
