@@ -182,11 +182,9 @@ for (const page of pages) {
     const ld = v.match(/^light-dark\((.+?),\s*(#[0-9a-f]+|rgba\([^)]*\))\)$/i);
     const [l, d] = ld ? [ld[1].trim(), ld[2].trim()] : [v, v];
     const kl = val(lightBlock, kit), kd = val(darkBlock, kit) || kl;
-    // light --mute: the kit's value fails AA in the see-through public header, so landing keeps a darker one
-    const lightOk = l === kl || (mine === "--mute" && l === "#515b72");
-    if (!lightOk || d !== kd) off.push(`${mine} ${l}/${d} vs kit ${kit} ${kl}/${kd}`);
+    if (l !== kl || d !== kd) off.push(`${mine} ${l}/${d} vs kit ${kit} ${kl}/${kd}`);
   }
-  check("landing's shared colour tokens equal the shell kit's, light and dark (one noted exception: light --mute)", off.length === 0, off.join(" | "));
+  check("landing's shared colour tokens equal the shell kit's, light and dark", off.length === 0, off.join(" | "));
 }
 const css = read("css/style.css");
 const rootBlock = css.slice(css.indexOf(":root {"), css.indexOf("}", css.indexOf(":root {")) + 1);

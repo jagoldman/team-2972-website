@@ -30,7 +30,7 @@
   --input-line: rgba(11, 18, 36, 0.5);
   --text: #0b1224;
   --text-2: #323b50;
-  --mute: #5a6378;
+  --mute: #515b72; /* AA (4.5:1+) on every light surface, incl. landing's see-through public header */
   --gold: #e8b931;
   --gold-2: #ffd666;
   --on-gold: #07090f;

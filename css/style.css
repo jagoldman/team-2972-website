@@ -22,8 +22,7 @@
    The names the shell kit also defines (shell/tokens.css, D101) hold the kit's values, so the portal's app bar
    and these pages match: --ink = --bg, --ink-2 = --surface-2, --ink-3 = --surface, --accent = --accent-ink, and
    --line, --line-2, --text, --text-2, --mute, --gold, --gold-2, --on-gold, --tint, --tint-2. test/theme-test.cjs
-   checks it; change those in infra's kit first. One exception: light --mute stays #515b72, because the kit's
-   #5a6378 is 4.33:1 in the see-through public header (AA needs 4.5).
+   checks it; change those in infra's kit first.
    The theme comes from the system setting (color-scheme: light dark) unless the visitor picks
    Light or Dark in the header, which sets data-theme on <html> (js/components.js; an inline script in each
    page's <head> sets it before the page paints). Gold has two jobs: --gold fills buttons and badges (dark text
@@ -54,7 +53,7 @@
   /* text */
   --text: light-dark(#0b1224, #e9ecf3);
   --text-2: light-dark(#323b50, #c2c8d6);
-  --mute: light-dark(#515b72, #8f98ad);       /* light: darker than the kit's #5a6378, see the note above */
+  --mute: light-dark(#515b72, #8f98ad);
   --dim: light-dark(#6c7690, #6c7692);          /* the quiet half of a big heading (large text, 3:1) */
   --soon: light-dark(#5f687d, #8089a0);         /* "coming soon" titles */
   --ph-num: light-dark(#8a8473, #4a526a);       /* the big year in a "photo wanted" box */
