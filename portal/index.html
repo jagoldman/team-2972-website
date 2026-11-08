@@ -25,13 +25,12 @@
      /apps.json (infra/config/apps.json). Showing or hiding a tile is for convenience only:
      Authentik's bindings decide who can really open each app. -->
 <body data-portal>
-<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
 <div id="site-header"><div id="shell-bar"></div></div>
 
 <main class="portal-main" id="main">
   <div class="portal-hello">
     <div>
-      <div class="eyebrow" id="today"></div>
+      <div class="eyebrow"><span id="today"></span><span id="mode-sep" aria-hidden="true"> · </span><span id="mode"></span></div>
       <h1 id="greeting" class="rise"><span class="w"><span id="greet-word">Welcome</span></span><br /><span class="w"><span class="name" id="name">back.</span></span></h1>
       <p id="portal-intro"></p>
     </div>
@@ -48,7 +47,14 @@
     <p>Your team apps will appear here as soon as that's done.</p>
   </div>
 
-  <div class="app-grid" id="app-grid"></div>
+  <section class="portal-section" id="main-apps" aria-labelledby="main-apps-h" hidden>
+    <h2 class="portal-section-title" id="main-apps-h">Your apps</h2>
+    <div class="app-grid" id="app-grid"></div>
+  </section>
+  <section class="portal-section" id="more-apps" aria-labelledby="more-apps-h" hidden>
+    <h2 class="portal-section-title" id="more-apps-h">More</h2>
+    <div class="app-grid" id="more-grid"></div>
+  </section>
   <p class="app-empty" id="app-empty" hidden>No app matches that. Try a different word.</p>
   <section id="access" hidden>
     <h2 class="install-h2">Get access</h2>
@@ -68,58 +74,21 @@
 <script src="/js/components.js"></script>
 <script src="/js/install.js"></script>
 <script type="module">
-import { mountAppBar } from "/shell/static/shell.js";
-import { resolveTiles } from "/shell/core.js";
-// The site-wide groups (CONVENTIONS §3). Other Authentik groups don't count.
-const SITE_GROUPS = ["admin", "mentor", "student", "parent", "alumni"];
-
-// X-Authentik-Groups is pipe-separated ("mentor|parent"); empty means no groups.
-function userGroups(raw) {
-  return String(raw || "")
-    .split("|")
-    .map((g) => g.trim())
-    .filter((g) => SITE_GROUPS.includes(g));
-}
-
-// groups: [] means anyone with a group. Users with no group see no tiles (MASTER_PLAN D27).
-function visibleTiles(tiles, groups) {
-  if (groups.length === 0) return [];
-  return tiles.filter((t) => !t.groups || t.groups.length === 0 || t.groups.some((g) => groups.includes(g)));
-}
-
-// Site tiles name a subdomain ("host" + "path"), or only a "path" for a page on the public site
-// (e.g. "/resources.html"); outside tiles give a full "url".
-function tileHref(t) {
-  if (t.host) return hostUrl(t.host, t.path || "/");
-  if (typeof t.path === "string" && /^\/(?!\/)/.test(t.path)) return hostUrl("", t.path);
-  return /^https?:\/\//.test(t.url || "") ? t.url : null;
-}
-
-// Small line icons, picked by tile id. Anything unknown gets the generic one.
-const ICONS = {
-  tasks: '<path d="M4 12.5l5 5L20 6.5"/>',
-  kickoff: '<path d="M5 15c-1 1-1.5 3.5-1.5 5.5 2 0 4.5-.5 5.5-1.5"/><path d="M9 15l-3-3c2-6 6-9 14-9 0 8-3 12-9 14z"/><circle cx="15" cy="9" r="1.6"/>',
-  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
-  handbook: '<path d="M4 4.5h6a2 2 0 012 2V20a1.5 1.5 0 00-1.5-1.5H4zM20 4.5h-6a2 2 0 00-2 2V20a1.5 1.5 0 011.5-1.5H20z"/>',
-  scouting: '<path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
-  "team-drive": '<path d="M3 6.5A1.5 1.5 0 014.5 5h4.6l2 2.2h8.4A1.5 1.5 0 0121 8.7v9.8a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18.5z"/>',
-  github: '<path d="M8.5 7L3.5 12l5 5M15.5 7l5 5-5 5M13.5 4.5l-3 15"/>',
-  onshape: '<path d="M12 2.8l8.5 4.7v9L12 21.2l-8.5-4.7v-9z"/><path d="M3.5 7.5L12 12.2l8.5-4.7M12 12.2v9"/>',
-  resources: '<path d="M4 5.5A1.5 1.5 0 015.5 4H10l2 2h6.5A1.5 1.5 0 0120 7.5V18.5A1.5 1.5 0 0118.5 20h-13A1.5 1.5 0 014 18.5z"/><path d="M8 11h8M8 15h5"/>',
-  admin: '<path d="M12 3l7.5 3v5.5c0 4.5-3 8-7.5 9.5-4.5-1.5-7.5-5-7.5-9.5V6z"/><path d="M9 12l2.2 2.2L15.5 10"/>',
-  _default: '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 12h6M12 9v6"/>',
-};
+import { filterByMode, iconPath, parseMode, readCookie } from "/shell/core.js";
+import { mountPortalShell } from "/js/portal-shell.js";
 const SVG_NS = "http://www.w3.org/2000/svg";
-function svgIcon(paths, size) {
+function svgIcon(d) {
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("viewBox", "0 0 24 24");
   svg.setAttribute("fill", "none");
   svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "1.6");
+  svg.setAttribute("stroke-width", "1.8");
   svg.setAttribute("stroke-linecap", "round");
   svg.setAttribute("stroke-linejoin", "round");
   svg.setAttribute("aria-hidden", "true");
-  svg.innerHTML = paths; // fixed strings from ICONS above, never from user data
+  const path = document.createElementNS(SVG_NS, "path");
+  path.setAttribute("d", d); // from the kit's fixed icon set, never from user data
+  svg.append(path);
   return svg;
 }
 
@@ -130,39 +99,28 @@ function el(tag, className, text) {
   return node;
 }
 
-// size: "big", "wide" or "" (the first tile leads, the second is wide when there are enough)
-function renderTile(t, index, size) {
-  const href = t.comingSoon ? null : tileHref(t);
-  const card = el(href ? "a" : "div", `app-card${size ? " " + size : ""}${href ? "" : " coming-soon"}`);
-  card.style.setProperty("--i", index);
-  card.dataset.q = `${t.name} ${t.description} ${t.audience || ""}`.toLowerCase();
-  if (href) {
-    card.href = href;
-    if (!t.host && !t.path) { card.target = "_blank"; card.rel = "noopener"; }   // outside links open a new tab
+// t is a resolved kit tile (resolveTiles): href is null for coming-soon tiles. Every app opens in a new tab,
+// so the portal stays open (the demo and the kit's Apps menu do the same).
+function renderTile(t) {
+  const card = el(t.href ? "a" : "div", `app-card${t.href ? "" : " coming-soon"}`);
+  card.dataset.id = t.id;
+  card.dataset.q = `${t.name} ${t.description} ${t.audience}`.toLowerCase();
+  if (t.href) {
+    card.href = t.href;
+    card.target = "_blank";
+    card.rel = "noopener noreferrer";
+    card.setAttribute("aria-label", `${t.name} (opens in a new tab)`);
   } else {
     card.setAttribute("aria-disabled", "true");
   }
-
-  const ico = el("div", "app-ico");
-  ico.append(svgIcon(ICONS[t.id] || ICONS._default));
-  card.append(ico);
-
-  if (href) {
-    const go = el("span", "app-go");
-    go.append(svgIcon('<path d="M7 17L17 7M9 7h8v8"/>'));
-    card.append(go);
-  } else {
-    card.append(el("span", "soon-badge", "Coming soon"));
-  }
-  card.append(el("h3", "", t.name), el("p", "", t.description));
-  if (t.audience) card.append(el("div", "app-audience", t.audience));
+  const ico = el("span", "app-ico");
+  ico.append(svgIcon(iconPath(t.icon)));
+  const name = el("h3", "", t.name);
+  if (t.external) name.append(el("span", "ext", " ↗"));
+  card.append(ico, name);
+  if (t.description) card.append(el("p", "", t.description));
+  if (!t.href) card.append(el("span", "soon-badge", "Coming soon"));
   return card;
-}
-
-async function getJson(path) {
-  const res = await fetch(path, { credentials: "same-origin", cache: "no-store" });
-  if (!res.ok) throw new Error(`${path}: ${res.status}`);
-  return res.json();
 }
 
 function greetingWord() {
@@ -174,26 +132,20 @@ onContent(async () => {
   document.getElementById("sign-out").href = SIGNOUT_URL;
   initInstallBanner();
   document.getElementById("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  document.getElementById("mode").textContent = parseMode(readCookie(document.cookie, "mode")) === "competition" ? "Competition mode" : "Build mode";
   const note = document.getElementById("app-note");
   note.append("Something not working? Email ");
   const mail = el("a", "", SITE.email);
   mail.href = `mailto:${SITE.email}`;
   note.append(mail, ".");
 
-  let me, tiles;
+  let me, groups, resolved;
   try {
-    [me, tiles] = await Promise.all([getJson("/me.json"), getJson("/apps.json")]);
+    ({ me, groups, tiles: resolved } = await mountPortalShell());
   } catch (err) {
     document.getElementById("portal-intro").textContent = "The portal couldn't load your apps. Try reloading the page.";
     return;
   }
-
-  const { scheme, domain } = siteBase();
-  mountAppBar(document.getElementById("shell-bar"), {
-    appName: "Portal", appId: "portal", siteScheme: scheme, siteDomain: domain,
-    tiles: resolveTiles(tiles, userGroups(me.groups), { scheme, domain }),
-    user: { name: me.name, email: me.email }, skipToId: "main",
-  });
 
   // Names go in with textContent, never as HTML.
   const full = me.name || me.email || "there";
@@ -201,8 +153,6 @@ onContent(async () => {
   document.getElementById("name").textContent = `${full.split(" ")[0]}.`;
   document.getElementById("greeting").setAttribute("aria-label", `${greetingWord()} ${full}`);
   document.querySelectorAll("#greeting .w > span").forEach((s, i) => s.style.setProperty("--wi", i));
-
-  const groups = userGroups(me.groups);
 
   if (groups.length === 0) {
     document.getElementById("no-group").hidden = false;
@@ -214,33 +164,50 @@ onContent(async () => {
   document.getElementById("access-body").innerHTML = renderRequestAccess({ name: me.name, email: me.email });
   document.getElementById("access").hidden = false;
 
-  // Coming-soon tiles go last (the sort is stable, so each group keeps its order).
-  const shown = visibleTiles(Array.isArray(tiles) ? tiles : [], groups).sort((a, b) => !!a.comingSoon - !!b.comingSoon);
-  const grid = document.getElementById("app-grid");
-  shown.forEach((t, i) => {
-    const size = shown.length >= 3 && i === 0 ? "big" : shown.length >= 5 && i === 1 ? "wide" : "";
-    grid.append(renderTile(t, i, size));
-  });
-  const ready = shown.filter((t) => !t.comingSoon).length;
-  document.getElementById("portal-intro").textContent = shown.length
-    ? `${ready} ${ready === 1 ? "app is" : "apps are"} ready for you.`
-    : "There are no apps for your groups yet.";
-  if (shown.length) document.getElementById("search-wrap").hidden = false;
-  setupPointerFx(grid);
-
-  // Search: type to filter, "/" to focus, Enter opens the first match, Esc clears
+  // The demo's home: this mode's main tiles, then More (link-outs, the Handbook, tiles marked more).
+  // Coming-soon tiles go last in each section; the sort is stable, so apps.json order holds otherwise.
   const q = document.getElementById("q");
-  const apply = () => {
-    const s = q.value.trim().toLowerCase();
-    let count = 0;
-    grid.querySelectorAll(".app-card").forEach((c) => { const hit = !s || c.dataset.q.includes(s); c.hidden = !hit; count += hit; });
-    document.getElementById("app-empty").hidden = count > 0;
-  };
-  q.addEventListener("input", apply);
-  addEventListener("keydown", (e) => {
-    if (e.key === "/" && document.activeElement !== q && !e.metaKey && !e.ctrlKey) { e.preventDefault(); q.focus(); }
-    else if (e.key === "Escape") { q.value = ""; apply(); q.blur(); }
-    else if (e.key === "Enter" && document.activeElement === q) { const hit = grid.querySelector("a.app-card:not([hidden])"); if (hit) hit.click(); }
+  function applySearch() {
+    const text = q.value.trim().toLowerCase();
+    let matches = 0;
+    document.querySelectorAll("#app-grid .app-card, #more-grid .app-card").forEach((card) => {
+      card.hidden = !!text && !card.dataset.q.includes(text);
+      if (!card.hidden) matches++;
+    });
+    document.getElementById("app-empty").hidden = !text || matches > 0;
+  }
+  function paintTiles() {
+    const mode = parseMode(readCookie(document.cookie, "mode"));
+    const shown = filterByMode(resolved, mode).sort((a, b) => !a.href - !b.href);
+    const main = shown.filter((t) => !t.more);
+    const more = shown.filter((t) => t.more);
+    document.getElementById("app-grid").replaceChildren(...main.map(renderTile));
+    document.getElementById("more-grid").replaceChildren(...more.map(renderTile));
+    document.getElementById("main-apps").hidden = main.length === 0;
+    document.getElementById("more-apps").hidden = more.length === 0;
+    document.getElementById("search-wrap").hidden = shown.length === 0;
+    document.getElementById("mode").textContent = mode === "competition" ? "Competition mode" : "Build mode";
+    const ready = shown.filter((t) => t.href).length;
+    document.getElementById("portal-intro").textContent = shown.length
+      ? `${ready} ${ready === 1 ? "app is" : "apps are"} ready for you.`
+      : "There are no apps for your groups in this mode yet.";
+    applySearch();
+  }
+  paintTiles();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") paintTiles();
+  });
+
+  q.addEventListener("input", applySearch);
+  addEventListener("keydown", (event) => {
+    if (event.key === "/" && document.activeElement !== q && !event.metaKey && !event.ctrlKey) {
+      event.preventDefault(); q.focus();
+    } else if (event.key === "Escape" && document.activeElement === q) {
+      q.value = ""; applySearch(); q.blur();
+    } else if (event.key === "Enter" && document.activeElement === q) {
+      const first = document.querySelector("#app-grid a.app-card:not([hidden]), #more-grid a.app-card:not([hidden])");
+      if (first) first.click();
+    }
   });
 });
 </script>

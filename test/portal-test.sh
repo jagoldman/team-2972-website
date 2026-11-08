@@ -54,19 +54,19 @@ run_user() {
   dom=$("$CHROME" --headless=new --disable-gpu --no-first-run --user-data-dir="$PROXY_CONF/chrome" \
     --virtual-time-budget=5000 --dump-dom "http://portal.localhost:$HOST_PORT/" 2>/dev/null)
   got=$(printf '%s' "$dom" | tr '\n' ' ' | sed 's/.*id="app-grid"//; s/id="app-empty".*//' \
-    | grep -o '<h3>[^<]*</h3>' | sed 's/<[^>]*>//g' | paste -sd, - || true)
+    | grep -o '<h3>[^<]*' | sed 's/<[^>]*>//g' | paste -sd, - || true)
   has_notice=no
   printf '%s' "$dom" | grep -q 'id="no-group">' && has_notice=yes
   greet=$(printf '%s' "$dom" | tr '\n' ' ' | grep -o '<span[^>]*id="name"[^>]*>[^<]*' | sed 's/.*>//')
   label=${groups:-"(no group)"}
-  # Team Drive is an outside link (new tab) with the folder icon, not the generic one.
+  # Every tile opens a new tab (D101); Team Drive is an outside link with the kit's drive icon, under More.
   case "$want" in *"Team Drive"*)
-    drive=$(printf '%s' "$dom" | tr '\n' ' ' | sed -n 's/.*\(<a[^>]*href="https:\/\/example.com\/drive"\)/\1/p' | cut -c1-700)
-    case "$drive" in *'target="_blank"'*'M3 6.5A1.5'*) ;; *) echo "FAIL $groups: Team Drive tile is not a new-tab link with the folder icon"; fail=1 ;; esac ;;
+    drive=$(printf '%s' "$dom" | tr '\n' ' ' | sed -n 's/.*\(<a[^>]*href="https:\/\/example.com\/drive"\)/\1/p' | cut -c1-900)
+    case "$drive" in *'target="_blank"'*'M8 3h8l6 11'*) ;; *) echo "FAIL $groups: Team Drive tile is not a new-tab link with the drive icon"; fail=1 ;; esac ;;
   esac
   case "$want" in *"Team resources"*)
     link=$(printf '%s' "$dom" | tr '\n' ' ' | grep -o '<a[^>]*href="[^"]*/resources\.html"[^>]*>' | head -1)
-    case "$link" in *'://localhost'*/resources.html*) case "$link" in *target=*) echo "FAIL $groups: Team resources opens a new tab"; fail=1 ;; esac ;;
+    case "$link" in *'://localhost'*/resources.html*) case "$link" in *'target="_blank"'*) ;; *) echo "FAIL $groups: Team resources does not open a new tab"; fail=1 ;; esac ;;
       *) echo "FAIL $groups: Team resources tile does not link the public site: $link"; fail=1 ;; esac ;;
   esac
   if [ "$got" = "$want" ] && [ "$has_notice" = "$notice" ]; then
@@ -76,14 +76,14 @@ run_user() {
   fi
 }
 
-# "Team resources" has only a path: it links
-# the public site's page, in the same tab.
-run_user "admin"            "Task App,Admin,Everyone Link,GitHub,Team Drive,Team resources"                    no
-run_user "mentor"           "Task App,Everyone Link,Alumni News,GitHub,Team Drive,Team resources,Scouting"     no
-run_user "student"          "Task App,Everyone Link,GitHub,Team Drive,Team resources,Scouting"                 no
-run_user "parent"           "Task App,Everyone Link,Team resources"                          no
-run_user "alumni"           "Everyone Link,Alumni News,Team resources"                       no
-run_user "mentor|parent"    "Task App,Everyone Link,Alumni News,GitHub,Team Drive,Team resources,Scouting"     no
+# Home grid order (D101): main tiles (coming-soon last), then More (outside links, the Handbook, more: true).
+# "Team resources" has only a path: it links the public site's page.
+run_user "admin"            "Task App,Admin,Team resources,Everyone Link,GitHub,Team Drive"                    no
+run_user "mentor"           "Task App,Team resources,Scouting,Everyone Link,Alumni News,GitHub,Team Drive"     no
+run_user "student"          "Task App,Team resources,Scouting,Everyone Link,GitHub,Team Drive"                 no
+run_user "parent"           "Task App,Team resources,Everyone Link"                          no
+run_user "alumni"           "Team resources,Everyone Link,Alumni News"                       no
+run_user "mentor|parent"    "Task App,Team resources,Scouting,Everyone Link,Alumni News,GitHub,Team Drive"     no
 run_user ""                 ""                                                yes
 run_user "authentik Admins" ""                                                yes
 

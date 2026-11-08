@@ -33,7 +33,7 @@ run() { # <label> <mode> <dir> [chrome flags...]
   port=$(free_port); serve "$dir" "$port"
   out=$("$CHROME" --headless=new --disable-gpu --no-first-run --user-data-dir="$TMP/chrome-$label" \
     --force-prefers-reduced-motion "$@" --virtual-time-budget=240000 --dump-dom "http://127.0.0.1:$port/test/theme-test.html?mode=$mode" 2>/dev/null || true)
-  printf '%s\n' "$out" | grep -E '^(ok  |FAIL) ' | sed 's/&lt;/</g; s/&gt;/>/g; s/&amp;/\&/g; s/&quot;/"/g' | grep -v '^ok  ' || true
+  printf '%s\n' "$out" | grep -E '^(ok  |FAIL) ' | sed 's/&lt;/</g; s/&gt;/>/g; s/&amp;/\&/g; s/&quot;/"/g' | grep -E '^FAIL|SKIP' || true
   n=$(printf '%s\n' "$out" | grep -c '^ok  ' || true)
   if printf '%s\n' "$out" | grep -q '<div id="done">THEME-TEST-PASS</div>'; then echo "ok   $label: $n checks passed"
   else echo "FAIL $label ($n checks passed; see FAIL lines above)"; printf '%s\n' "$out" | grep -q 'id="done"' || echo "     (the test page did not finish)"; fail=1; fi

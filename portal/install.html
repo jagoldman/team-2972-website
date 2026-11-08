@@ -17,16 +17,17 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="2972 Portal" />
 <link rel="preload" href="/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="/shell/tokens.css" />
 <link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/shell/app-bar.css" />
 </head>
 <!-- Served at portal.SITE_DOMAIN/install only, behind login (container/Caddyfile rewrites /install to this file).
      Developer note: a phone cannot install the app from http://portal.localhost. Browsers only offer installing
      from https (or localhost on the same computer), so test the install steps on the live site. -->
 <body data-portal>
-<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
-<div id="site-header"></div>
+<div id="site-header"><div id="shell-bar"></div></div>
 
-<main class="portal-main install-page">
+<main class="portal-main install-page" id="main">
   <div class="eyebrow">Team 2972 app</div>
   <h1 class="install-h1">Install the app</h1>
   <p class="section-lead">Put the Team 2972 portal on your phone, tablet or computer. It opens like any other app, and you still sign in the same way.</p>
@@ -91,6 +92,11 @@
 <script src="/js/components.js"></script>
 <script src="/js/vendor/qrcode.js"></script>
 <script src="/js/install.js"></script>
+<script type="module">
+import { mountPortalShell } from "/js/portal-shell.js";
+// The shared app bar; the install steps below work even if it can't load.
+mountPortalShell().catch(() => {});
+</script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("ico-share").append(installIcon("share"));
