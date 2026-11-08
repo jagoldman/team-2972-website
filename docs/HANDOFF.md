@@ -150,6 +150,10 @@ Chrome path defaults to macOS Google Chrome (`CHROME=` overrides). Fixtures use 
    gold divider; above the heading on phones), and the footer under "FRC Team 2972 · Dawson School" (muted). Media page
    Publicity has a press-inquiry line. Stats row on Home: the top line is gone; thin `--line-2` dividers sit between stats with a 40px gap (24px on phones, between the two columns only). No new content keys (no editor-schema
    change); `SITE.schoolLogo` (media) still feeds the sponsors list. Hero and student photos untouched.
+7b. **Event rows (`.schedule-list`, 2026-11-07).** Home schedule, About annual events and robot results share one row style:
+   name left, details in a fixed 20rem column (date on top in `--text`, place below), centred. The list is a CSS container and
+   stacks (name, date, place) under 720px of its own width, so Home's half-width column always stacks. `keepState()` in
+   `js/components.js` keeps ", ID" with its city. Outreach and Contact use cards, not rows, so they were left as is.
 
 ## 8. Rules that bit us
 

@@ -144,7 +144,7 @@ onContent(() => {
   annual.innerHTML = ANNUAL_EVENTS.map((e, i) => `
     <li${ck(`ANNUAL_EVENTS[${i}]`)}>
       <span class="event-name"${ck(`ANNUAL_EVENTS[${i}].name`)}>${esc(e.name)}</span>
-      <span class="event-loc"><span${ck(`ANNUAL_EVENTS[${i}].when`)}>${esc(e.when)}</span> · <span${ck(`ANNUAL_EVENTS[${i}].description`)}>${esc(e.description)}</span></span>
+      <span class="event-loc"><span class="event-when"${ck(`ANNUAL_EVENTS[${i}].when`)}>${esc(e.when)}</span><span class="event-where"${ck(`ANNUAL_EVENTS[${i}].description`)}>${esc(e.description)}</span></span>
     </li>
   `).join("");
 

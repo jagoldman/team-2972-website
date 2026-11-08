@@ -655,18 +655,24 @@ a.card:hover { color: inherit; border-color: var(--tint-line); }
 /* ---------- Lists: schedule / annual ---------- */
 .schedule-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
 .schedule-list li {
+  /* Every row the same: name left, details in a fixed-width column (date, then place), both vertically centred */
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px 24px;
-  align-items: baseline;
-  padding: 24px 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 20rem);
+  gap: 8px 48px;
+  align-items: center;
+  padding: 26px 0;
   border-bottom: 1px solid var(--line);
   transition: padding 0.4s var(--ease);
 }
 .schedule-list li:hover { padding-left: 14px; }
-.schedule-list .event-name { font: 700 clamp(22px, 2.6vw, 32px)/1.15 var(--display); letter-spacing: -0.02em; color: var(--text); }
-.schedule-list .event-loc { color: var(--mute); font-size: 15px; text-align: right; }
-@media (max-width: 640px) { .schedule-list li { grid-template-columns: 1fr; } .schedule-list .event-loc { text-align: left; } }
+.schedule-list .event-name { font: 700 clamp(22px, 2.4vw, 30px)/1.15 var(--display); letter-spacing: -0.02em; color: var(--text); text-wrap: balance; }
+.schedule-list .event-loc { display: flex; flex-direction: column; gap: 4px; color: var(--mute); font-size: 15px; line-height: 1.45; text-align: left; }
+.schedule-list .event-when { color: var(--text); font-weight: 600; }
+/* Stack (name, date, place) whenever the list itself is narrow: a half-width column on Home, or any phone */
+.schedule-list { container-type: inline-size; }
+@container (max-width: 720px) {
+  .schedule-list li { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 22px 0; }
+}
 
 /* ---------- Robot detail ---------- */
 .robot-block { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 40px; padding: 40px 0; border-bottom: 1px solid var(--line); }

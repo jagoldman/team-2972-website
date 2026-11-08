@@ -173,7 +173,7 @@ onContent(() => {
   tag("schedule-list", "SCHEDULE_2027").innerHTML = SCHEDULE_2027.map((s, i) => `
     <li data-reveal${ck(`SCHEDULE_2027[${i}]`)}>
       <span class="event-name"${ck(`SCHEDULE_2027[${i}].event`)}>${esc(s.event)}</span>
-      <span class="event-loc"><span${ck(`SCHEDULE_2027[${i}].dates`)}>${esc(s.dates)}</span> · <span${ck(`SCHEDULE_2027[${i}].location`)}>${esc(s.location)}</span></span>
+      <span class="event-loc"><span class="event-when"${ck(`SCHEDULE_2027[${i}].dates`)}>${esc(s.dates)}</span><span class="event-where"${ck(`SCHEDULE_2027[${i}].location`)}>${keepState(esc(s.location))}</span></span>
     </li>`).join("");
 
   // A second team photo beside the schedule (not the hero photo again)

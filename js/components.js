@@ -95,6 +95,12 @@ function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ESC_MAP[c]);
 }
 
+// Keeps a closing two-letter state code with the city ("Nampa, ID") so it never wraps onto a line alone.
+// Takes text that has already been through esc().
+function keepState(escaped) {
+  return String(escaped).replace(/, ([A-Z]{2})$/, ",&nbsp;$1");
+}
+
 // A link target that is safe to use: https:, http:, mailto:, or a path on this site. Anything else
 // (javascript:, data:, //other.host) becomes "". Whitespace and control characters are removed first,
 // because browsers ignore them inside a URL ("java\tscript:" still runs).
