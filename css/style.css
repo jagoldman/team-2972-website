@@ -162,6 +162,12 @@ a:hover { color: var(--accent); }
   justify-content: space-between;
   gap: 16px;
 }
+/* Header: Dawson's Mustang "D" (its own link), a thin line, then the team brand */
+.brand-group { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.school-badge { display: block; flex: none; transition: transform 0.4s var(--ease); }
+.school-badge-img { display: block; height: 34px; width: auto; }
+a.school-badge:hover { transform: translateY(-1px) rotate(-6deg); }
+.brand-sep { width: 1px; height: 28px; background: var(--line-2); flex: none; }
 .brand { display: flex; align-items: center; gap: 12px; color: var(--text); flex-shrink: 0; }
 .brand:hover { color: var(--text); }
 .brand-logo { width: 40px; height: 40px; border-radius: 50%; background: #fff; transition: transform 0.6s var(--ease); }
@@ -696,9 +702,6 @@ a.card:hover { color: inherit; border-color: var(--tint-line); }
 .sponsor-banner { width: 100%; margin: 0 0 24px; border-radius: var(--radius); background: var(--ink-3); }
 .sponsor-tile:hover { transform: translateY(-3px); }
 .sponsor-tile img { height: 50px; width: auto; max-width: 100%; object-fit: contain; }
-.school-logo { display: inline-block; background: #ffffff; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 14px 20px; margin: 0 0 24px; }
-.school-logo[hidden] { display: none; }
-.school-logo img { display: block; height: 80px; width: auto; max-width: 100%; object-fit: contain; }
 .sponsor-tile span { color: #0b1224; font-weight: 600; text-align: center; }
 
 /* ---------- Resource list ---------- */
@@ -746,6 +749,26 @@ a.card:hover { color: inherit; border-color: var(--tint-line); }
 .contact-card p { color: var(--text-2); }
 .access-note { color: var(--mute); font-size: 15px; margin: 22px 0 0; max-width: 70ch; }
 .access-note a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+
+/* ---------- Dawson School wordmark (schoolMark() in components.js) ----------
+   White artwork used as a mask and filled with currentColor, so it matches the text around it in both themes. */
+.school-mark-wrap { display: block; width: 100%; color: var(--text); transition: color 0.3s var(--ease); }
+.school-mark-wrap[hidden] { display: none; }
+a.school-mark-wrap:hover { color: var(--accent); }
+.school-mark {
+  display: block; width: 100%; aspect-ratio: 414 / 157; background-color: currentColor;
+  -webkit-mask: url("../brand/dawson-school-logo.png") left center / contain no-repeat;
+  mask: url("../brand/dawson-school-logo.png") left center / contain no-repeat;
+}
+.school-split { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 60px; align-items: center; }
+.school-split .section-lead { margin-bottom: 0; }
+.school-split-mark { justify-self: end; width: min(100%, 320px); padding-left: 48px; border-left: 2px solid var(--tint-line); }
+@media (max-width: 900px) {
+  .school-split { grid-template-columns: 1fr; gap: 0; }
+  .school-split-mark { order: -1; justify-self: start; width: 150px; padding: 0 0 0 16px; margin-bottom: 20px; }
+}
+.footer-col .footer-school { width: 120px; margin-top: 6px; color: var(--mute); }
+.footer-col .footer-school:hover { color: var(--accent); }
 
 /* ---------- Footer ---------- */
 .site-footer { position: relative; padding: 80px var(--gutter) 0; border-top: 1px solid var(--line); overflow: hidden; background: var(--ink); }

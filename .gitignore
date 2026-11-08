@@ -26,6 +26,9 @@ Thumbs.db
 # The team logo (a drawing, not a photo; the user asked for it to be a file in the site) and its small copy for the header.
 !/brand/team-2972-logo.png
 !/brand/team-2972-logo-256.png
+# Dawson School's logos (logos, not photos): the wordmark (About Dawson, home, footer) and the Mustang D (header, left of the team logo). Used with the school's knowledge (their feedback, D99).
+!/brand/dawson-school-logo.png
+!/brand/dawson-mustang.png
 
 # Drive photos downloaded by scripts/drive-photos/fetch.cjs (at image build time, or by hand), and its packages.
 /img/drive/

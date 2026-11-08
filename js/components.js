@@ -229,6 +229,30 @@ function imgAttrs(src, width) {
   return ` src="${esc(imgUrl(src, width))}"${set ? ` srcset="${set}" sizes="${Number(width)}px"` : ""}`;
 }
 
+// Dawson School's wordmark (brand/dawson-school-logo.png, white artwork). CSS draws it as a mask filled with the
+// surrounding text colour, so it takes on each section's look in both themes. Links to SITE.schoolUrl when set.
+// If the file fails to load once, every mark on the page is hidden and later renders return "".
+let schoolMarkFailed = false;
+let schoolMarkProbed = false;
+function schoolMark(extraClass = "") {
+  if (schoolMarkFailed) return "";
+  if (!schoolMarkProbed) {
+    schoolMarkProbed = true;
+    const probe = new Image();
+    probe.onerror = () => {
+      schoolMarkFailed = true;
+      document.querySelectorAll(".school-mark-wrap").forEach(el => { el.hidden = true; });
+    };
+    probe.src = "/brand/dawson-school-logo.png";
+  }
+  const mark = `<span class="school-mark" role="img" aria-label="Dawson School logo"></span>`;
+  const href = isSet(SITE.schoolUrl) ? safeUrl(SITE.schoolUrl) : "";
+  const cls = `school-mark-wrap${extraClass ? " " + extraClass : ""}`;
+  return href
+    ? `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener"${ckHref("SITE.schoolUrl")}>${mark}</a>`
+    : `<span class="${cls}">${mark}</span>`;
+}
+
 // A CSS position for a cropped photo, such as "67% 84%" (x y) or "center top": one or two parts, each a
 // percentage or a keyword. Anything else becomes "", so a value from the editor cannot add other CSS.
 const POSITION_PART = "(?:\\d{1,3}(?:\\.\\d+)?%|left|center|right|top|bottom)";
@@ -318,12 +342,26 @@ function pageHref(page) {
   return isPortalPage() ? hostUrl("", `/${page}`) : page;
 }
 
+// Dawson's Mustang "D" (brand/dawson-mustang.png), to the left of the team logo in the header, linked to
+// SITE.schoolUrl when set. A separate link from the team brand (links cannot nest); hidden if the file fails to load.
+function renderSchoolBadge() {
+  const img = `<img${imgAttrs("brand/dawson-mustang.png", 80)} data-ck-ignore alt="Dawson School" class="school-badge-img" width="128" height="104" />`;
+  const href = isSet(SITE.schoolUrl) ? safeUrl(SITE.schoolUrl) : "";
+  return href
+    ? `<a class="school-badge" href="${esc(href)}" target="_blank" rel="noopener"${ckHref("SITE.schoolUrl")}>${img}</a>`
+    : `<span class="school-badge">${img}</span>`;
+}
+
 function renderHeader() {
   const brand = `
+      <div class="brand-group">
+      ${renderSchoolBadge()}
+      <span class="brand-sep" aria-hidden="true"></span>
       <a href="${pageHref("index.html")}" class="brand">
         <img${imgAttrs(SITE.logo, 200)}${ck("SITE.logo")} alt="${esc(altFor(SITE.logo, SITE.teamName + " logo"))}" class="brand-logo" width="40" height="40" />
         <span class="brand-text"><strong${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</strong> ${isPortalPage() ? "Portal" : `<span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span>`}</span>
-      </a>`;
+      </a>
+      </div>`;
 
   // The portal keeps its header short: the user's group, a way back to the public site, and sign-out.
   if (isPortalPage()) {
@@ -374,6 +412,7 @@ function renderFooter() {
       <div class="footer-col">
         <strong${ck("SITE.teamName")}>${esc(SITE.teamName)}</strong>
         <p>FRC Team <span${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span> · <span${ck("SITE.school")}>${esc(SITE.school)}</span><br /><span${ck("SITE.location")}>${esc(SITE.location)}</span> · Since <span${ck("SITE.founded")}>${esc(SITE.founded)}</span></p>
+        ${schoolMark("footer-school")}
       </div>
       <div class="footer-col">
         <a href="${pageHref("contact.html")}">Contact us</a>
@@ -597,6 +636,12 @@ function mountLayout() {
 
   bindThemeSwitch();
   const header = document.querySelector(".site-header");
+  const badgeImg = header.querySelector(".school-badge-img");
+  if (badgeImg) {
+    const hideBadge = () => header.querySelectorAll(".school-badge, .brand-sep").forEach((el) => el.remove());
+    badgeImg.addEventListener("error", hideBadge);
+    if (badgeImg.complete && !badgeImg.naturalWidth) hideBadge();
+  }
   // Pages without a full-screen hero get a solid header from the start.
   if (!document.querySelector(".hero")) header.classList.add("solid");
   header.classList.toggle("scrolled", scrollY > 30);

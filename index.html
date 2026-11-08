@@ -87,9 +87,14 @@
 <section class="block alt">
   <div class="block-inner">
     <div class="kicker"><b>04</b>About us</div>
-    <h2 class="section-title" id="about-school-title" data-reveal></h2>
-    <p class="section-lead" id="about-school-body" data-reveal style="--ri:1"></p>
-    <div class="btn-row"><a class="btn btn-outline" href="about.html">More about us</a><a class="btn btn-outline" id="school-link" data-ck-href="SITE.schoolUrl" target="_blank" rel="noopener" hidden>Visit Dawson School <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+    <div class="school-split">
+      <div class="school-text">
+        <h2 class="section-title" id="about-school-title" data-reveal></h2>
+        <p class="section-lead" id="about-school-body" data-reveal style="--ri:1"></p>
+        <div class="btn-row"><a class="btn btn-outline" href="about.html">More about us</a><a class="btn btn-outline" id="school-link" data-ck-href="SITE.schoolUrl" target="_blank" rel="noopener" hidden>Visit Dawson School <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+      </div>
+      <div class="school-split-mark" id="school-mark" data-reveal style="--ri:2"></div>
+    </div>
   </div>
 </section>
 
@@ -128,6 +133,7 @@ onContent(() => {
   tag("mission-text", "SITE.mission").textContent = SITE.mission;
   tag("about-school-title", "ABOUT_SCHOOL.heading").textContent = ABOUT_SCHOOL.heading;
   tag("about-school-body", "ABOUT_SCHOOL.body", "rich").innerHTML = rich(ABOUT_SCHOOL.body);
+  document.getElementById("school-mark").innerHTML = schoolMark();
   const schoolLink = document.getElementById("school-link");
   schoolLink.href = safeUrl(SITE.schoolUrl);
   schoolLink.hidden = !safeUrl(SITE.schoolUrl);

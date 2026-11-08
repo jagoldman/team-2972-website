@@ -141,10 +141,15 @@ Chrome path defaults to macOS Google Chrome (`CHROME=` overrides). Fixtures use 
 6. **Constant-time secret compare** is an accepted exception (CONVENTIONS §4), listed in `docs/PHASE3_TASKS.md`; revisit
    only if landing ever becomes reachable outside the Docker network.
 
-7a. **Dawson brand (D99, 2026-11-03).** About page shows `SITE.schoolLogo` on a white tile (`.school-logo`), linked to
-   `SITE.schoolUrl`, hidden if unset or the image fails (locally `/media/` is not served, so it hides there). Media page
-   Publicity has a press-inquiry line (coordinated with Dawson). Home and footer already name Dawson; left as is. No new
-   content keys, so no editor-schema change. Hero and student photos untouched (pending parent permission).
+7a. **Dawson brand (D99, 2026-11-03).** Dawson's wordmark is a base resource, `brand/dawson-school-logo.png` (white
+   artwork from dawsonschool.org, allowed in `.gitignore` like the team logo). `schoolMark()` in `js/components.js` draws it as
+   a CSS mask filled with `currentColor`, so it takes the text colour of wherever it sits, in both themes; it links to
+   `SITE.schoolUrl` and hides everywhere if the file fails to load. Header (every page, portal too): Dawson's Mustang "D" (`brand/dawson-mustang.png`, full colour, transparent with its
+   white keyline, made from an image the user supplied) left of the team logo, its own link to `SITE.schoolUrl`.
+   Wordmark used: Home "About us" and About page (right column with a
+   gold divider; above the heading on phones), and the footer under "FRC Team 2972 · Dawson School" (muted). Media page
+   Publicity has a press-inquiry line. No new content keys (no editor-schema
+   change); `SITE.schoolLogo` (media) still feeds the sponsors list. Hero and student photos untouched.
 
 ## 8. Rules that bit us
 
