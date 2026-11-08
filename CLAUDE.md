@@ -5,8 +5,11 @@ build step. Almost all content lives in `js/content.js` (see README).
 
 - Rules: [../infra/docs/CONVENTIONS.md](../infra/docs/CONVENTIONS.md) · Contract:
   [../infra/docs/INTEGRATION.md](../infra/docs/INTEGRATION.md) (§1 sign-out, §2 routes, §8 portal list) ·
-  Plan: [../MASTER_PLAN.md](../MASTER_PLAN.md) Phase 3 · Work list: [docs/PHASE3_TASKS.md](docs/PHASE3_TASKS.md)
-- Start a session with [docs/KICKOFF_PROMPT.md](docs/KICKOFF_PROMPT.md).
+  Plan: [../MASTER_PLAN.md](../MASTER_PLAN.md) Phase 6 (redesign); Phase 3 is done (its work list, kept for the open
+  notes it records: [docs/PHASE3_TASKS.md](docs/PHASE3_TASKS.md))
+- Start a session from [docs/HANDOFF.md](docs/HANDOFF.md). The first-build prompt is in `docs/archive/`.
+- **Redesign (MASTER_PLAN D101):** this app adopts the `../portal-demo` interface through infra's shell kit
+  (`infra/shell/`: tokens and the shared top app bar). UI changes start in the demo; GPT Sol reviews the change (D103).
 
 ## How it runs
 - Hosts: `SITE_DOMAIN` and `www.SITE_DOMAIN` (public, no login), `portal.SITE_DOMAIN` (login required,

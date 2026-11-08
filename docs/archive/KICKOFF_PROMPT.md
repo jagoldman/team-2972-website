@@ -1,7 +1,9 @@
+> **Archived 2026-11-08:** this was the first-build prompt and is done. Start a session from `CLAUDE.md` and [HANDOFF.md](../HANDOFF.md).
+
 # Kickoff prompt: landing (Phase 3)
 
 Open Claude Code in `2972robotics/landing/` and paste the prompt below. The detailed work list is
-[PHASE3_TASKS.md](PHASE3_TASKS.md).
+[PHASE3_TASKS.md](../PHASE3_TASKS.md).
 
 ---
 
