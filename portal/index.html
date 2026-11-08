@@ -17,16 +17,18 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="2972 Portal" />
 <link rel="preload" href="/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="/shell/tokens.css" />
 <link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/shell/app-bar.css" />
 </head>
 <!-- Served at portal.SITE_DOMAIN/ only, behind login. Identity comes from /me.json and tiles from
      /apps.json (infra/config/apps.json). Showing or hiding a tile is for convenience only:
      Authentik's bindings decide who can really open each app. -->
 <body data-portal>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
-<div id="site-header"></div>
+<div id="site-header"><div id="shell-bar"></div></div>
 
-<main class="portal-main">
+<main class="portal-main" id="main">
   <div class="portal-hello">
     <div>
       <div class="eyebrow" id="today"></div>
@@ -65,7 +67,9 @@
 <script src="/js/content-loader.js"></script>
 <script src="/js/components.js"></script>
 <script src="/js/install.js"></script>
-<script>
+<script type="module">
+import { mountAppBar } from "/shell/static/shell.js";
+import { resolveTiles } from "/shell/core.js";
 // The site-wide groups (CONVENTIONS §3). Other Authentik groups don't count.
 const SITE_GROUPS = ["admin", "mentor", "student", "parent", "alumni"];
 
@@ -184,6 +188,13 @@ onContent(async () => {
     return;
   }
 
+  const { scheme, domain } = siteBase();
+  mountAppBar(document.getElementById("shell-bar"), {
+    appName: "Portal", appId: "portal", siteScheme: scheme, siteDomain: domain,
+    tiles: resolveTiles(tiles, userGroups(me.groups), { scheme, domain }),
+    user: { name: me.name, email: me.email }, skipToId: "main",
+  });
+
   // Names go in with textContent, never as HTML.
   const full = me.name || me.email || "there";
   document.getElementById("greet-word").textContent = greetingWord();
@@ -192,8 +203,6 @@ onContent(async () => {
   document.querySelectorAll("#greeting .w > span").forEach((s, i) => s.style.setProperty("--wi", i));
 
   const groups = userGroups(me.groups);
-  const chip = document.getElementById("group-chip");
-  if (chip) { chip.textContent = groups.join(" · ") || "no group yet"; chip.hidden = false; }
 
   if (groups.length === 0) {
     document.getElementById("no-group").hidden = false;

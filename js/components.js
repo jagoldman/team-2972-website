@@ -369,21 +369,8 @@ function renderHeader() {
       </a>
       </div>`;
 
-  // The portal keeps its header short: the user's group, a way back to the public site, and sign-out.
-  if (isPortalPage()) {
-    return `
-  <header class="site-header portal-header">
-    <div class="header-inner">
-      ${brand}
-      <nav class="site-nav portal-nav">
-        <span class="nav-chip" id="group-chip" hidden></span>
-        <a href="${pageHref("index.html")}" class="nav-link">Public site</a>
-        ${renderThemeSwitch()}
-        <a href="${SIGNOUT_URL}" class="nav-login" data-signout>Sign out</a>
-      </nav>
-    </div>
-  </header>`;
-  }
+  // The protected portal mounts the static shell bar after /me.json and /apps.json load.
+  if (isPortalPage()) return "";
 
   const active = currentPage();
   const links = NAV_LINKS.map((l) => {
@@ -637,20 +624,20 @@ let layoutStarted = false;
 
 // Builds the header and footer. Safe to run again (the editor re-renders after a draft change).
 function mountLayout() {
-  document.getElementById("site-header").innerHTML = renderHeader();
+  if (!isPortalPage()) document.getElementById("site-header").innerHTML = renderHeader();
   document.getElementById("site-footer").innerHTML = renderFooter();
 
   bindThemeSwitch();
   const header = document.querySelector(".site-header");
-  const badgeImg = header.querySelector(".school-badge-img");
+  const badgeImg = header && header.querySelector(".school-badge-img");
   if (badgeImg) {
     const hideBadge = () => header.querySelectorAll(".school-badge, .brand-sep").forEach((el) => el.remove());
     badgeImg.addEventListener("error", hideBadge);
     if (badgeImg.complete && !badgeImg.naturalWidth) hideBadge();
   }
   // Pages without a full-screen hero get a solid header from the start.
-  if (!document.querySelector(".hero")) header.classList.add("solid");
-  header.classList.toggle("scrolled", scrollY > 30);
+  if (header && !document.querySelector(".hero")) header.classList.add("solid");
+  if (header) header.classList.toggle("scrolled", scrollY > 30);
 
   const toggle = document.querySelector(".nav-toggle");
   const nav = document.querySelector(".site-nav");
