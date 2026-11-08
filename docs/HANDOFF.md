@@ -83,9 +83,10 @@ is in `../landing`, so keep `main` checked out there and use `git worktree` for 
 | Command | Needs | Covers |
 |---|---|---|
 | `test/container-test.sh` | docker, curl | build, `/healthz`, the 401/404/200 matrix, escaping in `/me.json`, headers, PWA routes, no photos in the image |
-| `test/portal-test.sh` | docker, Chrome | a fake user per group (and none): which tiles show |
+| `test/portal-test.sh` | docker, Chrome | a fake user per group (and none): which tiles show, through the real container and Caddy |
 | `test/theme-test.sh` | Chrome | every page, both themes: WCAG AA, tokens-only colours, theme switch |
 | `test/menu-test.sh` | Chrome | phone menu on pages with the glass header |
+| `LANDING_TEST_NODE_MODULES=<node_modules with playwright> node test/portal-shell-test.mjs` | Playwright + its Chromium (an existing install, e.g. another app's) | portal app bar and home grid (D101): tiles per group, main then More, mode cookie, Apps menu keyboard, new-tab links, theme cookie, 320px, sign-out; public pages have no bar. No server: requests are answered in memory |
 | `test/url-injection-test.sh` | Chrome | `robot.html?year=` cannot inject markup |
 | `node test/legal-test.cjs` | node | privacy and terms pages: head, links, contact, no placeholders, no invented retention/consent claims |
 | `node test/install-test.cjs` | node | install banner rules, iPhone detection, offline QR (vendored hash), Share fallback, `/install` Caddy routes |

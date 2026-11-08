@@ -71,6 +71,11 @@ storage, the choice still works for that visit.
   logos always sit on white tiles.
 - **No flash on load:** each page's `<head>` has a one-line script that applies a saved choice before anything
   paints. With "System" there is nothing to apply: the browser's own setting is used by the stylesheet.
+- **Shared with the portal's app bar.** The shell kit (`shell/`, synced from infra by `infra/scripts/sync-shell.sh
+  static .`, never edited here) brings the app bar and its tokens. The colour names landing shares with the kit
+  hold the kit's values (`node test/theme-test.cjs` checks it). Every page's no-flash theme script in `<head>` is
+  the kit's, written by `node scripts/theme-init.mjs`; run it after each kit sync. The theme choice is a `theme`
+  cookie for the whole site (D92), so the portal and the public pages share it.
 - **After changing colours, run `test/theme-test.sh`.** It opens every page in both themes in headless Chrome and
   fails if any text is below WCAG AA contrast (4.5:1, or 3:1 for large text), if the page does not follow the
   system setting, or if the switch misbehaves.
