@@ -204,6 +204,8 @@ try {
     const over = (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     let { page } = await openPortal(context);
     check(`320px ${theme}: portal home has no horizontal scroll`, (await over(page)) <= 0, `${await over(page)}px`);
+    const eyebrowLines = await page.$eval(".portal-hello .eyebrow > span", (e) => Math.round(e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight || "16")));
+    check(`320px ${theme}: the date and mode eyebrow wraps as one line of words, not columns`, (await page.$$eval(".portal-hello .eyebrow > *", (els) => els.length)) === 1, `${eyebrowLines} lines`);
     const cols = await page.$$eval("#app-grid .app-card", (els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().left))).size);
     check(`320px ${theme}: tiles sit two to a row`, cols === 2, `${cols} columns`);
     await page.click("#shell-bar .shbar-appsbtn");
