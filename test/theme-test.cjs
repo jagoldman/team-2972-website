@@ -114,11 +114,16 @@ function runHeadScript(html, { cookie = "", stored = null, host = "portal.exampl
     set: (v) => { writes.push(v); const [kv] = v.split(";"); const [k, val] = kv.split("="); jar.set(k.trim(), val); },
   });
   const store = new Map(stored ? [["theme", stored]] : []);
-  const window = { localStorage: { getItem: (k) => (store.has(k) ? store.get(k) : null) }, matchMedia: () => ({ matches: sysDark, addEventListener() {} }) };
+  const mq = { matches: sysDark, listeners: [], addEventListener: (ev, fn) => mq.listeners.push(fn) };
+  const window = { localStorage: { getItem: (k) => (store.has(k) ? store.get(k) : null) }, matchMedia: () => mq };
   const ctx = { document, window, location: { hostname: host, protocol: https ? "https:" : "http:" } };
   vm.createContext(ctx);
   vm.runInContext(m[1], ctx);
-  return { theme: attrs["data-theme"], dark: classes.has("dark"), scheme: r.style.colorScheme, writes };
+  // later events: the person picks System elsewhere (cookie and key gone), then the OS setting changes
+  const pickSystem = () => { jar.delete("theme"); store.delete("theme"); };
+  const osChange = (dark) => { mq.matches = dark; mq.listeners.forEach((fn) => fn()); };
+  const now = () => ({ theme: attrs["data-theme"], dark: classes.has("dark"), scheme: r.style.colorScheme });
+  return { ...now(), writes, pickSystem, osChange, now };
 }
 for (const page of ["portal/index.html", "portal/install.html"]) {
   const html = read(page);
@@ -129,6 +134,10 @@ for (const page of ["portal/index.html", "portal/install.html"]) {
   check(`${page}: cookie dark + old key light → dark (the cookie wins, as in the app bar)`, r && r.theme === "dark" && r.dark && r.scheme === "dark" && r.writes.length === 0, JSON.stringify(r));
   r = runHeadScript(html, { stored: "light", sysDark: true });
   check(`${page}: no cookie + old key light → light, and the key moves into a site-wide cookie`, r && r.theme === "light" && !r.dark && r.writes.length === 1 && /^theme=light; Path=\/; Max-Age=34560000; SameSite=Lax; Domain=\.example\.org; Secure$/.test(r.writes[0]), JSON.stringify(r));
+  r = runHeadScript(html, { cookie: "theme=dark", sysDark: true });
+  r.pickSystem(); r.osChange(false);
+  const after = r.now();
+  check(`${page}: explicit Dark, then System, then the OS turns light → light, no data-theme (Sol, kit 0.1.4)`, after.theme === undefined && !after.dark && after.scheme === "light", JSON.stringify(after));
   r = runHeadScript(html, { cookie: "theme=purple", sysDark: true });
   check(`${page}: nothing valid stored → follows the system, sets no data-theme`, r && r.theme === undefined && r.dark && r.writes.length === 0, JSON.stringify(r));
 }

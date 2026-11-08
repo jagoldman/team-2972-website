@@ -211,7 +211,7 @@ export function themeInitScript(site) {
     "}}catch(e){}}" +
     "var q=w.matchMedia?w.matchMedia('(prefers-color-scheme: dark)'):null;" +
     "function a(){var c=null;try{var m=d.cookie.match(/(?:^|;\\s*)theme=(light|dark)(?:;|$)/);if(m)c=m[1]}catch(e){}" +
-    "if(!c){try{var l=w.localStorage.getItem('theme');if(l==='light'||l==='dark')c=l}catch(e){}}if(!c)c=t;" +
+    "if(!c){try{var l=w.localStorage.getItem('theme');if(l==='light'||l==='dark')c=l}catch(e){}}" +
     "var k=c==='dark'||(!c&&q&&q.matches);if(c)r.setAttribute('data-theme',c);else r.removeAttribute('data-theme');" +
     "r.classList.toggle('dark',k);r.classList.toggle('light',!k);r.style.colorScheme=k?'dark':'light'}" +
     "a();if(q&&q.addEventListener)q.addEventListener('change',a)})();"
