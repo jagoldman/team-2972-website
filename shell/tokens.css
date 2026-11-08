@@ -1,0 +1,181 @@
+/*
+ * 2972 shell kit: design tokens (MASTER_PLAN D101). Source of truth: infra/shell/tokens.css.
+ * Do not edit a synced copy; change infra and run scripts/sync-shell.sh (the hash check finds drift).
+ *
+ * Colours, fonts and radius come from the portal demo (portal-demo/index.html, see shell/README.md for the
+ * commit). Two deliberate differences from the demo, both recorded in the README:
+ *   - the demo's --accent (gold ink for text) is --accent-ink here, because shadcn uses --accent for a
+ *     hover background;
+ *   - --input-line (form field borders) is new: the demo's --line-2 is 1.7:1, under WCAG 1.4.11's 3:1;
+ *   - --focus is a separate token: gold outlines are 1.8:1 on the light page, under the 3:1 that
+ *     WCAG 1.4.11 asks of focus indicators, so light mode focuses in ink and dark mode in gold.
+ *
+ * Theme (INTEGRATION §9b, D92): the cookie `theme` = light | dark; no cookie = follow the system.
+ * The theme script (shell core: themeInitScript) puts data-theme="light|dark" on <html> for an explicit
+ * choice and always keeps the "dark" class equal to the resolved theme (Tailwind's dark: variant and
+ * next-themes use the class). Without any script, prefers-color-scheme still works.
+ *
+ * Part 1 is the brand palette (demo names). Part 2 maps it onto shadcn / Tailwind 4 variable names, so an
+ * app that imports this file after its own globals re-skins every shadcn component.
+ */
+
+:root {
+  /* ---------- Part 1: brand palette, light ---------- */
+  --bg: #f6f3ea;
+  --surface: #ffffff;
+  --surface-2: #ece7da;
+  --surface-3: #e2dccb;
+  --line: rgba(11, 18, 36, 0.12);
+  --line-2: rgba(11, 18, 36, 0.24);
+  --input-line: rgba(11, 18, 36, 0.5);
+  --text: #0b1224;
+  --text-2: #323b50;
+  --mute: #5a6378;
+  --gold: #e8b931;
+  --gold-2: #ffd666;
+  --on-gold: #07090f;
+  --accent-ink: #7a5800;
+  --tint: rgba(176, 125, 0, 0.1);
+  --tint-2: rgba(176, 125, 0, 0.18);
+  --focus: #7a5800;
+  --ok: #1d7446;
+  --ok-bg: rgba(29, 116, 70, 0.12);
+  --warn: #8f5a00;
+  --warn-bg: rgba(200, 130, 0, 0.14);
+  --bad: #b42318;
+  --bad-bg: rgba(180, 35, 24, 0.1);
+  --on-bad: #ffffff;
+  --info: #2353b0;
+  --info-bg: rgba(35, 83, 176, 0.1);
+  /* The app bar (the demo's "rail" colours): dark navy in both themes. */
+  --rail: #0b1224;
+  --rail-2: #141c33;
+  --rail-text: #e9ecf3;
+  --rail-mute: #8f98ad;
+  --role-pit: #e8b931;
+  --role-scout: #4f7fd9;
+  --role-drive: #2e9e6a;
+  --role-break: #a7adbb;
+  --role-lead: #9b6ad6;
+  --role-media: #d9774f;
+  --heat-0: #ece7da;
+  --heat-1: #f3dc94;
+  --heat-2: #e8b931;
+  --heat-3: #b8860b;
+  /* next/font sets --font-bricolage / --font-inter / --font-jetbrains-mono when the app loads them that way;
+     landing declares @font-face with the plain family names. Either works. */
+  --display: var(--font-bricolage, "Bricolage Grotesque"), "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: var(--font-inter, "Inter"), "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: var(--font-jetbrains-mono, "JetBrains Mono"), ui-monospace, "SF Mono", Menlo, monospace;
+  --r: 10px;
+  --shell-bar-height: 52px;
+  color-scheme: light;
+
+  /* ---------- Part 2: shadcn / Tailwind 4 names ---------- */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary: var(--gold);
+  --primary-foreground: var(--on-gold);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--mute);
+  --accent: var(--surface-2);
+  --accent-foreground: var(--text);
+  --destructive: var(--bad);
+  --destructive-foreground: var(--on-bad);
+  --border: var(--line);
+  --input: var(--input-line);
+  --ring: var(--focus);
+  --radius: var(--r);
+  --chart-1: var(--gold);
+  --chart-2: var(--info);
+  --chart-3: var(--ok);
+  --chart-4: var(--role-lead);
+  --chart-5: var(--role-media);
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--gold);
+  --sidebar-primary-foreground: var(--on-gold);
+  --sidebar-accent: var(--surface-2);
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--focus);
+}
+
+/* Dark, part 1 only: part 2 follows through var(). Kept as two identical blocks (system and explicit) on
+   purpose; the contrast test checks that they match. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not(.light) {
+    --bg: #07090f;
+    --surface: #121a2b;
+    --surface-2: #0d1220;
+    --surface-3: #1b2439;
+    --line: rgba(255, 255, 255, 0.09);
+    --line-2: rgba(255, 255, 255, 0.18);
+    --input-line: rgba(255, 255, 255, 0.4);
+    --text: #e9ecf3;
+    --text-2: #c2c8d6;
+    --mute: #8f98ad;
+    --accent-ink: #e8b931;
+    --tint: rgba(232, 185, 49, 0.1);
+    --tint-2: rgba(232, 185, 49, 0.18);
+    --focus: #e8b931;
+    --ok: #4cc38a;
+    --ok-bg: rgba(76, 195, 138, 0.13);
+    --warn: #f0b43c;
+    --warn-bg: rgba(240, 180, 60, 0.13);
+    --bad: #f2716a;
+    --bad-bg: rgba(242, 113, 106, 0.13);
+    --on-bad: #07090f;
+    --info: #86acff;
+    --info-bg: rgba(134, 172, 255, 0.13);
+    --rail: #0b101d;
+    --rail-2: #151d31;
+    --role-break: #59607a;
+    --heat-0: #1b2439;
+    --heat-1: #5c4a17;
+    --heat-2: #a8841f;
+    --heat-3: #e8b931;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"],
+:root.dark {
+  --bg: #07090f;
+  --surface: #121a2b;
+  --surface-2: #0d1220;
+  --surface-3: #1b2439;
+  --line: rgba(255, 255, 255, 0.09);
+  --line-2: rgba(255, 255, 255, 0.18);
+  --input-line: rgba(255, 255, 255, 0.4);
+  --text: #e9ecf3;
+  --text-2: #c2c8d6;
+  --mute: #8f98ad;
+  --accent-ink: #e8b931;
+  --tint: rgba(232, 185, 49, 0.1);
+  --tint-2: rgba(232, 185, 49, 0.18);
+  --focus: #e8b931;
+  --ok: #4cc38a;
+  --ok-bg: rgba(76, 195, 138, 0.13);
+  --warn: #f0b43c;
+  --warn-bg: rgba(240, 180, 60, 0.13);
+  --bad: #f2716a;
+  --bad-bg: rgba(242, 113, 106, 0.13);
+  --on-bad: #07090f;
+  --info: #86acff;
+  --info-bg: rgba(134, 172, 255, 0.13);
+  --rail: #0b101d;
+  --rail-2: #151d31;
+  --role-break: #59607a;
+  --heat-0: #1b2439;
+  --heat-1: #5c4a17;
+  --heat-2: #a8841f;
+  --heat-3: #e8b931;
+  color-scheme: dark;
+}
