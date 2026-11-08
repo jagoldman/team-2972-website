@@ -1,12 +1,30 @@
 {
-  "version": "0.1.6",
+  "version": "0.1.7",
   "profile": "static",
-  "files": {
-    "shell/VERSION": "1f2110568627307becae713f8b808f3d9d912d4b2a24ed6a78605f03f7437d3c",
-    "shell/tokens.css": "7f7b3886ac183192704b8b8d1f85a6f162abac293b75e9e93837a6e34b98dce8",
-    "shell/app-bar.css": "fcb8dff3ea4ae01322b50cbbd74fc731b1d573eb183fa3449deb8ce97bec9745",
-    "shell/core.js": "49b6b8407604cafcad1c832430c81256945e93817872552986701b204acc64db",
-    "shell/core.d.ts": "8bd2b0f380214d86f348c8aaabcfb9d61026479b6b4080d2c89c949829f0dc57",
-    "shell/static/shell.js": "ef71119e0cefe35af3391907700e475d9f069508c7c322c8d018a163f9e13d7c"
-  }
+  "files": [
+    {
+      "path": "shell/VERSION",
+      "sha256": "ba57e7c7f71876d645bcdd9fb070f2dea8e6db5ed284a7e3d85c6b7d2409fef1"
+    },
+    {
+      "path": "shell/tokens.css",
+      "sha256": "7f7b3886ac183192704b8b8d1f85a6f162abac293b75e9e93837a6e34b98dce8"
+    },
+    {
+      "path": "shell/app-bar.css",
+      "sha256": "fcb8dff3ea4ae01322b50cbbd74fc731b1d573eb183fa3449deb8ce97bec9745"
+    },
+    {
+      "path": "shell/core.js",
+      "sha256": "49b6b8407604cafcad1c832430c81256945e93817872552986701b204acc64db"
+    },
+    {
+      "path": "shell/core.d.ts",
+      "sha256": "8bd2b0f380214d86f348c8aaabcfb9d61026479b6b4080d2c89c949829f0dc57"
+    },
+    {
+      "path": "shell/static/shell.js",
+      "sha256": "ef71119e0cefe35af3391907700e475d9f069508c7c322c8d018a163f9e13d7c"
+    }
+  ]
 }

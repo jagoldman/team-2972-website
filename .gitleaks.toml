@@ -6,7 +6,10 @@ title = "2972 landing"
 useDefault = true
 
 [allowlist]
-description = "Fake values used only by local container tests"
+description = "Fake values used only by local container tests; the shell kit's sync stamp (file hashes, not keys)"
 paths = [
   '''^test/''',
+  # SHA-256 hashes of the synced kit files (infra scripts/sync-shell.sh). Kit 0.1.7 changed the format, but
+  # older stamps in history match the generic-api-key rule.
+  '''^shell/SYNC\.json$''',
 ]
