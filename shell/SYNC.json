@@ -1,11 +1,11 @@
 {
-  "version": "0.1.2",
+  "version": "0.1.3",
   "profile": "static",
   "files": {
-    "shell/VERSION": "297b50f08386d3521f8fdaf2f78eb8d9d0acdf452d2e61596905fba37208c792",
+    "shell/VERSION": "2d2454ef0edeb462a6ce8b25d387aaa74df08093d5cea0428a10ce55510c6326",
     "shell/tokens.css": "8415af11b3abd9021a2cd9ca679e25b4ccd54a9e92e45d5832dca45c4b3cd295",
     "shell/app-bar.css": "fcb8dff3ea4ae01322b50cbbd74fc731b1d573eb183fa3449deb8ce97bec9745",
-    "shell/core.js": "4de1335a5743100bcdb625fe308136b2baa487d179b074a0e8c3f5e528c272d6",
+    "shell/core.js": "3aacc55417179e775edd7d97b2c5d60ae091018da36e9aec7478d68a4689c1d2",
     "shell/core.d.ts": "8bd2b0f380214d86f348c8aaabcfb9d61026479b6b4080d2c89c949829f0dc57",
     "shell/static/shell.js": "ef71119e0cefe35af3391907700e475d9f069508c7c322c8d018a163f9e13d7c"
   }

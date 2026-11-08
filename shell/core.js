@@ -137,8 +137,10 @@ function isLocal(domain) {
 
 /** Shared site-wide cookie attributes (INTEGRATION §9b; the mode cookie uses the same). */
 export function cookieAttributes(site, maxAge) {
+  // Domain= never carries a port (dev runs on e.g. portal.localhost:13080); browsers reject one that does.
+  const host = String(site.domain || "").replace(/:\d+$/, "");
   let a = `; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
-  if (!isLocal(site.domain)) a += `; Domain=.${site.domain}`;
+  if (!isLocal(host)) a += `; Domain=.${host}`;
   if (site.scheme === "https") a += "; Secure";
   return a;
 }
