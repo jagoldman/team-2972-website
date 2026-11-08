@@ -20,8 +20,9 @@ function check(name, cond, detail) {
 
 // ---------- the theme code in js/components.js ----------
 function makeEnv(storage) {
-  const attrs = {};
-  const root = { dataset: {}, };
+  const classes = new Set();
+  const root = { dataset: {}, classList: { toggle: (c, on) => (on ? classes.add(c) : classes.delete(c)), contains: (c) => classes.has(c) }, style: {} };
+  const jar = new Map();
   const buttons = ["light", "dark", "system"].map((v) => {
     const b = { dataset: { theme: v }, pressed: null, setAttribute(k, val) { if (k === "aria-pressed") b.pressed = val; } };
     return b;
@@ -43,6 +44,13 @@ function makeEnv(storage) {
     querySelector: () => null,
     addEventListener() {},
   };
+  // A cookie jar that keeps the last write's attributes, so tests can read them.
+  ctx.cookieWrites = [];
+  Object.defineProperty(ctx.document, "cookie", {
+    get: () => [...jar].map(([k, v]) => `${k}=${v}`).join("; "),
+    set: (v) => { ctx.cookieWrites.push(v); const [kv] = v.split(";"); const i = kv.indexOf("="); const k = kv.slice(0, i), val = kv.slice(i + 1); if (/Max-Age=0\b/i.test(v)) jar.delete(k); else jar.set(k, val); },
+  });
+  ctx.jar = jar;
   vm.createContext(ctx);
   vm.runInContext(read("js/components.js") + "\n;globalThis.T = { storedTheme, setTheme, applyTheme, renderThemeSwitch };", ctx, { filename: "components.js" });
   return { ctx, root, buttons };
@@ -56,11 +64,17 @@ const blocked = { getItem() { throw new Error("SecurityError"); }, setItem() { t
   check("default choice is System", ctx.T.storedTheme() === "system");
   ctx.T.setTheme("dark");
   check("Dark sets data-theme and is remembered", root.dataset.theme === "dark" && store._m.get("theme") === "dark" && ctx.T.storedTheme() === "dark");
+  check("Dark also writes the site-wide theme cookie, the kit's way (D92)", ctx.jar.get("theme") === "dark" && /^theme=dark; Path=\/; Max-Age=34560000; SameSite=Lax$/.test(ctx.cookieWrites.at(-1)), ctx.cookieWrites.at(-1));
+  check("Dark sets the dark class and color-scheme, as the kit's applyTheme does", root.classList.contains("dark") && !root.classList.contains("light") && root.style.colorScheme === "dark");
   check("the switch marks only the chosen button pressed", buttons.map((b) => b.pressed).join(",") === "false,true,false");
   ctx.T.setTheme("light");
   check("Light replaces Dark", root.dataset.theme === "light" && store._m.get("theme") === "light");
   ctx.T.setTheme("system");
   check("System removes data-theme and forgets the choice", root.dataset.theme === undefined && !store._m.has("theme") && buttons.map((b) => b.pressed).join(",") === "false,false,true");
+  check("System deletes the theme cookie too", !ctx.jar.has("theme") && /Max-Age=0/.test(ctx.cookieWrites.at(-1)));
+  ctx.jar.set("theme", "dark"); store.setItem("theme", "light");
+  check("the cookie wins over the old localStorage key", ctx.T.storedTheme() === "dark");
+  ctx.jar.delete("theme"); store.removeItem("theme");
   store.setItem("theme", "purple");
   check("an unknown stored value counts as System", ctx.T.storedTheme() === "system");
   store.setItem("theme", "dark");
@@ -77,28 +91,19 @@ const blocked = { getItem() { throw new Error("SecurityError"); }, setItem() { t
   try { ctx.T.storedTheme(); ctx.T.setTheme("dark"); ctx.T.setTheme("system"); ctx.T.setTheme("light"); } catch (e) { threw = true; }
   check("blocked localStorage never throws", !threw);
   check("blocked localStorage: the choice still applies for this visit", root.dataset.theme === "light");
-  check("blocked localStorage: reads as System", ctx.T.storedTheme() === "system");
+  check("blocked localStorage: the cookie still carries the choice", ctx.T.storedTheme() === "light");
+  ctx.jar.clear();
+  check("blocked localStorage and no cookie: reads as System", ctx.T.storedTheme() === "system");
 }
 
-// ---------- every page: the no-flash snippet comes before the stylesheet ----------
-// Public pages keep landing's localStorage snippet; the portal pages use the shell kit's (checked further down).
-const pages = fs.readdirSync(root).filter((f) => f.endsWith(".html"));
+// ---------- every page declares both schemes ----------
+const pages = fs.readdirSync(root).filter((f) => f.endsWith(".html")).concat(["portal/index.html", "portal/install.html"]);
 for (const page of pages) {
-  const html = read(page);
-  const css = html.indexOf('<link rel="stylesheet"');
-  const snippet = html.indexOf('localStorage.getItem("theme")');
-  check(`${page}: theme snippet is in <head>, before the stylesheet`, snippet > 0 && css > 0 && snippet < css && snippet < html.indexOf("</head>"));
-  check(`${page}: snippet is guarded by try/catch and only accepts light or dark`, /try\{var t=localStorage\.getItem\("theme"\);if\(t==="light"\|\|t==="dark"\)document\.documentElement\.dataset\.theme=t\}catch\(e\)\{\}/.test(html));
-  check(`${page}: declares color-scheme light dark`, /<meta name="color-scheme" content="light dark" \/>/.test(html));
+  check(`${page}: declares color-scheme light dark`, /<meta name="color-scheme" content="light dark" \/>/.test(read(page)));
 }
 
-for (const page of ["portal/index.html", "portal/install.html"]) {
-  const html = read(page);
-  check(`${page}: declares color-scheme light dark`, /<meta name="color-scheme" content="light dark" \/>/.test(html));
-}
-
-// ---------- the portal pages: the shell kit's theme script (D92 cookie, then the old localStorage key) ----------
-// Runs the head script from each portal page in a sandbox, for the cases the Sol review of 0b0f687 reproduced.
+// ---------- every page: the shell kit's theme script (D92 cookie, then the old localStorage key) ----------
+// Runs the head script from each page in a sandbox, for the cases the Sol review of 0b0f687 reproduced.
 function runHeadScript(html, { cookie = "", stored = null, host = "portal.example.org", https = true, sysDark = false }) {
   const m = html.match(/<!-- theme-init: [^\n]*-->\n<script>([^\n]*)<\/script>/);
   if (!m) return null;
@@ -125,7 +130,7 @@ function runHeadScript(html, { cookie = "", stored = null, host = "portal.exampl
   const now = () => ({ theme: attrs["data-theme"], dark: classes.has("dark"), scheme: r.style.colorScheme });
   return { ...now(), writes, pickSystem, osChange, now };
 }
-for (const page of ["portal/index.html", "portal/install.html"]) {
+for (const page of pages) {
   const html = read(page);
   const at = html.indexOf("<!-- theme-init: ");
   check(`${page}: the kit's theme script is in <head>, before the stylesheets`, at > 0 && at < html.indexOf('<link rel="stylesheet"') && at < html.indexOf("</head>"));
@@ -162,6 +167,27 @@ for (const page of ["portal/index.html", "portal/install.html"]) {
 })();
 
 // ---------- the stylesheet: colours are defined once ----------
+// The names landing shares with the shell kit hold the kit's values, light and dark (D101).
+{
+  const kitCss = read("shell/tokens.css");
+  const lightBlock = kitCss.slice(kitCss.indexOf(":root {"), kitCss.indexOf("@media (prefers-color-scheme: dark)"));
+  const darkBlock = kitCss.slice(kitCss.indexOf(':root[data-theme="dark"]'));
+  const val = (block, name) => (block.match(new RegExp(`\\s${name}:\\s*([^;]+);`)) || [])[1];
+  const landing = read("css/style.css");
+  const SHARED = { "--ink": "--bg", "--ink-2": "--surface-2", "--ink-3": "--surface", "--accent": "--accent-ink", "--line": "--line", "--line-2": "--line-2",
+    "--text": "--text", "--text-2": "--text-2", "--mute": "--mute", "--gold": "--gold", "--gold-2": "--gold-2", "--on-gold": "--on-gold", "--tint": "--tint", "--tint-2": "--tint-2" };
+  const off = [];
+  for (const [mine, kit] of Object.entries(SHARED)) {
+    const v = (landing.match(new RegExp(`\\s${mine}:\\s*([^;]+);`)) || [])[1] || "";
+    const ld = v.match(/^light-dark\((.+?),\s*(#[0-9a-f]+|rgba\([^)]*\))\)$/i);
+    const [l, d] = ld ? [ld[1].trim(), ld[2].trim()] : [v, v];
+    const kl = val(lightBlock, kit), kd = val(darkBlock, kit) || kl;
+    // light --mute: the kit's value fails AA in the see-through public header, so landing keeps a darker one
+    const lightOk = l === kl || (mine === "--mute" && l === "#515b72");
+    if (!lightOk || d !== kd) off.push(`${mine} ${l}/${d} vs kit ${kit} ${kl}/${kd}`);
+  }
+  check("landing's shared colour tokens equal the shell kit's, light and dark (one noted exception: light --mute)", off.length === 0, off.join(" | "));
+}
 const css = read("css/style.css");
 const rootBlock = css.slice(css.indexOf(":root {"), css.indexOf("}", css.indexOf(":root {")) + 1);
 const tokens = [...rootBlock.matchAll(/^\s*(--[\w-]+):\s*(.+?);/gm)].map((m) => ({ name: m[1], value: m[2] }));

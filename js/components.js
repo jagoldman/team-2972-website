@@ -447,12 +447,25 @@ async function clearOfflineCaches() {
 }
 
 // ---------- Theme: Light / Dark / System ----------
-// "System" (the default) leaves data-theme off <html>, so the page follows the visitor's system setting
-// through CSS alone. Light and Dark set data-theme, remembered in localStorage. An inline script in each
-// page's <head> sets it before the page paints, so there is no flash of the wrong theme.
+// "System" (the default) leaves data-theme off <html>, so the page follows the visitor's system setting.
+// Light and Dark are stored the shell kit's way (D92, INTEGRATION §9b): a `theme` cookie for the whole site
+// domain, so the portal's app bar and these pages share one choice, plus the old localStorage key while other
+// subdomains migrate. The inline script in each page's <head> (scripts/theme-init.mjs, from the kit) applies it
+// before the page paints. applyTheme matches the kit's: data-theme, the dark/light class and color-scheme.
 const THEME_KEY = "theme";
 
+function themeCookieAttrs(maxAge) {
+  const { scheme, domain } = siteBase();
+  const host = domain.replace(/:\d+$/, "");                 // cookies ignore ports
+  const local = host === "localhost" || /\.localhost$/.test(host) || /^[0-9.]+$/.test(host);
+  return `; Path=/; Max-Age=${maxAge}; SameSite=Lax${local ? "" : `; Domain=.${host}`}${scheme === "https" ? "; Secure" : ""}`;
+}
+
 function storedTheme() {
+  try {
+    const m = document.cookie.match(/(?:^|;\s*)theme=(light|dark)(?:;|$)/);
+    if (m) return m[1];
+  } catch (e) { /* cookies blocked */ }
   try {
     const t = localStorage.getItem(THEME_KEY);
     return t === "light" || t === "dark" ? t : "system";
@@ -463,17 +476,22 @@ function storedTheme() {
 
 function applyTheme(choice) {
   const root = document.documentElement;
+  const dark = choice === "dark" || (choice !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
   if (choice === "light" || choice === "dark") root.dataset.theme = choice;
   else delete root.dataset.theme;
+  if (root.classList) { root.classList.toggle("dark", dark); root.classList.toggle("light", !dark); }
+  if (root.style) root.style.colorScheme = dark ? "dark" : "light";
   document.querySelectorAll(".theme-switch button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.theme === choice)));
 }
 
 function setTheme(choice) {
+  const keep = choice === "light" || choice === "dark";
+  try { document.cookie = `${THEME_KEY}=${keep ? choice : ""}${themeCookieAttrs(keep ? 34560000 : 0)}`; } catch (e) { /* cookies blocked */ }
   try {
-    if (choice === "system") localStorage.removeItem(THEME_KEY);
+    if (!keep) localStorage.removeItem(THEME_KEY);
     else localStorage.setItem(THEME_KEY, choice);
   } catch (e) { /* not saved, still applied */ }
-  applyTheme(choice);
+  applyTheme(keep ? choice : "system");
 }
 
 const THEME_OPTIONS = [
@@ -499,6 +517,10 @@ function bindThemeSwitch() {
 addEventListener("storage", (e) => {
   if (isPortalPage()) return;
   if (e.key === THEME_KEY || e.key === null) applyTheme(storedTheme());
+});
+// A choice made in another tab or app (the cookie has no event): pick it up when this tab comes back.
+document.addEventListener("visibilitychange", () => {
+  if (!isPortalPage() && document.visibilityState === "visible") applyTheme(storedTheme());
 });
 
 // ---------- Motion and effects ----------

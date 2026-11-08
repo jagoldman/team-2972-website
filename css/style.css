@@ -19,6 +19,11 @@
 }
 
 /* Colours are defined once, here, as light-dark(<light theme>, <dark theme>).
+   The names the shell kit also defines (shell/tokens.css, D101) hold the kit's values, so the portal's app bar
+   and these pages match: --ink = --bg, --ink-2 = --surface-2, --ink-3 = --surface, --accent = --accent-ink, and
+   --line, --line-2, --text, --text-2, --mute, --gold, --gold-2, --on-gold, --tint, --tint-2. test/theme-test.cjs
+   checks it; change those in infra's kit first. One exception: light --mute stays #515b72, because the kit's
+   #5a6378 is 4.33:1 in the see-through public header (AA needs 4.5).
    The theme comes from the system setting (color-scheme: light dark) unless the visitor picks
    Light or Dark in the header, which sets data-theme on <html> (js/components.js; an inline script in each
    page's <head> sets it before the page paints). Gold has two jobs: --gold fills buttons and badges (dark text
@@ -30,7 +35,7 @@
   /* surfaces */
   --ink: light-dark(#f6f3ea, #07090f);          /* the page */
   --ink-2: light-dark(#ece7da, #0d1220);        /* alternate sections, card bottoms */
-  --ink-3: light-dark(#ffffff, #141b2d);        /* cards, image placeholders */
+  --ink-3: light-dark(#ffffff, #121a2b);        /* cards, image placeholders */
   --glass: light-dark(rgba(246, 243, 234, 0.9), rgba(7, 9, 15, 0.86));        /* header once scrolled */
   --glass-2: light-dark(rgba(255, 255, 255, 0.75), rgba(7, 9, 15, 0.5));      /* round buttons */
   --glass-solid: light-dark(rgba(246, 243, 234, 0.98), rgba(7, 9, 15, 0.97)); /* full-screen menu */
@@ -39,8 +44,8 @@
   --search-bg: light-dark(rgba(255, 255, 255, 0.9), rgba(13, 18, 32, 0.75));
 
   /* lines and hover washes */
-  --line: light-dark(rgba(11, 18, 36, 0.12), rgba(255, 255, 255, 0.08));
-  --line-2: light-dark(rgba(11, 18, 36, 0.26), rgba(255, 255, 255, 0.16));
+  --line: light-dark(rgba(11, 18, 36, 0.12), rgba(255, 255, 255, 0.09));
+  --line-2: light-dark(rgba(11, 18, 36, 0.24), rgba(255, 255, 255, 0.18));
   --hover: light-dark(rgba(11, 18, 36, 0.06), rgba(255, 255, 255, 0.06));
   --hover-2: light-dark(rgba(11, 18, 36, 0.1), rgba(255, 255, 255, 0.08));
   --stroke: light-dark(rgba(11, 18, 36, 0.4), rgba(255, 255, 255, 0.28));     /* outlined marquee words */
@@ -48,8 +53,8 @@
 
   /* text */
   --text: light-dark(#0b1224, #e9ecf3);
-  --text-2: light-dark(#323b50, #b6bdcf);
-  --mute: light-dark(#515b72, #8b93a7);
+  --text-2: light-dark(#323b50, #c2c8d6);
+  --mute: light-dark(#515b72, #8f98ad);       /* light: darker than the kit's #5a6378, see the note above */
   --dim: light-dark(#6c7690, #6c7692);          /* the quiet half of a big heading (large text, 3:1) */
   --soon: light-dark(#5f687d, #8089a0);         /* "coming soon" titles */
   --ph-num: light-dark(#8a8473, #4a526a);       /* the big year in a "photo wanted" box */
@@ -60,8 +65,8 @@
   --on-gold: #07090f;                           /* text on a gold fill, in both themes */
   --accent: light-dark(#7a5800, #e8b931);       /* gold as text or a thin line */
   --accent-2: light-dark(#a47500, #ffd666);
-  --tint: light-dark(rgba(176, 125, 0, 0.1), rgba(232, 185, 49, 0.08));
-  --tint-2: light-dark(rgba(176, 125, 0, 0.16), rgba(232, 185, 49, 0.14));
+  --tint: light-dark(rgba(176, 125, 0, 0.1), rgba(232, 185, 49, 0.1));
+  --tint-2: light-dark(rgba(176, 125, 0, 0.18), rgba(232, 185, 49, 0.18));
   --tint-line: light-dark(rgba(122, 88, 0, 0.45), rgba(232, 185, 49, 0.35));
   --glow: light-dark(rgba(176, 125, 0, 0.22), rgba(232, 185, 49, 0.3));
   --spot: light-dark(rgba(176, 125, 0, 0.1), rgba(232, 185, 49, 0.14));
