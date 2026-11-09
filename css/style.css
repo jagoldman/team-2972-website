@@ -178,6 +178,8 @@ a.school-badge:hover { transform: translateY(-1px) rotate(-6deg); }
 .brand:hover .brand-logo { transform: rotate(-20deg); }
 .brand-text { font: 800 15px/1.15 var(--display); letter-spacing: -0.01em; white-space: nowrap; }
 .brand-text strong { display: block; color: var(--accent); font-weight: 800; font-size: 18px; }
+/* Very narrow phones: keep the team number and the logos, drop the team name so the menu button fits. */
+@media (max-width: 359px) { .brand-text > span { display: none; } }
 
 .site-nav { display: flex; align-items: center; gap: 2px; }
 .nav-link {
@@ -263,6 +265,7 @@ a.school-badge:hover { transform: translateY(-1px) rotate(-6deg); }
 
 .nav-toggle {
   display: none;
+  flex: none;                 /* the brand group can't shrink, so without this the button shrank to ~19px at 320px */
   width: 44px;
   height: 44px;
   border-radius: 50%;

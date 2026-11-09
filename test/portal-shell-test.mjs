@@ -227,6 +227,9 @@ try {
     await page.goto(PUBLIC + "/");
     await page.waitForSelector(".site-header");
     check(`320px ${theme}: public home has no horizontal scroll`, (await over(page)) <= 0, `${await over(page)}px`);
+    const toggle = await page.$eval(".nav-toggle", (b) => { const r = b.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), Math.round(r.right)]; });
+    check(`320px ${theme}: the menu button keeps its 44px and sits on screen`, toggle[0] === 44 && toggle[1] === 44 && toggle[2] <= 320, toggle);
+    check(`320px ${theme}: the team number shows, the team name is hidden below 360px`, (await page.isVisible(".brand-text strong")) && !(await page.isVisible(".brand-text > span")));
     await context.close();
   }
 
