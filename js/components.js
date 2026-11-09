@@ -297,6 +297,11 @@ function robotUrl(r) {
 // Every host URL is built from SITE_SCHEME and SITE_DOMAIN (filled into config.js
 // by Caddy), so the same files work on localhost and 2972robotics.com.
 
+// Hosts that serve landing's own pages: the public site (www), the portal, and the editor's preview
+// (editor.<domain>/site/*). The site domain is the address without one of these. scripts/theme-init.mjs has the
+// same list for the head script (test/theme-test.cjs checks they match). Keep both in step.
+const SITE_SUBDOMAINS = ["www", "portal", "editor"];
+
 function siteBase() {
   const env = window.SITE_ENV || {};
   const filled = (v) => Boolean(v) && !v.startsWith("{{");
@@ -305,7 +310,7 @@ function siteBase() {
   const scheme = location.protocol === "https:" ? "https" : "http";
   // Only a plain host name (letters, digits, dots, hyphens, a port) is used to build links.
   const host = /^[A-Za-z0-9.:-]+$/.test(location.host) ? location.host : "localhost";
-  const domain = host.replace(/^(www|portal)\./, "") || "localhost";
+  const domain = host.replace(new RegExp(`^(${SITE_SUBDOMAINS.join("|")})\\.`), "") || "localhost";
   return { scheme, domain };
 }
 

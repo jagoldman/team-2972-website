@@ -163,6 +163,56 @@ for (const page of pages) {
     check(`theme cookie attributes on ${scheme}://${hostname} match the kit's`, got === want, `${got} vs ${want}`);
   }
   for (const page of gen.PAGES) check(`${page}: holds the current scripts/theme-init.mjs output`, read(page).includes(gen.snippet()));
+
+  // One list of landing's hosts in the head script and in components.js.
+  const compList = (read("js/components.js").match(/const SITE_SUBDOMAINS = (\[[^\]]*\]);/) || [])[1];
+  check("js/components.js and scripts/theme-init.mjs list the same site subdomains", compList && JSON.stringify(JSON.parse(compList)) === JSON.stringify(gen.SITE_SUBDOMAINS), compList);
+
+  // Sol, review of ab09a9a: the editor serves landing's public pages at editor.<domain>/site/*. With no cookie and the
+  // old key "dark", the head script migrates it; then the public switch picks Light, then System. A browser-like jar
+  // (cookies keyed by name and domain) must end with one theme cookie, then none, and the page must follow.
+  {
+    const host = "editor.example.org";
+    const jar = new Map();                                     // "name|domain" -> value; domain "" = host-only
+    const visible = () => [...jar].filter(([k]) => { const d = k.split("|")[1]; return d === "" || host === d || host.endsWith("." + d); });
+    const cookieProp = {
+      get: () => visible().map(([k, v]) => `${k.split("|")[0]}=${v}`).join("; "),
+      set: (str) => {
+        const [kv, ...attrs] = str.split(";").map((x) => x.trim());
+        const i = kv.indexOf("="); const name = kv.slice(0, i), value = kv.slice(i + 1);
+        const dom = (attrs.find((a) => /^domain=/i.test(a)) || "").replace(/^domain=\.?/i, "").toLowerCase();
+        if (dom && host !== dom && !host.endsWith("." + dom)) return;          // a browser rejects a foreign domain
+        const key = `${name}|${dom}`;
+        if (attrs.some((a) => /^max-age=0$/i.test(a))) jar.delete(key); else jar.set(key, value);
+      },
+    };
+    const store = new Map([["theme", "dark"]]);
+    const storage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
+    const page = read("index.html");
+    const head = page.match(/<!-- theme-init: [^\n]*-->\n<script>([^\n]*)<\/script>/)[1];
+    const runHead = () => {
+      const attrs = {}; const r = { setAttribute: (k, v) => { attrs[k] = v; }, removeAttribute: (k) => { delete attrs[k]; }, classList: { toggle() {} }, style: {} };
+      const document = { documentElement: r }; Object.defineProperty(document, "cookie", cookieProp);
+      vm.runInNewContext(head, { document, window: { localStorage: storage, matchMedia: () => ({ matches: false, addEventListener() {} }) }, location: { hostname: host, protocol: "https:" } });
+      return attrs["data-theme"];
+    };
+    const themeCookies = () => [...jar.keys()].filter((k) => k.startsWith("theme|"));
+    check("editor /site/ host: the head script migrates the old key onto the bare site domain", runHead() === "dark" && themeCookies().join() === "theme|example.org", themeCookies());
+
+    // the public switch on the same host, with the editor's templated config (SITE_DOMAIN = example.org)
+    const root = { dataset: {}, classList: { toggle() {} }, style: {} };
+    const ctx = { console, location: { host, protocol: "https:", search: "", pathname: "/site/" }, scrollY: 0, onContent() {}, localStorage: storage,
+      SITE_ENV: { scheme: "https", domain: "example.org" }, matchMedia: () => ({ matches: false }), addEventListener() {} };
+    ctx.window = ctx;
+    ctx.document = { documentElement: root, body: { hasAttribute: () => false }, querySelectorAll: () => [], querySelector: () => null, addEventListener() {} };
+    Object.defineProperty(ctx.document, "cookie", cookieProp);
+    vm.createContext(ctx);
+    vm.runInContext(read("js/components.js") + "\n;globalThis.T = { setTheme, storedTheme };", ctx);
+    ctx.T.setTheme("light");
+    check("editor /site/ host: Light replaces it, one theme cookie, and a reload is light", themeCookies().join() === "theme|example.org" && jar.get("theme|example.org") === "light" && runHead() === "light", themeCookies());
+    ctx.T.setTheme("system");
+    check("editor /site/ host: System clears it, no theme cookie left, and a reload follows the system", themeCookies().length === 0 && runHead() === undefined && ctx.T.storedTheme() === "system", themeCookies());
+  }
   finish();
 })();
 

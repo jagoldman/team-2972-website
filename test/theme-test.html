@@ -170,7 +170,7 @@ const PUBLIC_PAGES = ["index.html", "offline.html", "about.html", "mentor.html",
         const html = doc.documentElement;
         html.dataset.theme = theme;
         html.classList.toggle("dark", theme === "dark"); html.classList.toggle("light", theme === "light");
-        if (html.style.colorScheme) html.style.colorScheme = theme;
+        html.style.colorScheme = theme;
         await sleep(120);
         const bg = win.getComputedStyle(doc.body).backgroundColor;
         report(theme === "light" ? bg === "rgb(246, 243, 234)" : bg === "rgb(7, 9, 15)", `${url}: ${theme} theme paints the ${theme} page colour`, bg);
@@ -211,8 +211,12 @@ const PUBLIC_PAGES = ["index.html", "offline.html", "about.html", "mentor.html",
     // focus ring (a UI component: 3:1 against every surface it can sit on)
     const { frame, win, doc } = await openPage("index.html");
     for (const theme of ["light", "dark"]) {
-      doc.documentElement.dataset.theme = theme; await sleep(80);
-      const cs = win.getComputedStyle(doc.documentElement);
+      // as the kit's applyTheme does: the head script set an inline color-scheme, which data-theme alone can't beat
+      const html = doc.documentElement;
+      html.dataset.theme = theme; html.classList.toggle("dark", theme === "dark"); html.classList.toggle("light", theme === "light");
+      html.style.colorScheme = theme; await sleep(80);
+      const pageBg = win.getComputedStyle(doc.body).backgroundColor;
+      report(pageBg === (theme === "light" ? "rgb(246, 243, 234)" : "rgb(7, 9, 15)"), `${theme}: focus-ring page really is in the ${theme} theme`, pageBg);
       const probe = doc.createElement("i"); probe.style.cssText = "color:var(--accent);background:var(--ink)"; doc.body.append(probe);
       const accent = parse(win.getComputedStyle(probe).color);
       for (const surface of ["--ink", "--ink-2", "--ink-3"]) {
