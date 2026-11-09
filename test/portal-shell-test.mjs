@@ -137,6 +137,10 @@ try {
     check("Space on More closes it again", (await page.$eval("#shell-bar .shbar-more", (d) => d.open)) === false);
     await page.keyboard.press("Escape");
     check("Escape closes the Apps menu and returns focus to the launcher", !(await page.isVisible("#shell-bar .shbar-apps")) && await page.$eval("#shell-bar .shbar-appsbtn", (b) => b === document.activeElement));
+    await page.evaluate(() => scrollTo(0, 600));
+    const barTop = await page.$eval("#shell-bar header, #shell-bar .shbar", (b) => Math.round(b.getBoundingClientRect().top)).catch(() => null);
+    check("the app bar stays at the top when the page scrolls (sticky)", barTop === 0, `top=${barTop}`);
+    await page.evaluate(() => scrollTo(0, 0));
     const left = await page.$eval("#shell-bar .shbar-appsbtn", (b) => b.getBoundingClientRect().left);
     check("the nine-dot launcher is at the far left of the bar", left < 24, `left=${left}`);
 
