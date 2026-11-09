@@ -24,8 +24,9 @@ export async function mountPortalShell() {
     const raw = source.find((x) => x && x.id === t.id) || {};
     return { ...t, audience: typeof raw.audience === "string" ? raw.audience : "" };
   });
+  // No appId: "portal" is not an app in infra config/apps.json, so no Apps-menu tile is marked current.
   mountAppBar(document.getElementById("shell-bar"), {
-    appName: "Portal", appId: "portal", siteScheme: site.scheme, siteDomain: site.domain,
+    appName: "Portal", siteScheme: site.scheme, siteDomain: site.domain,
     tiles, user: { name: me.name, email: me.email }, skipToId: "main",
   });
   return { me, groups, tiles, site };
