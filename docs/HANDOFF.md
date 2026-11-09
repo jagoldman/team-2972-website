@@ -1,5 +1,29 @@
 # landing: handoff
 
+## 2026-11-09: reviewed shell 0.1.11 adoption (D109/D112)
+
+`redesign/portal-shell` resumed from `da30fd2`, matching local `main`, with a clean worktree; no fast-forward
+was needed. Synced the static profile from infra `7caa0baa176e120eeda6787247a25fa41a6a42f7` using
+`scripts/sync-shell.sh`. The kit is unchanged locally and includes the reviewed Build / Competition buttons
+inside Apps, the left launcher, collapsed More with link-outs, and cross-app links opening new tabs.
+Landing subscribes to the mode buttons after their cookie write so the home grid, app count and mode label
+refresh immediately, including the label for users waiting for a group. The subscription is scoped to the
+protected portal; public header/identity behavior, gate routes, theme initialization and SW exclusions are preserved.
+
+Lightweight validation for this adoption:
+
+- Infra `scripts/check-shell.sh static <this worktree>`: 0.1.11 source/stamp hashes match.
+- `node scripts/theme-init.mjs --check`: generated heads current; read-only offline output preserved.
+- `node --test test/portal-mode-test.cjs`: 1 pass (mode callback, unrelated clicks, cleanup).
+- `node test/theme-test.cjs`: 175 pass; `node test/pwa-test.cjs`: 274 pass;
+  `node test/install-test.cjs`: 46 pass.
+- Infra offline core/contrast tests: 18 pass, including groups, modes, cookies and light/dark token contrast.
+- `node --check` on the adapter, kit browser/core modules, SW and inline portal module; `git diff --check`: pass.
+
+Remaining gates belong to the lead's heavy slot: landing browser regressions (especially immediate grid refresh
+through Apps mode buttons, keyboard/focus, More, responsive layout and themes), container/stack checks, and the
+release secret scan. No builds, browsers, stack jobs, new delegates, pushes, merges or deploys ran for this adoption.
+
 Written 2026-10-25 when the long-running landing session closed. Read this first, then `CLAUDE.md`, `README.md`
 and `../infra/docs/{CONVENTIONS,INTEGRATION}.md`. State at hand-off: `main` = `origin/main` = `459dd21`, nothing
 uncommitted (this file aside).

@@ -7,6 +7,14 @@
 import { mountAppBar } from "/shell/static/shell.js";
 import { parseGroups, resolveTiles } from "/shell/core.js";
 
+export function bindPortalModeChange(onChange, root = document.getElementById("shell-bar")) {
+  const listener = (event) => {
+    if (event.target?.closest?.(".shbar-mode button")) onChange();
+  };
+  root.addEventListener("click", listener);
+  return () => root.removeEventListener("click", listener);
+}
+
 async function getJson(path) {
   const res = await fetch(path, { credentials: "same-origin", cache: "no-store" });
   if (!res.ok) throw new Error(`${path}: ${res.status}`);

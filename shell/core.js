@@ -237,7 +237,7 @@ export const ICONS = Object.freeze({
   "team-drive": "M8 3h8l6 11-4 7H6l-4-7zM2 14h20M8 3l6 11",
   admin: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
   editor: "M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4",
-  handbook: "M4 5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2zM4 5v16M8 7h8",
+  handbook: "M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z",
   resources: "M3 6h6l2 2h10v11H3z",
   more: "M5 12h.01M12 12h.01M19 12h.01",
   bell: "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0",

@@ -76,7 +76,7 @@
 <script src="/js/install.js"></script>
 <script type="module">
 import { filterByMode, iconPath, parseMode, readCookie } from "/shell/core.js";
-import { mountPortalShell } from "/js/portal-shell.js";
+import { bindPortalModeChange, mountPortalShell } from "/js/portal-shell.js";
 const SVG_NS = "http://www.w3.org/2000/svg";
 function svgIcon(d) {
   const svg = document.createElementNS(SVG_NS, "svg");
@@ -154,6 +154,7 @@ onContent(async () => {
   document.getElementById("name").textContent = `${full.split(" ")[0]}.`;
   document.getElementById("greeting").setAttribute("aria-label", `${greetingWord()} ${full}`);
   document.querySelectorAll("#greeting .w > span").forEach((s, i) => s.style.setProperty("--wi", i));
+  bindPortalModeChange(paintTiles);
 
   if (groups.length === 0) {
     document.getElementById("no-group").hidden = false;
@@ -179,6 +180,8 @@ onContent(async () => {
   }
   function paintTiles() {
     const mode = parseMode(readCookie(document.cookie, "mode"));
+    document.getElementById("mode").textContent = mode === "competition" ? "Competition mode" : "Build mode";
+    if (groups.length === 0) return;
     const shown = filterByMode(resolved, mode).sort((a, b) => !a.href - !b.href);
     const main = shown.filter((t) => !t.more);
     const more = shown.filter((t) => t.more);
@@ -187,7 +190,6 @@ onContent(async () => {
     document.getElementById("main-apps").hidden = main.length === 0;
     document.getElementById("more-apps").hidden = more.length === 0;
     document.getElementById("search-wrap").hidden = shown.length === 0;
-    document.getElementById("mode").textContent = mode === "competition" ? "Competition mode" : "Build mode";
     const ready = shown.filter((t) => t.href).length;
     document.getElementById("portal-intro").textContent = shown.length
       ? `${ready} ${ready === 1 ? "app is" : "apps are"} ready for you.`

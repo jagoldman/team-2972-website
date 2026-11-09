@@ -21,6 +21,7 @@ import {
   filterByMode,
   iconPath,
   initials,
+  modeCookie,
   parseGroups,
   parseMode,
   parseTheme,
@@ -124,12 +125,25 @@ export function mountAppBar(root, opts) {
     h("span", { class: "shbar-label-sm", text: "Apps" }),
     h("span", { "aria-hidden": "true", text: "▾" }),
   );
-  const modeText = document.createTextNode("");
+  const modeChoices = [["build", "Build"], ["competition", "Competition"]].map(([choice, label]) => {
+    const button = h("button", { type: "button", "aria-pressed": "false", text: label });
+    button.addEventListener("click", () => {
+      document.cookie = modeCookie(choice, site);
+      state.mode = choice;
+      renderTiles();
+      render();
+      button.focus();
+    });
+    return [choice, button];
+  });
   const appsBody = h("div", { style: "display:contents" });
   const appsPanel = h(
     "nav",
     { id: `${id}-apps`, class: "shbar-panel shbar-apps", "aria-label": "All apps", hidden: true },
-    h("div", { class: "shbar-panel-head" }, h("p", { class: "shbar-eyebrow" }, modeText, h("a", { href: account, target: "_blank", rel: "noopener noreferrer" }, "change in Account", sr(" (opens in a new tab)"))), h("a", { class: "shbar-btn", href: portal, target: "_blank", rel: "noopener noreferrer" }, "Portal home", sr(" (opens in a new tab)"))),
+    h("div", { class: "shbar-panel-head" },
+      h("div", { class: "shbar-mode", role: "group", "aria-label": "App mode" }, modeChoices.map(([, button]) => button)),
+      h("a", { class: "shbar-linkbtn", href: account, target: "_blank", rel: "noopener noreferrer" }, "Account settings", sr(" (opens in a new tab)")),
+      h("a", { class: "shbar-btn", href: portal, target: "_blank", rel: "noopener noreferrer" }, "Portal home", sr(" (opens in a new tab)"))),
     appsBody,
   );
   const themeIconBox = h("span", { style: "display:contents" });
@@ -151,7 +165,7 @@ export function mountAppBar(root, opts) {
     h("p", { class: "shbar-eyebrow", text: "Theme, shared by every 2972 app" }),
     choices.map(([, b]) => b),
   );
-  const chip = h("a", { class: "shbar-chip", href: account, target: "_blank", rel: "noopener noreferrer", title: "Competition mode is on. Change it on your Account page.", hidden: true }, icon("flag", 14), h("span", { class: "shbar-chip-text", text: "Competition" }), sr(" mode is on. Change it on your Account page (opens in a new tab)."));
+  const chip = h("a", { class: "shbar-chip", href: account, target: "_blank", rel: "noopener noreferrer", title: "Competition mode is on. Change it in Apps or Account.", hidden: true }, icon("flag", 14), h("span", { class: "shbar-chip-text", text: "Competition" }), sr(" mode is on. Change it in Apps or Account (opens in a new tab)."));
   const crumbText = document.createTextNode("");
   const acctInitials = h("span", { "aria-hidden": "true" });
   const acctLabel = h("span", { class: "shbar-sr" });
@@ -187,6 +201,7 @@ export function mountAppBar(root, opts) {
 
   // ---- patch ----
   function renderTiles() {
+    const moreOpen = appsBody.querySelector("details")?.open ?? false;
     const shown = state.tiles ? filterByMode(state.tiles, state.mode) : [];
     const isMore = (tile) => tile.more || tile.external || tile.id === "handbook";
     const main = shown.filter((tile) => !isMore(tile));
@@ -199,7 +214,7 @@ export function mountAppBar(root, opts) {
         state.failed ? h("p", { class: "shbar-note", role: "status" }, "Couldn't load the apps. ", retry) : null,
         state.tiles !== null && !state.failed && shown.length === 0 ? h("p", { class: "shbar-note", text: "No apps here yet. If you just joined, an admin still has to add you to a group." }) : null,
         main.length ? h("ul", { class: "shbar-grid" }, main.map((t) => tileEl(t, opts.appId))) : null,
-        more.length ? h("details", { class: "shbar-more" },
+        more.length ? h("details", { class: "shbar-more", open: moreOpen },
           h("summary", { id: `${id}-more`, text: "More" }),
           h("ul", { class: "shbar-grid", "aria-labelledby": `${id}-more` }, more.map((tile) => tileEl(tile, opts.appId))),
         ) : null,
@@ -212,7 +227,7 @@ export function mountAppBar(root, opts) {
     appsPanel.hidden = state.panel !== "apps";
     themeBtn.setAttribute("aria-expanded", String(state.panel === "theme"));
     themePanel.hidden = state.panel !== "theme";
-    modeText.data = `${state.mode === "competition" ? "Competition mode" : "Build mode"} · `;
+    for (const [choice, button] of modeChoices) button.setAttribute("aria-pressed", String(state.mode === choice));
     themeIconBox.replaceChildren(icon(themeIcon(state.theme)));
     themeLabel.textContent = `Theme: ${(THEME_CHOICES.find(([c]) => c === state.theme) || [])[1] || "Match my device"}`;
     for (const [c, b] of choices) b.setAttribute("aria-pressed", String(state.theme === c));

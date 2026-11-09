@@ -237,6 +237,27 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+.shbar-mode {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.shbar-mode button {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--input-line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}
+.shbar-mode button:hover {
+  background: var(--surface-2);
+}
+.shbar-mode button[aria-pressed="true"] {
+  background: var(--gold);
+  color: var(--on-gold);
+}
 .shbar-eyebrow a,
 .shbar-linkbtn {
   padding: 0;
