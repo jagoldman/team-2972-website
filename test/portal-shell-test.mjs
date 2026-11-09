@@ -216,6 +216,8 @@ try {
     check(`320px ${theme}: theme menu open has no horizontal scroll`, (await over(page)) <= 0, `${await over(page)}px`);
     await page.close();
     ({ page } = await openPortal(context, "/install"));
+    await page.waitForSelector("#site-footer footer, #site-footer *");
+    check(`320px ${theme}: /install runs the layout (footer filled in)`, ((await page.textContent("#site-footer")) || "").includes("Gears & Buccaneers"));
     check(`320px ${theme}: /install has the app bar and no horizontal scroll`, (await page.isVisible("#shell-bar .shbar-appsbtn")) && (await over(page)) <= 0, `${await over(page)}px`);
     page = await context.newPage();
     await page.goto(PUBLIC + "/");
