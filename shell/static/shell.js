@@ -273,6 +273,14 @@ export function mountAppBar(root, opts) {
   document.addEventListener("keydown", onKey);
   document.addEventListener("pointerdown", onDown);
   document.addEventListener("visibilitychange", onVis);
+  // Another tab of this site changed the theme: setTheme also writes localStorage, which fires "storage" here.
+  const onStorage = (e) => {
+    if (e.key !== THEME_COOKIE && e.key !== null) return;
+    state.theme = resolveTheme(document, window, opts.themeFallback);
+    applyTheme(state.theme);
+    render();
+  };
+  window.addEventListener("storage", onStorage);
 
   render();
   renderTiles();
@@ -290,6 +298,7 @@ export function mountAppBar(root, opts) {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onDown);
       document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("storage", onStorage);
       root.textContent = "";
     },
   };

@@ -1,10 +1,10 @@
 {
-  "version": "0.1.7",
+  "version": "0.1.8",
   "profile": "static",
   "files": [
     {
       "path": "shell/VERSION",
-      "sha256": "ba57e7c7f71876d645bcdd9fb070f2dea8e6db5ed284a7e3d85c6b7d2409fef1"
+      "sha256": "76f81f64ece28d0bcfe39dd35f6d14f3c87fe000b77aee11561e18d1919f607e"
     },
     {
       "path": "shell/tokens.css",
@@ -24,7 +24,7 @@
     },
     {
       "path": "shell/static/shell.js",
-      "sha256": "ef71119e0cefe35af3391907700e475d9f069508c7c322c8d018a163f9e13d7c"
+      "sha256": "9a0e73ddc33fb7b475f33bf5caaed6538e40107a7aa19370e8f2d773fa0165a9"
     }
   ]
 }
