@@ -3,6 +3,7 @@
 // them from SITE_SCHEME/SITE_DOMAIN at integration time, but a static page can't know those before config.js loads,
 // so here they are worked out in the browser from the address (D21: portal.<domain>, the same rules as the kit's
 // cookieAttributes). test/theme-test.cjs checks that both agree, and that the pages hold this script's output.
+// offline.html gets a read-only version (see READ_ONLY_PAGES).
 // Run after every shell sync:   node scripts/theme-init.mjs        (--check: fail if a page is out of date)
 import fs from "node:fs";
 import path from "node:path";
@@ -25,12 +26,29 @@ export const RUNTIME_ATTRS =
   '; SameSite=Lax";if(h!=="localhost"&&!/\\.localhost$/.test(h)&&!/^[0-9.]+$/.test(h))a+="; Domain=."+h;' +
   'if(l.protocol==="https:")a+="; Secure";return a})()';
 
-export function snippet() {
+// offline.html is shown by the service worker when the network is gone, possibly on any host and from an old cache.
+// It must never write the shared theme cookie or storage: it only reads the choice (cookie, then the old key, then
+// the system setting). The kit's script minus its migration step (the one place it writes).
+export const READ_ONLY_PAGES = ["offline.html"];
+
+function kitParts() {
   const sentinel = { scheme: "https", domain: "site-domain.invalid" };
   const kit = themeInitScript(sentinel);
   const baked = JSON.stringify(cookieAttributes(sentinel, COOKIE_MAX_AGE));
   if (kit.split(baked).length !== 2) throw new Error("the kit's themeInitScript changed shape: update scripts/theme-init.mjs");
-  return `${START}\n<script>${kit.replace(baked, RUNTIME_ATTRS)}</script>`;
+  return { kit, baked };
+}
+
+export function snippet(page) {
+  const { kit, baked } = kitParts();
+  if (!READ_ONLY_PAGES.includes(page)) return `${START}\n<script>${kit.replace(baked, RUNTIME_ATTRS)}</script>`;
+  const from = kit.indexOf("if(!t){try{var s=");
+  const close = "}}catch(e){}}";
+  const to = kit.indexOf(close, kit.indexOf(baked)) + close.length;
+  if (from < 0 || to < close.length || from > kit.indexOf(baked)) throw new Error("the kit's migration step changed shape: update scripts/theme-init.mjs");
+  const ro = kit.slice(0, from) + kit.slice(to);
+  if (/\.cookie\s*=|setItem|removeItem/.test(ro)) throw new Error("read-only theme script still writes");
+  return `${START.replace(" -->", "; read-only -->")}\n<script>${ro}</script>`;
 }
 
 const BLOCK = /<!-- theme-init: [^\n]*-->\n<script>[^\n]*<\/script>|<script>try\{var t=localStorage\.getItem\("theme"\);[^\n]*<\/script>/;
@@ -42,7 +60,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const file = path.join(root, page);
     const html = fs.readFileSync(file, "utf8");
     if (!BLOCK.test(html)) throw new Error(`${page}: no theme script in <head> to replace`);
-    const next = html.replace(BLOCK, snippet());
+    const next = html.replace(BLOCK, snippet(page));
     if (next === html) continue;
     stale++;
     if (check) console.log(`stale: ${page}`);

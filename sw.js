@@ -10,7 +10,8 @@
 //
 // Change VERSION when this file's rules or the precached list change. Old caches are deleted on activate.
 
-const VERSION = "v3";   // v3: offline.html has the shell kit's theme script (one site-wide cookie, also on editor.)
+const VERSION = "v4";   // v4: offline.html's theme script only reads the choice (never writes the shared cookie)
+                       // v3: offline.html has the shell kit's theme script (one site-wide cookie, also on editor.)
                        // v2: styles and scripts come from the network first (an old copy no longer outlives a deploy)
 const CACHE = `2972-static-${VERSION}`;     // every cache this worker makes starts with "2972-"
 const OFFLINE_URL = "/offline.html";

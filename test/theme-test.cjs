@@ -138,7 +138,13 @@ for (const page of pages) {
   let r = runHeadScript(html, { cookie: "theme=dark", stored: "light" });
   check(`${page}: cookie dark + old key light → dark (the cookie wins, as in the app bar)`, r && r.theme === "dark" && r.dark && r.scheme === "dark" && r.writes.length === 0, JSON.stringify(r));
   r = runHeadScript(html, { stored: "light", sysDark: true });
-  check(`${page}: no cookie + old key light → light, and the key moves into a site-wide cookie`, r && r.theme === "light" && !r.dark && r.writes.length === 1 && /^theme=light; Path=\/; Max-Age=34560000; SameSite=Lax; Domain=\.example\.org; Secure$/.test(r.writes[0]), JSON.stringify(r));
+  if (page === "offline.html") {
+    // read-only: shown from the service worker's cache, it must not write the shared cookie
+    check(`${page}: no cookie + old key light → light, and nothing is written (read-only)`, r && r.theme === "light" && !r.dark && r.writes.length === 0, JSON.stringify(r));
+    check(`${page}: its head script has no cookie or storage write at all`, !/\.cookie\s*=|setItem|removeItem/.test(read(page).match(/<!-- theme-init: [^\n]*-->\n<script>([^\n]*)<\/script>/)[1]));
+  } else {
+    check(`${page}: no cookie + old key light → light, and the key moves into a site-wide cookie`, r && r.theme === "light" && !r.dark && r.writes.length === 1 && /^theme=light; Path=\/; Max-Age=34560000; SameSite=Lax; Domain=\.example\.org; Secure$/.test(r.writes[0]), JSON.stringify(r));
+  }
   r = runHeadScript(html, { cookie: "theme=dark", sysDark: true });
   r.pickSystem(); r.osChange(false);
   const after = r.now();
@@ -162,7 +168,8 @@ for (const page of pages) {
     const want = kit.cookieAttributes({ scheme, domain }, kit.COOKIE_MAX_AGE);
     check(`theme cookie attributes on ${scheme}://${hostname} match the kit's`, got === want, `${got} vs ${want}`);
   }
-  for (const page of gen.PAGES) check(`${page}: holds the current scripts/theme-init.mjs output`, read(page).includes(gen.snippet()));
+  for (const page of gen.PAGES) check(`${page}: holds the current scripts/theme-init.mjs output`, read(page).includes(gen.snippet(page)));
+  check("offline.html is the only read-only page", JSON.stringify(gen.READ_ONLY_PAGES) === '["offline.html"]');
 
   // One list of landing's hosts in the head script and in components.js.
   const compList = (read("js/components.js").match(/const SITE_SUBDOMAINS = (\[[^\]]*\]);/) || [])[1];
