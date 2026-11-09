@@ -61,6 +61,7 @@ async function newContext(browser, { groups = "mentor", apps = APPS, width = 128
     }
     if (portal && url.pathname === "/apps.json") return route.fulfill({ contentType: "application/json", body: apps });
     let file = url.pathname;
+    if (!portal && file.startsWith("/site/")) file = file.slice(5);  // the editor's preview prefix (editor.<domain>/site/*)
     if (portal && file === "/") file = "/portal/index.html";
     else if (portal && (file === "/install" || file === "/install/")) file = "/portal/install.html";
     else if (file === "/") file = "/index.html";
@@ -259,6 +260,18 @@ try {
     await portal.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
     check("Light chosen on the public site: the portal follows when its tab comes back", (await portal.evaluate(() => document.documentElement.dataset.theme)) === "light");
     await pub.close(); await portal.close();
+    // the editor's preview serves these pages under /site/: the wordmark probe follows the script, not the root
+    {
+      const before = seen.length;
+      const page = await context.newPage();
+      await page.goto(PUBLIC + "/site/about.html");
+      await page.waitForSelector("#site-footer .school-mark-wrap");
+      await page.waitForTimeout(300);
+      const probes = seen.slice(before).filter((u) => u.includes("dawson-school-logo.png"));
+      check("under the editor's /site/ prefix the wordmark probe follows the script (/site/brand/...), not the root", probes.length > 0 && probes.every((u) => u === PUBLIC + "/site/brand/dawson-school-logo.png"), probes);
+      check("...and the wordmark stays visible", await page.isVisible("#site-footer .school-mark-wrap"));
+      await page.close();
+    }
     const fetched = seen.filter((u) => u.startsWith(PUBLIC + "/") && (/\/shell\/static\//.test(u) || /\/(me|apps)\.json$/.test(u) || /portal-shell\.js$/.test(u)));
     check("public pages never load the app bar script or identity", fetched.length === 0, fetched);
     await context.close();

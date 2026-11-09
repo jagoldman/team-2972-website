@@ -238,6 +238,12 @@ function imgAttrs(src, width) {
 // Dawson School's wordmark (brand/dawson-school-logo.png, white artwork). CSS draws it as a mask filled with the
 // surrounding text colour, so it takes on each section's look in both themes. Links to SITE.schoolUrl when set.
 // If the file fails to load once, every mark on the page is hidden and later renders return "".
+// Resolved against this script's own address when it is evaluated, not the site root: the editor serves these
+// pages under editor.<domain>/site/*, where /brand/... is a 404 (same base as the stylesheet's ../brand/ mask).
+const SCHOOL_MARK_URL = (() => {
+  try { return new URL("../brand/dawson-school-logo.png", document.currentScript.src).href; }
+  catch (e) { return "/brand/dawson-school-logo.png"; }            // no currentScript (tests, modules)
+})();
 let schoolMarkFailed = false;
 let schoolMarkProbed = false;
 function schoolMark(extraClass = "") {
@@ -249,7 +255,7 @@ function schoolMark(extraClass = "") {
       schoolMarkFailed = true;
       document.querySelectorAll(".school-mark-wrap").forEach(el => { el.hidden = true; });
     };
-    probe.src = "/brand/dawson-school-logo.png";
+    probe.src = SCHOOL_MARK_URL;
   }
   const mark = `<span class="school-mark" role="img" aria-label="Dawson School logo"></span>`;
   const href = isSet(SITE.schoolUrl) ? safeUrl(SITE.schoolUrl) : "";
