@@ -75,6 +75,7 @@ export function resolveTheme(doc?: Document, win?: Window, fallback?: ThemeChoic
 export function cookieAttributes(site: Site, maxAge: number): string;
 export function themeCookie(choice: ThemeChoice, site: Site): string;
 export function modeCookie(mode: Mode, site: Site): string;
+export function setModeCookie(mode: Mode, site: Site, doc?: Document): Mode;
 export function initials(name?: string | null, email?: string | null): string;
 export function applyTheme(choice: ThemeChoice, doc?: Document, win?: Window): "light" | "dark";
 export function setTheme(choice: ThemeChoice, site: Site, doc?: Document, win?: Window): "light" | "dark";

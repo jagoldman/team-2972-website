@@ -1,5 +1,18 @@
 # landing: handoff
 
+## 2026-11-09: shell 0.1.12 lint correction
+
+Synced the static kit from infra `8d25c35f49c834187f4b6c593039db9af4136fa1` into the clean
+`redesign/portal-shell` worktree at `3d0f632`. The reviewed central correction moves mode-cookie assignment
+into `setModeCookie` and adds its type declaration; runtime behavior is unchanged. Landing's portal mode
+subscription and home refresh remain intact. No app-owned runtime files changed in this correction.
+
+Validation: source/stamp hashes match 0.1.12; generated theme heads are current; portal mode subscription
+1/1, theme 175/175, PWA 274/274, install 46/46, and infra offline core/contrast 19/19 pass (including the new
+mode-cookie helper test). Syntax checks on the landing adapter, kit static/core modules and SW pass;
+`git diff --check` passes. Browser/container/stack checks and the release secret scan remain with the lead.
+No heavy jobs, new review/delegates, pushes, merges or deploys ran.
+
 ## 2026-11-09: reviewed shell 0.1.11 adoption (D109/D112)
 
 `redesign/portal-shell` resumed from `da30fd2`, matching local `main`, with a clean worktree; no fast-forward

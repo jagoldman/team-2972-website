@@ -21,7 +21,6 @@ import {
   filterByMode,
   iconPath,
   initials,
-  modeCookie,
   parseGroups,
   parseMode,
   parseTheme,
@@ -29,6 +28,7 @@ import {
   readCookie,
   resolveTheme,
   resolveTiles,
+  setModeCookie,
   setTheme,
 } from "../core.js";
 
@@ -128,8 +128,7 @@ export function mountAppBar(root, opts) {
   const modeChoices = [["build", "Build"], ["competition", "Competition"]].map(([choice, label]) => {
     const button = h("button", { type: "button", "aria-pressed": "false", text: label });
     button.addEventListener("click", () => {
-      document.cookie = modeCookie(choice, site);
-      state.mode = choice;
+      state.mode = setModeCookie(choice, site);
       renderTiles();
       render();
       button.focus();

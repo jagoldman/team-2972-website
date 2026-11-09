@@ -158,6 +158,12 @@ export function modeCookie(mode, site) {
   return `${MODE_COOKIE}=${parseMode(mode)}${cookieAttributes(site, COOKIE_MAX_AGE)}`;
 }
 
+export function setModeCookie(mode, site, doc = document) {
+  const choice = parseMode(mode);
+  doc.cookie = modeCookie(choice, site);
+  return choice;
+}
+
 /** Two letters for the account button. "Pat Example" → "PE"; falls back to the email. */
 export function initials(name, email) {
   const src = (typeof name === "string" && name.trim()) || (typeof email === "string" ? email.split("@")[0] : "");
