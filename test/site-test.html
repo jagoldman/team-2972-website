@@ -27,7 +27,7 @@ const plain = (s) => norm(String(s).replace(/\[([^\]]+)\]\((?:[^()\s]|\([^()\s]*
 // plus any single fields only that page shows (keys).
 // Robot pages are chosen per mode, below.
 const PAGES = [
-  { url: "index.html", lists: ["ROBOTS", "SCHEDULE_2027"] },
+  { url: "index.html", lists: ["SCHEDULE_2027"] },
   { url: "about.html", lists: ["VALUES", "STRATEGY", "HISTORY.milestones", "ANNUAL_EVENTS"] },
   { url: "robots.html", lists: ["ROBOTS"] },
   { url: "sponsors.html", lists: ["SPONSOR_TIERS", "SPONSOR_TIERS[0].sponsors"] },
@@ -171,14 +171,18 @@ async function checkPage(p) {
   const get = async (url) => openPage(url);
   if (MODE === "fixture") {
     let { doc, win, frame } = await get("index.html");
-    report(doc.getElementById("hero-tagline").textContent === "Fixture tagline for tests.", "fixture text is shown (hero tagline)");
-    report(/\/media\/00000000000000000002-1600\.webp/.test(doc.getElementById("hero-bg").style.backgroundImage), "media: hero background resolves to /media/00000000000000000002-1600.webp", doc.getElementById("hero-bg").style.backgroundImage);
+    report(doc.querySelector(".hero .lead").textContent === "Fixture mission text for tests.", "fixture text is shown (hero lead is the mission)");
+    report(doc.querySelector(".hero h1").textContent === "Fixture Award, 2030.", "the hero headline is the newest award and its year", doc.querySelector(".hero h1").textContent);
+    report(doc.getElementById("hero-photo").getAttribute("src") === "/media/00000000000000000002-1600.webp", "media: hero photo resolves to /media/00000000000000000002-1600.webp", doc.getElementById("hero-photo").getAttribute("src"));
     report(doc.querySelector('.brand-logo').getAttribute("src") === "/media/00000000000000000001-400.webp", "media: header logo (asked for 200) resolves to the 400 width", doc.querySelector('.brand-logo').getAttribute("src"));
     report(doc.querySelector(".brand-text").textContent.includes("9999") && doc.querySelector(".brand-text").textContent.includes("Fixture Robotics"), "fixture team number and name are in the header");
-    const reelImg = doc.querySelector("#robot-showcase img");
-    report(reelImg && reelImg.getAttribute("src") === "/media/00000000000000000005-800.webp", "media: robot photo in the reel is the 800 width", reelImg && reelImg.getAttribute("src"));
+    frame.remove();
+
+    ({ doc, win, frame } = await get("robots.html"));
+    const reelImg = doc.querySelector("#robot-archive .robot-card img");
+    report(reelImg && reelImg.getAttribute("src") === "/media/00000000000000000005-800.webp", "media: robot photo on a card is the 800 width", reelImg && reelImg.getAttribute("src"));
     report(reelImg && reelImg.getAttribute("srcset") === "/media/00000000000000000005-400.webp 400w, /media/00000000000000000005-800.webp 800w, /media/00000000000000000005-1600.webp 1600w", "media: srcset lists every stored width", reelImg && reelImg.getAttribute("srcset"));
-    report(doc.querySelectorAll("#robot-showcase .bot").length === 1, "fixture has one robot with a photo in the reel");
+    report(doc.querySelectorAll("#robot-archive .robot-card img").length === 1, "fixture has one robot with a photo on the robots page");
     frame.remove();
 
     ({ doc, win, frame } = await get("about.html"));
@@ -232,7 +236,7 @@ async function checkPage(p) {
   if (MODE === "broken") {
     const { doc, win, frame } = await get("index.html");
     report(win.CONTENT_SOURCE === "default", "invalid content.json: page uses the built-in content", win.CONTENT_SOURCE);
-    report(doc.getElementById("mission-text").textContent.startsWith("Building a confident"), "invalid content.json: the page still has its text");
+    report(doc.querySelector(".hero .lead").textContent.startsWith("Building a confident"), "invalid content.json: the page still has its text");
     frame.remove();
   }
 

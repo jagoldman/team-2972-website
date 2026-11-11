@@ -242,7 +242,6 @@ check("the public block has no light-dark() (it is one fixed theme)", !/light-da
 // Outside the token blocks, colours must be tokens. Allowed: the few places that are the same in both themes.
 const ALLOWED = [
   ".brand-logo",                         // logo sits on a white disc
-  "transparent 38%, rgba(7, 9, 15, 0.94)", // robot photo cards on Home (dark in both themes); removed with the reel
   "background: #ffffff;",                // sponsor logo tiles: logos are made for white
   ".sponsor-tile span { color: #0b1224",
   "-webkit-mask: linear-gradient(#000 0 0)", // mask shapes, not visible colours

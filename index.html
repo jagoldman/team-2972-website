@@ -20,82 +20,7 @@
 <body>
 <div id="site-header"></div>
 
-<section class="hero" id="hero">
-  <div class="hero-bg" id="hero-bg" role="img" aria-label="Team 2972 students with their robot"></div>
-  <div class="hero-inner">
-    <div class="eyebrow"><span>FRC Team 2972 · Dawson School · Since <span id="founded"></span></span></div>
-    <h1>Gears <em>&amp;</em><br />Buccaneers</h1>
-    <div class="hero-row">
-      <p class="fade-in" id="hero-tagline"></p>
-      <div class="btn-row">
-        <a class="btn" href="robots.html">See the robots <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a>
-        <a class="btn btn-outline" href="sponsors.html">Become a sponsor</a>
-      </div>
-    </div>
-  </div>
-  </section>
-
-<section class="block">
-  <div class="block-inner">
-    <div class="mission">
-      <h2 class="section-title">More than robots.<br /><span>We build people.</span></h2>
-      <div>
-        <p class="section-lead" id="mission-text"></p>
-        <div class="btn-row"><a class="btn" href="member.html">Join the team <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
-      </div>
-    </div>
-    <div class="stats" id="stats"></div>
-  </div>
-</section>
-
-<section class="block alt" style="padding-top: clamp(60px, 8vw, 110px)">
-  <div class="block-inner">
-    <div class="reel-head">
-      <div>
-        <h2 class="section-title">Every season,<br /><span>a new machine.</span></h2>
-      </div>
-      <div class="reel-ctrl">
-        <button type="button" aria-label="Previous robots" data-dir="-1">←</button>
-        <button type="button" aria-label="Next robots" data-dir="1">→</button>
-      </div>
-    </div>
-    <div class="reel" id="robot-showcase"></div>
-    <div class="btn-row"><a class="btn btn-outline" href="robots.html">See all robots</a></div>
-  </div>
-</section>
-
-<section class="block">
-  <div class="block-inner">
-    <div class="split">
-      <div class="pic" data-ck="MEDIA_PHOTOS"><img id="split-img" alt="" loading="lazy" /></div>
-      <div>
-        <h2 class="section-title" id="schedule-title">Where you'll<br /><span>find us.</span></h2>
-        <ul class="schedule-list" id="schedule-list"></ul>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="block alt">
-  <div class="block-inner">
-    <div class="school-split">
-      <div class="school-text">
-        <h2 class="section-title" id="about-school-title"></h2>
-        <p class="section-lead" id="about-school-body"></p>
-        <div class="btn-row"><a class="btn btn-outline" href="about.html">More about us</a><a class="btn btn-outline" id="school-link" data-ck-href="SITE.schoolUrl" target="_blank" rel="noopener" hidden>Visit Dawson School <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
-      </div>
-      <div class="school-split-mark" id="school-mark"></div>
-    </div>
-  </div>
-</section>
-
-<section class="block cta-band">
-  <h2 class="section-title">Fuel the next<br /><span>robot.</span></h2>
-  <div class="btn-row">
-    <a class="btn" href="sponsors.html">Become a sponsor <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a>
-    <a class="btn btn-outline" href="mentor.html">Become a mentor</a>
-  </div>
-</section>
+<main id="home"></main>
 
 <div id="site-footer"></div>
 
@@ -106,82 +31,77 @@
 <script>
 let homeWired = false;   // the page-level listeners below are added once, however often the page is re-rendered
 
-onContent(() => {
-  const tag = (id, path, type) => {
-    const el = document.getElementById(id);
-    el.setAttribute("data-ck", path);
-    if (type) el.setAttribute("data-ck-type", type);
-    return el;
-  };
+// One tile of "Find your way in" (the layout of Magic UI's bento-grid: a card, its name, a line of text, a link that is always visible).
+function bentoTile(cls, picture, name, text, href, cta) {
+  return `<article class="bc ${cls}"><div class="bc-bg">${picture}</div><div class="bc-main"><div class="bc-body">${name}${text}</div>
+    <div class="bc-cta"><a href="${href}">${esc(cta)}<span aria-hidden="true">→</span></a></div></div><div class="bc-wash"></div></article>`;
+}
+const flat = (t) => String(t || "").replace(/\s+/g, " ").trim();
 
-  // Hero
-  tag("hero-bg", "SITE.heroImage", "image").style.backgroundImage = `url("${imgUrl(SITE.heroImage, 1600).replace(/["\\()]/g, "")}")`;
+function renderHome() {
+  const win = newestAward();
+  // Hero headline: the newest award ("Utah Regional winners, 2026."), else the team name.
+  const headline = win
+    ? `<span${ck(`ROBOTS[${win.i}].awards[0]`)}>${esc(win.award.replace(/Winners/, "winners"))}</span>, <span${ck(`ROBOTS[${win.i}].year`)}>${esc(win.r.year)}</span>.`
+    : `<span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span>`;
+  const caption = win
+    ? `${esc(win.award.replace(/Winners/, "winners"))}, ${esc(win.r.year)}. The robot is <a href="${robotUrl(win.r)}"${ck(`ROBOTS[${win.i}].name`)}>${esc(robotName(win.r))}</a>.`
+    : "";
   const heroPos = safePosition(SITE.heroPosition);
-  if (heroPos) document.getElementById("hero-bg").style.backgroundPosition = heroPos;
-  tag("founded", "SITE.founded").textContent = SITE.founded;
-  tag("hero-tagline", "SITE.tagline").textContent = SITE.tagline;
-  tag("mission-text", "SITE.mission").textContent = SITE.mission;
-  tag("about-school-title", "ABOUT_SCHOOL.heading").textContent = ABOUT_SCHOOL.heading;
-  tag("about-school-body", "ABOUT_SCHOOL.body", "rich").innerHTML = rich(ABOUT_SCHOOL.body);
-  document.getElementById("school-mark").innerHTML = schoolMark();
-  const schoolLink = document.getElementById("school-link");
-  schoolLink.href = safeUrl(SITE.schoolUrl);
-  schoolLink.hidden = !safeUrl(SITE.schoolUrl);
+  const hero = SITE.heroImage ? `
+    <figure class="photo-col"><div class="photo r43"><img${imgAttrs(SITE.heroImage, 1600)}${ck("SITE.heroImage")}${heroPos ? ` style="object-position: ${esc(heroPos)}"` : ""} id="hero-photo" width="1500" height="1125" fetchpriority="high"
+      alt="${esc(altFor(SITE.heroImage, "Team 2972 students with their robot"))}"></div>${caption ? `<figcaption>${caption}</figcaption>` : ""}</figure>` : "";
 
-  // Robots that have a photo, newest first. The index kept with each robot is its place in ROBOTS,
-  // so every data-ck path is right even though the reel only shows some of them.
-  const withPhoto = ROBOTS.map((r, i) => ({ r, i })).filter(({ r }) => r.image);
+  // "Find your way in": students, sponsors, mentors, and the workshop (HISTORY.today). Text of the three doors is written
+  // here (page text is not an editor field); the workshop line is the first sentence of HISTORY.today plus the one about
+  // the machines, so it follows the content.
+  const today = HISTORY.today;
+  const sentences = flat((today.paragraphs || [])[0]).match(/[^.]+\./g) || [];
+  const machines = sentences.find((x) => /^\s*Students machine parts/.test(x));
+  const shopText = [sentences[0], machines].filter(Boolean).map((x) => x.trim()).join(" ");
+  // The newest milestone photo (the milestones run oldest first): the 2025 shop, not the 2021 room.
+  const shop = HISTORY.milestones.map((m, i) => ({ m, i })).reverse().find(({ m }) => m.image);
+  const shopImg = shop
+    ? `<img${imgAttrs(shop.m.image, 1000)}${ck(`HISTORY.milestones[${shop.i}].image`)}${ckAlt(`HISTORY.milestones[${shop.i}].imageAlt`)} alt="${esc(altFor(shop.m.image, shop.m.imageAlt || today.heading))}" loading="lazy" width="1000" height="750">`
+    : "";
+  const studentImg = SITE.memberImage
+    ? `<img${imgAttrs(SITE.memberImage, 1000)}${ck("SITE.memberImage")}${ckAlt("SITE.memberImageAlt")} alt="${esc(altFor(SITE.memberImage, SITE.memberImageAlt))}" loading="lazy" width="1000" height="1000">` : "";
+  const machinesList = ["Lathe", "CNC mill", "CNC router", "Horizontal and vertical bandsaws", "Miter saw", "3D printers", "Laser engraver/cutter", "Parts library"];
+  const tiers = SPONSOR_TIERS.map((t, i) => ({ t, i }));
+  const newest = tiers.find(({ t }) => t.sponsors.length);
 
-  tag("robot-showcase", "ROBOTS").innerHTML = withPhoto.slice(0, 6).map(({ r, i }) => `
-    <a class="bot" href="${robotUrl(r)}"${ck(`ROBOTS[${i}]`)}>
-      <img${imgAttrs(r.image, 800)}${imgPos(r)}${ck(`ROBOTS[${i}].image`)} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}" loading="lazy" width="420" height="525" />
-      ${r.status ? `<span class="pill"${ck(`ROBOTS[${i}].status`)}>${esc(r.status)}</span>` : ""}
-      <div class="info">
-        <div class="yr"><span${ck(`ROBOTS[${i}].year`)}>${esc(r.year)}</span> · <span${ck(`ROBOTS[${i}].game`)}>${esc(r.game)}</span></div>
-        <h3${ck(`ROBOTS[${i}].name`)}>${esc(robotName(r))}</h3>
-        <p${ck(`ROBOTS[${i}].tagline`)}>${esc(r.tagline || "")}</p>
-      </div>
-    </a>`).join("");
+  document.getElementById("home").innerHTML = `
+    <section class="band tight hero"><div class="wrap hero-grid"><div>
+      <p class="label gold">FRC Team <span${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span> · <span${ck("SITE.school")}>${esc(SITE.school)}</span> · <span${ck("SITE.location")}>${esc(SITE.location)}</span></p>
+      <h1${win ? ck(`ROBOTS[${win.i}].awards`) : ""}>${headline}</h1>
+      <p class="lead"${ck("SITE.mission")}>${esc(SITE.mission)}</p>
+      <div class="btns"><a class="btn btn-gold" href="member.html">Join the team</a><a class="btn btn-line" href="sponsors.html">Sponsor a season</a></div>
+      <div class="school-line"><span class="label">A Dawson School team</span>${schoolMark("sm")}</div>
+    </div>${hero}</div></section>
+    <div id="nextUp">${renderNextUp()}</div>
+    <div id="record"></div>
+    <section class="band alt"><div class="wrap"><h2 class="h2">Find your way in</h2><div class="bento">
+      ${bentoTile("bc-stud", studentImg, `<h3 class="bc-name">Students</h3>`, `<p>For students who want to design, build and compete with us.</p>`, "member.html", "How to join")}
+      ${bentoTile("bc-spons", "", `<h3 class="bc-name">Sponsors</h3>`, `<p>Every dollar goes directly toward robot parts, competition fees, travel, and outreach.</p>`, "sponsors.html", "Sponsor the team")}
+      ${bentoTile("bc-ment", "", `<h3 class="bc-name">Mentors</h3>`, `<p>For adults who want to guide students with their time and expertise.</p>`, "mentor.html", "Become a mentor")}
+      ${bentoTile("bc-shop", shopImg, `<h3 class="bc-name"${ck("HISTORY.today.heading")}>${esc(today.heading)}</h3>`,
+        `<div${ck("HISTORY.today.paragraphs")}><p${ck("HISTORY.today.paragraphs[0]", "rich")}>${esc(shopText)}</p></div><ul class="shop-chips">${machinesList.map((m) => `<li class="chip">${esc(m)}</li>`).join("")}</ul>`, "sponsors.html", "Support the shop")}
+    </div></div></section>
+    ${newest ? `<section class="band alt"${ck("SPONSOR_TIERS")}><div class="wrap"${ck(`SPONSOR_TIERS[${newest.i}]`)}>
+      <p class="label">Sponsors, <span${ck(`SPONSOR_TIERS[${newest.i}].tier`)}>${esc(newest.t.tier.replace(/\s*Sponsors?\s*/i, "").trim() || newest.t.tier)}</span> season</p>
+      ${sponsorNames(newest.t, newest.i)}<a class="btn btn-line" href="sponsors.html">Become a sponsor</a></div></section>` : ""}`;
+  if (typeof renderRecord === "function") renderRecord(document.getElementById("record"));
+}
 
-  // Numbers: counted from the lists, except the founding year, which is a field.
-  // Events where the result mentions an alliance, the playoffs, or an event win
-  const playoffEvents = ROBOTS.reduce((n, r) =>
-    n + r.results.filter(x => /alliance|playoffs|won the event/i.test(x.result)).length, 0);
-  const stats = [
-    { n: ROBOTS.length, label: "seasons on the field" },
-    { n: Number(SITE.founded), label: "year we started", plain: true, path: "SITE.founded" },
-    { n: playoffEvents, label: "playoff appearances" },
-    { n: SCHEDULE_2027.length, label: "events this season" },
-  ];
-  document.getElementById("stats").innerHTML = stats.map((s, i) => `
-    <div class="stat"><div class="n"><span${s.path ? ck(s.path) : ""}>${esc(s.n)}</span></div><div class="l">${s.label}</div></div>`).join("");
-
-  tag("schedule-list", "SCHEDULE_2027").innerHTML = SCHEDULE_2027.map((s, i) => `
-    <li${ck(`SCHEDULE_2027[${i}]`)}>
-      <span class="event-name"${ck(`SCHEDULE_2027[${i}].event`)}>${esc(s.event)}</span>
-      <span class="event-loc"><span class="event-when"${ck(`SCHEDULE_2027[${i}].dates`)}>${esc(s.dates)}</span><span class="event-where"${ck(`SCHEDULE_2027[${i}].location`)}>${keepState(esc(s.location))}</span></span>
-    </li>`).join("");
-
-  // A second team photo beside the schedule (not the hero photo again)
-  const splitIndex = MEDIA_PHOTOS.length > 1 ? 1 : 0;
-  const splitImg = document.getElementById("split-img");
-  if (MEDIA_PHOTOS.length) {
-    splitImg.src = imgUrl(MEDIA_PHOTOS[splitIndex], 1200);
-    const set = imgSrcset(MEDIA_PHOTOS[splitIndex]);
-    if (set) { splitImg.srcset = set; splitImg.sizes = "(max-width: 900px) 100vw, 600px"; } else { splitImg.removeAttribute("srcset"); }
-    splitImg.setAttribute("data-ck", `MEDIA_PHOTOS[${splitIndex}]`);
-    splitImg.parentElement.hidden = false;
-  } else {
-    splitImg.parentElement.hidden = true;
-  }
-
+onContent(() => {
+  renderHome();
+  initTickers(document);
   if (homeWired) return;
   homeWired = true;
-
-  // Reel arrows
-  document.querySelectorAll(".reel-ctrl button").forEach((b) => b.addEventListener("click", () => {
-    document.getElementById("robot-showcase").scrollBy({ left: Number(b.dataset.dir) * 460, behavior: REDUCED_MOTION ? "auto" : "smooth" });
-  }));
+  // The countdown is worked out in the browser: again when the tab is shown, and every 30 minutes.
+  const refresh = () => { const el = document.getElementById("nextUp"); if (el) el.innerHTML = renderNextUp(); };
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
+  setInterval(refresh, 30 * 60 * 1000);
 });
 </script>
 </body>

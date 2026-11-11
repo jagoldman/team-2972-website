@@ -280,6 +280,79 @@ function robotUrl(r) {
   return `robot.html?year=${encodeURIComponent(r.year)}`;
 }
 
+// ---------- Home helpers: newest award, next event, sponsor names ----------
+
+// The newest season that has an award: { r, i, award } (i is its place in ROBOTS, for data-ck), or null.
+function newestAward() {
+  const i = ROBOTS.findIndex((r) => Array.isArray(r.awards) && r.awards.length);
+  return i < 0 ? null : { r: ROBOTS[i], i, award: ROBOTS[i].awards[0] };
+}
+
+const MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+
+// "March 24-27, 2027" or "Mar 30 - Apr 2, 2027" -> { start, end } (local dates; end is the end of the last day), or null
+// when the text is not a date range this page understands. The schedule is typed by hand, so it must never throw.
+function parseEventDates(text) {
+  const m = /([A-Za-z]+)\.?\s+(\d{1,2})(?:\s*[-–—]\s*(?:([A-Za-z]+)\.?\s+)?(\d{1,2}))?\s*,?\s*(\d{4})/.exec(String(text || ""));
+  if (!m) return null;
+  const m1 = MONTHS[m[1].slice(0, 3).toLowerCase()];
+  const m2 = m[3] ? MONTHS[m[3].slice(0, 3).toLowerCase()] : m1;
+  if (m1 == null || m2 == null) return null;
+  const y = Number(m[5]);
+  return { start: new Date(y, m1, Number(m[2])), end: new Date(y, m2, Number(m[4] || m[2]), 23, 59, 59) };
+}
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// The "Next event" strip: the first event in SCHEDULE_2027 that has not ended, how long until it starts, and the
+// rest after it. Computed in the browser from the schedule on every call (Home calls it on load, when the tab is shown
+// again and every 30 minutes), so there is no server job and nothing to edit. After the last event: "Season complete".
+// The strip carries the list's data-ck so an editor can always add an event.
+function renderNextUp(now = new Date()) {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dated = SCHEDULE_2027.map((e, i) => ({ e, i, d: parseEventDates(e.dates) }));
+  const known = dated.filter((x) => x.d);
+  const up = known.length ? known.filter((x) => x.d.end >= now) : dated;   // no readable dates: list them all, with no countdown
+  const open = `<section class="band rules alt tight" aria-label="Next event"${ck("SCHEDULE_2027")}><div class="wrap next">`;
+  if (!up.length) return `${open}<div><p class="label">Next event</p><p class="next-name">Season complete</p></div></div></section>`;
+  const [n, ...rest] = up;
+  let when = "";
+  if (n.d) {
+    const days = Math.round((n.d.start - today) / 86400000);
+    if (days < 0) when = `<p class="countdown">Happening now</p>`;
+    else if (days === 0) when = `<p class="countdown">Starts today</p>`;
+    else if (days === 1) when = `<p class="countdown">Tomorrow</p>`;
+    else when = `<p class="countdown count-big"><span class="stat-n">${days}</span><span class="stat-l">days until the event starts</span></p>`;
+  }
+  const where = (x) => `<span${ck(`SCHEDULE_2027[${x.i}].dates`)}>${esc(x.e.dates)}</span> · <span${ck(`SCHEDULE_2027[${x.i}].location`)}>${keepState(esc(x.e.location))}</span>`;
+  return `${open}
+    <div class="next-card"${ck(`SCHEDULE_2027[${n.i}]`)}><span class="beam" aria-hidden="true"><i></i></span>
+      <p class="label gold">Next event</p>
+      <p class="next-name"${ck(`SCHEDULE_2027[${n.i}].event`)}>${esc(n.e.event)}</p>
+      <div>${where(n)}</div>
+      ${when}
+    </div>
+    ${rest.length ? `<div><p class="label">Then</p><ul class="later">${rest.map((x) => `<li${ck(`SCHEDULE_2027[${x.i}]`)}><b${ck(`SCHEDULE_2027[${x.i}].event`)}>${esc(x.e.event)}</b><span class="mute">${where(x)}</span></li>`).join("")}</ul></div>` : ""}
+  </div></section>`;
+}
+
+// A sponsor shows as a name in type. When it has a real logo (not empty, not the grey placeholder) the logo is shown on a
+// white tile instead, and if the file fails to load the name takes its place (see the error handler in mountLayout).
+function realLogo(s) {
+  return Boolean(s.logo) && !/placeholder/i.test(String(s.logo));
+}
+function sponsorNames(tier, ti) {
+  const base = `SPONSOR_TIERS[${ti}]`;
+  return `<ul class="names"${ck(`${base}.sponsors`)}>${tier.sponsors.map((s, j) => {
+    const P = `${base}.sponsors[${j}]`;
+    const name = `<span${ck(`${P}.name`)}>${esc(s.name)}</span>`;
+    const href = isSet(s.url) ? safeUrl(s.url) : "";
+    if (!realLogo(s)) return `<li${ck(P)}>${href ? `<a class="name-link" href="${esc(href)}" target="_blank" rel="noopener"${ckHref(`${P}.url`)}>${name}</a>` : name}</li>`;
+    const img = `<img${imgAttrs(s.logo, 400)}${ck(`${P}.logo`)}${ckAlt(`${P}.name`)} alt="${esc(altFor(s.logo, s.name + " logo"))}" title="${esc(s.name)}" loading="lazy" data-sponsor-name="${esc(s.name)}" />`;
+    return `<li class="sp-logo"${ck(P)}>${href ? `<a href="${esc(href)}" target="_blank" rel="noopener"${ckHref(`${P}.url`)}>${img}</a>` : img}</li>`;
+  }).join("")}</ul>`;
+}
+
 // ---------- Site hosts ----------
 // Every host URL is built from SITE_SCHEME and SITE_DOMAIN (filled into config.js
 // by Caddy), so the same files work on localhost and 2972robotics.com.
@@ -457,6 +530,39 @@ async function clearOfflineCaches() {
 // static when the visitor has asked their system for reduced motion.
 const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+// Number Ticker, ported from Magic UI (registry/magicui/number-ticker.tsx): a spring (damping 60, stiffness 100, mass 1)
+// from 0 to the number, once, when the number first comes into view, written with en-US separators. The page already
+// holds the final number, so reduced motion, a missing IntersectionObserver and a script error all show the right value.
+function tickerRun(el, to) {
+  const fmt = new Intl.NumberFormat("en-US");
+  let x = 0, v = 0, last = null;
+  el.textContent = fmt.format(0);
+  const frame = (t) => {
+    const dt = last == null ? 0 : Math.min((t - last) / 1000, 0.05), steps = Math.max(1, Math.ceil(dt * 240)), h = dt / steps;
+    last = t;
+    for (let i = 0; i < steps; i++) { v += (-100 * (x - to) - 60 * v) * h; x += v * h; }
+    if (Math.abs(v) < 0.01 && Math.abs(x - to) < 0.01) { el.textContent = fmt.format(to); return; }
+    el.textContent = fmt.format(Number(x.toFixed(0)));
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+  setTimeout(() => { el.textContent = fmt.format(to); }, 6000);
+}
+function initTickers(root = document) {
+  if (REDUCED_MOTION || !("IntersectionObserver" in window)) return;
+  root.querySelectorAll("[data-ticker]:not([data-ticked])").forEach((el) => {
+    const to = Number(el.getAttribute("data-ticker"));
+    if (!Number.isFinite(to)) return;
+    el.setAttribute("data-ticked", "1");
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      io.disconnect();
+      tickerRun(el, to);
+    });
+    io.observe(el);
+  });
+}
+
 // ---------- Theme ----------
 // Public pages are dark only: <html data-site="public"> and <meta name="color-scheme" content="dark"> in each page's
 // HTML, no script. They never read or write the shared `theme` cookie or the old localStorage key, so a light choice
@@ -493,6 +599,13 @@ function mountLayout() {
 
   if (!layoutStarted) {
     layoutStarted = true;
+    // A sponsor logo that does not load: show the sponsor's name in type instead.
+    document.addEventListener("error", (e) => {
+      const img = e.target;
+      if (!img || img.tagName !== "IMG" || !img.hasAttribute("data-sponsor-name")) return;
+      const li = img.closest("li");
+      if (li) { li.classList.remove("sp-logo"); li.textContent = img.getAttribute("data-sponsor-name"); }
+    }, true);
     document.addEventListener("click", (e) => {
       const copy = e.target.closest && e.target.closest("[data-copy]");
       if (copy) { copyAddress(copy); return; }

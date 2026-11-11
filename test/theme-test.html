@@ -35,18 +35,10 @@ const lum = (c) => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
 const ratio = (a, b) => { const [hi, lo] = lum(a) >= lum(b) ? [a, b] : [b, a]; return (lum(hi) + 0.05) / (lum(lo) + 0.05); };
 const key = (c) => c.map((v) => Math.round(v)).join(",");
 
-// Text on a photo: the photo can be replaced, so assume the worst case, a pure white photo, under what the
-// stylesheet puts over it. Each entry lists those layers from the bottom up.
-const ON_PHOTO = [   // (the public pages put no text over photographs; Home hero entry is removed with the old hero)
-  // .hero-bg is filtered to brightness .45 (white becomes 115); .hero::before washes it 0.55 where the text sits
-  { sel: ".hero", base: [115, 115, 115], layers: [[7, 9, 15, 0.55]] },
-  // the header over the hero: the hero wash at the top is 0.35, then the header's own scrim of 0.72
-  { sel: ".site-header:not(.scrolled):not(.solid)", base: [115, 115, 115], layers: [[7, 9, 15, 0.35], [7, 9, 15, 0.72]] },
-  // robot photo cards: .bot::after is 0.94 at the bottom, where the text sits
-  { sel: ".bot", base: [255, 255, 255], layers: [[7, 9, 15, 0.94]] },
-];
-// A header with its glass background can sit over anything: white or black.
-const OVER_ANYTHING = ".site-header.scrolled, .site-header.solid";
+// Text on a photo: the public pages put no text over photographs (docs/PUBLIC_REDESIGN_PROPOSAL.md §4), so there is no
+// worst-case photo to assume. (Kept as a list in case a page ever needs one.)
+const ON_PHOTO = [];
+const OVER_ANYTHING = ".never-matches";
 
 // Every colour the element's own background could be: solid colours and each stop of a gradient, over each possibility below it.
 function backgroundsOf(win, el) {
