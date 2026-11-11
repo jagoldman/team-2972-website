@@ -23,7 +23,7 @@ function load(contentSource) {
   ctx.document = { documentElement: {}, body: { hasAttribute: () => false }, querySelectorAll: () => [], querySelector: () => null, getElementById: () => ({}), addEventListener() {}, cookie: "" };
   vm.createContext(ctx);
   vm.runInContext(contentSource || read("js/content.js"), ctx, { filename: "content.js" });
-  vm.runInContext(read("js/components.js") + "\n;globalThis.T = { resultType, seasonStats, seasonLog, seasonSummary, seasonStatRow, parseResult, resultRow, resultsTable };", ctx, { filename: "components.js" });
+  vm.runInContext(read("js/components.js") + "\n;globalThis.T = { resultType, seasonStats, seasonLog, seasonSummary, seasonStatRow, parseResult, resultRow, resultsTable, parseEventDates, renderNextUp };", ctx, { filename: "components.js" });
   return ctx;
 }
 const ctx = load();
@@ -109,6 +109,50 @@ check("parse: a plain hyphen after the record is not treated as the playoff dash
   check("the row carries the editor's keys when given a path", T.resultRow({ event: "E", result: "Rank 1" }, "ROBOTS[3].results[0]").includes('data-ck="ROBOTS[3].results[0]"'));
   const table = T.resultsTable({ results: [{ event: "A", result: "Rank 1 of 2" }] }, "ROBOTS[3]");
   check("the table has the five headers, a scroll region and the list's key", ["Event", "Rank", "Record", "Playoffs"].every((h) => table.includes(`>${h}</th>`)) && /role="region"/.test(table) && table.includes('data-ck="ROBOTS[3].results"'));
+}
+
+// ---------- next event (Home): readable dates in order, unreadable dates kept ----------
+function schedule(events) {
+  return load(`const SITE = { teamNumber: "1", teamName: "T", school: "S", location: "L", founded: "2000", email: "a@example.com", instagram: "#", instagramHandle: "", schoolUrl: "#", logo: "" };
+    const ROBOTS = [];
+    const SCHEDULE_2027 = ${JSON.stringify(events)};`);
+}
+const NOW = new Date(2026, 10, 11);   // 11 Nov 2026, before the 2027 regionals
+const sliceBetween = (html, from, to) => html.slice(html.indexOf(from), to ? html.indexOf(to) : undefined);
+{
+  const html = T.renderNextUp(NOW);
+  check("the real schedule's next event is the earlier regional, then Denver", /class="next-name"[^>]*>Intermountain West Regional</.test(html) && sliceBetween(html, "Then").includes("Denver Regional") && !/Season complete/.test(html));
+  check("parseEventDates reads a same-month range and returns null for a non-date", T.parseEventDates("March 24-27, 2027").start.getMonth() === 2 && T.parseEventDates("Date TBD") === null && T.parseEventDates("") === null);
+}
+{
+  const html = schedule([
+    { event: "Later", dates: "April 7-10, 2027", location: "Denver, CO" },
+    { event: "Sooner", dates: "March 24-27, 2027", location: "Nampa, ID" },
+    { event: "Mystery", dates: "Date TBD", location: "Somewhere, CO" },
+  ]).T.renderNextUp(NOW);
+  const card = sliceBetween(html, "next-card", "Then");
+  const later = sliceBetween(html, "Then");
+  check("the next event is the earliest start, not the first row", /class="next-name"[^>]*>Sooner</.test(card) && !card.includes("Later") && !card.includes("Mystery"));
+  check("an unreadable date stays in the Then list, after the other upcoming event", later.indexOf("Later") >= 0 && later.indexOf("Later") < later.indexOf("Mystery") && later.includes("Date TBD"));
+  check("a listed unreadable date is not called season complete", !/Season complete/.test(html));
+}
+{
+  const html = schedule([
+    { event: "Done", dates: "March 24-27, 2026", location: "Nampa, ID" },
+    { event: "Mystery", dates: "Date TBD", location: "Somewhere, CO" },
+  ]).T.renderNextUp(NOW);
+  check("past readable dates plus an unreadable one are not season complete", !/Season complete/.test(html) && /class="next-name"[^>]*>Mystery</.test(html) && html.includes("Date TBD") && !/days until/.test(html));
+}
+{
+  const html = schedule([{ event: "Done", dates: "March 24-27, 2026", location: "Nampa, ID" }]).T.renderNextUp(NOW);
+  check("every event finished and every date readable: season complete", /Season complete/.test(html) && !html.includes("Done"));
+}
+{
+  const html = schedule([
+    { event: "First mystery", dates: "Date TBD", location: "Somewhere, CO" },
+    { event: "Second mystery", dates: "TBA", location: "Elsewhere, CO" },
+  ]).T.renderNextUp(NOW);
+  check("only unreadable dates are listed in order, with no countdown", /class="next-name"[^>]*>First mystery</.test(html) && sliceBetween(html, "Then").includes("Second mystery") && !/Season complete/.test(html) && !/days until/.test(html));
 }
 
 console.log(failed ? `\n${failed} FAILED, ${passed} passed` : `ALL PASSED (${passed})`);

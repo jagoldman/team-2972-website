@@ -304,18 +304,22 @@ function parseEventDates(text) {
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-// The "Next event" strip: the first event in SCHEDULE_2027 that has not ended, how long until it starts, and the
+// The "Next event" strip: the soonest event in SCHEDULE_2027 that has not ended, how long until it starts, and the
 // rest after it. Computed in the browser from the schedule on every call (Home calls it on load, when the tab is shown
 // again and every 30 minutes), so there is no server job and nothing to edit. After the last event: "Season complete".
-// The strip carries the list's data-ck so an editor can always add an event.
+// A date this page cannot read ("Date TBD") stays in the list under the next event. It is never dropped, and the
+// season is not called complete while one remains. The strip carries the list's data-ck so an editor can always add an event.
 function renderNextUp(now = new Date()) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const dated = SCHEDULE_2027.map((e, i) => ({ e, i, d: parseEventDates(e.dates) }));
-  const known = dated.filter((x) => x.d);
-  const up = known.length ? known.filter((x) => x.d.end >= now) : dated;   // no readable dates: list them all, with no countdown
+  const upcoming = dated.filter((x) => x.d && x.d.end >= now).sort((a, b) => a.d.start - b.d.start || a.i - b.i);
+  const unread = dated.filter((x) => !x.d);
   const open = `<section class="band rules alt tight" aria-label="Next event"${ck("SCHEDULE_2027")}><div class="wrap next">`;
-  if (!up.length) return `${open}<div><p class="label">Next event</p><p class="next-name">Season complete</p></div></div></section>`;
-  const [n, ...rest] = up;
+  // Nothing left that we can place, and nothing we failed to read: the season is over.
+  if (!upcoming.length && !unread.length) return `${open}<div><p class="label">Next event</p><p class="next-name">Season complete</p></div></div></section>`;
+  // The next event is the soonest readable one still ahead. Unreadable dates follow it. When every readable date
+  // has passed, the unreadable ones are the list (the first stands in as next, with no countdown).
+  const [n, ...rest] = upcoming.length ? [...upcoming, ...unread] : unread;
   let when = "";
   if (n.d) {
     const days = Math.round((n.d.start - today) / 86400000);
