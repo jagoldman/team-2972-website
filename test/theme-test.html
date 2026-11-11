@@ -137,17 +137,12 @@ async function settledBg(win, doc, want) {
   for (let i = 0; i < 40; i++) { if (win.getComputedStyle(doc.body).backgroundColor === want) break; await sleep(50); }
   return win.getComputedStyle(doc.body).backgroundColor;
 }
-// Headless Chrome started with a system setting sometimes answers prefers-color-scheme from the default for an iframe's first
-// style pass (the query is right a moment later, but the page's head script has already run). A page that follows the system
-// is therefore opened a second time if it is not in the wanted colour the first time; a real bug fails both times.
-async function openSettled(url, want, pageOk = () => true) {
-  let page = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    if (page) page.frame.remove();
-    page = await openPage(url);
-    page.bg = await settledBg(page.win, page.doc, want);
-    if (page.bg === want && pageOk(page)) break;
-  }
+// One navigation. test/theme-scheme.mjs sets prefers-color-scheme on this browser page before the test
+// document is opened, so a portal page's head script sees that preference the first time it asks.
+async function openThemed(url, want) {
+  const page = await openPage(url);
+  page.bg = await settledBg(page.win, page.doc, want);
+  page.loads = page.win.performance.getEntriesByType("navigation").length;
   return page;
 }
 async function openPage(url, theme) {
@@ -283,18 +278,18 @@ const SITE_PAGES = ["index.html", "about.html", "mentor.html", "member.html", "r
     report(/(?:^|;\s*)theme=light(?:;|$)/.test(document.cookie) && localStorage.getItem("theme") === "light", "public pages did not delete or rewrite the saved theme cookie or the old key", document.cookie);
     localStorage.removeItem("theme"); clearCookie();
     // 3) themed pages (the portal's install page, which has the shell kit's app bar) still follow the system, and a saved choice beats it
-    let bg;
-    ({ frame, win, doc, bg } = await openSettled("portal/install.html", wantBg));
-    report(doc.documentElement.dataset.theme === undefined && bg === wantBg, `portal install page (themed): follows the ${dark ? "dark" : "light"} system setting`, `${bg} data-theme=${doc.documentElement.dataset.theme}`);
+    let bg, loads;
+    ({ frame, win, doc, bg, loads } = await openThemed("portal/install.html", wantBg));
+    report(loads === 1 && doc.documentElement.dataset.theme === undefined && bg === wantBg, `portal install page (themed): follows the ${dark ? "dark" : "light"} system setting on the first load`, `${loads} load(s), ${bg} data-theme=${doc.documentElement.dataset.theme}`);
     frame.remove();
     localStorage.setItem("theme", dark ? "light" : "dark");
     const saved = dark ? "rgb(247, 248, 250)" : "rgb(7, 9, 15)";
-    ({ frame, win, doc, bg } = await openSettled("portal/install.html", saved));
-    report(doc.documentElement.dataset.theme === (dark ? "light" : "dark") && bg === saved, "portal install page (themed): a saved choice overrides the system setting on load", bg);
+    ({ frame, win, doc, bg, loads } = await openThemed("portal/install.html", saved));
+    report(loads === 1 && doc.documentElement.dataset.theme === (dark ? "light" : "dark") && bg === saved, "portal install page (themed): a saved choice overrides the system setting on the first load", `${loads} load(s), ${bg}`);
     frame.remove();
     clearCookie(); localStorage.setItem("theme", "purple");
-    ({ frame, win, doc, bg } = await openSettled("portal/install.html", wantBg));
-    report(doc.documentElement.dataset.theme === undefined && bg === wantBg, "portal install page (themed): an unknown saved value is ignored", `data-theme=${doc.documentElement.dataset.theme} bg=${bg}`);
+    ({ frame, win, doc, bg, loads } = await openThemed("portal/install.html", wantBg));
+    report(loads === 1 && doc.documentElement.dataset.theme === undefined && bg === wantBg, "portal install page (themed): an unknown saved value is ignored on the first load", `${loads} load(s), data-theme=${doc.documentElement.dataset.theme} bg=${bg}`);
     frame.remove();
     localStorage.removeItem("theme"); clearCookie();
   }

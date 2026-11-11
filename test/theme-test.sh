@@ -28,20 +28,33 @@ site() { # <dest> <groups>
 }
 
 fail=0
-run() { # <label> <mode> <dir> [chrome flags...]
-  label=$1; mode=$2; dir=$3; shift 3
-  port=$(free_port); serve "$dir" "$port"
-  out=$("$CHROME" --headless=new --disable-gpu --no-first-run --user-data-dir="$TMP/chrome-$label" \
-    --force-prefers-reduced-motion "$@" --virtual-time-budget=240000 --dump-dom "http://127.0.0.1:$port/test/theme-test.html?mode=$mode" 2>/dev/null || true)
+verdict() { # <label>  uses $out
   printf '%s\n' "$out" | grep -E '^(ok  |FAIL) ' | sed 's/&lt;/</g; s/&gt;/>/g; s/&amp;/\&/g; s/&quot;/"/g' | grep -v '^ok  ' || true
   n=$(printf '%s\n' "$out" | grep -c '^ok  ' || true)
   if printf '%s\n' "$out" | grep -q '<div id="done">THEME-TEST-PASS</div>'; then echo "ok   $label: $n checks passed"
   else echo "FAIL $label ($n checks passed; see FAIL lines above)"; printf '%s\n' "$out" | grep -q 'id="done"' || echo "     (the test page did not finish)"; fail=1; fi
 }
+run() { # <label> <mode> <dir> [chrome flags...]
+  label=$1; mode=$2; dir=$3; shift 3
+  port=$(free_port); serve "$dir" "$port"
+  out=$("$CHROME" --headless=new --disable-gpu --no-first-run --user-data-dir="$TMP/chrome-$label" \
+    --force-prefers-reduced-motion "$@" --virtual-time-budget=240000 --dump-dom "http://127.0.0.1:$port/test/theme-test.html?mode=$mode" 2>/dev/null || true)
+  verdict "$label"
+}
+# <label> <mode> <dir> <light|dark>. Sets the system preference on the page before the first navigation.
+run_scheme() {
+  label=$1; mode=$2; dir=$3; scheme=$4
+  port=$(free_port); serve "$dir" "$port"
+  out=$(node test/theme-scheme.mjs --chrome "$CHROME" --profile "$TMP/chrome-$label" --scheme "$scheme" \
+    --url "http://127.0.0.1:$port/test/theme-test.html?mode=$mode" || true)
+  verdict "$label"
+}
 
 site "$TMP/mentor" "mentor";  run "contrast (both themes, all pages, portal with tiles)" contrast "$TMP/mentor"
 site "$TMP/nogroup" "";       run "contrast (portal for a user with no group)" nogroup "$TMP/nogroup"
-site "$TMP/syslight" "mentor"; run "system setting: light" system-light "$TMP/syslight" --blink-settings=preferredColorScheme=1
-site "$TMP/sysdark" "mentor";  run "system setting: dark" system-dark "$TMP/sysdark" --blink-settings=preferredColorScheme=0
+# The system preference is applied with Emulation.setEmulatedMedia before the test page is opened
+# (test/theme-scheme.mjs). A command-line blink setting can still be late for an iframe's first load.
+site "$TMP/syslight" "mentor"; run_scheme "system setting: light" system-light "$TMP/syslight" light
+site "$TMP/sysdark" "mentor";  run_scheme "system setting: dark" system-dark "$TMP/sysdark" dark
 
 [ $fail -eq 0 ] && echo "ALL PASSED" || { echo "SOME CHECKS FAILED"; exit 1; }
