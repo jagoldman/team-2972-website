@@ -8,7 +8,6 @@ One consistent set for every Team 2972 app: a navy rounded square with a gold gl
 | `portal/` | the portal (`portal.SITE_DOMAIN`) | the number "2972" |
 | `tasks/` | the task app | check in a circle |
 | `admin/` | the admin app | shield with a check |
-| `kickoff/` | the Kickoff app | target |
 
 Each folder has the same five files:
 

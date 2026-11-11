@@ -59,7 +59,7 @@
 		header X-Robots-Tag "noindex"
 		file_server
 	}
-	@pwa_icons path_regexp icons ^/pwa-icons/(site|portal|tasks|admin|kickoff)/(icon\.svg|icon-192\.png|icon-512\.png|maskable-512\.png|apple-touch-icon\.png)$
+	@pwa_icons path_regexp icons ^/pwa-icons/(site|portal|tasks|admin)/(icon\.svg|icon-192\.png|icon-512\.png|maskable-512\.png|apple-touch-icon\.png)$
 	handle @pwa_icons {
 		header Cache-Control "public, max-age=86400"
 		header X-Content-Type-Options "nosniff"

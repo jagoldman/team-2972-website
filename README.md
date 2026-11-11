@@ -90,7 +90,7 @@ Screen"). Both are separate apps with their own name and icon: **Team 2972** and
 - `sw.js` is the service worker. It keeps the shared files (styles, scripts, fonts, icons) so the app starts fast, and shows
   `offline.html` when there is no connection. **It never stores a page, `/me.json` or `/apps.json`**, and signing out
   clears everything it stored. Change `VERSION` at the top of `sw.js` when its rules or file list change.
-- `pwa-icons/` is the icon pack for **all** Team 2972 apps (site, portal, tasks, admin, kickoff). Its `README.md`
+- `pwa-icons/` is the icon pack for the Team 2972 apps (site, portal, tasks, admin). Its `README.md`
   says how the other apps copy it, and `node pwa-icons/build-icons.cjs` redraws it.
 - Public on the portal host too, with no secret: `/manifest.webmanifest`, `/sw.js`, `/offline.html` and the exact icon
   files in `/pwa-icons/<app>/`. infra's Caddy must send those paths to landing without forward auth.

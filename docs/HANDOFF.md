@@ -94,7 +94,7 @@ framework. It runs as the `landing` container (static Caddy 2.11.7, port 3001, `
   those paths to landing without forward auth on the portal host**, or the portal cannot be installed. At hand-off
   I had not confirmed infra did this, so check installability on the live portal after deploy (Chrome DevTools >
   Application > Manifest, "Installability").
-- **Icon pack `pwa-icons/`** is for all five apps (`site`, `portal`, `tasks`, `admin`, `kickoff`): navy rounded square, gold
+- **Icon pack `pwa-icons/`** is for the team apps (`site`, `portal`, `tasks`, `admin`): navy rounded square, gold
   glyph, five files each (`icon.svg`, `icon-192.png`, `icon-512.png`, `maskable-512.png`, `apple-touch-icon.png`).
   Other apps copy their folder into their own `/icons/` (their README: `pwa-icons/README.md`).
   `node pwa-icons/build-icons.cjs` redraws the whole set. Maskable glyphs stay inside the safe zone (tested).
@@ -174,8 +174,8 @@ Chrome path defaults to macOS Google Chrome (`CHROME=` overrides). Fixtures use 
    and adds the new framing fields `SITE.heroPosition` and `ROBOTS[].imagePosition` (checked by `safePosition()` in `js/components.js`).
    Schema changes for the editor are listed at the end of `docs/CONTENT_EDITING.md`. Lead session to log the change to D55 in MASTER_PLAN.
 4. **BACKLOG** (`docs/BACKLOG.md`): History is now a timeline (done 2026-10-27) and the mentor listing is gone. "Role of the mentors" section is on `mentor.html` (done 2026-10-27). 2027 regional dates are in (2026-11-07: Intermountain West, Nampa ID, March 24-27; Denver April 7-10). Open: Theseus/Sea Shanty/sponsor/outreach content.
-5. **Deploy and verify (infra).** Deploy `459dd21` and check installability on both hosts (section 4). Also open: should
-   the public "Game Analysis Template" link stay now that Kickoff replaces it on the portal (default: leave it).
+5. **Deploy and verify (infra).** Deploy `459dd21` and check installability on both hosts (section 4). The public
+   "Game Analysis Template" link stays. The Kickoff app is no longer part of the suite.
 6. **Constant-time secret compare** is an accepted exception (CONVENTIONS §4), listed in `docs/PHASE3_TASKS.md`; revisit
    only if landing ever becomes reachable outside the Docker network.
 

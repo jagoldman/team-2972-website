@@ -1,6 +1,6 @@
 // Draws the team's app icons and renders the PNG sizes.   Usage: node pwa-icons/build-icons.cjs
 // Needs Google Chrome (set CHROME to its path if it is not the macOS default). For each app (site, portal, tasks,
-// admin, kickoff) it writes a folder <app>/ in this directory with:
+// admin) it writes a folder <app>/ in this directory with:
 //   icon.svg               the source: a rounded square, for "any" use (favicon, install icon)
 //   icon-192.png, icon-512.png   the same, as PNG
 //   maskable-512.png       full-bleed square with the glyph inside the safe zone (Android masks it)
@@ -57,9 +57,6 @@ const GLYPHS = {
     <path d="M178 262 L236 320 L338 200" fill="none" stroke="${GOLD}" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>`,
   admin: () => `<path d="M256 100 C300 128 346 136 384 138 V252 C384 332 328 384 256 414 C184 384 128 332 128 252 V138 C166 136 212 128 256 100 Z" fill="${GOLD}" stroke="${GOLD}" stroke-width="14" stroke-linejoin="round"/>
     <path d="M194 256 L240 302 L322 212" fill="none" stroke="${NAVY_BOTTOM}" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>`,
-  kickoff: () => `<circle cx="256" cy="256" r="150" fill="none" stroke="${GOLD}" stroke-width="24"/>
-    <circle cx="256" cy="256" r="94" fill="none" stroke="${GOLD}" stroke-width="24"/>
-    <circle cx="256" cy="256" r="38" fill="${GOLD}"/>`,
 };
 
 // full: a full-bleed square with no rounded corners (maskable and Apple touch icons); otherwise a rounded square

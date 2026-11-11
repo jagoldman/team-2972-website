@@ -49,7 +49,7 @@ function decodePng(buf) {
 }
 
 // ---------- the icon pack ----------
-const APPS = ["site", "portal", "tasks", "admin", "kickoff"];
+const APPS = ["site", "portal", "tasks", "admin"];
 const FILES = { "icon.svg": null, "icon-192.png": 192, "icon-512.png": 512, "maskable-512.png": 512, "apple-touch-icon.png": 180 };
 const hashes = new Map();
 for (const app of APPS) {
@@ -100,9 +100,9 @@ for (const [file, want] of Object.entries(MANIFESTS)) {
   check(`${file}: name and short_name`, m.name === want.name && m.short_name === want.short && m.short_name.length <= 12, `${m.name} / ${m.short_name}`);
   check(`${file}: starts at / and covers the whole site`, m.start_url === "/" && m.scope === "/" && m.id === "/");
   check(`${file}: standalone display`, m.display === "standalone");
-  // The portal's browser chrome matches the shell kit's app bar (--rail), like admin and kickoff; its splash is the
-  // light page colour. The public site keeps its dark defaults.
-  if (want.app === "portal") check(`${file}: app-bar chrome (#0b1224) on the light page colour`, m.background_color === "#f6f3ea" && m.theme_color === "#0b1224", `${m.background_color} / ${m.theme_color}`);
+  // The portal's browser chrome matches the shell kit's app bar (--rail). Its splash is the light page colour.
+  // The public site keeps its dark defaults.
+  if (want.app === "portal") check(`${file}: app-bar chrome (#0b1224) on the light page colour`, m.background_color === "#f7f8fa" && m.theme_color === "#0b1224", `${m.background_color} / ${m.theme_color}`);
   else check(`${file}: dark default colours`, m.background_color === "#07090f" && m.theme_color === "#07090f");
   check(`${file}: has a language and a description`, m.lang === "en" && typeof m.description === "string" && m.description.length > 10);
   const icons = m.icons || [];
@@ -129,7 +129,7 @@ for (const page of pages) {
   check(`${page}: links the manifest`, /<link rel="manifest" href="\/manifest\.webmanifest" \/>/.test(head));
   check(`${page}: favicon and Apple touch icon are the ${app} icons, and the files exist`, head.includes(`href="/pwa-icons/${app}/icon.svg"`) && head.includes(`href="/pwa-icons/${app}/apple-touch-icon.png"`) && exists(`pwa-icons/${app}/apple-touch-icon.png`));
   check(`${page}: installable-app tags for Android and iOS`, /name="mobile-web-app-capable"/.test(head) && /name="apple-mobile-web-app-capable"/.test(head) && new RegExp(`apple-mobile-web-app-title" content="${portal ? "2972 Portal" : "Team 2972"}"`).test(head));
-  const [tl, td] = portal ? ["#0b1224", "#0b101d"] : ["#f6f3ea", "#07090f"];   // portal: the app bar's --rail, light / dark
+  const [tl, td] = portal ? ["#0b1224", "#0b101d"] : ["#f7f8fa", "#07090f"];   // portal: the app bar's --rail, light / dark
   check(`${page}: theme colours for light and dark`, new RegExp(`name="theme-color" content="${tl}" media="\\(prefers-color-scheme: light\\)"`).test(head) && new RegExp(`name="theme-color" content="${td}" media="\\(prefers-color-scheme: dark\\)"`).test(head));
 }
 
@@ -298,7 +298,7 @@ const okNetwork = async () => basic("from the network");
   const portalBlock = caddy.slice(caddy.indexOf("handle @portal_host {"), caddy.indexOf("# ---- Public hosts"));
   check("portal host: the PWA files come before the gate (so they need no secret)", portalBlock.indexOf("import pwa_public") > 0 && portalBlock.indexOf("import pwa_public") < portalBlock.indexOf("import gate") && portalBlock.indexOf("/manifest.webmanifest") < portalBlock.indexOf("import gate"));
   check("portal host: its manifest is portal/manifest.webmanifest", /rewrite \* \/portal\/manifest\.webmanifest/.test(portalBlock));
-  check("the icon route lists exactly the pack's apps and files", /\(site\|portal\|tasks\|admin\|kickoff\)\/\(icon\\\.svg\|icon-192\\\.png\|icon-512\\\.png\|maskable-512\\\.png\|apple-touch-icon\\\.png\)/.test(caddy));
+  check("the icon route lists exactly the pack's apps and files", /\(site\|portal\|tasks\|admin\)\/\(icon\\\.svg\|icon-192\\\.png\|icon-512\\\.png\|maskable-512\\\.png\|apple-touch-icon\\\.png\)/.test(caddy));
   check("sw.js is never cached by the browser's HTTP cache (no-cache)", /handle \/sw\.js \{\s*header Cache-Control "no-cache"/.test(caddy));
 
   console.log(failed === 0 ? `ALL PASSED (${passed})` : `${failed} FAILED, ${passed} passed`);
