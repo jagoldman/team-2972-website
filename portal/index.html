@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="/shell/tokens.css" />
 <link rel="stylesheet" href="/css/style.css" />
 <link rel="stylesheet" href="/shell/app-bar.css" />
+<link rel="stylesheet" href="/shell/ui.css" />
 </head>
 <!-- Served at portal.SITE_DOMAIN/ only, behind login. Identity comes from /me.json and tiles from
      /apps.json (infra/config/apps.json). Showing or hiding a tile is for convenience only:
@@ -29,41 +30,37 @@
 <div id="site-header" class="shbar-mount"><div id="shell-bar"></div></div>
 
 <main class="portal-main" id="main">
-  <div class="portal-hello">
-    <div>
-      <div class="eyebrow"><span><span id="today"></span><span aria-hidden="true"> · </span><span id="mode"></span></span></div>
-      <h1 id="greeting" class="rise"><span class="w"><span id="greet-word">Welcome</span></span><br /><span class="w"><span class="name" id="name">back.</span></span></h1>
-      <p id="portal-intro"></p>
-    </div>
-    <label class="app-search" id="search-wrap" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <input id="q" type="search" placeholder="Find an app…" aria-label="Find an app" autocomplete="off" />
-      <kbd aria-hidden="true">/</kbd>
-    </label>
+  <div class="homehead">
+    <p class="homedate" id="today"></p>
+    <h1 id="greeting">Hi <span id="name">there</span>.</h1>
   </div>
+  <p class="portal-error" id="portal-error" hidden>The portal couldn't load your apps. Try reloading the page.</p>
 
   <div class="portal-notice" id="no-group" hidden>
-    <div class="spinner" aria-hidden="true"></div>
     <p>Your account is waiting for an admin to assign your group.</p>
     <p>Your team apps will appear here as soon as that's done.</p>
   </div>
 
   <section class="portal-section" id="main-apps" aria-labelledby="main-apps-h" hidden>
-    <h2 class="portal-section-title" id="main-apps-h">Your apps</h2>
+    <div class="apps-head">
+      <h2 id="main-apps-h">Apps</h2>
+      <label class="app-search" id="search-wrap" hidden>
+        <input id="q" type="search" placeholder="Find an app" aria-label="Find an app" autocomplete="off" />
+      </label>
+    </div>
     <div class="app-grid" id="app-grid"></div>
   </section>
   <section class="portal-section" id="more-apps" aria-labelledby="more-apps-h" hidden>
-    <h2 class="portal-section-title" id="more-apps-h">More</h2>
-    <div class="app-grid" id="more-grid"></div>
+    <h3 id="more-apps-h">More</h3>
+    <ul class="morelinks" id="more-list"></ul>
   </section>
   <p class="app-empty" id="app-empty" hidden>No app matches that. Try a different word.</p>
+  <p class="app-empty" id="portal-empty" hidden>There are no apps for your groups in this mode yet.</p>
   <section id="access" hidden>
-    <h2 class="install-h2">Get access</h2>
-    <p class="section-lead">The Team Drive and the team's Onshape CAD are shared by invitation only. Ask for access and an
-    admin will add you.</p>
+    <h2>Get access</h2>
+    <p class="section-lead">The Team Drive and the team's Onshape CAD are shared by invitation. Ask for access and an admin will add you.</p>
     <div id="access-body"></div>
   </section>
-  <p class="app-note" id="app-note"></p>
   <p><a class="btn btn-outline" id="sign-out" data-signout href="#">Sign out</a></p>
 </main>
 
@@ -116,44 +113,51 @@ function renderTile(t) {
   }
   const ico = el("span", "app-ico");
   ico.append(svgIcon(iconPath(t.icon)));
-  const name = el("h3", "", t.name);
+  const name = el("b", "", t.name);
   if (t.external) name.append(el("span", "ext", " ↗"));
   card.append(ico, name);
-  if (t.description) card.append(el("p", "", t.description));
-  if (!t.href) card.append(el("span", "soon-badge", "Coming soon"));
+  if (t.description) card.append(el("small", "", t.description));
+  if (!t.href) card.append(el("span", "status-dot", "Coming soon"));
   return card;
 }
 
-function greetingWord() {
-  const h = new Date().getHours();
-  return h < 5 ? "Burning the midnight oil," : h < 12 ? "Good morning," : h < 18 ? "Good afternoon," : "Good evening,";
+function renderMoreLink(t) {
+  const li = el("li");
+  const link = el(t.href ? "a" : "span", t.href ? "" : "coming-soon");
+  link.dataset.q = `${t.name} ${t.description} ${t.audience}`.toLowerCase();
+  if (t.href) {
+    link.href = t.href;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+  }
+  const ico = el("span", "more-ico");
+  ico.append(svgIcon(iconPath(t.icon)));
+  const name = el("b", "", t.name);
+  if (t.external) name.append(el("span", "ext", " ↗"));
+  link.append(ico, name);
+  if (!t.href) link.append(el("span", "status-dot", "Coming soon"));
+  li.append(link);
+  return li;
 }
 
 onContent(async () => {
   document.getElementById("sign-out").href = SIGNOUT_URL;
   initInstallBanner();
   document.getElementById("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-  document.getElementById("mode").textContent = parseMode(readCookie(document.cookie, "mode")) === "competition" ? "Competition mode" : "Build mode";
-  const note = document.getElementById("app-note");
-  note.append("Something not working? Email ");
-  const mail = el("a", "", SITE.email);
-  mail.href = `mailto:${SITE.email}`;
-  note.append(mail, ".");
 
   let me, groups, resolved;
   try {
     ({ me, groups, tiles: resolved } = await mountPortalShell());
   } catch (err) {
-    document.getElementById("portal-intro").textContent = "The portal couldn't load your apps. Try reloading the page.";
+    document.getElementById("portal-error").hidden = false;
     return;
   }
 
-  // Names go in with textContent, never as HTML.
+  // Names go in with textContent, never as HTML. The greeting is the first name only.
   const full = me.name || me.email || "there";
-  document.getElementById("greet-word").textContent = greetingWord();
-  document.getElementById("name").textContent = `${full.split(" ")[0]}.`;
-  document.getElementById("greeting").setAttribute("aria-label", `${greetingWord()} ${full}`);
-  document.querySelectorAll("#greeting .w > span").forEach((s, i) => s.style.setProperty("--wi", i));
+  const first = full.split(" ")[0];
+  document.getElementById("name").textContent = first;
+  document.getElementById("greeting").setAttribute("aria-label", `Hi ${first}.`);
   bindPortalModeChange(paintTiles);
 
   if (groups.length === 0) {
@@ -166,34 +170,31 @@ onContent(async () => {
   document.getElementById("access-body").innerHTML = renderRequestAccess({ name: me.name, email: me.email });
   document.getElementById("access").hidden = false;
 
-  // The demo's home: this mode's main tiles, then More (link-outs, the Handbook, tiles marked more).
+  // This mode's main tiles, then More as a plain list (link-outs, the Handbook, tiles marked more).
   // Coming-soon tiles go last in each section; the sort is stable, so apps.json order holds otherwise.
   const q = document.getElementById("q");
   function applySearch() {
     const text = q.value.trim().toLowerCase();
     let matches = 0;
-    document.querySelectorAll("#app-grid .app-card, #more-grid .app-card").forEach((card) => {
-      card.hidden = !!text && !card.dataset.q.includes(text);
-      if (!card.hidden) matches++;
+    document.querySelectorAll("#app-grid .app-card, #more-list li").forEach((row) => {
+      const key = row.dataset.q || row.querySelector("[data-q]")?.dataset.q || "";
+      row.hidden = !!text && !key.includes(text);
+      if (!row.hidden) matches++;
     });
     document.getElementById("app-empty").hidden = !text || matches > 0;
   }
   function paintTiles() {
-    const mode = parseMode(readCookie(document.cookie, "mode"));
-    document.getElementById("mode").textContent = mode === "competition" ? "Competition mode" : "Build mode";
     if (groups.length === 0) return;
+    const mode = parseMode(readCookie(document.cookie, "mode"));
     const shown = filterByMode(resolved, mode).sort((a, b) => !a.href - !b.href);
     const main = shown.filter((t) => !t.more);
     const more = shown.filter((t) => t.more);
     document.getElementById("app-grid").replaceChildren(...main.map(renderTile));
-    document.getElementById("more-grid").replaceChildren(...more.map(renderTile));
+    document.getElementById("more-list").replaceChildren(...more.map(renderMoreLink));
     document.getElementById("main-apps").hidden = main.length === 0;
     document.getElementById("more-apps").hidden = more.length === 0;
     document.getElementById("search-wrap").hidden = shown.length === 0;
-    const ready = shown.filter((t) => t.href).length;
-    document.getElementById("portal-intro").textContent = shown.length
-      ? `${ready} ${ready === 1 ? "app is" : "apps are"} ready for you.`
-      : "There are no apps for your groups in this mode yet.";
+    document.getElementById("portal-empty").hidden = shown.length > 0;
     applySearch();
   }
   paintTiles();
@@ -208,7 +209,7 @@ onContent(async () => {
     } else if (event.key === "Escape" && document.activeElement === q) {
       q.value = ""; applySearch(); q.blur();
     } else if (event.key === "Enter" && document.activeElement === q) {
-      const first = document.querySelector("#app-grid a.app-card:not([hidden]), #more-grid a.app-card:not([hidden])");
+      const first = [...document.querySelectorAll("#app-grid a.app-card, #more-list a")].find((a) => !a.closest("[hidden]"));
       if (first) first.click();
     }
   });

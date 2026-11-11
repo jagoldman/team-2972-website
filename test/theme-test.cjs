@@ -71,6 +71,7 @@ const blocked = { getItem() { throw new Error("SecurityError"); }, setItem() { t
   check("Light replaces Dark", root.dataset.theme === "light" && store._m.get("theme") === "light");
   ctx.T.setTheme("system");
   check("System removes data-theme and forgets the choice", root.dataset.theme === undefined && !store._m.has("theme") && buttons.map((b) => b.pressed).join(",") === "false,false,true");
+  check("System clears the pinned color-scheme so the page follows the system setting", root.style.colorScheme === "");
   check("System deletes the theme cookie too", !ctx.jar.has("theme") && /Max-Age=0/.test(ctx.cookieWrites.at(-1)));
   ctx.jar.set("theme", "dark"); store.setItem("theme", "light");
   check("the cookie wins over the old localStorage key", ctx.T.storedTheme() === "dark");

@@ -79,11 +79,10 @@ function renderRequestAccess(who) {
       <div class="contact-card"${ck(`REQUEST_ACCESS[${i}]`)}>
         <h3${ck(`REQUEST_ACCESS[${i}].name`)}>${esc(r.name)}</h3>
         <p><span${ck(`REQUEST_ACCESS[${i}].what`)}>${esc(r.what)}</span> Access is by invitation.</p>
-        <a class="btn" href="${esc(requestAccessHref(r, who))}">Request access</a>
+        <a class="btn btn-outline" href="${esc(requestAccessHref(r, who))}">Request access</a>
       </div>`).join("")}
     </div>
-    <p class="access-note">Each button opens an email to <a href="mailto:${esc(SITE.email)}"${ck("SITE.email")}>${esc(SITE.email)}</a>. If no email app opens,
-    write to that address with your name, your school email and why you need access.</p>`;
+    <p class="access-note">This opens an email to <a href="mailto:${esc(SITE.email)}"${ck("SITE.email")}>${esc(SITE.email)}</a>.</p>`;
 }
 
 // ---------- Safe rendering of content ----------
@@ -462,7 +461,11 @@ async function clearOfflineCaches() {
 // Light and Dark are stored the shell kit's way (D92, INTEGRATION §9b): a `theme` cookie for the whole site
 // domain, so the portal's app bar and these pages share one choice, plus the old localStorage key while other
 // subdomains migrate. The inline script in each page's <head> (scripts/theme-init.mjs, from the kit) applies it
-// before the page paints. applyTheme matches the kit's: data-theme, the dark/light class and color-scheme.
+// before the page paints. applyTheme matches the kit's for an explicit Light or Dark choice: data-theme,
+// the dark/light class and color-scheme. System clears the inline color-scheme. The head script snapshots
+// matchMedia into that inline style, and a snapshot of "light" keeps the page light after the saved choice
+// is dropped while the system is dark. With the inline style gone, the stylesheet's "light dark" follows
+// the system setting.
 const THEME_KEY = "theme";
 
 function themeCookieAttrs(maxAge) {
@@ -487,11 +490,16 @@ function storedTheme() {
 
 function applyTheme(choice) {
   const root = document.documentElement;
-  const dark = choice === "dark" || (choice !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
-  if (choice === "light" || choice === "dark") root.dataset.theme = choice;
+  const explicit = choice === "light" || choice === "dark";
+  const dark = choice === "dark" || (!explicit && matchMedia("(prefers-color-scheme: dark)").matches);
+  if (explicit) root.dataset.theme = choice;
   else delete root.dataset.theme;
   if (root.classList) { root.classList.toggle("dark", dark); root.classList.toggle("light", !dark); }
-  if (root.style) root.style.colorScheme = dark ? "dark" : "light";
+  if (root.style) {
+    if (explicit) root.style.colorScheme = choice;
+    else if (root.style.removeProperty) root.style.removeProperty("color-scheme");
+    else root.style.colorScheme = "";
+  }
   document.querySelectorAll(".theme-switch button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.theme === choice)));
 }
 
@@ -665,6 +673,8 @@ function mountLayout() {
   document.getElementById("site-footer").innerHTML = renderFooter();
 
   bindThemeSwitch();
+  // Re-apply after the head script. System must not keep the script's pinned color-scheme (see applyTheme).
+  if (!isPortalPage()) applyTheme(storedTheme());
   const header = document.querySelector(".site-header");
   const badgeImg = header && header.querySelector(".school-badge-img");
   if (badgeImg) {

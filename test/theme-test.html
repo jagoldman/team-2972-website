@@ -173,7 +173,7 @@ const PUBLIC_PAGES = ["index.html", "offline.html", "about.html", "mentor.html",
         html.style.colorScheme = theme;
         await sleep(120);
         const bg = win.getComputedStyle(doc.body).backgroundColor;
-        report(theme === "light" ? bg === "rgb(246, 243, 234)" : bg === "rgb(7, 9, 15)", `${url}: ${theme} theme paints the ${theme} page colour`, bg);
+        report(theme === "light" ? bg === "rgb(247, 248, 250)" : bg === "rgb(7, 9, 15)", `${url}: ${theme} theme paints the ${theme} page colour`, bg);
         const r = contrastOf(win, doc);
         report(r.fails.length === 0, `${url}: ${theme}: WCAG AA text contrast (${r.checked} items, lowest ${r.min.toFixed(2)}:1)`, r.fails.slice(0, 6).join(" | "));
       }
@@ -216,7 +216,7 @@ const PUBLIC_PAGES = ["index.html", "offline.html", "about.html", "mentor.html",
       html.dataset.theme = theme; html.classList.toggle("dark", theme === "dark"); html.classList.toggle("light", theme === "light");
       html.style.colorScheme = theme; await sleep(80);
       const pageBg = win.getComputedStyle(doc.body).backgroundColor;
-      report(pageBg === (theme === "light" ? "rgb(246, 243, 234)" : "rgb(7, 9, 15)"), `${theme}: focus-ring page really is in the ${theme} theme`, pageBg);
+      report(pageBg === (theme === "light" ? "rgb(247, 248, 250)" : "rgb(7, 9, 15)"), `${theme}: focus-ring page really is in the ${theme} theme`, pageBg);
       const probe = doc.createElement("i"); probe.style.cssText = "color:var(--accent);background:var(--ink)"; doc.body.append(probe);
       const accent = parse(win.getComputedStyle(probe).color);
       for (const surface of ["--ink", "--ink-2", "--ink-3"]) {
@@ -231,7 +231,7 @@ const PUBLIC_PAGES = ["index.html", "offline.html", "about.html", "mentor.html",
 
   if (MODE === "system-light" || MODE === "system-dark") {
     const dark = MODE === "system-dark";
-    const wantBg = dark ? "rgb(7, 9, 15)" : "rgb(246, 243, 234)";
+    const wantBg = dark ? "rgb(7, 9, 15)" : "rgb(247, 248, 250)";
     // 1) no saved choice: the page follows the system, with no script involved
     const clearCookie = () => { document.cookie = "theme=; Path=/; Max-Age=0"; };
     localStorage.removeItem("theme"); clearCookie();
@@ -247,7 +247,7 @@ const PUBLIC_PAGES = ["index.html", "offline.html", "about.html", "mentor.html",
     localStorage.setItem("theme", dark ? "light" : "dark");
     ({ frame, win, doc } = await openPage("about.html"));
     report(doc.documentElement.dataset.theme === (dark ? "light" : "dark"), "a saved choice overrides the system setting on load");
-    report(win.getComputedStyle(doc.body).backgroundColor === (dark ? "rgb(246, 243, 234)" : "rgb(7, 9, 15)"), "...and the page is painted in the saved theme");
+    report(win.getComputedStyle(doc.body).backgroundColor === (dark ? "rgb(247, 248, 250)" : "rgb(7, 9, 15)"), "...and the page is painted in the saved theme");
     report(new RegExp(`(?:^|;\\s*)theme=${dark ? "light" : "dark"}(?:;|$)`).test(document.cookie), "...and the old localStorage choice moved into the theme cookie (D92)", document.cookie);
     frame.remove();
     // 3) garbage in storage is ignored

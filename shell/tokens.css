@@ -2,13 +2,17 @@
  * 2972 shell kit: design tokens (MASTER_PLAN D101). Source of truth: infra/shell/tokens.css.
  * Do not edit a synced copy; change infra and run scripts/sync-shell.sh (the hash check finds drift).
  *
- * Colours, fonts and radius come from the portal demo (portal-demo/index.html, see shell/README.md for the
- * commit). Two deliberate differences from the demo, both recorded in the README:
- *   - the demo's --accent (gold ink for text) is --accent-ink here, because shadcn uses --accent for a
- *     hover background;
- *   - --input-line (form field borders) is new: the demo's --line-2 is 1.7:1, under WCAG 1.4.11's 3:1;
- *   - --focus is a separate token: gold outlines are 1.8:1 on the light page, under the 3:1 that
- *     WCAG 1.4.11 asks of focus indicators, so light mode focuses in ink and dark mode in gold.
+ * Colours, fonts and radius come from the redesigned portal demo (portal-demo/css/base.css, see
+ * shell/README.md for the commit). Deliberate differences from the demo, all recorded in the README:
+ *   - the demo's --accent (the blue ink for links, selected items and focus) is --accent-ink here, because
+ *     shadcn uses --accent for a hover background;
+ *   - --input-line (form field borders) is new: the demo's --line-2 is under WCAG 1.4.11's 3:1;
+ *   - --focus is a separate token that follows the ink in both themes.
+ *
+ * Colour meaning: gold (--gold / --primary) is only the main button, the active-tab underline, the 2972 badge
+ * and "today" on a calendar. Links, selected chips and rows, and focus use the blue ink (--accent-ink).
+ * Type: Inter (--body) for everything including h2/h3; Bricolage Grotesque (--display) only for the brand,
+ * the page h1 and big numbers; JetBrains Mono (--mono) only for real codes.
  *
  * Theme (INTEGRATION §9b, D92): the cookie `theme` = light | dark; no cookie = follow the system.
  * The theme script (shell core: themeInitScript) puts data-theme="light|dark" on <html> for an explicit
@@ -21,23 +25,23 @@
 
 :root {
   /* ---------- Part 1: brand palette, light ---------- */
-  --bg: #f6f3ea;
+  --bg: #f7f8fa;
   --surface: #ffffff;
-  --surface-2: #ece7da;
-  --surface-3: #e2dccb;
-  --line: rgba(11, 18, 36, 0.12);
-  --line-2: rgba(11, 18, 36, 0.24);
+  --surface-2: #f1f3f6;
+  --surface-3: #e5e8ee;
+  --line: rgba(11, 18, 36, 0.1);
+  --line-2: rgba(11, 18, 36, 0.22);
   --input-line: rgba(11, 18, 36, 0.5);
   --text: #0b1224;
-  --text-2: #323b50;
-  --mute: #515b72; /* AA (4.5:1+) on every light surface, incl. landing's see-through public header */
+  --text-2: #343d52;
+  --mute: #5b6478; /* AA (4.5:1+) on the page and on every light surface */
   --gold: #e8b931;
-  --gold-2: #ffd666;
+  --gold-2: #f2c94f;
   --on-gold: #07090f;
-  --accent-ink: #7a5800;
-  --tint: rgba(176, 125, 0, 0.1);
-  --tint-2: rgba(176, 125, 0, 0.18);
-  --focus: #7a5800;
+  --accent-ink: #2148a8; /* links, selected items, focus: the blue ink (not gold) */
+  --tint: rgba(33, 72, 168, 0.07);
+  --tint-2: rgba(33, 72, 168, 0.13);
+  --focus: var(--accent-ink);
   --ok: #1d7446;
   --ok-bg: rgba(29, 116, 70, 0.12);
   --warn: #8f5a00;
@@ -58,7 +62,7 @@
   --role-break: #a7adbb;
   --role-lead: #9b6ad6;
   --role-media: #d9774f;
-  --heat-0: #ece7da;
+  --heat-0: #e5e8ee;
   --heat-1: #f3dc94;
   --heat-2: #e8b931;
   --heat-3: #b8860b;
@@ -67,7 +71,8 @@
   --display: var(--font-bricolage, "Bricolage Grotesque"), "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --body: var(--font-inter, "Inter"), "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: var(--font-jetbrains-mono, "JetBrains Mono"), ui-monospace, "SF Mono", Menlo, monospace;
-  --r: 10px;
+  --r: 12px; /* cards */
+  --r-ctl: 8px; /* controls */
   --shell-bar-height: 52px;
   color-scheme: light;
 
@@ -107,7 +112,7 @@
   --sidebar-ring: var(--focus);
 }
 
-/* Dark, part 1 only: part 2 follows through var(). Kept as two identical blocks (system and explicit) on
+/* Dark, part 1 only: part 2 follows through var() (so does --focus, which is the ink). Kept as two identical blocks (system and explicit) on
    purpose; the contrast test checks that they match. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not(.light) {
@@ -121,10 +126,9 @@
     --text: #e9ecf3;
     --text-2: #c2c8d6;
     --mute: #8f98ad;
-    --accent-ink: #e8b931;
-    --tint: rgba(232, 185, 49, 0.1);
-    --tint-2: rgba(232, 185, 49, 0.18);
-    --focus: #e8b931;
+    --accent-ink: #a9c1ff;
+    --tint: rgba(169, 193, 255, 0.1);
+    --tint-2: rgba(169, 193, 255, 0.18);
     --ok: #4cc38a;
     --ok-bg: rgba(76, 195, 138, 0.13);
     --warn: #f0b43c;
@@ -157,10 +161,9 @@
   --text: #e9ecf3;
   --text-2: #c2c8d6;
   --mute: #8f98ad;
-  --accent-ink: #e8b931;
-  --tint: rgba(232, 185, 49, 0.1);
-  --tint-2: rgba(232, 185, 49, 0.18);
-  --focus: #e8b931;
+  --accent-ink: #a9c1ff;
+  --tint: rgba(169, 193, 255, 0.1);
+  --tint-2: rgba(169, 193, 255, 0.18);
   --ok: #4cc38a;
   --ok-bg: rgba(76, 195, 138, 0.13);
   --warn: #f0b43c;

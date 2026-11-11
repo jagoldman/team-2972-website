@@ -1,22 +1,26 @@
 {
-  "version": "0.1.12",
+  "version": "0.1.13",
   "profile": "static",
   "files": [
     {
       "path": "shell/VERSION",
-      "sha256": "0a6c8dc4148eed841498d2c2be544947a62f8f50c381b2e64bcd7ce40461cf34"
+      "sha256": "976e7492a0ab4e0e742f1c8af5c345fde0d450bfb22c01b0e40c4cf80a42cd10"
     },
     {
       "path": "shell/tokens.css",
-      "sha256": "7f7b3886ac183192704b8b8d1f85a6f162abac293b75e9e93837a6e34b98dce8"
+      "sha256": "71be7734632b0cbd3de79c7290fe9cf3433c09abf3ce9874a8aeddc0d0b0790c"
     },
     {
       "path": "shell/app-bar.css",
-      "sha256": "c581ce7cec8befc3661c5116c117514353c9542d97d75d61a9d8c678b5b40d60"
+      "sha256": "74ab7ec5121f43fe78d2535c57f974a4dad08b0517dd766c1adc1122849da1c6"
+    },
+    {
+      "path": "shell/ui.css",
+      "sha256": "58a410ea787dc03693ece8ad4f1d05eac936eb271e469847ee9f66aecfce9f24"
     },
     {
       "path": "shell/core.js",
-      "sha256": "4d1007cf3fd183da46182799766cae704fc8115fd43231ec53fbae12ce89d59e"
+      "sha256": "dc3921fff729e114d0696dd79c86b6231d09f3d6f4c91d2e4b8c120da7d7b0a9"
     },
     {
       "path": "shell/core.d.ts",
@@ -24,7 +28,7 @@
     },
     {
       "path": "shell/static/shell.js",
-      "sha256": "cea9fac8727065cb2672b466b8eb99619da62cf8258214cc2bcf0604d10c6f1e"
+      "sha256": "810e6096276774512c4ae58a63f17081331c3fe841b65508a035ab6820a6b7ca"
     }
   ]
 }

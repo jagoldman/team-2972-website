@@ -26,15 +26,17 @@ export async function mountPortalShell() {
   const [me, apps] = await Promise.all([getJson("/me.json"), getJson("/apps.json")]);
   const site = siteBase();
   const groups = parseGroups(me.groups);
-  const source = Array.isArray(apps) ? apps : [];
+  // The Kickoff app has left the suite. Drop it here so a leftover catalog row cannot become a tile.
+  const source = (Array.isArray(apps) ? apps : []).filter((x) => x && x.id !== "kickoff" && x.host !== "kickoff");
   // audience is landing's own field (search matches it); the kit drops fields it doesn't use.
   const tiles = resolveTiles(source, groups, site).map((t) => {
     const raw = source.find((x) => x && x.id === t.id) || {};
     return { ...t, audience: typeof raw.audience === "string" ? raw.audience : "" };
   });
   // No appId: "portal" is not an app in infra config/apps.json, so no Apps-menu tile is marked current.
+  // The bar names the team, the same words the demo uses on Home.
   mountAppBar(document.getElementById("shell-bar"), {
-    appName: "Portal", siteScheme: site.scheme, siteDomain: site.domain,
+    appName: "Gears & Buccaneers", siteScheme: site.scheme, siteDomain: site.domain,
     tiles, user: { name: me.name, email: me.email }, skipToId: "main",
   });
   return { me, groups, tiles, site };

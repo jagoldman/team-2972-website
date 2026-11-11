@@ -121,9 +121,8 @@ export function mountAppBar(root, opts) {
   const appsBtn = h(
     "button",
     { type: "button", class: "shbar-appsbtn", "aria-expanded": "false", "aria-controls": `${id}-apps` },
-    icon("apps", 18),
-    h("span", { class: "shbar-label-sm", text: "Apps" }),
-    h("span", { "aria-hidden": "true", text: "▾" }),
+    icon("apps", 20),
+    sr("Apps"),
   );
   const modeChoices = [["build", "Build"], ["competition", "Competition"]].map(([choice, label]) => {
     const button = h("button", { type: "button", "aria-pressed": "false", text: label });
@@ -164,8 +163,8 @@ export function mountAppBar(root, opts) {
     h("p", { class: "shbar-eyebrow", text: "Theme, shared by every 2972 app" }),
     choices.map(([, b]) => b),
   );
-  const chip = h("a", { class: "shbar-chip", href: account, target: "_blank", rel: "noopener noreferrer", title: "Competition mode is on. Change it in Apps or Account.", hidden: true }, icon("flag", 14), h("span", { class: "shbar-chip-text", text: "Competition" }), sr(" mode is on. Change it in Apps or Account (opens in a new tab)."));
-  const crumbText = document.createTextNode("");
+  const chip = h("a", { class: "shbar-chip", href: account, target: "_blank", rel: "noopener noreferrer", title: "Competition mode is on. Change it in Apps or Account.", hidden: true }, h("span", { "aria-hidden": "true" }, h("span", { class: "shbar-chip-short", text: "Comp" }), h("span", { class: "shbar-chip-long", text: "Competition mode" })), sr("Competition mode is on. Change it in Apps or Account (opens in a new tab)."));
+  const appName = h("span", { class: "shbar-appname" });
   const acctInitials = h("span", { "aria-hidden": "true" });
   const acctLabel = h("span", { class: "shbar-sr" });
   const acct = h("a", { class: "shbar-icon shbar-acct", href: account, target: "_blank", rel: "noopener noreferrer" }, acctInitials, acctLabel);
@@ -186,8 +185,8 @@ export function mountAppBar(root, opts) {
     { class: "shbar" },
     opts.skipToId ? h("a", { class: "shbar-skip", href: `#${opts.skipToId}`, text: "Skip to content" }) : null,
     appsBox,
-    h("a", { class: "shbar-brand", href: portal, target: "_blank", rel: "noopener noreferrer" }, h("span", { class: "shbar-badge", "aria-hidden": "true", text: "2972" }), sr("Team 2972 portal (opens in a new tab)"), h("span", { class: "shbar-team", "aria-hidden": "true", text: "Gears & Buccaneers" })),
-    h("span", { class: "shbar-crumb" }, h("span", { "aria-hidden": "true", text: "/ " }), crumbText),
+    h("a", { class: "shbar-brand", href: portal, target: "_blank", rel: "noopener noreferrer" }, h("span", { class: "shbar-badge", "aria-hidden": "true", text: "2972" }), sr("Team 2972 portal (opens in a new tab)")),
+    appName,
     h("span", { class: "shbar-grow" }),
     chip,
     themeBox,
@@ -231,7 +230,7 @@ export function mountAppBar(root, opts) {
     themeLabel.textContent = `Theme: ${(THEME_CHOICES.find(([c]) => c === state.theme) || [])[1] || "Match my device"}`;
     for (const [c, b] of choices) b.setAttribute("aria-pressed", String(state.theme === c));
     chip.hidden = state.mode !== "competition";
-    crumbText.data = opts.appName || "";
+    appName.textContent = opts.appName || "";
     acctInitials.textContent = initials(state.user && state.user.name, state.user && state.user.email);
     acctLabel.textContent = `Account${who ? `: ${who}` : ""} (opens in a new tab)`;
     acct.title = who ? `Account: ${who}` : "Account";

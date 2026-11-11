@@ -70,6 +70,7 @@ check 200 "portal /shell/static/shell.js (shared app bar)" -H "Host: portal.$D" 
 check 200 "portal /shell/core.js (shell kit logic)" -H "Host: portal.$D" $S "$URL/shell/core.js"
 check 200 "portal /shell/tokens.css (shell kit tokens)" -H "Host: portal.$D" $S "$URL/shell/tokens.css"
 check 200 "portal /shell/app-bar.css (app bar styles)" -H "Host: portal.$D" $S "$URL/shell/app-bar.css"
+check 200 "portal /shell/ui.css (shared screen parts)" -H "Host: portal.$D" $S "$URL/shell/ui.css"
 check 401 "portal /shell/tokens.css, no secret" -H "Host: portal.$D" $FAKE "$URL/shell/tokens.css"
 check 200 "public /brand/team-2972-logo.png (resources download)" -H "Host: $D" "$URL/brand/team-2972-logo.png"
 check 302 "portal /about.html redirects to public host" -H "Host: portal.$D" $S "$URL/about.html"
@@ -137,7 +138,7 @@ P="portal.$D"
 check 200 "portal host /manifest.webmanifest, no secret" -H "Host: $P" "$URL/manifest.webmanifest"
 check 200 "portal host /sw.js, no secret" -H "Host: $P" "$URL/sw.js"
 check 200 "portal host /offline.html, no secret" -H "Host: $P" "$URL/offline.html"
-for a in site portal tasks admin kickoff; do
+for a in site portal tasks admin; do
   for f in icon.svg icon-192.png icon-512.png maskable-512.png apple-touch-icon.png; do
     check 200 "portal host /pwa-icons/$a/$f, no secret" -H "Host: $P" "$URL/pwa-icons/$a/$f"
   done

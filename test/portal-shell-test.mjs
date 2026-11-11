@@ -82,7 +82,7 @@ async function openPortal(context, path = "/") {
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(PORTAL + path);
   await page.waitForSelector("#shell-bar .shbar-appsbtn");
-  if (path === "/") await page.waitForFunction(() => document.querySelector("#app-grid .app-card, #more-grid .app-card") || !document.getElementById("no-group").hidden);
+  if (path === "/") await page.waitForFunction(() => document.querySelector("#app-grid .app-card, #more-list li") || !document.getElementById("no-group").hidden);
   return { page, errors };
 }
 // Site-wide cookies, as the shell kit and Account write them (INTEGRATION §9b).
@@ -107,7 +107,7 @@ try {
     const { context } = await newContext(browser, { groups });
     const { page, errors } = await openPortal(context);
     const main = (await names(page, "#app-grid .app-card")).join(",");
-    const more = (await names(page, "#more-grid .app-card")).join(",");
+    const more = (await names(page, "#more-list li")).join(",");
     const notice = await page.isVisible("#no-group");
     check(`${label}: home tiles [${wantMain}] then More [${wantMore}]`, main === wantMain && more === wantMore, { main, more });
     check(`${label}: "waiting for an admin" notice ${wantMain || wantMore ? "hidden" : "shown"}`, notice === !(wantMain || wantMore));
@@ -145,7 +145,7 @@ try {
     const left = await page.$eval("#shell-bar .shbar-appsbtn", (b) => b.getBoundingClientRect().left);
     check("the nine-dot launcher is at the far left of the bar", left < 24, `left=${left}`);
 
-    const links = await page.$$eval("#app-grid a, #more-grid a, #shell-bar .shbar-apps a, #shell-bar a.shbar-brand", (as) => as.map((a) => ({ href: a.href, target: a.target, rel: a.rel })));
+    const links = await page.$$eval("#app-grid a, #more-list a, #shell-bar .shbar-apps a, #shell-bar a.shbar-brand", (as) => as.map((a) => ({ href: a.href, target: a.target, rel: a.rel })));
     const bad = links.filter((l) => l.target !== "_blank" || !l.rel.split(/\s+/).includes("noopener"));
     check(`every app link and the logo open a new tab with rel=noopener (${links.length} links)`, links.length >= 10 && bad.length === 0, bad);
     const hrefs = await page.$$eval("#app-grid a", (as) => as.map((a) => a.getAttribute("href")));
@@ -158,7 +158,9 @@ try {
 
     await page.press("#q", "Escape").catch(() => {});
     await page.fill("#q", "alumni");
-    check("search filters across both sections", (await names(page, "#app-grid .app-card:not([hidden]), #more-grid .app-card:not([hidden])")).join() === "Alumni News");
+    check("the bar names the team", (await page.textContent("#shell-bar .shbar-appname")).trim() === "Gears & Buccaneers");
+    check("the greeting is the first name", (await page.textContent("#greeting")).replace(/\s+/g, " ").trim() === "Hi Pat.");
+    check("search filters across both sections", (await names(page, "#app-grid .app-card:not([hidden]), #more-list li:not([hidden])")).join() === "Alumni News");
     await page.fill("#q", "");
     await context.close();
   }
@@ -167,14 +169,15 @@ try {
   {
     const { context } = await newContext(browser, { groups: "student", apps: MODE_APPS });
     let { page } = await openPortal(context);
-    check("build mode (no cookie): main tiles and More", (await names(page, "#app-grid .app-card")).join() === "Task App,Parts" && (await names(page, "#more-grid .app-card")).join() === "Skills,Team Handbook");
+    check("build mode (no cookie): main tiles and More", (await names(page, "#app-grid .app-card")).join() === "Task App,Parts" && (await names(page, "#more-list li")).join() === "Skills,Team Handbook");
+    check("build mode: the bar does not show the competition chip", !(await page.isVisible("#shell-bar .shbar-chip")));
     await context.addCookies([site("mode", "competition")]);
     await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
     check("competition cookie, tab comes back: the grid follows without a reload", (await names(page, "#app-grid .app-card")).join() === "Task App,Pit Checklist");
-    check("...and the eyebrow says Competition mode", (await page.textContent("#mode")) === "Competition mode");
+    check("...and the bar shows Competition mode", await page.isVisible("#shell-bar .shbar-chip") && (await page.textContent("#shell-bar .shbar-chip")).includes("Competition mode"));
     await page.close();
     ({ page } = await openPortal(context));
-    check("competition cookie on load", (await names(page, "#app-grid .app-card")).join() === "Task App,Pit Checklist" && (await names(page, "#more-grid .app-card")).join() === "Skills,Team Handbook");
+    check("competition cookie on load", (await names(page, "#app-grid .app-card")).join() === "Task App,Pit Checklist" && (await names(page, "#more-list li")).join() === "Skills,Team Handbook");
     await context.close();
   }
 
@@ -209,8 +212,9 @@ try {
     const over = (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     let { page } = await openPortal(context);
     check(`320px ${theme}: portal home has no horizontal scroll`, (await over(page)) <= 0, `${await over(page)}px`);
-    const eyebrowLines = await page.$eval(".portal-hello .eyebrow > span", (e) => Math.round(e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight || "16")));
-    check(`320px ${theme}: the date and mode eyebrow wraps as one line of words, not columns`, (await page.$$eval(".portal-hello .eyebrow > *", (els) => els.length)) === 1, `${eyebrowLines} lines`);
+    check(`320px ${theme}: the greeting is the first name`, (await page.textContent("#greeting")).replace(/\s+/g, " ").trim() === "Hi Pat.");
+    const dateBox = await page.$eval(".homedate", (e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.right)]; });
+    check(`320px ${theme}: the date stays on screen`, dateBox[0] > 0 && dateBox[1] <= 320, dateBox);
     const cols = await page.$$eval("#app-grid .app-card", (els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().left))).size);
     check(`320px ${theme}: tiles sit two to a row`, cols === 2, `${cols} columns`);
     await page.click("#shell-bar .shbar-appsbtn");

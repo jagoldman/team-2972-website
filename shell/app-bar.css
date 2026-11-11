@@ -2,6 +2,8 @@
  * 2972 shell kit: app bar styles, shared by the React bar (react/AppBar.tsx) and the static bar
  * (static/shell.js). Source of truth: infra/shell/app-bar.css. Needs tokens.css. No Tailwind.
  * Everything is scoped under .shbar so it can't leak into the app.
+ * Look: the redesigned demo bar (portal-demo/css/base.css): a 52 px navy bar, the nine-dot Apps button at the far
+ * left, the 2972 badge, then the current app's name in white. Selected and hover states use the tint and the ink.
  */
 
 .shbar {
@@ -11,8 +13,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: var(--shell-bar-height, 52px);
-  padding-block: 8px;
+  height: var(--shell-bar-height, 52px);
+  padding-block: 0;
   padding-left: max(12px, env(safe-area-inset-left, 0px));
   padding-right: max(12px, env(safe-area-inset-right, 0px));
   background: var(--rail);
@@ -35,7 +37,7 @@
   cursor: pointer;
 }
 .shbar :focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--rail-text);
   outline-offset: 2px;
 }
 .shbar .shbar-panel :focus-visible {
@@ -81,32 +83,33 @@
   min-width: 0;
 }
 
+/* The nine-dot Apps launcher: an icon-only button at the far left (its name, "Apps", is screen-reader text). */
 .shbar-appsbtn {
   order: -1;
   flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 6px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
-  background: var(--rail-2);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: none;
   color: var(--rail-text);
-  font-weight: 600;
-  white-space: nowrap;
 }
+.shbar-appsbtn svg {
+  stroke-width: 3.2;
+}
+.shbar-appsbtn:hover,
 .shbar-appsbtn[aria-expanded="true"] {
-  border-color: var(--gold);
+  background: var(--rail-2);
 }
 
 .shbar-brand {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   flex: none;
-  font-family: var(--display);
-  font-weight: 600;
   border-radius: 8px;
 }
 .shbar-badge {
@@ -114,38 +117,44 @@
   display: grid;
   place-items: center;
   min-width: 34px;
-  height: 30px;
+  height: 34px;
   padding: 0 4px;
-  border-radius: 8px;
+  border-radius: 9px;
   background: var(--gold);
   color: var(--on-gold);
   font: 800 0.72rem/1 var(--display);
+  letter-spacing: -0.02em;
 }
-.shbar-team {
-  white-space: nowrap;
-}
-.shbar-crumb {
+/* The current app's name, in white; on the portal the app passes "Gears & Buccaneers". */
+.shbar-appname {
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: var(--rail-mute);
+  color: #fff;
   font-weight: 600;
+  font-size: 1.02rem;
 }
 
+/* Competition chip: only in competition mode; outlined, not gold. */
 .shbar-chip {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   flex: none;
   min-height: 28px;
-  padding: 3px 10px;
+  padding: 3px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 999px;
-  background: var(--gold);
-  color: var(--on-gold) !important;
+  background: none;
+  color: #fff !important;
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
+}
+.shbar-chip:hover {
+  background: var(--rail-2);
 }
 
 .shbar-icon {
@@ -153,36 +162,40 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: 0;
-  border-radius: 50%;
-  background: var(--rail-2);
+  border-radius: 10px;
+  background: none;
   color: var(--rail-text);
   font-weight: 700;
   font-size: 0.8rem;
 }
+.shbar-icon:hover,
 .shbar-icon[aria-expanded="true"] {
-  box-shadow: inset 0 0 0 1px var(--gold);
+  background: var(--rail-2);
 }
+/* The account initials: a round navy button, not gold. */
 .shbar-acct {
-  background: var(--gold);
-  color: var(--on-gold) !important;
+  border-radius: 50%;
+  background: var(--rail-2);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  color: var(--rail-text) !important;
 }
 .shbar-count {
   position: absolute;
-  top: -4px;
-  right: -6px;
+  top: 3px;
+  right: 1px;
   display: grid;
   place-items: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   border-radius: 999px;
-  background: var(--gold);
-  color: var(--on-gold);
-  font-size: 0.72rem;
+  background: var(--bad);
+  color: var(--on-bad);
+  font-size: 0.68rem;
   font-weight: 700;
 }
 
@@ -197,25 +210,25 @@
 }
 .shbar-panel {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 4px);
   z-index: 50;
   display: grid;
   gap: 10px;
-  max-height: calc(100vh - var(--shell-bar-height, 52px) - 24px);
-  max-height: calc(100dvh - var(--shell-bar-height, 52px) - 24px);
+  max-height: min(600px, calc(100vh - var(--shell-bar-height, 52px) - 24px));
+  max-height: min(600px, calc(100dvh - var(--shell-bar-height, 52px) - 24px));
   overflow: auto;
-  padding: 14px;
+  padding: 12px;
   border: 1px solid var(--line-2);
-  border-radius: 14px;
+  border-radius: var(--r, 12px);
   background: var(--surface);
   color: var(--text);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.25);
   font-weight: 400;
 }
 .shbar-apps {
   right: auto;
   left: max(8px, env(safe-area-inset-left, 0px));
-  width: min(640px, calc(100vw - 16px));
+  width: min(600px, calc(100vw - 16px));
 }
 .shbar-theme {
   right: max(8px, env(safe-area-inset-right, 0px));
@@ -232,31 +245,35 @@
 .shbar-eyebrow {
   margin: 0;
   color: var(--mute);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
+/* Build / Competition: a grey track with a white selected piece (the demo's .seg). */
 .shbar-mode {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-ctl, 8px);
+  background: var(--surface-3);
 }
 .shbar-mode button {
-  min-height: 36px;
-  padding: 6px 10px;
-  border: 1px solid var(--input-line);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
+  min-height: 34px;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 0.88rem;
   font-weight: 600;
 }
 .shbar-mode button:hover {
-  background: var(--surface-2);
+  color: var(--text);
 }
 .shbar-mode button[aria-pressed="true"] {
-  background: var(--gold);
-  color: var(--on-gold);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--line-2);
 }
 .shbar-eyebrow a,
 .shbar-linkbtn {
@@ -266,8 +283,6 @@
   color: var(--accent-ink) !important;
   font-weight: 600;
   text-decoration: underline !important;
-  text-transform: none;
-  letter-spacing: 0;
   font-size: 0.82rem;
 }
 .shbar-note {
@@ -277,19 +292,22 @@
 .shbar-btn {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
+  min-height: 34px;
   padding: 4px 12px;
-  border: 1px solid var(--line-2);
-  border-radius: 8px;
+  border-radius: var(--r-ctl, 8px);
   color: var(--accent-ink) !important;
   font-weight: 600;
   font-size: 0.84rem;
+}
+.shbar-btn:hover {
+  background: var(--tint);
 }
 .shbar-more > summary {
   cursor: pointer;
   padding: 10px 8px;
   color: var(--mute);
   font-weight: 600;
+  font-size: 0.8rem;
   border-radius: 8px;
 }
 .shbar-more > summary:hover {
@@ -300,30 +318,29 @@
 }
 .shbar-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
+/* Compact tile: icon, name, short description. Hover is grey; the current app is tint and ink. */
 .shbar-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   height: 100%;
-  padding: 8px;
-  border: 1px solid transparent;
+  min-height: 52px;
+  padding: 6px 8px;
   border-radius: 10px;
   color: var(--text) !important;
   text-align: left;
 }
-a.shbar-item:hover,
-.shbar-item[aria-current="page"] {
-  border-color: var(--line);
+a.shbar-item:hover {
   background: var(--surface-2);
 }
 .shbar-item[aria-current="page"] {
-  box-shadow: inset 3px 0 0 var(--gold);
+  background: var(--tint);
 }
 .shbar-item.is-soon {
   opacity: 0.75;
@@ -333,24 +350,27 @@ a.shbar-item:hover,
   display: grid;
   place-items: center;
   flex: none;
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  background: var(--rail);
-  color: var(--gold);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--tint);
+  color: var(--accent-ink);
 }
 .shbar-item-text {
   min-width: 0;
 }
 .shbar-item b {
   display: block;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 600;
 }
 .shbar-item small {
-  display: block;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
   color: var(--mute);
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   line-height: 1.3;
 }
 .shbar-choice {
@@ -370,58 +390,36 @@ a.shbar-item:hover,
   background: var(--surface-2);
 }
 .shbar-choice[aria-pressed="true"] {
-  border-color: var(--line-2);
   background: var(--tint-2);
+  color: var(--accent-ink) !important;
 }
 
 /* ---------- Narrow screens ---------- */
+@media (min-width: 641px) {
+  .shbar-chip-short {
+    display: none;
+  }
+}
 @media (max-width: 640px) {
   .shbar {
     gap: 6px;
   }
-  .shbar-team {
+  .shbar-chip-long {
     display: none;
-  }
-  .shbar-label-sm {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
-  .shbar-appsbtn,
-  .shbar-icon {
-    min-height: 40px;
-  }
-  .shbar-icon {
-    width: 40px;
-    height: 40px;
   }
   .shbar-grid {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-@media (max-width: 420px) {
-  .shbar-chip {
-    padding: 3px 7px;
-  }
-  .shbar-chip-text {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
+  .shbar-mode button {
+    min-height: 40px;
   }
 }
 @media (prefers-reduced-motion: no-preference) {
   .shbar-appsbtn,
+  .shbar-icon,
   .shbar-item,
   .shbar-choice {
-    transition: background-color 0.12s, border-color 0.12s;
+    transition: background-color 0.12s;
   }
 }
 @media (forced-colors: active) {
