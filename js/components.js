@@ -348,8 +348,9 @@ function sponsorNames(tier, ti) {
     const name = `<span${ck(`${P}.name`)}>${esc(s.name)}</span>`;
     const href = isSet(s.url) ? safeUrl(s.url) : "";
     if (!realLogo(s)) return `<li${ck(P)}>${href ? `<a class="name-link" href="${esc(href)}" target="_blank" rel="noopener"${ckHref(`${P}.url`)}>${name}</a>` : name}</li>`;
-    const img = `<img${imgAttrs(s.logo, 400)}${ck(`${P}.logo`)}${ckAlt(`${P}.name`)} alt="${esc(altFor(s.logo, s.name + " logo"))}" title="${esc(s.name)}" loading="lazy" data-sponsor-name="${esc(s.name)}" />`;
-    return `<li class="sp-logo"${ck(P)}>${href ? `<a href="${esc(href)}" target="_blank" rel="noopener"${ckHref(`${P}.url`)}>${img}</a>` : img}</li>`;
+    const logoName = `<span class="sp-name"${ck(`${P}.name`)}>${esc(s.name)}</span>`;   // shown only if the logo fails to load
+    const img = `<img${imgAttrs(s.logo, 400)}${ck(`${P}.logo`)}${ckAlt(`${P}.name`)} alt="${esc(altFor(s.logo, s.name + " logo"))}" title="${esc(s.name)}" loading="lazy" data-sponsor-logo />`;
+    return `<li class="sponsor-tile"${ck(P)}>${href ? `<a href="${esc(href)}" target="_blank" rel="noopener"${ckHref(`${P}.url`)}>${img}${logoName}</a>` : img + logoName}</li>`;
   }).join("")}</ul>`;
 }
 
@@ -437,6 +438,18 @@ function renderRecord(el) {
   el.innerHTML = `<section class="band"><div class="wrap"><h2 class="h2">Competition record</h2>${seasonStatRow()}<div class="sl-host"></div></div></section>`;
   seasonLog(el.querySelector(".sl-host"));
   initTickers(el);
+}
+
+// ---------- Short text from long text ----------
+// The redesign shows the first sentence of a longer paragraph and keeps the whole paragraph one click away, so nothing
+// is rewritten: these only cut what the content already says.
+const flatText = (t) => String(t ?? "").replace(/\s+/g, " ").trim();
+// The words of a rich-text string, without the [link](url), ** and * marks.
+const plainText = (t) => flatText(String(t ?? "").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1"));
+function firstSentence(t) {
+  const s = plainText(t);
+  const i = s.indexOf(". ");
+  return i < 0 ? s : s.slice(0, i + 1);
 }
 
 // ---------- Results table (robot page) ----------
@@ -679,6 +692,36 @@ function initTickers(root = document) {
   });
 }
 
+// Timeline fill, ported from Aceternity UI (components/ui/timeline.tsx): a line that fills as the page scrolls, from the
+// moment the top of the list is at 10% of the viewport until its bottom is at 50% (offset ["start 10%", "end 50%"]); the
+// fill's opacity ramps over the first 10%. Static (no fill at all) when the visitor has asked for reduced motion.
+let timelineBusy = false;
+function timelineUpdate() {
+  timelineBusy = false;
+  const t = document.querySelector(".tl"), f = t && t.querySelector(".tl-fill");
+  if (!f || REDUCED_MOTION) return;
+  const r = t.getBoundingClientRect(), vh = window.innerHeight || document.documentElement.clientHeight;
+  const span = r.height - 0.4 * vh;
+  const p = Math.max(0, Math.min(1, span > 0 ? (0.1 * vh - r.top) / span : (r.top <= 0.1 * vh ? 1 : 0)));
+  f.style.height = `${(p * r.height).toFixed(1)}px`;
+  f.style.opacity = Math.min(1, p / 0.1).toFixed(3);
+}
+function timelineSchedule() {
+  if (timelineBusy) return;
+  timelineBusy = true;
+  requestAnimationFrame(timelineUpdate);
+}
+let timelineWired = false;
+function initTimeline() {
+  if (!document.querySelector(".tl")) return;
+  if (!timelineWired) {
+    timelineWired = true;
+    addEventListener("scroll", timelineSchedule, { passive: true });
+    addEventListener("resize", timelineSchedule, { passive: true });
+  }
+  timelineUpdate();
+}
+
 // ---------- Theme ----------
 // Public pages are dark only: <html data-site="public"> and <meta name="color-scheme" content="dark"> in each page's
 // HTML, no script. They never read or write the shared `theme` cookie or the old localStorage key, so a light choice
@@ -715,12 +758,12 @@ function mountLayout() {
 
   if (!layoutStarted) {
     layoutStarted = true;
-    // A sponsor logo that does not load: show the sponsor's name in type instead.
+    // A sponsor logo that does not load: the CSS hides the picture and shows the sponsor's name in type (li.logo-failed).
     document.addEventListener("error", (e) => {
       const img = e.target;
-      if (!img || img.tagName !== "IMG" || !img.hasAttribute("data-sponsor-name")) return;
+      if (!img || img.tagName !== "IMG" || !img.hasAttribute("data-sponsor-logo")) return;
       const li = img.closest("li");
-      if (li) { li.classList.remove("sp-logo"); li.textContent = img.getAttribute("data-sponsor-name"); }
+      if (li) li.classList.add("logo-failed");
     }, true);
     document.addEventListener("click", (e) => {
       const copy = e.target.closest && e.target.closest("[data-copy]");

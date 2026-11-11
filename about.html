@@ -18,69 +18,7 @@
 <body>
 <div id="site-header"></div>
 
-<div class="page-header">
-  <h1>About Us</h1>
-  <p>Who we are, what FIRST Robotics is, and how we got here.</p>
-</div>
-
-<section class="block">
-  <div class="block-inner">
-    <div class="school-split">
-      <div class="school-text">
-        <h2 class="section-title" id="school-title"></h2>
-        <p class="section-lead" id="school-body"></p>
-        <div class="btn-row"><a class="btn btn-outline" id="school-link" data-ck-href="SITE.schoolUrl" target="_blank" rel="noopener" hidden>Visit Dawson School <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
-      </div>
-      <div class="school-split-mark" id="school-mark"></div>
-    </div>
-  </div>
-</section>
-
-<section class="block alt">
-  <div class="block-inner">
-    <h2 class="section-title" id="first-title"></h2>
-    <p class="section-lead" id="first-body"></p>
-  </div>
-</section>
-
-<section class="block">
-  <div class="block-inner">
-    <h2 class="section-title">Our Mission</h2>
-    <p class="section-lead" id="mission-body"></p>
-  </div>
-</section>
-
-<section class="block alt">
-  <div class="block-inner">
-    <h2 class="section-title">Our Values</h2>
-    <div class="mechanism-grid" id="values-grid"></div>
-  </div>
-</section>
-
-<section class="block">
-  <div class="block-inner">
-    <h2 class="section-title">How We Work</h2>
-    <div class="mechanism-grid" id="strategy-grid"></div>
-  </div>
-</section>
-
-<section class="block alt">
-  <div class="block-inner">
-    <h2 class="section-title">Our History</h2>
-    <p class="section-lead">Team 2972 has competed every season since 2009. See every robot on the
-    <a href="robots.html">robots page</a>.</p>
-    <div id="history"></div>
-  </div>
-</section>
-
-<section class="block">
-  <div class="block-inner">
-    <h2 class="section-title">Our Year</h2>
-    <p class="section-lead">The 2026–27 school year, from fall to spring.</p>
-    <ul class="schedule-list" id="annual-list"></ul>
-    <div class="btn-row"><a class="btn btn-outline" id="calendar-link" target="_blank" rel="noopener">Team calendar</a></div>
-  </div>
-</section>
+<main id="about-page"></main>
 
 <div id="site-footer"></div>
 
@@ -89,66 +27,50 @@
 <script src="js/content-loader.js"></script>
 <script src="js/components.js"></script>
 <script>
-onContent(() => {
-  // Sets an element's text (or Markdown-subset text) from a content field and tags it with data-ck.
-  const put = (id, path, value, isRich) => {
-    const el = document.getElementById(id);
-    el.setAttribute("data-ck", path);
-    if (isRich) { el.setAttribute("data-ck-type", "rich"); el.innerHTML = rich(value); }
-    else el.textContent = value;
-  };
-  put("school-title", "ABOUT_SCHOOL.heading", ABOUT_SCHOOL.heading);
-  put("school-body", "ABOUT_SCHOOL.body", ABOUT_SCHOOL.body, true);
-  document.getElementById("school-mark").innerHTML = schoolMark();
-  const schoolLink = document.getElementById("school-link");
-  schoolLink.href = safeUrl(SITE.schoolUrl);
-  schoolLink.hidden = !safeUrl(SITE.schoolUrl);
-  put("first-title", "ABOUT_FIRST.heading", ABOUT_FIRST.heading);
-  put("first-body", "ABOUT_FIRST.body", ABOUT_FIRST.body, true);
-  put("mission-body", "SITE.mission", SITE.mission);
+// A closed <details> with the whole paragraph: the page opens with little text and keeps the full wording one click away.
+function disclosure(o, name, summaryId, bodyId) {
+  return `<details class="disc"${ck(name)}><summary id="${summaryId}"${ck(`${name}.heading`)}>${esc(o.heading)}</summary><p id="${bodyId}"${ck(`${name}.body`, "rich")}>${rich(o.body)}</p></details>`;
+}
 
-  const cards = (name, items) => items.map((v, i) => `<div class="mechanism"${ck(`${name}[${i}]`)}><h3${ck(`${name}[${i}].name`)}>${esc(v.name)}</h3><p${ck(`${name}[${i}].text`, "rich")}>${rich(v.text)}</p></div>`).join("");
-  const values = document.getElementById("values-grid");
-  values.setAttribute("data-ck", "VALUES");
-  values.innerHTML = cards("VALUES", VALUES);
-  const strategy = document.getElementById("strategy-grid");
-  strategy.setAttribute("data-ck", "STRATEGY");
-  strategy.innerHTML = cards("STRATEGY", STRATEGY);
-
-  const t = HISTORY.today;
-  document.getElementById("history").innerHTML = `
-    <ol class="timeline"${ck("HISTORY.milestones")}>
-      ${HISTORY.milestones.map((m, i) => `
-        <li${ck(`HISTORY.milestones[${i}]`)}>
-          <span class="timeline-year"${ck(`HISTORY.milestones[${i}].year`)}>${esc(m.year)}</span>
-          <div class="timeline-body">
-            <ul${ck(`HISTORY.milestones[${i}].items`)}>${m.items.map((it, j) => `<li${ck(`HISTORY.milestones[${i}].items[${j}].text`, "rich")}>${rich(it.text)}</li>`).join("")}</ul>
-            ${m.image ? `<img${imgAttrs(m.image, 600)}${ck(`HISTORY.milestones[${i}].image`)}${ckAlt(`HISTORY.milestones[${i}].imageAlt`)} alt="${esc(altFor(m.image, m.imageAlt || m.year))}" loading="lazy" />` : ""}
-          </div>
-        </li>`).join("")}
-    </ol>
-    <article class="history-era${t.image ? "" : " no-image"}"${ck("HISTORY.today")}>
-      <div>
-        <h3${ck("HISTORY.today.heading")}>${esc(t.heading)}</h3>
-        <div${ck("HISTORY.today.paragraphs")}>
-          ${t.paragraphs.map((p, j) => `<p${ck(`HISTORY.today.paragraphs[${j}]`, "rich")}>${rich(p)}</p>`).join("")}
-        </div>
+// Photos for the milestones that have one come from the content (HISTORY.milestones[].image).
+function timeline() {
+  const rows = HISTORY.milestones.map((m, i) => ({ m, i, items: (m.items || []).map((it, j) => ({ it, j })).filter(({ it }) => it.kind === "team") })).filter((x) => x.items.length);
+  return `<div class="tl" id="history"${ck("HISTORY.milestones")}>${rows.map(({ m, i, items }) => `
+    <div class="tl-row timeline-item"${ck(`HISTORY.milestones[${i}]`)}>
+      <div class="tl-side"><div class="tl-mark" aria-hidden="true"><i></i></div><h3 class="tl-t tl-t-d"${ck(`HISTORY.milestones[${i}].year`)}>${esc(m.year)}</h3></div>
+      <div class="tl-body timeline-body"><h3 class="tl-t tl-t-m"${ck(`HISTORY.milestones[${i}].year`)}>${esc(m.year)}</h3>
+        <div${ck(`HISTORY.milestones[${i}].items`)}>${items.map(({ it, j }) => `<div class="tl-item"><p${ck(`HISTORY.milestones[${i}].items[${j}].text`, "rich")}>${rich(it.text)}</p></div>`).join("")}</div>
+        ${m.image ? `<div class="photo r43 tl-photo"><img${imgAttrs(m.image, 600)}${ck(`HISTORY.milestones[${i}].image`)}${ckAlt(`HISTORY.milestones[${i}].imageAlt`)} alt="${esc(altFor(m.image, m.imageAlt || m.year))}" loading="lazy" width="900" height="675" /></div>` : ""}
       </div>
-      ${t.image ? `<img${imgAttrs(t.image, 800)}${ck("HISTORY.today.image")}${ckAlt("HISTORY.today.imageAlt")} alt="${esc(altFor(t.image, t.imageAlt || t.heading))}" loading="lazy" />` : ""}
-    </article>`;
+    </div>`).join("")}<div class="tl-track" aria-hidden="true"><i class="tl-fill"></i></div></div>`;
+}
 
-  const annual = document.getElementById("annual-list");
-  annual.setAttribute("data-ck", "ANNUAL_EVENTS");
-  annual.innerHTML = ANNUAL_EVENTS.map((e, i) => `
-    <li${ck(`ANNUAL_EVENTS[${i}]`)}>
-      <span class="event-name"${ck(`ANNUAL_EVENTS[${i}].name`)}>${esc(e.name)}</span>
-      <span class="event-loc"><span class="event-when"${ck(`ANNUAL_EVENTS[${i}].when`)}>${esc(e.when)}</span><span class="event-where"${ck(`ANNUAL_EVENTS[${i}].description`)}>${esc(e.description)}</span></span>
-    </li>
-  `).join("");
-
-  const cal = document.getElementById("calendar-link");
-  cal.href = safeUrl(contentGet("TEAM_CALENDAR_URL"));
-  cal.setAttribute("data-ck-href", "TEAM_CALENDAR_URL");
+onContent(() => {
+  const wins = [];
+  ROBOTS.slice().sort((a, b) => Number(a.year) - Number(b.year)).forEach((r) => (r.results || []).forEach((x) => { if (resultType(x.result) === "win") wins.push(`${x.event} ${r.year}`); }));
+  // The team sheet: six rows. "Seasons played" and "Event wins" are counted from ROBOTS, the rest are fields.
+  const sheet = [
+    ["Team", `FRC <span${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span>, <span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span>`],
+    ["School", `<span${ck("SITE.school")}>${esc(SITE.school)}</span>`],
+    ["Home", `<span${ck("SITE.location")}>${esc(SITE.location)}</span>`],
+    ["Founded", `<span${ck("SITE.founded")}>${esc(SITE.founded)}</span>`],
+    ["Seasons played", esc(String(ROBOTS.length))],
+    ["Event wins", wins.length ? esc(wins.join(" · ")) : "None yet"],
+  ];
+  const href = safeUrl(SITE.schoolUrl);
+  document.getElementById("about-page").innerHTML = `
+    <section class="band"><div class="wrap">
+      <h1 class="h1" tabindex="-1">About the team</h1><p class="lead"${ck("SITE.mission")}>${esc(SITE.mission)}</p>
+      <div class="grid2 top spaced"><dl class="sheet tab">${sheet.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
+        <div class="school-box">${schoolMark("lg")}<p${ck("ABOUT_SCHOOL.body", "rich")}>${esc(firstSentence(ABOUT_SCHOOL.body))}</p>${href ? `<p class="flush"><a href="${esc(href)}" target="_blank" rel="noopener"${ckHref("SITE.schoolUrl")}>Visit Dawson School ↗</a></p>` : ""}</div></div>
+      <div class="disc-row spaced">${disclosure(ABOUT_FIRST, "ABOUT_FIRST", "first-title", "first-body")}${disclosure(ABOUT_SCHOOL, "ABOUT_SCHOOL", "school-title", "school-body")}</div>
+    </div></section>
+    <section class="band alt"><div class="wrap"><h2 class="h2">What we value</h2><div class="vgrid"${ck("VALUES")}>${VALUES.map((v, i) => `<div${ck(`VALUES[${i}]`)}><b${ck(`VALUES[${i}].name`)}>${esc(v.name)}</b><span${ck(`VALUES[${i}].text`, "rich")}>${rich(v.text)}</span></div>`).join("")}</div></div></section>
+    <section class="band"><div class="wrap"><h2 class="h2">How we work</h2><div class="vgrid"${ck("STRATEGY")}>${STRATEGY.map((v, i) => `<div${ck(`STRATEGY[${i}]`)}><b${ck(`STRATEGY[${i}].name`)}>${esc(v.name)}</b><span${ck(`STRATEGY[${i}].text`, "rich")}>${rich(v.text)}</span></div>`).join("")}</div></div></section>
+    <section class="band alt"><div class="wrap"><h2 class="h2">How the team grew</h2>${timeline()}
+      <p class="spaced-sm"><a class="tl-link" href="robots.html">Competition results are on the Robots page →</a></p>
+      <p class="tl-links"><a class="tl-link" href="outreach.html">Outreach →</a><a class="tl-link" href="media.html">Media →</a></p></div></section>`;
+  initTimeline();
 });
 </script>
 </body>

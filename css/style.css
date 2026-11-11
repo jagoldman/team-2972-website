@@ -349,8 +349,13 @@ a.sl-col:hover { background: var(--hover); color: var(--text); text-decoration: 
 .names { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 40px; list-style: none; margin: 16px 0 24px; font-family: var(--display); font-weight: 600; font-size: 1.25rem; letter-spacing: -0.01em; }
 .names a { color: var(--text); text-decoration: none; }
 .names a:hover { color: var(--accent); text-decoration: underline; }
-.names .sp-logo { background: #ffffff; border-radius: 10px; padding: 10px 18px; }
-.names .sp-logo img { height: 44px; width: auto; max-width: 180px; object-fit: contain; }
+.names .sponsor-tile { background: #ffffff; border-radius: 10px; padding: 10px 18px; }
+.names .sponsor-tile img { height: 44px; width: auto; max-width: 180px; object-fit: contain; }
+.names .sp-name { color: var(--on-gold); position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.names .sponsor-tile.logo-failed { background: none; padding: 0; border-radius: 0; }
+.names .sponsor-tile.logo-failed img { display: none; }
+.names .sponsor-tile.logo-failed .sp-name { color: var(--text); position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; }
+.names .sponsor-tile a { display: inline-block; }
 
 /* ---------- Page header (pages not yet moved to the match-sheet layout, and the portal's install page) ---------- */
 .page-header { position: relative; padding: clamp(40px, 6vw, 80px) var(--gutter) clamp(32px, 5vw, 56px); border-bottom: 1px solid var(--line); }
@@ -418,13 +423,6 @@ h2.section-title { font: 700 clamp(1.6rem, 3vw, 2.3rem)/1.12 var(--display); let
 a.card { color: inherit; text-decoration: none; transition: border-color 0.3s; }
 a.card:hover { color: inherit; text-decoration: none; border-color: var(--line-2); }
 
-/* ---------- Photo beside text (Join pages, until they are moved) ---------- */
-.split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(30px, 6vw, 90px); align-items: center; }
-@media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
-.split.no-pic { grid-template-columns: 1fr; }
-.split .pic { position: relative; border-radius: var(--radius); overflow: hidden; aspect-ratio: 4 / 5; background: var(--ink-3); }
-.split .pic img { width: 100%; height: 100%; object-fit: cover; }
-
 /* ---------- Lists: schedule / annual ---------- */
 .schedule-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
 .schedule-list li {
@@ -469,24 +467,6 @@ a.card:hover { color: inherit; text-decoration: none; border-color: var(--line-2
   background: var(--mute);
   flex: none;
 }
-
-/* ---------- Sponsor logos ---------- */
-.sponsor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
-.sponsor-tile {
-  background: #ffffff;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 22px;
-  min-height: 100px;
-  transition: transform 0.4s var(--ease);
-}
-.sponsor-banner { width: 100%; margin: 0 0 24px; border-radius: var(--radius); background: var(--ink-3); }
-.sponsor-tile:hover { transform: translateY(-3px); }
-.sponsor-tile img { height: 50px; width: auto; max-width: 100%; object-fit: contain; }
-.sponsor-tile span { color: #0b1224; font-weight: 600; text-align: center; }
 
 /* ---------- Resource list ---------- */
 .resource-group { margin-bottom: 40px; }
@@ -535,25 +515,6 @@ a.card:hover { color: inherit; text-decoration: none; border-color: var(--line-2
 .contact-card p { color: var(--text-2); }
 .access-note { color: var(--mute); font-size: 15px; margin: 22px 0 0; max-width: 70ch; }
 .access-note a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
-
-/* ---------- About: school split (legacy until About is moved) ---------- */
-.school-split { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 60px; align-items: center; }
-.school-split .section-lead { margin-bottom: 0; }
-.school-split-mark { justify-self: end; width: min(100%, 320px); padding-left: 48px; border-left: 2px solid var(--tint-line); }
-@media (max-width: 900px) {
-  .school-split { grid-template-columns: 1fr; gap: 0; }
-  .school-split-mark { order: -1; justify-self: start; width: 150px; padding: 0 0 0 16px; margin-bottom: 20px; }
-}
-.legal { max-width: 70ch; }
-.legal h2 { font: 600 clamp(22px, 2.4vw, 28px)/1.25 var(--font); letter-spacing: -0.02em; margin: 40px 0 12px; }
-.legal p, .legal li { color: var(--text-2); font-size: 16px; line-height: 1.6; }
-.legal ul { padding-left: 22px; }
-.legal li { margin: 6px 0; }
-.legal a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
-.legal .legal-date { color: var(--mute); font-size: 14px; margin: 0; }
-.footer-copy a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
-.footer-copy { max-width: var(--max-width); margin: 0 auto; padding: 16px 0 26px; font-size: 13px; color: var(--mute); border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 4px 18px; }
-
 
 /* ---------- Robots and Robot pages ---------- */
 .spaced { margin-top: 40px; }
@@ -626,41 +587,89 @@ tr.win td:first-child { border-left-color: var(--gold); }
   .specs dd { padding-top: 4px; }
 }
 
-/* About: values and strategy cards (until About is moved) */
-.mechanism-grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
-.mechanism {
-  position: relative;
-  background: linear-gradient(180deg, var(--ink-3), var(--ink-2));
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 24px;
-  overflow: hidden;
-  transition: border-color 0.3s, transform 0.5s var(--ease);
-}
-.mechanism::after { content: ""; position: absolute; top: 0; left: 24px; width: 32px; height: 2px; background: var(--accent); transition: width 0.5s var(--ease); }
-.mechanism:hover { border-color: var(--tint-line); transform: translateY(-3px); }
-.mechanism:hover::after { width: calc(100% - 48px); }
-.mechanism h3 { margin: 0 0 8px; font: 600 21px/1.2 var(--font); letter-spacing: -0.015em; }
-.mechanism p { margin: 0; color: var(--text-2); font-size: 15px; }
 
-/* ---------- About: history ---------- */
-.history-era { display: grid; grid-template-columns: 1.4fr 0.6fr; gap: 40px; align-items: start; padding: 36px 0; border-bottom: 1px solid var(--line); }
-.history-era.no-image { grid-template-columns: 1fr; }
-.history-era:last-child { border-bottom: none; }
-.history-era h3 { margin: 0 0 10px; font: 600 30px/1.15 var(--font); letter-spacing: -0.025em; }
-.history-era .era-years { color: var(--accent); font-weight: 600; font-size: 0.6em; margin-left: 8px; letter-spacing: 0; }
-.history-era p { color: var(--text-2); max-width: 70ch; }
-.history-era img { border-radius: var(--radius-sm); width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--ink-3); }
-@media (max-width: 860px) { .history-era { grid-template-columns: 1fr; } }
-.timeline { list-style: none; margin: 0; padding: 0 0 0 4px; border-left: 2px solid var(--line); }
-.timeline li { position: relative; display: grid; grid-template-columns: 72px 1fr; gap: 16px; padding: 0 0 22px 24px; }
-.timeline li::before { content: ""; position: absolute; left: -7px; top: 8px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
-.timeline-year { font: 600 20px/1.5 var(--font); letter-spacing: -0.02em; }
-.timeline-body ul { list-style: disc; margin: 0; padding-left: 18px; color: var(--text-2); max-width: 70ch; }
-.timeline-body li { display: list-item; padding: 0; margin: 0 0 4px; border: 0; }
-.timeline-body li::before { content: none; }
-.timeline-body img { margin-top: 10px; border-radius: var(--radius-sm); max-width: 320px; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--ink-3); }
-@media (max-width: 560px) { .timeline li { grid-template-columns: 1fr; gap: 2px; } }
+/* ---------- Join, About and Sponsors ---------- */
+.spaced { margin-top: 32px; }
+.spaced-sm { margin-top: 24px; }
+.flush { margin: 0; }
+.roles { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 24px 0; }
+.roles p { color: var(--text-2); margin: 0; font-size: 0.95rem; }
+.roles h2 { font-size: 1rem; margin-bottom: 4px; }
+.links.narrow { max-width: 640px; }
+.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; list-style: none; margin-top: 24px; }
+.steps li { border-top: 2px solid var(--line-2); padding-top: 20px; position: relative; min-width: 0; }
+.steps li::before { content: ""; position: absolute; top: -6px; left: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.steps .step-d { color: var(--mute); font-size: 0.875rem; margin: 0; }
+.seg { display: inline-flex; max-width: 100%; padding: 4px; gap: 4px; border: 1px solid var(--line-2); border-radius: 999px; margin: 24px 0 28px; }
+.segb { display: inline-flex; align-items: center; min-height: 44px; padding: 0 28px; border-radius: 999px; border: 0; background: transparent; color: var(--text); font: 600 1rem var(--font); text-decoration: none; cursor: pointer; }
+.segb[aria-current="page"] { background: var(--gold); color: var(--on-gold); }
+.segb:not([aria-current="page"]):hover { background: var(--hover); color: var(--text); text-decoration: none; }
+.segb[aria-current="page"]:hover { color: var(--on-gold); text-decoration: none; }
+.member-photo { max-width: 420px; }
+#member-split.no-pic { grid-template-columns: 1fr; }
+.sheet > div { display: grid; grid-template-columns: 9rem 1fr; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line-2); min-width: 0; }
+.sheet > div:last-child { border-bottom: 1px solid var(--line-2); }
+.sheet dt { color: var(--mute); font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+.sheet dd { margin: 0; font-weight: 500; }
+.school-box { border: 1px solid var(--line-2); border-radius: 14px; background: var(--ink-3); padding: 24px; }
+.school-box .school-mark-wrap { width: min(100%, 260px); margin-bottom: 16px; }
+.disc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 clamp(24px, 4vw, 56px); align-items: start; }
+.disc { border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); margin-bottom: -1px; }
+.disc summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; padding: 6px 0; cursor: pointer; list-style: none; font-family: var(--display); font-weight: 700; font-size: 1.1rem; }
+.disc summary::-webkit-details-marker { display: none; }
+.disc summary::after { content: "+"; font-size: 1.5rem; line-height: 1; color: var(--accent); }
+.disc[open] summary::after { content: "\2013"; }
+.disc summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.disc p { color: var(--text-2); margin: 0 0 16px; }
+.vgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0 32px; margin-top: 16px; }
+.vgrid > div { border-top: 1px solid var(--line-2); padding: 12px 0 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.vgrid b { font-family: var(--display); font-weight: 700; font-size: 1.05rem; }
+.vgrid span { color: var(--text-2); font-size: 0.875rem; }
+.tl-links { display: flex; flex-wrap: wrap; gap: 0 24px; margin: 0; }
+.sponsor-banner { width: 100%; margin: 0 0 24px; border-radius: 14px; background: var(--ink-3); }
+@media (max-width: 760px) {
+  .roles, .disc-row { grid-template-columns: 1fr; }
+  .sheet > div { grid-template-columns: 7.5rem 1fr; }
+  .disc-row .disc + .disc { margin-top: 16px; }
+  .steps { grid-template-columns: 1fr; gap: 0; }
+  .steps li { border-top: 0; border-left: 2px solid var(--line-2); padding: 0 0 24px 20px; }
+  .steps li::before { top: 4px; left: -6px; }
+}
+
+/* How the team grew. Timeline, ported from Aceternity UI (components/ui/timeline.tsx): a sticky marker and year, a track with
+   a fade mask, and a fill that follows the scroll (initTimeline() in js/components.js). No fill with reduced motion. */
+.tl { position: relative; margin-top: 24px; }
+.tl-row { display: flex; justify-content: flex-start; padding-top: 40px; }
+.tl-side { position: sticky; top: 10rem; align-self: flex-start; z-index: 5; display: flex; flex-direction: column; align-items: center; max-width: 20rem; }
+.tl-mark { position: absolute; left: 12px; width: 40px; height: 40px; border-radius: 50%; background: var(--ink-2); display: flex; align-items: center; justify-content: center; }
+.tl-mark i { display: block; width: 16px; height: 16px; border-radius: 50%; background: var(--ink-3); border: 1px solid var(--line-2); }
+.tl-t { font-family: var(--display); font-weight: 700; color: var(--mute); font-variant-numeric: tabular-nums; margin: 0; }
+.tl-t-d { display: none; }
+.tl-t-m { display: block; font-size: 1.5rem; line-height: 2rem; margin-bottom: 16px; text-align: left; }
+.tl-body { position: relative; width: 100%; padding: 0 16px 0 80px; min-width: 0; }
+.tl-item { margin-bottom: 12px; }
+.tl-item p { margin: 0; }
+.tl-photo { max-width: 320px; margin-top: 12px; }
+.tl-track { position: absolute; left: 2rem; top: 0; bottom: 0; width: 2px; overflow: hidden; background: linear-gradient(to bottom, transparent 0%, var(--line-2), transparent 99%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, var(--text) 10%, var(--text) 90%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0%, var(--text) 10%, var(--text) 90%, transparent 100%); }
+.tl-fill { display: none; position: absolute; top: 0; left: 0; right: 0; width: 2px; height: 0; border-radius: 999px; background: linear-gradient(to top, var(--gold) 0%, var(--accent) 10%, transparent); }
+@media (min-width: 768px) {
+  .tl-row { padding-top: 3.5rem; gap: 40px; }
+  .tl-side { flex-direction: row; width: 100%; }
+  .tl-t-d { display: block; font-size: 3rem; line-height: 1; padding-left: 80px; }
+  .tl-t-m { display: none; }
+  .tl-body { padding-left: 16px; }
+}
+@media (min-width: 1024px) { .tl-side { max-width: 24rem; } }
+@media (prefers-reduced-motion: no-preference) { .tl-fill { display: block; opacity: 0; } }
+
+/* ---------- Privacy and Terms ---------- */
+.legal { max-width: 70ch; }
+.legal h2 { font: 600 clamp(22px, 2.4vw, 28px)/1.25 var(--font); letter-spacing: -0.02em; margin: 40px 0 12px; }
+.legal p, .legal li { color: var(--text-2); font-size: 16px; line-height: 1.6; }
+.legal ul { padding-left: 22px; }
+.legal li { margin: 6px 0; }
+.legal a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.legal .legal-date { color: var(--mute); font-size: 14px; margin: 0; }
 
 /* ---------- Resources: CAD overview ---------- */
 .cad-overview { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }

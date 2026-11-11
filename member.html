@@ -18,27 +18,22 @@
 <body>
 <div id="site-header"></div>
 
-<div class="page-header">
-  <h1>Become a Team Member</h1>
-  <p>Design, build and compete with us.</p>
-</div>
-
-<section class="block">
-  <div class="block-inner">
-    <div class="split no-pic" id="member-split">
+<main>
+  <section class="band"><div class="wrap">
+    <h1 class="h1" tabindex="-1">Join the team</h1>
+    <p class="lead">No robotics background required.</p>
+    <nav class="seg" aria-label="Join as"><a class="segb" href="member.html" aria-current="page">Students</a><a class="segb" href="mentor.html">Mentors</a></nav>
+    <div class="grid2 top" id="member-split">
       <div>
-        <p class="section-lead">Team 2972 is made up of students mainly from Dawson School. Members work
-        on the robot, on the business side of the team, and in the community, alongside mentors who guide
-        them. No robotics background required. If you are curious about joining, write to us and we will
-        tell you how the team works and when we meet.</p>
-        <div class="btn-row">
-          <a class="btn" href="contact.html">Get in touch</a>
-        </div>
+        <p>Team 2972 is made up of students mainly from Dawson School. Members work on the robot, on the business side of the team, and in the community, alongside mentors who guide them.</p>
+        <p>Write to us and we will tell you how the team works and when we meet.</p>
+        <p id="member-addr"></p>
       </div>
-      <div class="pic" id="member-pic" hidden></div>
+      <div class="photo r11 member-photo" id="member-pic" hidden></div>
     </div>
-  </div>
-</section>
+  </div></section>
+  <section class="band alt" id="year"></section>
+</main>
 
 <div id="site-footer"></div>
 
@@ -47,6 +42,16 @@
 <script src="js/content-loader.js"></script>
 <script src="js/components.js"></script>
 <script>
+
+// "The year at a glance": ANNUAL_EVENTS in order (a real sequence, so it is a numbered timeline), the first sentence of each.
+function renderYear() {
+  document.getElementById("year").innerHTML = `
+    <div class="wrap"><h2 class="h2">The year at a glance</h2>
+    <ol class="steps"${ck("ANNUAL_EVENTS")}>${ANNUAL_EVENTS.map((e, i) => `<li${ck(`ANNUAL_EVENTS[${i}]`)}>
+      <p class="label gold"${ck(`ANNUAL_EVENTS[${i}].when`)}>${esc(e.when)}</p><h3 class="h3"${ck(`ANNUAL_EVENTS[${i}].name`)}>${esc(e.name)}</h3><p class="step-d"${ck(`ANNUAL_EVENTS[${i}].description`)}>${esc(firstSentence(e.description))}</p></li>`).join("")}</ol>
+    ${isSet(contentGet("TEAM_CALENDAR_URL")) ? `<p class="spaced-sm"><a class="tl-link" id="calendar-link" href="${esc(safeUrl(contentGet("TEAM_CALENDAR_URL")))}" target="_blank" rel="noopener" data-ck-href="TEAM_CALENDAR_URL">Team calendar ↗</a></p>` : ""}</div>`;
+}
+
 // The photo beside the text (SITE.memberImage). Without one the text keeps the full width.
 onContent(() => {
   const src = SITE.memberImage;
@@ -54,8 +59,10 @@ onContent(() => {
   document.getElementById("member-split").classList.toggle("no-pic", !src);
   pic.hidden = !src;
   pic.innerHTML = src
-    ? `<img${imgAttrs(src, 800)}${ck("SITE.memberImage")}${ckAlt("SITE.memberImageAlt")} alt="${esc(altFor(src, SITE.memberImageAlt))}" loading="lazy" />`
+    ? `<img${imgAttrs(src, 800)}${ck("SITE.memberImage")}${ckAlt("SITE.memberImageAlt")} alt="${esc(altFor(src, SITE.memberImageAlt))}" loading="lazy" width="1000" height="1000" />`
     : "";
+  document.getElementById("member-addr").innerHTML = emailAddress();
+  renderYear();
 });
 </script>
 </body>

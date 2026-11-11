@@ -28,7 +28,9 @@ const plain = (s) => norm(String(s).replace(/\[([^\]]+)\]\((?:[^()\s]|\([^()\s]*
 // Robot pages are chosen per mode, below.
 const PAGES = [
   { url: "index.html", lists: ["ROBOTS", "SCHEDULE_2027"] },
-  { url: "about.html", lists: ["VALUES", "STRATEGY", "HISTORY.milestones", "ANNUAL_EVENTS"] },
+  { url: "about.html", lists: ["VALUES", "STRATEGY", "HISTORY.milestones"] },
+  { url: "member.html", lists: ["ANNUAL_EVENTS"] },
+  { url: "mentor.html", lists: ["ANNUAL_EVENTS"] },
   { url: "robots.html", lists: ["ROBOTS"] },
   { url: "sponsors.html", lists: ["SPONSOR_TIERS", "SPONSOR_TIERS[0].sponsors"] },
   { url: "outreach.html", lists: ["OUTREACH_EVENTS"] },
@@ -186,21 +188,30 @@ async function checkPage(p) {
     frame.remove();
 
     ({ doc, win, frame } = await get("about.html"));
-    const hist = [...doc.querySelectorAll("#history .timeline-body ul li, #history p")];
-    report(hist.some((p) => p.querySelector("a[href='robot.html?year=2030']") && p.querySelector("strong")), "rich text: site link and bold in a history paragraph");
+    // About shows the team milestones; the competition ones (Para one) are the Robots page's Highlights.
+    const hist = [...doc.querySelectorAll("#history .tl-item p")];
     const para2 = hist.find((p) => p.textContent.includes("Para two"));
     report(para2 && !para2.querySelector("b") && para2.textContent.includes("<b>html</b>"), "rich text: raw HTML is shown as text, not run");
     report(para2 && !para2.querySelector("a") && para2.textContent.includes("bad link"), "rich text: javascript: link is dropped, its words stay");
-    const tl = doc.querySelector("#history .timeline img");
+    const tl = doc.querySelector("#history .tl-photo img");
     report(tl.getAttribute("src") === "/media/00000000000000000004-800.webp", "media: timeline photo resolves to the 800 width", tl.getAttribute("src"));
     report(tl.getAttribute("alt") === "Pat Example smiling", "media: timeline photo uses the media alt text", tl.getAttribute("alt"));
-    report(doc.querySelector("#history .history-era img").getAttribute("src") === "/media/00000000000000000003-800.webp", "media: history photo resolves to the 800 width");
+    frame.remove();
+
+    ({ doc, win, frame } = await get("robots.html"));
+    const para1 = [...doc.querySelectorAll(".hl span")].find((p) => p.textContent.includes("Para one"));
+    report(para1 && para1.querySelector("a[href='robot.html?year=2030']") && para1.querySelector("strong"), "rich text: site link and bold in a Highlights line");
+    frame.remove();
+
+    ({ doc, win, frame } = await get("member.html"));
     report(doc.getElementById("calendar-link").getAttribute("href") === "https://example.com/calendar", "TEAM_CALENDAR_URL feeds the calendar link");
     frame.remove();
 
     ({ doc, win, frame } = await get("sponsors.html"));
     report(doc.getElementById("packet-link").getAttribute("href") === "https://example.com/packet.pdf", "SPONSOR_PACKET_URL feeds the packet link");
-    report(doc.querySelectorAll(".sponsor-tile img").length === 1 && /Empty Tier/.test(doc.body.textContent), "sponsor tiers: tile shown, empty tier still listed");
+    report(doc.querySelectorAll(".sponsor-tile img").length === 1 && /Empty Tier/.test(doc.body.textContent), "sponsor tiers: tile shown, empty tier still in the page");
+    report(doc.querySelector('[data-ck="SPONSOR_TIERS[1]"]').hidden === true && doc.querySelector('[data-ck="SPONSOR_TIERS[0]"]').hidden === false, "sponsor tiers: a tier with no sponsors is not shown");
+    report(doc.querySelector('.photo img[data-ck="HISTORY.today.image"]').getAttribute("src") === "/media/00000000000000000003-800.webp", "media: the photo beside the sponsor text resolves to the 800 width");
     report(!!doc.querySelector('.sponsor-tile a[href="https://example.com/sponsor"][data-ck-href="SPONSOR_TIERS[0].sponsors[0].url"] img'), "sponsor with a url: the logo links to it");
     frame.remove();
 
