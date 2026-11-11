@@ -22,7 +22,14 @@
 
 <main id="home"></main>
 
-<div id="site-footer"></div>
+<div id="site-footer">
+  <!-- Plain footer for readers without JavaScript (and Google's brand-verification check, which reads the raw page):
+       components.js replaces it with the full footer. Keep the Privacy and Terms links here. -->
+  <footer class="site-footer">
+    <p class="footer-copy"><span>Team 2972 Gears &amp; Buccaneers, Dawson School. Team members sign in to the team portal with Google or an approved account.</span>
+    <span><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></span></p>
+  </footer>
+</div>
 
 <script src="config.js"></script>
 <script src="js/content.js"></script>

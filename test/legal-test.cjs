@@ -31,6 +31,9 @@ check("privacy links to terms; terms links to privacy",
 const comps = fs.readFileSync(path.join(root, "js/components.js"), "utf8");
 check("footer links to both pages (on the portal host too, through pageHref)",
   comps.includes('pageHref("privacy.html")') && comps.includes('pageHref("terms.html")'));
+const home = strip(fs.readFileSync(path.join(root, "index.html"), "utf8"));
+check("home page links to privacy and terms in plain HTML (Google brand verification reads the raw page)",
+  /id="site-footer">[\s\S]*href="privacy\.html"[\s\S]*href="terms\.html"[\s\S]*<\/footer>\s*<\/div>/.test(home));
 const caddy = fs.readFileSync(path.join(root, "container/Caddyfile"), "utf8");
 check("pages are not portal paths (public hosts serve them)", !/privacy\.html|terms\.html/.test(caddy));
 console.log(fails ? `\n${fails} failed` : "\nall passed");
