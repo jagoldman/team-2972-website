@@ -353,6 +353,92 @@ function sponsorNames(tier, ti) {
   }).join("")}</ul>`;
 }
 
+// ---------- Season log ----------
+// The competition record as one picture: a column per year from the first season to the newest, one mark per event in
+// ROBOTS[].results. The marks come from the words of each result (docs/PUBLIC_REDESIGN_PROPOSAL.md §3), so nothing is
+// typed by hand: "won the event" is a large gold mark with a ring, "captain" a gold mark, a pick or the playoffs a gold
+// outline with a centre dot, and anything else is a grey outline. Years with no season (2020, 2021) stay as empty columns
+// so the gap is visible.
+function resultType(text) {
+  const s = String(text || "");
+  if (/won the event/i.test(s)) return "win";
+  if (/captain/i.test(s)) return "cap";
+  if (/pick|playoffs|semifinal|quarterfinal/i.test(s)) return "po";
+  return "played";
+}
+
+// { seasons, wins, playoffs } counted from ROBOTS: a playoff event is any event that is not just "played".
+function seasonStats() {
+  let wins = 0, playoffs = 0;
+  ROBOTS.forEach((r) => (r.results || []).forEach((x) => {
+    const t = resultType(x.result);
+    if (t === "win") wins++;
+    if (t !== "played") playoffs++;
+  }));
+  return { seasons: ROBOTS.length, wins, playoffs };
+}
+
+function seasonMark(type, ev) {
+  const big = type === "win";
+  const size = big ? 28 : 22;
+  const label = ev ? `${ev.event}: ${ev.result}` : "";
+  const shape = {
+    win: `<circle class="m-gold" cx="14" cy="14" r="9"/><circle class="m-ring" cx="14" cy="14" r="12.5"/>`,
+    cap: `<circle class="m-gold" cx="14" cy="14" r="9"/>`,
+    po: `<circle class="m-out" cx="14" cy="14" r="9"/><circle class="m-dot" cx="14" cy="14" r="3.5"/>`,
+    played: `<circle class="m-grey" cx="14" cy="14" r="9"/>`,
+  }[type];
+  return `<svg width="${size}" height="${size}" viewBox="0 0 28 28" ${ev ? `role="img" aria-label="${esc(label)}"` : `aria-hidden="true"`}>${ev ? `<title>${esc(label)}</title>` : ""}${shape}</svg>`;
+}
+
+const SEASON_LEGEND = [["win", "Won the event"], ["cap", "Alliance captain"], ["po", "Picked or in the playoffs"], ["played", "Played the event"]];
+
+// Draws the log into `el`. { compact: true } leaves out the robot names and the legend (for a small spot). The log is keyed as
+// the ROBOTS list unless the page already has another element for it ({ list: false }).
+function seasonLog(el, { compact = false, list = true } = {}) {
+  const years = ROBOTS.map((r) => Number(r.year)).filter(Number.isFinite);
+  if (!years.length) { el.innerHTML = `<p class="empty-note">No seasons yet.</p>`; return; }
+  const lo = Math.min(...years), hi = Math.max(...years);
+  let cols = "";
+  for (let y = lo; y <= hi; y++) {
+    const i = ROBOTS.findIndex((r) => Number(r.year) === y);
+    if (i < 0) {
+      cols += `<div class="sl-col" data-ck-ignore><div class="sl-marks"><span class="sl-dash" aria-hidden="true">–</span></div><span class="sl-year">${y}<span class="vh"> (no season)</span></span>${compact ? "" : `<span class="sl-name"></span>`}</div>`;
+      continue;
+    }
+    const r = ROBOTS[i], results = r.results || [], P = `ROBOTS[${i}]`;
+    const wins = results.filter((x) => resultType(x.result) === "win");
+    const label = `${r.year}${r.name ? `, ${r.name}` : ""}: ${plural(results.length, "event")}${wins.map((w) => `, won the ${w.event}`).join("")}`;
+    cols += `<a class="sl-col" href="${robotUrl(r)}" aria-label="${esc(label)}"${ck(P)}>
+      <span class="sl-marks"${ck(`${P}.results`)}>${results.map((x, j) => `<span class="sl-mark"${ck(`${P}.results[${j}]`)}>${seasonMark(resultType(x.result), x)}</span>`).join("")}</span>
+      <span class="sl-year"${ck(`${P}.year`)}>${esc(r.year)}</span>${compact ? "" : `<span class="sl-name"${r.name ? ` title="${esc(r.name)}"` : ""}${ck(`${P}.name`)}>${esc(r.name)}</span>`}</a>`;
+  }
+  const n = hi - lo + 1;
+  el.innerHTML = `<div class="sl-wrap" role="region" aria-label="Season log, scrolls sideways" tabindex="0"${list ? ck("ROBOTS") : ""}><div class="sl-grid" style="--cols:${n}">${cols}</div></div>` +
+    (compact ? "" : `<ul class="legend">${SEASON_LEGEND.map(([t, text]) => `<li>${seasonMark(t)} ${text}</li>`).join("")}</ul>`);
+}
+
+// One line above the log: counted from the same data.
+function seasonSummary() {
+  const s = seasonStats();
+  return `<p class="sl-sum">${plural(s.seasons, "season")} · ${plural(s.wins, "event win")} · ${plural(s.playoffs, "playoff event")}</p>`;
+}
+
+// The three record numbers (they count up once when first seen; the page already holds the final numbers).
+function seasonStatRow() {
+  const s = seasonStats();
+  return `<ul class="stats" aria-label="Competition record">${[[s.seasons, "season"], [s.wins, "event win"], [s.playoffs, "playoff event"]].map(([n, word]) =>
+    `<li><b class="stat-n" data-ticker="${n}">${n}</b><span class="stat-l">${word}${n === 1 ? "" : "s"}</span></li>`).join("")}</ul>`;
+}
+
+// Home: "Competition record" with the three numbers and the log.
+function renderRecord(el) {
+  if (!el) return;
+  el.innerHTML = `<section class="band"><div class="wrap"><h2 class="h2">Competition record</h2>${seasonStatRow()}<div class="sl-host"></div></div></section>`;
+  seasonLog(el.querySelector(".sl-host"));
+  initTickers(el);
+}
+
 // ---------- Site hosts ----------
 // Every host URL is built from SITE_SCHEME and SITE_DOMAIN (filled into config.js
 // by Caddy), so the same files work on localhost and 2972robotics.com.

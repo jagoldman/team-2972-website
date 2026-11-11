@@ -90,7 +90,7 @@ function renderHome() {
     ${newest ? `<section class="band alt"${ck("SPONSOR_TIERS")}><div class="wrap"${ck(`SPONSOR_TIERS[${newest.i}]`)}>
       <p class="label">Sponsors, <span${ck(`SPONSOR_TIERS[${newest.i}].tier`)}>${esc(newest.t.tier.replace(/\s*Sponsors?\s*/i, "").trim() || newest.t.tier)}</span> season</p>
       ${sponsorNames(newest.t, newest.i)}<a class="btn btn-line" href="sponsors.html">Become a sponsor</a></div></section>` : ""}`;
-  if (typeof renderRecord === "function") renderRecord(document.getElementById("record"));
+  renderRecord(document.getElementById("record"));
 }
 
 onContent(() => {
