@@ -172,6 +172,7 @@ a:hover { color: var(--accent); text-decoration: underline; text-underline-offse
 .btn-line, [data-site="public"] .btn.btn-line { background: transparent; color: var(--text); border-color: var(--line-2); }
 .btn-gold:hover, [data-site="public"] .btn.btn-gold:hover { background: var(--gold-2); border-color: var(--gold-2); color: var(--on-gold); }
 .btn-line:hover, [data-site="public"] .btn.btn-line:hover { background: var(--hover); color: var(--text); }
+.btn .arrow { width: 16px; height: 16px; margin-left: 8px; flex: none; }
 .btn-sm, [data-site="public"] .btn.btn-sm { padding: 0 16px; font-size: 0.9rem; }
 .btns { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 24px; }
 .tl-link { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; color: var(--accent); text-decoration: none; }
@@ -366,14 +367,12 @@ a.sl-col:hover { background: var(--hover); color: var(--text); text-decoration: 
 /* ---------- Sections ---------- */
 section.block { padding: clamp(40px, 6vw, 80px) var(--gutter); position: relative; }
 section.block.alt { background: var(--ink-2); }
-h2.section-title { font: 700 clamp(1.6rem, 3vw, 2.3rem)/1.12 var(--display); letter-spacing: -0.025em; margin: 0 0 12px; color: var(--text); text-wrap: balance; }
 .section-lead { color: var(--text-2); max-width: 65ch; margin: 0 0 32px; font-size: 1.15rem; }
-.section-lead a, .link-list a, .history-era a, .timeline a, .legal a, .access-note a {
+.section-lead a, .legal a, .access-note a {
   color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.subsection-title { font: 700 1.3rem/1.2 var(--display); letter-spacing: -0.02em; margin: 40px 0 16px; }
 
 /* ---------- Buttons (the portal's rectangle; public pages restyle .btn above) ---------- */
 .btn {
@@ -402,10 +401,8 @@ h2.section-title { font: 700 clamp(1.6rem, 3vw, 2.3rem)/1.12 var(--display); let
 .btn { max-width: 100%; overflow-wrap: anywhere; }   /* a long label (an email address) wraps rather than spilling out of its card */
 @media (max-width: 420px) { .btn { padding: 14px 20px; } }
 [data-site="public"] .btn { padding-block: 0; }
-.btn-disabled, .btn-disabled:hover { background: transparent; border: 1px dashed var(--line-2); color: var(--mute); box-shadow: none; cursor: default; }
 
-/* ---------- Cards / grids ---------- */
-.grid { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
+/* ---------- Cards ---------- */
 .card {
   position: relative;
   background: var(--ink-3);
@@ -416,37 +413,11 @@ h2.section-title { font: 700 clamp(1.6rem, 3vw, 2.3rem)/1.12 var(--display); let
   flex-direction: column;
 }
 .card img { width: 100%; height: 220px; object-fit: cover; background: var(--ink-3); }
-.card-body { padding: 22px 24px 26px; }
-.card-body h3 { margin: 0 0 6px; font: 600 26px/1.1 var(--font); letter-spacing: -0.02em; color: var(--text); }
-.card-body .meta { color: var(--mute); font: 500 13px/1.4 var(--font); margin-bottom: 10px; }
-.card-body p { color: var(--text-2); margin: 8px 0 0; font-size: 15.5px; }
 a.card { color: inherit; text-decoration: none; transition: border-color 0.3s; }
 a.card:hover { color: inherit; text-decoration: none; border-color: var(--line-2); }
 
-/* ---------- Lists: schedule / annual ---------- */
-.schedule-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
-.schedule-list li {
-  /* Every row the same: name left, details in a fixed-width column (date, then place), both vertically centred */
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 20rem);
-  gap: 8px 48px;
-  align-items: center;
-  padding: 26px 0;
-  border-bottom: 1px solid var(--line);
-  transition: padding 0.4s var(--ease);
-}
-.schedule-list li:hover { padding-left: 14px; }
-.schedule-list .event-name { font: 600 clamp(22px, 2.4vw, 30px)/1.15 var(--font); letter-spacing: -0.02em; color: var(--text); text-wrap: balance; }
-.schedule-list .event-loc { display: flex; flex-direction: column; gap: 4px; color: var(--mute); font-size: 15px; line-height: 1.45; text-align: left; }
-.schedule-list .event-when { color: var(--text); font-weight: 600; }
-/* Stack (name, date, place) whenever the list itself is narrow: a half-width column on Home, or any phone */
-.schedule-list { container-type: inline-size; }
-@container (max-width: 720px) {
-  .schedule-list li { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 22px 0; }
-}
-
 /* ---------- Status dot (the portal's "Coming soon") ---------- */
-.badge, .status-dot {
+.status-dot {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -459,7 +430,7 @@ a.card:hover { color: inherit; text-decoration: none; border-color: var(--line-2
   letter-spacing: 0;
   text-transform: none;
 }
-.badge::before, .status-dot::before {
+.status-dot::before {
   content: "";
   width: 8px;
   height: 8px;
@@ -468,28 +439,42 @@ a.card:hover { color: inherit; text-decoration: none; border-color: var(--line-2
   flex: none;
 }
 
-/* ---------- Resource list ---------- */
-.resource-group { margin-bottom: 40px; }
-.resource-group h3 { font: 600 24px/1.2 var(--font); letter-spacing: -0.02em; margin: 0 0 14px; }
-.resource-group ul { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
-.resource-group li a {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  color: var(--accent);
-  text-decoration: none;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 4px;
-  border-bottom: 1px solid var(--line);
-  font-weight: 500;
-  transition: padding 0.4s var(--ease), color 0.25s;
+/* ---------- Resources, Outreach, Media, Contact ---------- */
+.res-tools { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0 32px; }
+.res-tools .chips { flex: 1 1 320px; }
+.res-q-w { display: flex; flex-direction: column; gap: 4px; flex: 1 1 260px; max-width: 420px; margin-bottom: 16px; }
+.res-q-w .label { margin: 0; }
+#res-q { height: 44px; width: 100%; padding: 0 14px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--ink-3); color: var(--text); font: 500 1rem var(--font); }
+#res-q:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.res-cols { columns: 2; column-gap: clamp(24px, 4vw, 56px); margin-top: 16px; }
+.res-cat { break-inside: avoid; margin-bottom: 32px; }
+.res-list { list-style: none; }
+.res-list li { border-top: 1px solid var(--line); padding: 0 0 10px; }
+.res-list a { display: inline-block; padding: 10px 0 4px; overflow-wrap: anywhere; }
+.res-note { display: block; color: var(--text-2); font-size: 0.875rem; }
+.disc-list { max-width: 760px; margin-top: 16px; }
+.cad-ul { margin: 0 0 16px; padding-left: 20px; color: var(--text-2); }
+.cad-ul li { margin-bottom: 4px; }
+.cards-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
+.cards-2 .card { border: 1px solid var(--line-2); border-radius: 14px; background: var(--ink-3); min-width: 0; }
+.cards-2 .card .photo { border: 0; border-radius: 0; }
+.cards-2 .card img { height: 100%; }
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 12px; }
+.photo-grid .photo img { transition: none; }
+.links.rows li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0 16px; }
+.links.rows li > span { padding: 8px 0; }
+.links li.press { padding: 8px 0 10px; }
+.links li.press a { display: inline; min-height: 0; overflow-wrap: anywhere; }
+.links li.press span { display: block; }
+.addr-big .addr-t { font-family: var(--display); font-size: clamp(1.2rem, 5.2vw, 1.8rem); font-weight: 700; }
+.route { list-style: none; border-bottom: 1px solid var(--line-2); }
+.route li { border-top: 1px solid var(--line-2); }
+.route a { display: flex; align-items: center; min-height: 64px; font-family: var(--display); font-weight: 700; font-size: 1.25rem; color: var(--text); text-decoration: none; }
+.route a:hover { color: var(--accent); }
+@media (max-width: 760px) {
+  .res-cols { columns: 1; }
+  .cards-2 { grid-template-columns: 1fr; }
 }
-.resource-group li a .res-note { display: block; margin-top: 2px; font-size: 14px; font-weight: 400; color: var(--mute); }
-.resource-group li a::after { content: "↗"; color: var(--mute); transition: transform 0.3s var(--ease), color 0.3s; }
-.resource-group li a:hover { padding-left: 14px; }
-.resource-group li a:hover::after { color: var(--accent); transform: translate(2px, -2px); }
 
 /* ---------- Empty state ---------- */
 .empty-note {
@@ -672,9 +657,6 @@ tr.win td:first-child { border-left-color: var(--gold); }
 .legal .legal-date { color: var(--mute); font-size: 14px; margin: 0; }
 
 /* ---------- Resources: CAD overview ---------- */
-.cad-overview { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-.cad-part h3 { font: 600 22px/1.2 var(--font); margin: 0 0 8px; }
-.cad-part p, .cad-part li { color: var(--text-2); }
 
 /* ---------- Portal ---------- */
 .portal-main { max-width: var(--max-width); margin: 0 auto; padding: 28px var(--gutter) 72px; position: relative; }

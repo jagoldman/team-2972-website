@@ -217,7 +217,7 @@ async function checkPage(p) {
 
     ({ doc, win, frame } = await get("media.html"));
     report(doc.querySelectorAll("#photo-grid img").length === 2 && doc.querySelector("#photo-grid img").getAttribute("src") === "/media/00000000000000000009-800.webp", "media: gallery photos resolve to the 800 width");
-    report(doc.querySelectorAll("#video-grid iframe").length === 1, "media: the non-YouTube video is not embedded");
+    report(doc.querySelectorAll("#video-grid a").length === 1 && !doc.querySelector("iframe"), "media: the non-YouTube video is not linked, and no video is embedded (they open on YouTube)");
     frame.remove();
 
     ({ doc, win, frame } = await get("robot.html?year=2030"));

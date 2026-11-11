@@ -18,33 +18,7 @@
 <body>
 <div id="site-header"></div>
 
-<div class="page-header">
-  <h1>Resources</h1>
-  <p>Documents, code, and guides for team members and other FRC teams.</p>
-</div>
-
-<section class="block">
-  <div class="block-inner" id="resource-groups"></div>
-</section>
-
-<section class="block alt" id="request-access">
-  <div class="block-inner">
-    <h2 class="section-title">Code, CAD and the Team Drive</h2>
-    <p class="section-lead">Anyone can read our robot code on GitHub and view our robots in the <a id="onshape-public" target="_blank" rel="noopener">public
-    Onshape publication</a>. The team's Google Drive and the editable Onshape CAD are shared by invitation only. Team
-    members can ask for access here.</p>
-    <div id="team-tools"></div>
-    <div id="request-access-body"></div>
-  </div>
-</section>
-
-<section class="block" id="cad-overview">
-  <div class="block-inner">
-    <!-- fixed page heading; it only happens to match a link label, so it is not a content field -->
-    <h2 class="section-title" data-ck-ignore>3D CAD/CAM Modeling Overview</h2>
-    <div class="cad-overview" id="cad-body"></div>
-  </div>
-</section>
+<main id="resources-page"></main>
 
 <div id="site-footer"></div>
 
@@ -53,44 +27,82 @@
 <script src="js/content-loader.js"></script>
 <script src="js/components.js"></script>
 <script>
+// Filter chips by category and a search box over the links. Both are kept while the page is re-rendered (the editor's preview).
+let resCat = "all", resQ = "";
+const external = (url) => /^https?:/i.test(url);
+
+// Links still set to "#" are hidden; categories with nothing left are skipped. Indexes stay the ones in RESOURCE_LINKS,
+// so the data-ck paths are right even when something is hidden.
+function visibleGroups() {
+  return RESOURCE_LINKS.map((group, gi) => ({ group, gi, items: group.items.map((item, ii) => ({ item, ii })).filter(({ item }) => isSet(item.url)) })).filter((g) => g.items.length);
+}
+function matches(item, q) {
+  const text = `${item.label} ${item.note || ""}`.toLowerCase();
+  return !q || text.includes(q.toLowerCase());
+}
+function listHtml() {
+  let n = 0;
+  const html = visibleGroups().map(({ group, gi, items }) => {
+    if (resCat !== "all" && group.category !== resCat) return "";
+    const shown = items.filter(({ item }) => matches(item, resQ));
+    if (!shown.length) return "";
+    n += shown.length;
+    return `<div class="resource-group res-cat"${ck(`RESOURCE_LINKS[${gi}]`)}><h2 class="label"${ck(`RESOURCE_LINKS[${gi}].category`)}>${esc(group.category)}</h2>
+      <ul class="res-list"${ck(`RESOURCE_LINKS[${gi}].items`)}>${shown.map(({ item, ii }) => {
+        const href = safeUrl(item.url), P = `RESOURCE_LINKS[${gi}].items[${ii}]`, out = external(href);
+        return `<li${ck(P)}><a href="${esc(href)}"${item.download ? ` download="${esc(item.download)}"` : ""}${out ? ' target="_blank" rel="noopener"' : ""}${ckHref(`${P}.url`)}><span${ck(`${P}.label`)}>${esc(item.label)}</span>${out ? " ↗" : ""}</a>${item.note ? `<span class="res-note"${ck(`${P}.note`)}>${esc(item.note)}</span>` : ""}</li>`;
+      }).join("")}</ul></div>`;
+  }).join("");
+  return { count: `Showing ${plural(n, "link")}`, html: n ? html : `<p>No resources match. <button type="button" class="tl-link" data-resclear>Clear the search.</button></p>` };
+}
+function refresh() {
+  const g = listHtml();
+  document.getElementById("resource-groups").innerHTML = g.html;
+  document.getElementById("res-count").textContent = g.count;
+}
+
+function render() {
+  const g = listHtml();
+  const cats = [["all", "All"]].concat(visibleGroups().map(({ group }) => [group.category, group.category]));
+  document.getElementById("resources-page").innerHTML = `
+    <section class="band"><div class="wrap"><h1 class="h1" tabindex="-1">Resources</h1><p class="lead">Documents, code, and guides for team members and other FRC teams.</p>
+      <div class="res-tools"><div class="chips" role="group" aria-label="Filter by category">${cats.map(([v, label]) => `<button type="button" class="fchip" data-ck-ignore data-rescat="${esc(v)}" aria-pressed="${resCat === v}">${esc(label)}</button>`).join("")}</div>
+        <div class="res-q-w"><label class="label" for="res-q">Search resources</label><input type="search" id="res-q" autocomplete="off" value="${esc(resQ)}"></div></div>
+      <p class="small mute tab" id="res-count" aria-live="polite">${g.count}</p>
+      <div class="res-cols" id="resource-groups"${ck("RESOURCE_LINKS")}>${g.html}</div></div></section>
+    <section class="band alt" id="request-access"><div class="wrap"><h2 class="h2">Code, CAD and the Team Drive</h2>
+      <p>Anyone can read our robot code on GitHub and view our robots in the <a id="onshape-public" href="${esc(safeUrl(SITE.onshapePublic))}" target="_blank" rel="noopener" data-ck-href="SITE.onshapePublic">public Onshape publication</a>. The team's Google Drive and the editable Onshape CAD are shared by invitation only. Team members can ask for access here.</p>
+      <div id="team-tools">${renderTeamTools()}</div><div id="request-access-body">${renderRequestAccess()}</div></div></section>
+    <section class="band" id="cad-overview"><div class="wrap">
+      <!-- fixed page heading; it only happens to match a link label, so it is not a content field -->
+      <h2 class="h2" data-ck-ignore>3D CAD/CAM Modeling Overview</h2>
+      <div class="disc-list"${ck("CAD_OVERVIEW")}>${CAD_OVERVIEW.map((part, i) => `<details class="disc"${ck(`CAD_OVERVIEW[${i}]`)}><summary${ck(`CAD_OVERVIEW[${i}].heading`)}>${esc(part.heading)}</summary>
+        ${part.body ? `<p${ck(`CAD_OVERVIEW[${i}].body`, "rich")}>${rich(part.body)}</p>` : ""}
+        ${part.list ? `<ul class="cad-ul"${ck(`CAD_OVERVIEW[${i}].list`)}>${part.list.map((li, j) => `<li${ck(`CAD_OVERVIEW[${i}].list[${j}]`, "rich")}>${rich(li)}</li>`).join("")}</ul>` : ""}
+        ${part.after ? `<p${ck(`CAD_OVERVIEW[${i}].after`, "rich")}>${rich(part.after)}</p>` : ""}</details>`).join("")}</div></div></section>`;
+}
+
+let resWired = false;
 onContent(() => {
-  // Links still set to "#" are hidden; groups with nothing left are skipped. Indexes stay the ones
-  // in RESOURCE_LINKS, so the data-ck paths are right even when something is hidden.
-  const external = url => /^https?:/i.test(url);
-  const groups = document.getElementById("resource-groups");
-  groups.setAttribute("data-ck", "RESOURCE_LINKS");
-  groups.innerHTML = RESOURCE_LINKS
-    .map((group, gi) => ({ group, gi, items: group.items.map((item, ii) => ({ item, ii })).filter(({ item }) => isSet(item.url)) }))
-    .filter(g => g.items.length)
-    .map(({ group, gi, items }) => `
-      <div class="resource-group"${ck(`RESOURCE_LINKS[${gi}]`)}>
-        <h3${ck(`RESOURCE_LINKS[${gi}].category`)}>${esc(group.category)}</h3>
-        <ul${ck(`RESOURCE_LINKS[${gi}].items`)}>
-          ${items.map(({ item, ii }) => {
-            const href = safeUrl(item.url);
-            const P = `RESOURCE_LINKS[${gi}].items[${ii}]`;
-            return `<li${ck(P)}><a href="${esc(href)}"${item.download ? ` download="${esc(item.download)}"` : ""}${external(href) ? ' target="_blank" rel="noopener"' : ""}${ckHref(`${P}.url`)}><span><span${ck(`${P}.label`)}>${esc(item.label)}</span>${item.note ? `<small class="res-note"${ck(`${P}.note`)}>${esc(item.note)}</small>` : ""}</span></a></li>`;
-          }).join("")}
-        </ul>
-      </div>
-    `).join("");
-
-  const onshape = document.getElementById("onshape-public");
-  onshape.href = safeUrl(SITE.onshapePublic);
-  onshape.setAttribute("data-ck-href", "SITE.onshapePublic");
-  document.getElementById("team-tools").innerHTML = renderTeamTools();
-  document.getElementById("request-access-body").innerHTML = renderRequestAccess();
-
-  const cad = document.getElementById("cad-body");
-  cad.setAttribute("data-ck", "CAD_OVERVIEW");
-  cad.innerHTML = CAD_OVERVIEW.map((part, i) => `
-    <div class="cad-part"${ck(`CAD_OVERVIEW[${i}]`)}>
-      <h3${ck(`CAD_OVERVIEW[${i}].heading`)}>${esc(part.heading)}</h3>
-      ${part.body ? `<p${ck(`CAD_OVERVIEW[${i}].body`, "rich")}>${rich(part.body)}</p>` : ""}
-      ${part.list ? `<ul${ck(`CAD_OVERVIEW[${i}].list`)}>${part.list.map((li, j) => `<li${ck(`CAD_OVERVIEW[${i}].list[${j}]`, "rich")}>${rich(li)}</li>`).join("")}</ul>` : ""}
-      ${part.after ? `<p${ck(`CAD_OVERVIEW[${i}].after`, "rich")}>${rich(part.after)}</p>` : ""}
-    </div>
-  `).join("");
+  render();
+  if (resWired) return;
+  resWired = true;
+  document.addEventListener("input", (e) => { if (e.target && e.target.id === "res-q") { resQ = e.target.value; refresh(); } });
+  document.addEventListener("click", (e) => {
+    const cat = e.target.closest && e.target.closest("[data-rescat]");
+    if (cat) {
+      resCat = cat.getAttribute("data-rescat");
+      document.querySelectorAll("[data-rescat]").forEach((b) => b.setAttribute("aria-pressed", String(b === cat)));
+      refresh();
+      return;
+    }
+    if (e.target.closest && e.target.closest("[data-resclear]")) {
+      resQ = "";
+      const q = document.getElementById("res-q");
+      if (q) { q.value = ""; q.focus(); }
+      refresh();
+    }
+  });
 });
 </script>
 </body>

@@ -18,27 +18,7 @@
 <body>
 <div id="site-header"></div>
 
-<div class="page-header">
-  <h1>Outreach</h1>
-  <p>How we give back to the FIRST and Dawson community.</p>
-</div>
-
-<section class="block">
-  <div class="block-inner">
-    <h2 class="section-title">Community Events</h2>
-    <p class="section-lead">From mentoring FIRST LEGO League teams to running STEM
-    demos, we try to pass on what FIRST has given us.</p>
-    <div class="grid" id="outreach-grid"></div>
-  </div>
-</section>
-
-<section class="block alt">
-  <div class="block-inner">
-    <h2 class="section-title">Dawson FLL</h2>
-    <p class="section-lead">Team 2972 supports Dawson School's FIRST LEGO League program,
-    mentoring younger students as they take their first steps in robotics.</p>
-  </div>
-</section>
+<main id="outreach-page"></main>
 
 <div id="site-footer"></div>
 
@@ -48,22 +28,20 @@
 <script src="js/components.js"></script>
 <script>
 onContent(() => {
-  const grid = document.getElementById("outreach-grid");
-  grid.setAttribute("data-ck", "OUTREACH_EVENTS");
-  if (!OUTREACH_EVENTS.length) {
-    grid.innerHTML = `<p class="empty-note">Event write-ups coming soon — check back for updates on our latest outreach.</p>`;
-    return;
-  }
-  grid.innerHTML = OUTREACH_EVENTS.map((e, i) => `
-    <div class="card"${ck(`OUTREACH_EVENTS[${i}]`)}>
-      <img${imgAttrs(e.image, 800)}${ck(`OUTREACH_EVENTS[${i}].image`)}${ckAlt(`OUTREACH_EVENTS[${i}].name`)} alt="${esc(altFor(e.image, e.name))}" loading="lazy" />
-      <div class="card-body">
-        <div class="meta"${ck(`OUTREACH_EVENTS[${i}].date`)}>${esc(e.date)}</div>
-        <h3${ck(`OUTREACH_EVENTS[${i}].name`)}>${esc(e.name)}</h3>
+  const cards = OUTREACH_EVENTS.map((e, i) => `
+    <article class="card"${ck(`OUTREACH_EVENTS[${i}]`)}>
+      <div class="photo r32"><img${imgAttrs(e.image, 800)}${ck(`OUTREACH_EVENTS[${i}].image`)}${ckAlt(`OUTREACH_EVENTS[${i}].name`)} alt="${esc(altFor(e.image, e.name + ", Team " + SITE.teamNumber + " outreach"))}" loading="lazy" width="800" height="534" /></div>
+      <div class="card-b">
+        ${e.date ? `<p class="label"${ck(`OUTREACH_EVENTS[${i}].date`)}>${esc(e.date)}</p>` : ""}
+        <h2 class="h3"${ck(`OUTREACH_EVENTS[${i}].name`)}>${esc(e.name)}</h2>
         <p${ck(`OUTREACH_EVENTS[${i}].description`, "rich")}>${rich(e.description)}</p>
       </div>
-    </div>
-  `).join("");
+    </article>`).join("");
+  document.getElementById("outreach-page").innerHTML = `
+    <section class="band"><div class="wrap"><h1 class="h1" tabindex="-1">Outreach</h1><p class="lead">How we give back to the FIRST and Dawson community.</p>
+      <p>From mentoring FIRST LEGO League teams to running STEM demos, we try to pass on what FIRST has given us.</p>
+      <div class="cards-2" id="outreach-grid"${ck("OUTREACH_EVENTS")}>${OUTREACH_EVENTS.length ? cards : `<p class="empty-note">Event write-ups coming soon. Check back for updates on our latest outreach.</p>`}</div></div></section>
+    <section class="band alt"><div class="wrap"><h2 class="h2">Dawson FLL</h2><p>Team 2972 supports Dawson School's FIRST LEGO League program, mentoring younger students as they take their first steps in robotics.</p></div></section>`;
 });
 </script>
 </body>

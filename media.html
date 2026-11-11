@@ -18,42 +18,7 @@
 <body>
 <div id="site-header"></div>
 
-<div class="page-header">
-  <h1>Media</h1>
-  <p>Photos, videos, and press coverage of the team.</p>
-</div>
-
-<section class="block">
-  <div class="block-inner">
-    <h2 class="section-title">Photos</h2>
-    <div class="grid" id="photo-grid"></div>
-  </div>
-</section>
-
-<section class="block alt">
-  <div class="block-inner">
-    <h2 class="section-title">Videos</h2>
-    <div class="grid" id="video-grid"></div>
-  </div>
-</section>
-
-<section class="block">
-  <div class="block-inner">
-    <h2 class="section-title">Publicity</h2>
-    <p class="section-lead">Press inquiries are welcome. We coordinate them with Dawson School before materials or comments go out, so please reach us through the <a href="contact.html">contact page</a>.</p>
-    <div id="publicity-list"></div>
-  </div>
-</section>
-
-<section class="block alt">
-  <div class="block-inner">
-    <h2 class="section-title">Follow Along</h2>
-    <p class="section-lead">Follow us on Instagram for behind-the-scenes updates from build season. We don't check messages there; to reach us, use the <a href="contact.html">contact page</a>.</p>
-    <div class="btn-row">
-      <a class="btn" id="ig-link" target="_blank" rel="noopener">Instagram</a>
-    </div>
-  </div>
-</section>
+<main id="media-page"></main>
 
 <div id="site-footer"></div>
 
@@ -62,33 +27,30 @@
 <script src="js/content-loader.js"></script>
 <script src="js/components.js"></script>
 <script>
+// A YouTube embed address becomes the address people watch at (nothing is embedded: the video opens on YouTube).
+function watchUrl(embed) {
+  const m = /^https:\/\/www\.youtube\.com\/embed\/([\w-]{11})(?:\?start=(\d+))?$/.exec(embed);
+  return m ? `https://www.youtube.com/watch?v=${m[1]}${m[2] ? `&t=${m[2]}s` : ""}` : "";
+}
 onContent(() => {
-  const ig = document.getElementById("ig-link");
-  ig.href = safeUrl(SITE.instagram);
-  ig.setAttribute("data-ck-href", "SITE.instagram");
-  ig.innerHTML = `Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span>`;
-
-  // Each grid's own data-ck is its list, so an empty list can still be given a first item.
-  const photoGrid = document.getElementById("photo-grid");
-  photoGrid.setAttribute("data-ck", "MEDIA_PHOTOS");
-  photoGrid.innerHTML = MEDIA_PHOTOS.length
-    ? MEDIA_PHOTOS.map((src, i) => `<div class="card"${ck(`MEDIA_PHOTOS[${i}]`)}><img${imgAttrs(src, 600)}${ck(`MEDIA_PHOTOS[${i}]`)} alt="${esc(altFor(src, "Team photo"))}" loading="lazy" /></div>`).join("")
-    : `<p class="empty-note">Photo gallery coming soon.</p>`;
-
-  const videoGrid = document.getElementById("video-grid");
-  videoGrid.setAttribute("data-ck", "MEDIA_VIDEOS");
   const videos = MEDIA_VIDEOS
-    .map((v, i) => ({ src: youtubeEmbed(typeof v === "string" ? v : v.url), caption: typeof v === "string" ? "" : (v.caption || ""), i }))
-    .filter(v => v.src);
-  videoGrid.innerHTML = videos.length
-    ? videos.map(v => `<div class="card"${ck(`MEDIA_VIDEOS[${v.i}]`)}><iframe src="${esc(v.src)}" title="${esc(v.caption || "Team video")}" loading="lazy" allowfullscreen style="width:100%;aspect-ratio:16/9;border:0;"></iframe>${v.caption ? `<div class="card-body"><p${ck(`MEDIA_VIDEOS[${v.i}].caption`)}>${esc(v.caption)}</p></div>` : ""}</div>`).join("")
-    : `<p class="empty-note">Video gallery coming soon.</p>`;
-
-  const publicity = document.getElementById("publicity-list");
-  publicity.setAttribute("data-ck", "MEDIA_PUBLICITY");
-  publicity.innerHTML = MEDIA_PUBLICITY.length
-    ? `<ul>${MEDIA_PUBLICITY.map((p, i) => `<li${ck(`MEDIA_PUBLICITY[${i}]`)}><a href="${esc(safeUrl(p.url))}" target="_blank" rel="noopener"${ck(`MEDIA_PUBLICITY[${i}].title`)}${ckHref(`MEDIA_PUBLICITY[${i}].url`)}>${esc(p.title)}</a> — <span${ck(`MEDIA_PUBLICITY[${i}].outlet`)}>${esc(p.outlet)}</span></li>`).join("")}</ul>`
-    : `<p class="empty-note">No press coverage listed yet.</p>`;
+    .map((v, i) => ({ src: youtubeEmbed(typeof v === "string" ? v : v.url), caption: typeof v === "string" ? "" : (v.caption || ""), i, obj: typeof v !== "string" }))
+    .filter((v) => v.src);
+  const photos = MEDIA_PHOTOS.length
+    ? `<div class="photo-grid" id="photo-grid"${ck("MEDIA_PHOTOS")}>${MEDIA_PHOTOS.map((src, i) => `<a class="photo r43" href="${esc(imgUrl(src, 1600))}" target="_blank" rel="noopener"${ck(`MEDIA_PHOTOS[${i}]`)}><img${imgAttrs(src, 600)}${ck(`MEDIA_PHOTOS[${i}]`)} alt="${esc(altFor(src, "Team photo"))}" loading="lazy" width="600" height="450" /></a>`).join("")}</div>`
+    : `<div id="photo-grid"${ck("MEDIA_PHOTOS")}><p class="empty-note">Photo gallery coming soon.</p></div>`;
+  const press = MEDIA_PUBLICITY.length
+    ? `<ul class="links"${ck("MEDIA_PUBLICITY")}>${MEDIA_PUBLICITY.map((p, i) => `<li class="press"${ck(`MEDIA_PUBLICITY[${i}]`)}><a href="${esc(safeUrl(p.url))}" target="_blank" rel="noopener"${ck(`MEDIA_PUBLICITY[${i}].title`)}${ckHref(`MEDIA_PUBLICITY[${i}].url`)}>${esc(p.title)}</a> ↗<span class="mute small" ${ck(`MEDIA_PUBLICITY[${i}].outlet`).trim()}>${esc(p.outlet)}</span></li>`).join("")}</ul>`
+    : `<p class="empty-note"${ck("MEDIA_PUBLICITY")}>No press coverage listed yet.</p>`;
+  document.getElementById("media-page").innerHTML = `
+    <section class="band"><div class="wrap"><h1 class="h1" tabindex="-1">Media</h1><p class="lead">Photos, videos, and press coverage of the team.</p></div></section>
+    <section class="band alt tight"><div class="wrap"><h2 class="h2">Photos</h2>${photos}</div></section>
+    <section class="band tight"><div class="wrap"><h2 class="h2">Videos</h2>
+      ${videos.length ? `<ul class="links rows" id="video-grid"${ck("MEDIA_VIDEOS")}>${videos.map((v) => `<li${ck(`MEDIA_VIDEOS[${v.i}]`)}><span${v.caption ? ck(`MEDIA_VIDEOS[${v.i}].caption`) : ""}>${esc(v.caption || "Team video")}</span><a href="${esc(watchUrl(v.src))}" target="_blank" rel="noopener"${ckHref(v.obj ? `MEDIA_VIDEOS[${v.i}].url` : `MEDIA_VIDEOS[${v.i}]`)}>Watch on YouTube ↗</a></li>`).join("")}</ul>` : `<div id="video-grid"${ck("MEDIA_VIDEOS")}><p class="empty-note">Video gallery coming soon.</p></div>`}</div></section>
+    <section class="band alt tight"><div class="wrap"><h2 class="h2">In the press</h2>${press}
+      <p class="spaced-sm">Press inquiries are welcome. We coordinate them with Dawson School before materials or comments go out, so please reach us through the <a href="contact.html">contact page</a>.</p></div></section>
+    <section class="band tight"><div class="wrap"><h2 class="h2">Follow along</h2><p>Follow us on Instagram for behind-the-scenes updates from build season. We don't check messages there; to reach us, use the <a href="contact.html">contact page</a>.</p>
+      <div class="tl-links"><a class="tl-link" href="robots.html">Robot pages →</a><a class="tl-link" id="ig-link" href="${esc(safeUrl(SITE.instagram))}" target="_blank" rel="noopener" data-ck-href="SITE.instagram">Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span> ↗</a></div></div></section>`;
 });
 </script>
 </body>

@@ -18,32 +18,7 @@
 <body>
 <div id="site-header"></div>
 
-<div class="page-header">
-  <h1>Contact</h1>
-  <p>Questions, sponsorship interest, or want to mentor? Reach out.</p>
-</div>
-
-<section class="block">
-  <div class="block-inner">
-    <div class="contact-grid">
-      <div class="contact-card">
-        <h3>Email</h3>
-        <p>With any questions or concerns, please reach out.</p>
-        <a class="btn" id="email-link"></a>
-      </div>
-      <div class="contact-card">
-        <h3>Instagram</h3>
-        <p>Follow along with build season and competitions. We don't check Instagram messages, so please email us instead.</p>
-        <a class="btn btn-outline" id="ig-link" target="_blank" rel="noopener"></a>
-      </div>
-      <div class="contact-card">
-        <h3>Sponsor Us</h3>
-        <p>Interested in supporting the team?</p>
-        <a class="btn btn-outline" href="sponsors.html">View sponsorship info</a>
-      </div>
-    </div>
-  </div>
-</section>
+<main id="contact-page"></main>
 
 <div id="site-footer"></div>
 
@@ -53,19 +28,17 @@
 <script src="js/components.js"></script>
 <script>
 onContent(() => {
-  const emailLink = document.getElementById("email-link");
-  emailLink.href = `mailto:${SITE.email}`;
-  // On a very narrow phone the address wraps after the "@", not mid-word.
-  const at = SITE.email.indexOf("@") + 1;
-  emailLink.textContent = "";
-  emailLink.append(SITE.email.slice(0, at), document.createElement("wbr"), SITE.email.slice(at));
-  emailLink.setAttribute("data-ck", "SITE.email");
-
-  const igLink = document.getElementById("ig-link");
-  igLink.href = safeUrl(SITE.instagram);
-  igLink.textContent = SITE.instagramHandle;
-  igLink.setAttribute("data-ck", "SITE.instagramHandle");
-  igLink.setAttribute("data-ck-href", "SITE.instagram");
+  const school = safeUrl(SITE.schoolUrl);
+  document.getElementById("contact-page").innerHTML = `
+    <section class="band"><div class="wrap"><h1 class="h1" tabindex="-1">Contact</h1><p class="lead">Questions, sponsorship interest, or want to mentor? Reach out.</p>
+      <div class="grid2 top spaced"><div>
+        <p class="label">Email</p><p>With any questions or concerns, please reach out.</p><div class="addr-big">${emailAddress()}</div>
+        <p class="label spaced">Instagram</p><p>Follow along with build season and competitions. We don't check Instagram messages, so please email us instead.</p>
+        <p><a id="ig-link" href="${esc(safeUrl(SITE.instagram))}" target="_blank" rel="noopener" data-ck-href="SITE.instagram">Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span> ↗</a></p>
+        <p class="label spaced">School</p><p><span${ck("SITE.school")}>${esc(SITE.school)}</span>, <span${ck("SITE.location")}>${esc(SITE.location)}</span></p>
+        ${school ? `<p><a href="${esc(school)}" target="_blank" rel="noopener"${ckHref("SITE.schoolUrl")}>Visit Dawson School ↗</a></p>` : ""}
+      </div><div><p class="label">Where to next</p><ul class="route"><li><a href="member.html">Join as a student →</a></li><li><a href="mentor.html">Mentor the team →</a></li><li><a href="sponsors.html">Sponsor the team →</a></li></ul></div></div>
+    </div></section>`;
 });
 </script>
 </body>
