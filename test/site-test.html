@@ -179,10 +179,10 @@ async function checkPage(p) {
     frame.remove();
 
     ({ doc, win, frame } = await get("robots.html"));
-    const reelImg = doc.querySelector("#robot-archive .robot-card img");
+    const reelImg = doc.querySelector("#robot-archive .card img");
     report(reelImg && reelImg.getAttribute("src") === "/media/00000000000000000005-800.webp", "media: robot photo on a card is the 800 width", reelImg && reelImg.getAttribute("src"));
     report(reelImg && reelImg.getAttribute("srcset") === "/media/00000000000000000005-400.webp 400w, /media/00000000000000000005-800.webp 800w, /media/00000000000000000005-1600.webp 1600w", "media: srcset lists every stored width", reelImg && reelImg.getAttribute("srcset"));
-    report(doc.querySelectorAll("#robot-archive .robot-card img").length === 1, "fixture has one robot with a photo on the robots page");
+    report(doc.querySelectorAll("#robot-archive .card img").length === 1, "fixture has one robot with a photo on the robots page");
     frame.remove();
 
     ({ doc, win, frame } = await get("about.html"));
@@ -214,7 +214,7 @@ async function checkPage(p) {
     report(gal.length === 2 && gal[0].getAttribute("href") === "/media/00000000000000000006-800.webp" && gal[0].querySelector("img").getAttribute("src") === "/media/00000000000000000006-800.webp", "media: only stored widths are used (this image has 400 and 800)", gal[0] && gal[0].getAttribute("href"));
     report(gal[0].querySelector("img").getAttribute("srcset") === "/media/00000000000000000006-400.webp 400w, /media/00000000000000000006-800.webp 800w", "media: srcset lists only the stored widths", gal[0].querySelector("img").getAttribute("srcset"));
     report(gal[0].querySelector("img").getAttribute("alt") === "Fixture gallery photo one", "media: alt text comes from the published media list", gal[0].querySelector("img").getAttribute("alt"));
-    report(doc.querySelector(".robot-hero-image img").getAttribute("src") === "/media/00000000000000000005-1600.webp", "media: robot hero photo resolves to the 1600 width");
+    report(doc.getElementById("robot-photo").getAttribute("src") === "/media/00000000000000000005-1600.webp", "media: robot hero photo resolves to the 1600 width");
     frame.remove();
 
     ({ doc, win, frame } = await get("resources.html"));

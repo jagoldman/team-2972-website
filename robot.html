@@ -31,19 +31,16 @@
 onContent(() => {
   const page = document.getElementById("robot-page");
   const year = new URLSearchParams(window.location.search).get("year");
-  // The year comes from the address bar, so it is escaped wherever it is put into HTML.
-  const escHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const index = ROBOTS.findIndex(r => r.year === year);
+  const index = ROBOTS.findIndex((r) => r.year === year);
 
   if (index === -1) {
     document.title = `Robot not found | Team ${SITE.teamNumber}`;
+    // The year comes from the address bar, so it is escaped wherever it is put into HTML.
     page.innerHTML = `
-      <div class="page-header">
-        <h1>Robot not found</h1>
-        <p>${year ? `We don't have a page for ${esc(year)} yet.` : "No season was picked."}</p>
-      </div>
-      <section class="block"><div class="block-inner">
-        <div class="btn-row"><a class="btn" href="robots.html">See all robots</a></div>
+      <section class="band"><div class="wrap">
+        <h1 class="h1" tabindex="-1">Robot not found</h1>
+        <p class="lead">${year ? `We don't have a page for ${esc(year)} yet.` : "No season was picked."}</p>
+        <div class="btns"><a class="btn btn-gold" href="robots.html">See all robots</a></div>
       </div></section>`;
     return;
   }
@@ -53,122 +50,52 @@ onContent(() => {
   const older = ROBOTS[index + 1];
   document.title = `${r.year} ${r.name || r.game} | Team ${SITE.teamNumber}`;
   const P = (field) => `ROBOTS[${index}].${field}`;   // the data-ck path of one of this robot's fields
-
   const list = (x) => Array.isArray(x) ? x : [];
-  const section = (title, body, alt) => body ? `
-    <section class="block${alt ? " alt" : ""}">
-      <div class="block-inner">
-        <h2 class="section-title">${title}</h2>
-        ${body}
-      </div>
-    </section>` : "";
+  const section = (title, body) => body ? `<section class="sec"><h2>${title}</h2>${body}</section>` : "";
+  const watch = (url, label, path) => `<a href="${esc(safeUrl(url))}" target="_blank" rel="noopener"${ckHref(path)}>${label} ↗</a>`;
 
-  // Button row: TBA always, then whatever links are set. Each button remembers its content path.
-  const buttons = [
-    { label: `The Blue Alliance (${r.year})`, url: tbaTeamYear(r.year) },
-    { label: "Technical Binder", url: r.binder, urlPath: P("binder") },
-    ...list(r.links).map((l, i) => ({ label: l.label, url: l.url, labelPath: P(`links[${i}].label`), urlPath: P(`links[${i}].url`) })),
-    { label: "Reveal Video", url: r.reveal, urlPath: P("reveal") },
-  ].filter(b => isSet(b.url));
-  const button = (b, i) => `<a class="btn${i ? " btn-outline" : ""}" href="${esc(safeUrl(b.url))}" target="_blank" rel="noopener"${b.labelPath ? ck(b.labelPath) : ""}${b.urlPath ? ckHref(b.urlPath) : ""}>${esc(b.label)}</a>`;
-
+  // Header: photo beside the name, year, game and the season line. A season with no photo has the text alone.
+  const photo = r.image ? `
+    <figure><div class="photo r43"><img id="robot-photo"${imgAttrs(r.image, 1200)}${imgPos(r)}${ck(P("image"))} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}" width="1000" height="750"></div>
+      ${r.photoSource ? `<figcaption${ck(P("photoSource"))}>${esc(r.photoSource)}</figcaption>` : ""}</figure>` : "";
   const hero = `
-    <section class="robot-hero">
-      <div class="robot-hero-inner">
-        <div class="robot-hero-text">
-          <span class="badge"><span${ck(P("year"))}>${esc(r.year)}</span> · <span${ck(P("game"))}>${esc(r.game)}</span></span>
-          <h1${ck(P("name"))}>${esc(robotName(r))}</h1>
-          ${r.status ? `<p class="robot-status"${ck(P("status"))}>${esc(r.status)}</p>` : ""}
-          ${r.stats ? `<p class="stats-line"${ck(P("stats"))}>${esc(r.stats)}</p>` : ""}
-          <div class="btn-row"${ck(P("links"))}>
-            ${buttons.map(button).join("")}
-          </div>
-        </div>
-        <figure class="robot-hero-image">
-          ${r.image
-            ? `<img${imgAttrs(r.image, 1200)}${imgPos(r)}${ck(P("image"))} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}" />`
-            : `<div class="photo-wanted"${ck(P("image"), "image")}><span aria-hidden="true" data-ck-ignore>${esc(r.year)}</span>Photo wanted</div>`}
-          ${r.photoSource ? `<figcaption${ck(P("photoSource"))}>${esc(r.photoSource)}</figcaption>` : ""}
-        </figure>
-      </div>
-    </section>`;
+    <section class="band tight"><div class="wrap">
+      <a class="crumb" href="robots.html">← All robots</a>
+      <div class="${photo ? "grid2" : ""}">${photo}<div>
+        <p class="label gold"><span${ck(P("year"))}>${esc(r.year)}</span> · <span${ck(P("game"))}>${esc(r.game)}</span></p>
+        <h1 class="h1" tabindex="-1"${ck(P("name"))}>${esc(robotName(r))}</h1>
+        ${r.tagline ? `<p class="lead"${ck(P("tagline"))}>${esc(r.tagline)}</p>` : ""}
+        ${r.stats ? `<p class="tab"${ck(P("stats"))}>${esc(r.stats)}</p>` : ""}
+        <div class="rhead-meta">${list(r.awards).length ? `<span class="metas"${ck(P("awards"))}>${r.awards.map((a, i) => `<span class="pill"${ck(P(`awards[${i}]`))}>${esc(a)}</span>`).join("")}</span>` : ""}${r.status ? `<span class="chip"${ck(P("status"))}>${esc(r.status)}</span>` : ""}</div>
+      </div></div>
+    </div></section>`;
 
-  const awards = list(r.awards).length
-    ? `<ul class="award-list"${ck(P("awards"))}>${r.awards.map((a, i) => `<li${ck(P(`awards[${i}]`))}>🏆 ${esc(a)}</li>`).join("")}</ul>` : "";
-  const results = list(r.results).length ? `
-    <ul class="schedule-list"${ck(P("results"))}>
-      ${r.results.map((res, i) => `
-        <li${ck(P(`results[${i}]`))}>
-          <span class="event-name">${res.tba
-            ? `<a href="${esc(tbaEvent(res.tba))}" target="_blank" rel="noopener"${ck(P(`results[${i}].event`))}>${esc(res.event)}</a>`
-            : `<span${ck(P(`results[${i}].event`))}>${esc(res.event)}</span>`}</span>
-          <span class="event-loc"${ck(P(`results[${i}].result`))}>${esc(res.result)}</span>
-        </li>`).join("")}
-    </ul>` : "";
+  const results = list(r.results).length ? resultsTable(r, `ROBOTS[${index}]`) : "";
+  const gameVideo = isSet(r.gameVideo) && youtubeEmbed(r.gameVideo) ? `<p>${watch(r.gameVideo, "Watch the game animation on YouTube", P("gameVideo"))}</p>` : "";
+  const game = (r.gameSummary || gameVideo) ? `${r.gameSummary ? `<p${ck(P("gameSummary"), "rich")}>${rich(r.gameSummary)}</p>` : ""}${gameVideo}` : "";
+  const about = r.description ? `<p${ck(P("description"), "rich")}>${rich(r.description)}</p>` : "";
+  const specs = list(r.specs).length ? `<dl class="specs"${ck(P("specs"))}>${r.specs.map((s, i) => `<div${ck(P(`specs[${i}]`))}><dt${ck(P(`specs[${i}].label`))}>${esc(s.label)}</dt><dd${ck(P(`specs[${i}].value`))}>${esc(s.value)}</dd></div>`).join("")}</dl>` : "";
+  const mechanisms = list(r.mechanisms).length ? `<div class="mech"${ck(P("mechanisms"))}>${r.mechanisms.map((m, i) => `<div${ck(P(`mechanisms[${i}]`))}><h3${ck(P(`mechanisms[${i}].name`))}>${esc(m.name)}</h3><p${ck(P(`mechanisms[${i}].text`), "rich")}>${rich(m.text)}</p></div>`).join("")}</div>` : "";
+  const gallery = list(r.gallery).length ? `<div class="gallery-grid"${ck(P("gallery"))}>${r.gallery.map((src, i) => `<a href="${esc(imgUrl(src, 2000))}" target="_blank" rel="noopener"><img${imgAttrs(src, 600)}${ck(P(`gallery[${i}]`))} alt="${esc(altFor(src, `${robotName(r)} (${r.year})`))}" loading="lazy" /></a>`).join("")}</div>` : "";
 
-  const gameVideo = r.gameVideo ? youtubeEmbed(r.gameVideo) : "";
-  const game = (r.gameSummary || gameVideo) ? `
-    ${r.gameSummary ? `<p class="section-lead"${ck(P("gameSummary"), "rich")}>${rich(r.gameSummary)}</p>` : ""}
-    ${gameVideo ? `<div class="video-grid single"${ck(P("gameVideo"), "url")}><iframe src="${esc(gameVideo)}" title="${esc(r.year)} ${esc(r.game)} game animation" loading="lazy" allowfullscreen></iframe></div>` : ""}` : "";
-
-  const about = (r.description || list(r.specs).length) ? `
-    <div class="robot-about">
-      ${r.description ? `<p${ck(P("description"), "rich")}>${rich(r.description)}</p>` : ""}
-      ${list(r.specs).length ? `
-        <table class="specs-table"${ck(P("specs"))}>
-          ${r.specs.map((s, i) => `<tr${ck(P(`specs[${i}]`))}><td${ck(P(`specs[${i}].label`))}>${esc(s.label)}</td><td${ck(P(`specs[${i}].value`))}>${esc(s.value)}</td></tr>`).join("")}
-        </table>` : ""}
-    </div>` : "";
-
-  const mechanisms = list(r.mechanisms).length ? `
-    <div class="mechanism-grid"${ck(P("mechanisms"))}>
-      ${r.mechanisms.map((m, i) => `<div class="mechanism"${ck(P(`mechanisms[${i}]`))}><h3${ck(P(`mechanisms[${i}].name`))}>${esc(m.name)}</h3><p${ck(P(`mechanisms[${i}].text`), "rich")}>${rich(m.text)}</p></div>`).join("")}
-    </div>` : "";
-
-  const gallery = list(r.gallery).length ? `
-    <div class="gallery-grid"${ck(P("gallery"))}>
-      ${r.gallery.map((src, i) => `<a href="${esc(imgUrl(src, 2000))}" target="_blank" rel="noopener"><img${imgAttrs(src, 600)}${ck(P(`gallery[${i}]`))} alt="${esc(altFor(src, `${robotName(r)} (${r.year})`))}" loading="lazy" /></a>`).join("")}
-    </div>` : "";
-
-  const links = (items, base) => `<ul class="link-list"${ck(P(base))}>
-      ${items.map((v, i) => `<li${ck(P(`${base}[${i}]`))}><a href="${esc(safeUrl(v.url))}" target="_blank" rel="noopener"${ck(P(`${base}[${i}].label`))}${ckHref(P(`${base}[${i}].url`))}>${esc(v.label)}</a></li>`).join("")}
-    </ul>`;
-  const embeds = list(r.videos).map((v, i) => ({ src: youtubeEmbed(v), i })).filter(v => v.src);
-  const videos = (embeds.length || list(r.matchVideos).length) ? `
-    ${embeds.length ? `<div class="video-grid"${ck(P("videos"))}>
-      ${embeds.map(v => `<iframe src="${esc(v.src)}"${ck(P(`videos[${v.i}]`), "url")} title="${esc(r.year)} video" loading="lazy" allowfullscreen></iframe>`).join("")}
-    </div>` : ""}
-    ${list(r.matchVideos).length ? links(r.matchVideos, "matchVideos") : ""}` : "";
-
-  const blog = list(r.buildBlog).length ? links(r.buildBlog, "buildBlog") : "";
+  // Videos and links: each list keeps its own key so the editor can add to it. YouTube opens on YouTube (nothing is embedded).
+  const group = (base, items, text) => items.length ? `<ul class="links"${ck(P(base))}>${items.map((v, i) => `<li>${text(v, i)}</li>`).join("")}</ul>` : "";
+  const videos = group("videos", list(r.videos).filter((v) => youtubeEmbed(v)), (v, k) => watch(v, `${list(r.videos).length > 1 ? `Season video ${k + 1}` : "Season video"}, watch on YouTube`, P(`videos[${list(r.videos).indexOf(v)}]`)));
+  const matches = group("matchVideos", list(r.matchVideos), (v, i) => `<a href="${esc(safeUrl(v.url))}" target="_blank" rel="noopener"${ck(P(`matchVideos[${i}]`))}${ckHref(P(`matchVideos[${i}].url`))}>Match video: <span${ck(P(`matchVideos[${i}].label`))}>${esc(v.label)}</span> ↗</a>`);
+  const named = (base) => group(base, list(r[base]), (v, i) => `<a href="${esc(safeUrl(v.url))}" target="_blank" rel="noopener"${ck(P(`${base}[${i}]`))}${ckHref(P(`${base}[${i}].url`))}><span${ck(P(`${base}[${i}].label`))}>${esc(v.label)}</span> ↗</a>`);
+  const single = (path, url, label) => isSet(url) ? `<ul class="links"><li>${watch(url, label, path)}</li></ul>` : "";
+  const links = single(P("reveal"), r.reveal, "Robot reveal on YouTube") + videos + matches + single(P("binder"), r.binder, "Technical binder") + named("buildBlog") + named("links") +
+    `<ul class="links"><li><a href="${esc(tbaTeamYear(r.year))}" target="_blank" rel="noopener" data-ck-ignore>Season on The Blue Alliance ↗</a></li></ul>`;
 
   // Seasons with little on record ask alumni for help
-  const sparse = !r.image || !r.name;
-  const ask = sparse ? `
-    <p class="section-lead">Were you on the team in ${esc(r.year)}? Send photos, the robot's name, or stories to
-    <a href="mailto:${esc(SITE.email)}"${ck("SITE.email")}>${esc(SITE.email)}</a>. Match videos for this season are linked from
-    <a href="${esc(tbaTeamYear(r.year))}" target="_blank" rel="noopener" data-ck-ignore>The Blue Alliance</a>.</p>` : "";
-
-  // Sections alternate background, skipping any that are empty
-  const parts = [
-    ["Awards & Results", awards + results],
-    [`The Game: <span${ck(P("game"))}>${esc(r.game)}</span>`, game],
-    ["The Robot", about],
-    ["Mechanisms", mechanisms],
-    ["Photos", gallery],
-    ["Videos", videos],
-    ["Build Blog", blog],
-    ["Help Us Fill This In", ask],
-  ].filter(([, body]) => body);
+  const ask = (!r.image || !r.name) ? `<div class="sec"><p>Were you on the team in ${esc(r.year)}? Send photos, the robot's name, or stories to</p>${emailAddress()}</div>` : "";
 
   // The neighbouring seasons show the same fields as their own pages: name if set, otherwise the game.
   const label = (n, i) => `<span${ck(`ROBOTS[${i}].year`)}>${esc(n.year)}</span> <span${ck(`ROBOTS[${i}].${n.name ? "name" : "game"}`)}>${esc(n.name || n.game)}</span>`;
-  page.innerHTML = hero + parts.map(([title, body], i) => section(title, body, i % 2 === 1)).join("") + `
-    <nav class="season-nav" aria-label="Other seasons">
-      ${newer ? `<a href="${robotUrl(newer)}">← ${label(newer, index - 1)}</a>` : "<span></span>"}
-      <a href="robots.html">All robots</a>
-      ${older ? `<a href="${robotUrl(older)}">${label(older, index + 1)} →</a>` : "<span></span>"}
-    </nav>`;
+  page.innerHTML = hero + `<div class="wrap tail">` +
+    section("Results", results) + section("The game", game) + section("About the robot", about) + section("Specs", specs) + section("Mechanisms", mechanisms) +
+    section("Photos", gallery) + section("Videos and links", links) + ask + `
+    <nav class="pn" aria-label="Seasons"><span>${older ? `<a href="${robotUrl(older)}">← ${label(older, index + 1)}</a>` : ""}</span><span>${newer ? `<a href="${robotUrl(newer)}">${label(newer, index - 1)} →</a>` : ""}</span></nav></div>`;
 });
 </script>
 </body>

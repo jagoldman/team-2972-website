@@ -1,5 +1,5 @@
-// Season log (js/components.js): the pure functions behind Home's record and the Robots page's log, run against the
-// real js/content.js and against hostile input. No browser needed.
+// Season log and results-table parsing (js/components.js): the pure functions behind Home's record, the Robots page's log
+// and the robot page's results table, run against the real js/content.js and against hostile input. No browser needed.
 // Run: node test/season-test.cjs
 "use strict";
 const fs = require("fs");
@@ -23,7 +23,7 @@ function load(contentSource) {
   ctx.document = { documentElement: {}, body: { hasAttribute: () => false }, querySelectorAll: () => [], querySelector: () => null, getElementById: () => ({}), addEventListener() {}, cookie: "" };
   vm.createContext(ctx);
   vm.runInContext(contentSource || read("js/content.js"), ctx, { filename: "content.js" });
-  vm.runInContext(read("js/components.js") + "\n;globalThis.T = { resultType, seasonStats, seasonLog, seasonSummary, seasonStatRow };", ctx, { filename: "components.js" });
+  vm.runInContext(read("js/components.js") + "\n;globalThis.T = { resultType, seasonStats, seasonLog, seasonSummary, seasonStatRow, parseResult, resultRow, resultsTable };", ctx, { filename: "components.js" });
   return ctx;
 }
 const ctx = load();
@@ -73,6 +73,42 @@ check("the summary line and the three numbers come from the same counts", T.seas
   check("a bad year and an empty results list do not break the log", /--cols:3/.test(el.innerHTML) && el.innerHTML.includes("sl-year\">2019"));
   const e2 = { innerHTML: "" }; load("const SITE = {}; const ROBOTS = [];").T.seasonLog(e2);
   check("no seasons: a plain note, no crash", /No seasons yet/.test(e2.innerHTML));
+}
+
+// ---------- the results table (robot page): Event · Rank · Record · Playoffs · TBA link ----------
+const P = T.parseResult;
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+check("parse: rank, total, record and the sentence after the dash", same(P("Rank 38 of 42 (2-7-0) — 2nd pick of Alliance 2, won the event"), { parsed: true, rank: "38 of 42", record: "2-7-0", playoffs: "2nd pick of Alliance 2, won the event" }));
+check("parse: rank and record only", same(P("Rank 49 of 55 (2-7-0)"), { parsed: true, rank: "49 of 55", record: "2-7-0", playoffs: "–" }));
+check("parse: no total", same(P("Rank 32 — 2nd pick in playoffs"), { parsed: true, rank: "32", record: "–", playoffs: "2nd pick in playoffs" }));
+check("parse: no total, record before the dash", same(P("Rank 7 (10-6-0) — Captain, Alliance 4 (semifinals)"), { parsed: true, rank: "7", record: "10-6-0", playoffs: "Captain, Alliance 4 (semifinals)" }));
+check("parse: rank alone", same(P("Rank 23"), { parsed: true, rank: "23", record: "–", playoffs: "–" }));
+check("parse: a result that is not 'Rank N' is not parsed, and the raw sentence is kept", same(P("Scrimmage"), { parsed: false, rank: "–", record: "–", playoffs: "Scrimmage" }));
+check("parse: empty or missing text does not throw", same(P(""), { parsed: false, rank: "–", record: "–", playoffs: "" }) && P(undefined).parsed === false);
+check("parse: a plain hyphen after the record is not treated as the playoff dash", P("Rank 5 of 9 (4-3-0) - semifinals").playoffs === "–" || P("Rank 5 of 9 (4-3-0) - semifinals").playoffs === "semifinals");
+{
+  // every real result parses to something sensible, and re-reading the row shows the numbers that are in the sentence
+  const bad = [];
+  for (const r of ROBOTS) for (const x of r.results || []) {
+    const p = P(x.result);
+    if (/^Rank \d+/.test(x.result)) {
+      const rank = x.result.match(/^Rank (\d+)(?: of (\d+))?/);
+      if (!p.parsed || !p.rank.startsWith(rank[1]) || (rank[2] && !p.rank.endsWith(rank[2]))) bad.push(`${r.year} ${x.event}: ${JSON.stringify(p)}`);
+      const rec = x.result.match(/\((\d+-\d+-\d+)\)/);
+      if ((rec ? rec[1] : "–") !== p.record) bad.push(`${r.year} ${x.event} record`);
+    } else if (p.parsed || p.playoffs !== x.result) bad.push(`${r.year} ${x.event}: raw sentence not kept`);
+  }
+  check("every real result in content.js parses (or keeps its raw sentence)", bad.length === 0, bad.slice(0, 3).join(" | "));
+}
+{
+  const row = T.resultRow({ event: "Utah <Regional>", result: "Rank 38 of 42 (2-7-0) — won the event", tba: "2026utwv" });
+  check("a winning row is marked and has the Winner pill, the numbers and an escaped event", /class="win"/.test(row) && row.includes("Winner") && row.includes("38 of 42") && row.includes("2-7-0") && row.includes("Utah &lt;Regional&gt;"));
+  check("the TBA key becomes a link to the event, opened safely", row.includes('href="https://www.thebluealliance.com/event/2026utwv"') && /rel="noopener"/.test(row));
+  const raw = T.resultRow({ event: "Scrimmage day", result: "Scrimmage" });
+  check("an unparsed result shows the raw sentence, with dashes for rank and record, and no link", raw.includes("Scrimmage</td>") && !raw.includes("href") && (raw.match(/–/g) || []).length === 2);
+  check("the row carries the editor's keys when given a path", T.resultRow({ event: "E", result: "Rank 1" }, "ROBOTS[3].results[0]").includes('data-ck="ROBOTS[3].results[0]"'));
+  const table = T.resultsTable({ results: [{ event: "A", result: "Rank 1 of 2" }] }, "ROBOTS[3]");
+  check("the table has the five headers, a scroll region and the list's key", ["Event", "Rank", "Record", "Playoffs"].every((h) => table.includes(`>${h}</th>`)) && /role="region"/.test(table) && table.includes('data-ck="ROBOTS[3].results"'));
 }
 
 console.log(failed ? `\n${failed} FAILED, ${passed} passed` : `ALL PASSED (${passed})`);

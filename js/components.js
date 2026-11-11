@@ -439,6 +439,36 @@ function renderRecord(el) {
   initTickers(el);
 }
 
+// ---------- Results table (robot page) ----------
+// ROBOTS[].results[].result is a sentence typed by hand ("Rank 38 of 42 (2-7-0) — 2nd pick of Alliance 2, won the event").
+// parseResult pulls out the rank, the record and what came after the dash. A sentence that does not start with "Rank N"
+// ("Scrimmage") is not parsed: its raw words go in the Playoffs column and rank and record show a dash, so nothing is
+// lost or invented. It never throws.
+function parseResult(text) {
+  const raw = String(text ?? "");
+  const r = /^\s*Rank (\d+)(?: of (\d+))?/.exec(raw);
+  if (!r) return { parsed: false, rank: "–", record: "–", playoffs: raw };
+  const rec = /\((\d+-\d+-\d+)\)/.exec(raw);
+  const dash = raw.indexOf(" — ");
+  return { parsed: true, rank: r[2] ? `${r[1]} of ${r[2]}` : r[1], record: rec ? rec[1] : "–", playoffs: dash >= 0 ? raw.slice(dash + 3).trim() || "–" : "–" };
+}
+
+// One row: Event · Rank · Record · Playoffs · The Blue Alliance link. `path` is the result's data-ck path (optional).
+function resultRow(x, path) {
+  const p = parseResult(x.result), win = resultType(x.result) === "win";
+  const k = (field) => (path ? ck(`${path}.${field}`) : "");
+  return `<tr${win ? ' class="win"' : ""}${path ? ck(path) : ""}>
+    <td><span${k("event")}>${esc(x.event)}</span>${win ? ` <span class="pill">Winner</span>` : ""}</td>
+    <td${k("result")}>${esc(p.rank)}</td><td${k("result")}>${esc(p.record)}</td><td${k("result")}>${esc(p.playoffs)}</td>
+    <td>${x.tba ? `<a href="${esc(tbaEvent(x.tba))}" target="_blank" rel="noopener"${path ? ckHref(`${path}.tba`) : ""}>The Blue Alliance ↗</a>` : ""}</td></tr>`;
+}
+
+// The whole table, in a box that scrolls sideways on a phone. `base` is the robot's data-ck path ("ROBOTS[2]").
+function resultsTable(r, base) {
+  const rows = (r.results || []).map((x, i) => resultRow(x, base ? `${base}.results[${i}]` : ""));
+  return `<div class="tbl-wrap" role="region" aria-label="Results, scrolls sideways" tabindex="0"${base ? ck(`${base}.results`) : ""}><table><thead><tr><th scope="col">Event</th><th scope="col">Rank</th><th scope="col">Record</th><th scope="col">Playoffs</th><th scope="col"><span class="vh">Link</span></th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+}
+
 // ---------- Site hosts ----------
 // Every host URL is built from SITE_SCHEME and SITE_DOMAIN (filled into config.js
 // by Caddy), so the same files work on localhost and 2972robotics.com.

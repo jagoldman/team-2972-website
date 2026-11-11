@@ -18,23 +18,7 @@
 <body>
 <div id="site-header"></div>
 
-<div class="page-header">
-  <h1>Our Robots</h1>
-  <p>Every season brings a new game — and a new robot to solve it.</p>
-</div>
-
-<section class="block">
-  <div class="block-inner">
-    <div class="grid robot-archive" id="robot-archive"></div>
-  </div>
-</section>
-
-<section class="block alt">
-  <div class="block-inner">
-    <h2 class="section-title">Help us fill in the archive</h2>
-    <p class="section-lead" id="archive-ask"></p>
-  </div>
-</section>
+<main id="robots-page"></main>
 
 <div id="site-footer"></div>
 
@@ -43,27 +27,68 @@
 <script src="js/content-loader.js"></script>
 <script src="js/components.js"></script>
 <script>
-onContent(() => {
-  const archive = document.getElementById("robot-archive");
-  archive.setAttribute("data-ck", "ROBOTS");
-  archive.innerHTML = ROBOTS.map((r, i) => `
-    <a class="card robot-card${r.image ? "" : " no-photo"}" href="${robotUrl(r)}"${ck(`ROBOTS[${i}]`)}>
-      ${r.image
-        ? `<img${imgAttrs(r.image, 800)}${imgPos(r)}${ck(`ROBOTS[${i}].image`)} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}" loading="lazy" />`
-        : `<div class="photo-wanted"${ck(`ROBOTS[${i}].image`, "image")}><span aria-hidden="true" data-ck-ignore>${esc(r.year)}</span>Photo wanted</div>`}
-      <div class="card-body">
-        <div class="meta"><span${ck(`ROBOTS[${i}].year`)}>${esc(r.year)}</span> · <span${ck(`ROBOTS[${i}].game`)}>${esc(r.game)}</span></div>
-        <h3${ck(`ROBOTS[${i}].name`)}>${esc(robotName(r))}</h3>
-        ${r.tagline ? `<p${ck(`ROBOTS[${i}].tagline`)}>${esc(r.tagline)}</p>` : ""}
-        ${r.stats ? `<p class="stats-line"${ck(`ROBOTS[${i}].stats`)}>${esc(r.stats)}</p>` : ""}
-      </div>
-    </a>
-  `).join("");
+// Filters over the season cards. The choice is kept while the page is re-rendered (the editor's live preview).
+let robotFilter = "all";
+const FILTERS = [["all", "All"], ["win", "Event winners"], ["po", "Playoffs"], ["svc", "In service"]];
+const hasResult = (r, test) => (r.results || []).some((x) => test(resultType(x.result)));
+function passes(r, f) {
+  if (f === "win") return hasResult(r, (t) => t === "win");
+  if (f === "po") return hasResult(r, (t) => t !== "played");
+  if (f === "svc") return r.status === "In service";
+  return true;
+}
 
-  document.getElementById("archive-ask").innerHTML = `We don't have photos or names for many of
-    our older robots. Were you on the team? Send photos, robot names, or stories to
-    <a href="mailto:${esc(SITE.email)}"${ck("SITE.email")}>${esc(SITE.email)}</a>.`;
-});
+// A season card. A season without a photo shows a "Photo wanted" box that is a link to the team's e-mail address.
+function robotCard(r, i) {
+  const P = `ROBOTS[${i}]`;
+  const wanted = `mailto:${esc(SITE.email)}?subject=${encodeURIComponent(`Photo of the ${r.year} robot`)}`;
+  const photo = r.image
+    ? `<div class="photo r43"><img${imgAttrs(r.image, 800)}${imgPos(r)}${ck(`${P}.image`)} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}" loading="lazy" width="1000" height="750"></div>`
+    : `<a class="photo r43 ph" href="${wanted}" aria-label="Photo wanted: send us a photo of the ${esc(r.year)} robot"${ck(`${P}.image`, "image")}><b data-ck-ignore>${esc(r.year)}</b><span>Photo wanted</span></a>`;
+  return `<article class="card"${ck(P)}>${photo}<div class="card-b">
+    <p class="label"><span${ck(`${P}.year`)}>${esc(r.year)}</span> · <span${ck(`${P}.game`)}>${esc(r.game)}</span></p>
+    <h3 class="h3"><a class="card-title" href="${robotUrl(r)}"${ck(`${P}.name`)}>${esc(robotName(r))}</a></h3>
+    ${r.tagline ? `<p${ck(`${P}.tagline`)}>${esc(r.tagline)}</p>` : ""}
+    ${r.stats ? `<p class="tab"${ck(`${P}.stats`)}>${esc(r.stats)}</p>` : ""}
+    ${r.status === "In service" ? `<span class="chip"${ck(`${P}.status`)}>In service</span>` : ""}</div></article>`;
+}
+
+function gridHtml() {
+  const shown = ROBOTS.map((r, i) => ({ r, i })).filter(({ r }) => passes(r, robotFilter));
+  return { count: `Showing ${shown.length} of ${ROBOTS.length}`, html: shown.map(({ r, i }) => robotCard(r, i)).join("") };
+}
+
+// The competition milestones ("Highlights"): the comp items of HISTORY. The team milestones are on the About page.
+function highlights() {
+  const rows = [];
+  HISTORY.milestones.forEach((m, i) => (m.items || []).forEach((it, j) => {
+    if (it.kind === "comp") rows.push(`<li><b${ck(`HISTORY.milestones[${i}].year`)}>${esc(m.year)}</b><span${ck(`HISTORY.milestones[${i}].items[${j}].text`, "rich")}>${rich(it.text)}</span></li>`);
+  }));
+  return rows.length ? `<h2 class="h2 spaced">Highlights</h2><ul class="dated hl"${ck("HISTORY.milestones")}>${rows.join("")}</ul>` : "";
+}
+
+function renderRobots() {
+  const g = gridHtml();
+  document.getElementById("robots-page").innerHTML = `
+    <section class="band"><div class="wrap"><h1 class="h1" tabindex="-1">Our robots</h1><p class="lead">Every robot we have built, season by season.</p>
+      ${seasonSummary()}<div id="season-log"></div>${highlights()}</div></section>
+    <section class="band alt"><div class="wrap">
+      <div class="chips" role="group" aria-label="Filter robots">${FILTERS.map(([v, label]) => `<button type="button" class="fchip" data-ck-ignore data-filter="${v}" aria-pressed="${robotFilter === v}">${label}</button>`).join("")}</div>
+      <p class="small mute tab" id="count" aria-live="polite">${g.count}</p>
+      <div class="cards" id="robot-archive"${ck("ROBOTS")}>${g.html}</div>
+      <div class="archive"><h2 class="h2">Help us fill in the archive</h2><p>We don't have photos or names for many of our older robots. Were you on the team? Send photos, robot names, or stories to</p>${emailAddress()}</div>
+    </div></section>`;
+  seasonLog(document.getElementById("season-log"), { list: false });
+  document.querySelectorAll("[data-filter]").forEach((b) => b.addEventListener("click", () => {
+    robotFilter = b.getAttribute("data-filter");
+    const next = gridHtml();
+    document.getElementById("robot-archive").innerHTML = next.html;
+    document.getElementById("count").textContent = next.count;
+    document.querySelectorAll("[data-filter]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  }));
+}
+
+onContent(renderRobots);
 </script>
 </body>
 </html>
