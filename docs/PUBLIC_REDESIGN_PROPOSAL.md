@@ -1,6 +1,6 @@
 # Public site redesign: proposal and build brief
 
-Status: **visual direction approved; production implementation pending**. Written 2026-11-10; updated
+Status: **visual direction approved; built on branch `simple-ui` (local commits, not pushed or deployed)**. Written 2026-11-10; updated
 2026-11-11 after the user chose Midnight & brass and dark mode only. The lead still needs to record the
 production rollout decision before landing application changes. Scope: the public pages only (`index`,
 `robots`, `robot`, `sponsors`, `member`, `mentor`, `about`, `resources`, `outreach`, `media`, `contact`). The portal, the app bar and the shell kit are out of scope and unchanged.

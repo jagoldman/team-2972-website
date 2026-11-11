@@ -8,6 +8,8 @@ build step. Almost all content lives in `js/content.js` (see README).
   Plan: [../MASTER_PLAN.md](../MASTER_PLAN.md) Phase 6 (redesign); Phase 3 is done (its work list, kept for the open
   notes it records: [docs/PHASE3_TASKS.md](docs/PHASE3_TASKS.md))
 - Start a session from [docs/HANDOFF.md](docs/HANDOFF.md). The first-build prompt is in `docs/archive/`.
+- **Public site redesign:** built from `docs/PUBLIC_REDESIGN_PROPOSAL.md` and its approved demo (Midnight & brass, dark only);
+  work packages are separate commits on this branch, not pushed.
 - **Redesign (MASTER_PLAN D101):** this app adopts the `../portal-demo` interface through infra's shell kit
   (`infra/shell/`: tokens and the shared top app bar). UI changes start in the demo; GPT Sol reviews the change (D103).
 
@@ -53,7 +55,9 @@ build step. Almost all content lives in `js/content.js` (see README).
 - Commit `.env`, secrets, or Drive IDs of files that are not shared publicly. Keep the standard
   `.gitignore` block and the gitleaks scan.
 - Treat portal tile filtering as security. Authentik bindings are the real control.
-- Write a colour outside the `--token` block at the top of `css/style.css`, or change colours without running
-  `test/theme-test.sh`. Every page must pass WCAG AA in both the light and the dark theme (MASTER_PLAN D56).
+- Write a colour outside the `--token` blocks at the top of `css/style.css`, or change colours without running
+  `test/theme-test.sh` and `test/public-test.mjs`. The public pages are Midnight & brass, **dark only** (no theme switch, no script,
+  never touch the shared `theme` cookie); they must pass WCAG AA (4.5:1). The portal, install and offline pages keep light, dark and
+  system, and must pass AA in both themes (MASTER_PLAN D56).
 - Edit `../infra`, `../admin` or `../taskapp` from here. Write down what infra needs and tell the user.
 - Push, or commit without the user's OK.

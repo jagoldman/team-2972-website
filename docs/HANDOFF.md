@@ -1,5 +1,28 @@
 # landing: handoff
 
+## 2026-11-11: public site redesign built (Midnight & brass, dark only)
+
+Built from `docs/PUBLIC_REDESIGN_PROPOSAL.md` and its approved demo (`public-redesign-demo/`) on `simple-ui`, one commit per
+work package, **not pushed or deployed**. Public pages are dark only: `<html data-site="public">` + `<meta name="color-scheme"
+content="dark">`, no theme script, no switch, no storage or OS handlers, and they never touch the shared `theme` cookie. The portal,
+`portal/install.html`, `offline.html` and `team-login.html` keep light/dark/system (the first token block, the kit's head script,
+`scripts/theme-init.mjs`, which now skips the public pages). `sw.js` is `v5`.
+
+- **Where things are:** tokens, header, footer and every page style in `css/style.css`; the shared pieces in `js/components.js`
+  (`renderHeader/Footer`, `emailAddress` + Copy, `renderNextUp`, `seasonLog`, `parseResult/resultsTable`, `sponsorNames`,
+  `tickerRun`, `initTimeline`). Home, Robots, Robot, Sponsors, Join (member + mentor), About, Resources, Outreach, Media and Contact
+  render in their own page script inside `onContent()`; every field still carries its `data-ck` / `data-ck-href` hook.
+- **Moved because of the redesign:** `ANNUAL_EVENTS` and the team calendar are on the two Join pages (not About); the competition
+  `HISTORY` items are the Robots page's "Highlights", the team ones are About's timeline; `VALUES` and `STRATEGY` are About only;
+  videos open on YouTube (nothing is embedded); a sponsor year with no sponsors is hidden (still in the page for the editor).
+- **Not built / content the demo invented:** the demo's hero caption names the place ("West Valley City") and its photo alt names the
+  event; `content.js` has no such fields, so the caption is derived from the newest award and robot and the alt comes from
+  `altFor(SITE.heroImage, ...)`. The workshop machine chips on Home are fixed page text taken from the `HISTORY.today` paragraph.
+  The demo lists 49 resource links; `content.js` has 51 (it also has the team logo download and the CAD overview anchor).
+- **Tests:** see §6. New: `test/public-test.mjs` (Playwright; every public page at 320/390/1440 with OS dark, OS light and a saved
+  light choice, contrast, overflow, console, opacity, text over photos, keyboard walk-throughs, the 1440x900 Home acceptance) and
+  `test/season-test.cjs` (season log marks and counts, the results-table parser).
+
 ## 2026-11-09: shell 0.1.12 lint correction
 
 Synced the static kit from infra `8d25c35f49c834187f4b6c593039db9af4136fa1` into the clean
@@ -71,16 +94,14 @@ framework. It runs as the `landing` container (static Caddy 2.11.7, port 3001, `
 - **Photos** come from Google Drive (`lh3.googleusercontent.com/d/<ID>=w<size>`). No rasters are tracked, only SVG
   placeholders in `assets/`. Sizes per place are in README. See section 7 for the photo task (on hold, D68).
 
-## 3. Look, themes and accessibility (MASTER_PLAN D56)
+## 3. Look, themes and accessibility (MASTER_PLAN D56; public redesign 2026-11-11)
 
-- "Night workshop" design: Bricolage Grotesque + Inter, self-hosted in `fonts/` (licenses included).
-- **Every colour is a `--token` in the `:root` block at the top of `css/style.css`**, written `light-dark(light, dark)`.
-  Colours may appear nowhere else. `--gold` fills (with `--on-gold` text); `--accent` is gold as text and is darker in the
-  light theme. The home hero and robot photo cards stay dark in both themes; sponsor logos sit on white tiles.
-- Light / Dark / System switch in every header (portal too). The choice is in `localStorage` (try/catch). A one-line
-  script in each `<head>` applies it before paint; "System" needs no script (`color-scheme: light dark`).
-- **After touching colours run `test/theme-test.sh`.** It checks every page in both themes for WCAG AA and for the
-  colour-outside-tokens rule.
+- **Public pages: "Midnight & brass", dark only.** Bricolage Grotesque + Inter, self-hosted in `fonts/`. Every colour is a `--token`:
+  the first `:root` block (light-dark, the portal's) and the second `:root[data-site="public"]` block (one fixed dark set). Colours
+  may appear nowhere else. `--gold` fills (with `--on-gold` text); `--accent` is brass as text. Sponsor logos sit on white tiles.
+- Public pages ignore saved light choices and the OS setting by construction (no script). The portal's app bar and the kit own the
+  `theme` cookie; `test/portal-shell-test.mjs` checks that public pages leave it alone.
+- **After touching colours run `test/theme-test.sh` and `LANDING_TEST_NODE_MODULES=... node test/public-test.mjs`.**
 
 ## 4. Installable app (PWA, D61)
 
@@ -121,8 +142,10 @@ is in `../landing`, so keep `main` checked out there and use `git worktree` for 
 |---|---|---|
 | `test/container-test.sh` | docker, curl | build, `/healthz`, the 401/404/200 matrix, escaping in `/me.json`, headers, PWA routes, no photos in the image |
 | `test/portal-test.sh` | docker, Chrome | a fake user per group (and none): which tiles show, through the real container and Caddy |
-| `test/theme-test.sh` | Chrome | every page, both themes: WCAG AA, tokens-only colours, theme switch |
-| `test/menu-test.sh` | Chrome | phone menu on pages with the glass header |
+| `test/theme-test.sh` | Chrome | the portal in both themes (WCAG AA, theme choice, following the system); public pages dark under every setting and a saved light choice; tokens-only colours |
+| `test/menu-test.sh` | Chrome | the phone Menu button on public pages: opens under the bar, every item on screen and 44px, Escape |
+| `LANDING_TEST_NODE_MODULES=<node_modules with playwright> node test/public-test.mjs` | Playwright | every public page, 3 widths x 3 ways of asking for light: dark, no overflow, no console errors, contrast, no text over photos; keyboard walk-throughs; Home 1440x900 |
+| `node test/season-test.cjs` | node | season log marks and counts, results-table parser, hostile input |
 | `LANDING_TEST_NODE_MODULES=<node_modules with playwright> node test/portal-shell-test.mjs` | Playwright + its Chromium (an existing install, e.g. another app's) | portal app bar and home grid (D101): tiles per group, main then More, mode cookie, Apps menu keyboard, new-tab links, theme cookie, 320px, sign-out; public pages have no bar. No server: requests are answered in memory |
 | `test/url-injection-test.sh` | Chrome | `robot.html?year=` cannot inject markup |
 | `node test/legal-test.cjs` | node | privacy and terms pages: head, links, contact, no placeholders, no invented retention/consent claims |

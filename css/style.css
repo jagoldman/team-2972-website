@@ -521,6 +521,7 @@ a.card:hover { color: inherit; text-decoration: none; border-color: var(--line-2
 .cards .card img { height: 100%; }
 .card-b { padding: 16px; display: flex; flex-direction: column; gap: 4px; flex: 1; align-items: flex-start; }
 .card-b .label { margin: 0; }
+.card-b .label:empty { display: none; }
 .card-b p { color: var(--text-2); font-size: 0.95rem; margin: 0; }
 .card-title { color: var(--text); text-decoration: none; }
 .card-title:hover { color: var(--text); text-decoration: none; }

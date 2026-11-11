@@ -220,3 +220,17 @@ The editor's schema must follow these too:
 - Data only: `SITE.heroImage`, `HISTORY.today.image`, most `ROBOTS[].image` and every `OUTREACH_EVENTS[].image` are now
   Google Drive IDs; the 2023 robot's `binder` is a Drive file link (`https://drive.google.com/file/d/…/view`), not a
   site path. The 2020 and 2021 robots were removed; the 2012 and 2022 robots have names.
+
+## Public site redesign (2026-11-11)
+
+No section or key was added, renamed or removed in `js/content.js`, so the editor's schema is unchanged. Where the fields now show:
+
+- Home: `SITE.heroImage`, `SITE.mission`, the newest `ROBOTS[].awards[0]` (the headline), `SCHEDULE_2027` (next event and the rest),
+  `ROBOTS[].results` (the season log and the three record numbers), `SITE.memberImage`, `HISTORY.today` and the newest milestone photo (workshop tile), `SPONSOR_TIERS`.
+- Robots: the log, the competition `HISTORY.milestones[].items` (Highlights) and the cards. Robot: a results table parsed from
+  `results[].result`; a sentence that does not start with "Rank N" is shown as typed.
+- Join pages (`member.html`, `mentor.html`): `ANNUAL_EVENTS` (first sentence of each description) and `TEAM_CALENDAR_URL`.
+- About: team facts from `SITE`, the full `ABOUT_FIRST` / `ABOUT_SCHOOL` in closed details, `VALUES`, `STRATEGY`, and only the
+  `kind: "team"` items of `HISTORY.milestones` as the timeline (with their photos).
+- Sponsors: a `SPONSOR_TIERS` entry with no sponsors is not shown (still in the page, hidden, so its list can be edited).
+- Derived text (the hero headline, the countdown, the record numbers) is computed in the browser; a click on the headline edits the award.

@@ -32,7 +32,7 @@ onContent(() => {
     <article class="card"${ck(`OUTREACH_EVENTS[${i}]`)}>
       <div class="photo r32"><img${imgAttrs(e.image, 800)}${ck(`OUTREACH_EVENTS[${i}].image`)}${ckAlt(`OUTREACH_EVENTS[${i}].name`)} alt="${esc(altFor(e.image, e.name + ", Team " + SITE.teamNumber + " outreach"))}" loading="lazy" width="800" height="534" /></div>
       <div class="card-b">
-        ${e.date ? `<p class="label"${ck(`OUTREACH_EVENTS[${i}].date`)}>${esc(e.date)}</p>` : ""}
+        <p class="label"${ck(`OUTREACH_EVENTS[${i}].date`)}>${esc(e.date)}</p>
         <h2 class="h3"${ck(`OUTREACH_EVENTS[${i}].name`)}>${esc(e.name)}</h2>
         <p${ck(`OUTREACH_EVENTS[${i}].description`, "rich")}>${rich(e.description)}</p>
       </div>
