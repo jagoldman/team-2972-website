@@ -1,8 +1,10 @@
-// Light / dark theme: the logic and the rules that keep it correct. No browser needed.
-//   - the switch's behaviour, including when localStorage is blocked
-//   - every page has the no-flash snippet in <head>, before the stylesheet
-//   - colours are defined once, as light-dark() tokens (no stray colour literals in the stylesheet)
-// The visual side (contrast in both themes, following the system) is test/theme-test.sh.
+// Themes: the logic and the rules that keep it correct. No browser needed.
+//   - the PUBLIC pages are dark only (Midnight & brass, docs/PUBLIC_REDESIGN_PROPOSAL.md §5b): no theme script, no
+//     switch, no storage handlers, and they never touch the shared theme cookie
+//   - the PORTAL, its install page and the offline page keep light / dark / system: every one has the no-flash
+//     snippet in <head>, before the stylesheet
+//   - colours are defined once, as tokens (no stray colour literals in the stylesheet)
+// The visual side (contrast, following the system on the portal, staying dark on public pages) is test/theme-test.sh.
 // Run: node test/theme-test.cjs
 "use strict";
 const fs = require("fs");
@@ -18,87 +20,56 @@ function check(name, cond, detail) {
   else { failed++; console.log(`FAIL ${name}${detail ? ` -- ${detail}` : ""}`); }
 }
 
-// ---------- the theme code in js/components.js ----------
-function makeEnv(storage) {
-  const classes = new Set();
-  const root = { dataset: {}, classList: { toggle: (c, on) => (on ? classes.add(c) : classes.delete(c)), contains: (c) => classes.has(c) }, style: {} };
-  const jar = new Map();
-  const buttons = ["light", "dark", "system"].map((v) => {
-    const b = { dataset: { theme: v }, pressed: null, setAttribute(k, val) { if (k === "aria-pressed") b.pressed = val; } };
-    return b;
-  });
+// ---------- the public pages' script: no theme code at all ----------
+// js/components.js builds the public header and footer. It must not read, write or follow the theme: not the
+// switch (removed), not the saved choice, not the OS setting, and never the shared `theme` cookie that the portal's
+// app bar owns. Loaded with a saved light choice in both the cookie and localStorage, it must leave both alone.
+{
+  const jar = new Map([["theme", "light"]]);
+  const cookieWrites = [];
+  const store = new Map([["theme", "light"]]);
+  const storageCalls = [];
   const ctx = {
-    console,
-    location: { host: "localhost", protocol: "http:", search: "", pathname: "/" },
-    scrollY: 0,
-    onContent() {},
-    localStorage: storage,
+    console, location: { host: "localhost", protocol: "http:", search: "", pathname: "/" }, scrollY: 0, onContent() {},
+    localStorage: { getItem: (k) => { storageCalls.push(["get", k]); return store.get(k) ?? null; }, setItem: (k, v) => { storageCalls.push(["set", k]); store.set(k, v); }, removeItem: (k) => { storageCalls.push(["remove", k]); store.delete(k); } },
+    navigator: {}, Image: class { set src(v) {} },
+    matchMedia: () => ({ matches: true, addEventListener() { throw new Error("components.js must not follow the OS setting"); } }),
+    addEventListener(ev) { ctx.__listeners.push(ev); }, __listeners: [],
   };
   ctx.window = ctx;
-  ctx.matchMedia = () => ({ matches: false });
-  ctx.addEventListener = (ev, fn) => { (ctx.__listeners ||= {})[ev] = fn; };
   ctx.document = {
-    documentElement: root,
-    body: { hasAttribute: () => false },
-    querySelectorAll: (sel) => (sel === ".theme-switch button" ? buttons : []),
-    querySelector: () => null,
-    addEventListener() {},
+    documentElement: { dataset: {}, classList: { toggle() { throw new Error("no theme classes"); } }, style: {}, setAttribute() { throw new Error("no attributes on <html>"); } },
+    body: { hasAttribute: () => false }, querySelectorAll: () => [], querySelector: () => null, getElementById: () => ({}),
+    addEventListener(ev) { ctx.__listeners.push("document:" + ev); },
   };
-  // A cookie jar that keeps the last write's attributes, so tests can read them.
-  ctx.cookieWrites = [];
   Object.defineProperty(ctx.document, "cookie", {
     get: () => [...jar].map(([k, v]) => `${k}=${v}`).join("; "),
-    set: (v) => { ctx.cookieWrites.push(v); const [kv] = v.split(";"); const i = kv.indexOf("="); const k = kv.slice(0, i), val = kv.slice(i + 1); if (/Max-Age=0\b/i.test(v)) jar.delete(k); else jar.set(k, val); },
+    set: (v) => { cookieWrites.push(v); },
   });
-  ctx.jar = jar;
   vm.createContext(ctx);
-  vm.runInContext(read("js/components.js") + "\n;globalThis.T = { storedTheme, setTheme, applyTheme, renderThemeSwitch };", ctx, { filename: "components.js" });
-  return { ctx, root, buttons };
-}
-const memory = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), _m: m }; };
-const blocked = { getItem() { throw new Error("SecurityError"); }, setItem() { throw new Error("SecurityError"); }, removeItem() { throw new Error("SecurityError"); } };
-
-{
-  const store = memory();
-  const { ctx, root, buttons } = makeEnv(store);
-  check("default choice is System", ctx.T.storedTheme() === "system");
-  ctx.T.setTheme("dark");
-  check("Dark sets data-theme and is remembered", root.dataset.theme === "dark" && store._m.get("theme") === "dark" && ctx.T.storedTheme() === "dark");
-  check("Dark also writes the site-wide theme cookie, the kit's way (D92)", ctx.jar.get("theme") === "dark" && /^theme=dark; Path=\/; Max-Age=34560000; SameSite=Lax$/.test(ctx.cookieWrites.at(-1)), ctx.cookieWrites.at(-1));
-  check("Dark sets the dark class and color-scheme, as the kit's applyTheme does", root.classList.contains("dark") && !root.classList.contains("light") && root.style.colorScheme === "dark");
-  check("the switch marks only the chosen button pressed", buttons.map((b) => b.pressed).join(",") === "false,true,false");
-  ctx.T.setTheme("light");
-  check("Light replaces Dark", root.dataset.theme === "light" && store._m.get("theme") === "light");
-  ctx.T.setTheme("system");
-  check("System removes data-theme and forgets the choice", root.dataset.theme === undefined && !store._m.has("theme") && buttons.map((b) => b.pressed).join(",") === "false,false,true");
-  check("System clears the pinned color-scheme so the page follows the system setting", root.style.colorScheme === "");
-  check("System deletes the theme cookie too", !ctx.jar.has("theme") && /Max-Age=0/.test(ctx.cookieWrites.at(-1)));
-  ctx.jar.set("theme", "dark"); store.setItem("theme", "light");
-  check("the cookie wins over the old localStorage key", ctx.T.storedTheme() === "dark");
-  ctx.jar.delete("theme"); store.removeItem("theme");
-  store.setItem("theme", "purple");
-  check("an unknown stored value counts as System", ctx.T.storedTheme() === "system");
-  store.setItem("theme", "dark");
-  ctx.__listeners.storage({ key: "theme" });
-  check("another tab's change is followed", root.dataset.theme === "dark");
-  const html = ctx.T.renderThemeSwitch();
-  check("the switch has Light, Dark and System buttons with names", ["Light", "Dark", "System"].every((n) => html.includes(`>${n}</span>`)) && (html.match(/<button/g) || []).length === 3);
-  check("the switch is a labelled group", /role="group" aria-label="Colour theme"/.test(html));
-  check("the stored choice shows as pressed when the switch is drawn", /data-theme="dark" aria-pressed="true"/.test(html));
-}
-{
-  const { ctx, root } = makeEnv(blocked);
-  let threw = false;
-  try { ctx.T.storedTheme(); ctx.T.setTheme("dark"); ctx.T.setTheme("system"); ctx.T.setTheme("light"); } catch (e) { threw = true; }
-  check("blocked localStorage never throws", !threw);
-  check("blocked localStorage: the choice still applies for this visit", root.dataset.theme === "light");
-  check("blocked localStorage: the cookie still carries the choice", ctx.T.storedTheme() === "light");
-  ctx.jar.clear();
-  check("blocked localStorage and no cookie: reads as System", ctx.T.storedTheme() === "system");
+  vm.runInContext(read("js/content.js"), ctx, { filename: "content.js" });
+  vm.runInContext(read("js/components.js") + "\n;mountLayout();", ctx, { filename: "components.js" });
+  check("public pages: running js/components.js with a saved light choice writes no cookie", cookieWrites.filter((c) => /^theme=/.test(c)).length === 0, cookieWrites.join(" | "));
+  check("public pages: ...and never touches the old localStorage key", storageCalls.length === 0, JSON.stringify(storageCalls));
+  check("public pages: ...and the saved light choice is still there for the portal", jar.get("theme") === "light" && store.get("theme") === "light");
+  check("public pages: no storage or visibilitychange handler follows a theme change", !ctx.__listeners.includes("storage") && !ctx.__listeners.includes("document:visibilitychange"), ctx.__listeners.join(","));
+  const src = read("js/components.js");
+  check("js/components.js has no theme switch, theme storage or OS-setting code", !/setTheme|applyTheme|storedTheme|renderThemeSwitch|bindThemeSwitch|THEME_KEY|theme-switch|prefers-color-scheme/.test(src.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, "")));
 }
 
-// ---------- every page declares both schemes ----------
-const pages = fs.readdirSync(root).filter((f) => f.endsWith(".html")).concat(["portal/index.html", "portal/install.html"]);
+// ---------- which pages are public (dark only) and which follow the theme ----------
+const PUBLIC_PAGES = ["about", "contact", "index", "media", "member", "mentor", "outreach", "privacy", "resources", "robot", "robots", "sponsors", "terms"].map((n) => `${n}.html`);
+const allHtml = fs.readdirSync(root).filter((f) => f.endsWith(".html"));
+const pages = allHtml.filter((f) => !PUBLIC_PAGES.includes(f)).concat(["portal/index.html", "portal/install.html"]);   // themed pages
+check("every .html page is either public (dark only) or themed", PUBLIC_PAGES.every((f) => allHtml.includes(f)) && allHtml.length === PUBLIC_PAGES.length + 2, allHtml.join(","));
+for (const page of PUBLIC_PAGES) {
+  const html = read(page), head = html.slice(0, html.indexOf("</head>"));
+  check(`${page}: dark only from the first paint (data-site="public" on <html>, color-scheme dark, no inline script)`,
+    /<html lang="en" data-site="public">/.test(html) && /<meta name="color-scheme" content="dark" \/>/.test(head) && !/color-scheme" content="[^"]*light/.test(head), head.match(/<meta name="color-scheme"[^>]*>/));
+  check(`${page}: theme-color is the Midnight page colour only`, (head.match(/name="theme-color"/g) || []).length === 1 && /<meta name="theme-color" content="#101827" \/>/.test(head));
+  check(`${page}: no theme script in <head> (nothing reads, writes or follows the saved choice or the OS setting)`, !/theme-init|localStorage|matchMedia|prefers-color-scheme|<script>/.test(head), "head has a script or theme code");
+  check(`${page}: no theme switch markup`, !/theme-switch|data-theme/.test(html));
+}
 for (const page of pages) {
   check(`${page}: declares color-scheme light dark`, /<meta name="color-scheme" content="light dark" \/>/.test(read(page)));
 }
@@ -176,9 +147,9 @@ for (const page of pages) {
   const compList = (read("js/components.js").match(/const SITE_SUBDOMAINS = (\[[^\]]*\]);/) || [])[1];
   check("js/components.js and scripts/theme-init.mjs list the same site subdomains", compList && JSON.stringify(JSON.parse(compList)) === JSON.stringify(gen.SITE_SUBDOMAINS), compList);
 
-  // Sol, review of ab09a9a: the editor serves landing's public pages at editor.<domain>/site/*. With no cookie and the
-  // old key "dark", the head script migrates it; then the public switch picks Light, then System. A browser-like jar
-  // (cookies keyed by name and domain) must end with one theme cookie, then none, and the page must follow.
+  // Sol, review of ab09a9a: the editor serves landing's pages at editor.<domain>/site/*. With no cookie and the old key
+  // "dark", a themed page's head script migrates it onto the bare site domain (one cookie). Public pages are dark only
+  // and never write it. A browser-like jar (cookies keyed by name and domain) must hold exactly one theme cookie.
   {
     const host = "editor.example.org";
     const jar = new Map();                                     // "name|domain" -> value; domain "" = host-only
@@ -196,7 +167,7 @@ for (const page of pages) {
     };
     const store = new Map([["theme", "dark"]]);
     const storage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
-    const page = read("index.html");
+    const page = read("portal/index.html");
     const head = page.match(/<!-- theme-init: [^\n]*-->\n<script>([^\n]*)<\/script>/)[1];
     const runHead = () => {
       const attrs = {}; const r = { setAttribute: (k, v) => { attrs[k] = v; }, removeAttribute: (k) => { delete attrs[k]; }, classList: { toggle() {} }, style: {} };
@@ -205,21 +176,12 @@ for (const page of pages) {
       return attrs["data-theme"];
     };
     const themeCookies = () => [...jar.keys()].filter((k) => k.startsWith("theme|"));
-    check("editor /site/ host: the head script migrates the old key onto the bare site domain", runHead() === "dark" && themeCookies().join() === "theme|example.org", themeCookies());
+    check("editor /site/ host: a themed page's head script migrates the old key onto the bare site domain", runHead() === "dark" && themeCookies().join() === "theme|example.org", themeCookies());
 
-    // the public switch on the same host, with the editor's templated config (SITE_DOMAIN = example.org)
-    const root = { dataset: {}, classList: { toggle() {} }, style: {} };
-    const ctx = { console, location: { host, protocol: "https:", search: "", pathname: "/site/" }, scrollY: 0, onContent() {}, localStorage: storage,
-      SITE_ENV: { scheme: "https", domain: "example.org" }, matchMedia: () => ({ matches: false }), addEventListener() {} };
-    ctx.window = ctx;
-    ctx.document = { documentElement: root, body: { hasAttribute: () => false }, querySelectorAll: () => [], querySelector: () => null, addEventListener() {} };
-    Object.defineProperty(ctx.document, "cookie", cookieProp);
-    vm.createContext(ctx);
-    vm.runInContext(read("js/components.js") + "\n;globalThis.T = { setTheme, storedTheme };", ctx);
-    ctx.T.setTheme("light");
-    check("editor /site/ host: Light replaces it, one theme cookie, and a reload is light", themeCookies().join() === "theme|example.org" && jar.get("theme|example.org") === "light" && runHead() === "light", themeCookies());
-    ctx.T.setTheme("system");
-    check("editor /site/ host: System clears it, no theme cookie left, and a reload follows the system", themeCookies().length === 0 && runHead() === undefined && ctx.T.storedTheme() === "system", themeCookies());
+    // The public pages carry no head script, so on the same host they write no cookie at all: the one theme cookie
+    // stays the portal's.
+    const before = JSON.stringify([...jar]);
+    check("editor /site/ host: a public page has no head script, so it writes and removes no theme cookie", !/<script>/.test(read("index.html").slice(0, read("index.html").indexOf("</head>"))) && JSON.stringify([...jar]) === before);
   }
   finish();
 })();
@@ -248,32 +210,56 @@ const css = read("css/style.css");
 const rootBlock = css.slice(css.indexOf(":root {"), css.indexOf("}", css.indexOf(":root {")) + 1);
 const tokens = [...rootBlock.matchAll(/^\s*(--[\w-]+):\s*(.+?);/gm)].map((m) => ({ name: m[1], value: m[2] }));
 const themed = tokens.filter((t) => t.value.startsWith("light-dark("));
-check("the stylesheet defines its colours as light-dark() tokens", themed.length >= 30, `found ${themed.length}`);
+check("the portal's token block defines its colours as light-dark() tokens", themed.length >= 19, `found ${themed.length}`);
 check("the root asks for both schemes", /color-scheme: light dark;/.test(rootBlock));
-check("an explicit choice is honoured (data-theme light and dark)", /:root\[data-theme="light"\] \{ color-scheme: light; \}/.test(css) && /:root\[data-theme="dark"\] \{ color-scheme: dark; \}/.test(css));
+check("an explicit choice is honoured on themed pages (data-theme light and dark)", /:root\[data-theme="light"\] \{ color-scheme: light; \}/.test(css) && /:root\[data-theme="dark"\] \{ color-scheme: dark; \}/.test(css));
 const bad = themed.filter((t) => !/^light-dark\(\s*(#[0-9a-f]{3,8}|rgba?\([^)]*\))\s*,\s*(#[0-9a-f]{3,8}|rgba?\([^)]*\))\s*\)$/i.test(t.value));
 check("every light-dark() token holds two colours (it does not work for other values)", bad.length === 0, bad.map((t) => t.name).join(", "));
 
-// Outside the token block, colours must be tokens. Allowed: the few places that are the same in both themes.
+// The public block: one fixed dark set, the approved Midnight & brass values (PUBLIC_REDESIGN_PROPOSAL §5b).
+const pubStart = css.indexOf(':root[data-site="public"], :root[data-site="public"][data-theme] {');
+const pubBlock = pubStart < 0 ? "" : css.slice(pubStart, css.indexOf("}", pubStart) + 1);
+const pub = Object.fromEntries([...pubBlock.matchAll(/^\s*(--[\w-]+):\s*(.+?);/gm)].map((m) => [m[1], m[2]]));
+check("the public token block exists, after the portal's, and is dark", pubStart > css.indexOf(rootBlock) && /color-scheme: dark;/.test(pubBlock));
+check("the public token block applies even with a stray data-theme (an old saved light choice)", /:root\[data-site="public"\]\[data-theme\]/.test(pubBlock));
+const APPROVED = { "--ink": "#101827", "--ink-2": "#152033", "--ink-3": "#1c293b", "--text": "#f3f5fa", "--text-2": "#c5cfdd", "--mute": "#b4c0d1",
+  "--gold": "#e6b849", "--accent": "#e6b849", "--gold-2": "#f2cd74", "--accent-2": "#f2cd74", "--on-gold": "#101827" };
+const wrong = Object.entries(APPROVED).filter(([k, v]) => (pub[k] || "").toLowerCase() !== v);
+check("the public tokens are the approved Midnight & brass values", wrong.length === 0, wrong.map(([k, v]) => `${k} ${pub[k]} vs ${v}`).join(", "));
+check("the public block has no light-dark() (it is one fixed theme)", !/light-dark\(/.test(pubBlock));
+// WCAG contrast of the approved pairs (the browser run checks every page; this guards the palette itself)
+{
+  const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const lum = (h) => { const n = parseInt(h.slice(1), 16); return 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255); };
+  const ratio = (a, b) => { const [hi, lo] = lum(a) >= lum(b) ? [a, b] : [b, a]; return (lum(hi) + 0.05) / (lum(lo) + 0.05); };
+  const weak = [];
+  for (const fg of ["--text", "--text-2", "--mute", "--accent", "--accent-2"]) for (const bg of ["--ink", "--ink-2", "--ink-3"]) if (ratio(pub[fg], pub[bg]) < 4.5) weak.push(`${fg} on ${bg} ${ratio(pub[fg], pub[bg]).toFixed(2)}`);
+  if (ratio(pub["--on-gold"], pub["--gold"]) < 4.5) weak.push("--on-gold on --gold");
+  if (ratio(pub["--on-gold"], pub["--gold-2"]) < 4.5) weak.push("--on-gold on --gold-2");
+  check("the public palette passes WCAG AA (4.5:1) for every text pair", weak.length === 0, weak.join(", "));
+}
+
+// Outside the token blocks, colours must be tokens. Allowed: the few places that are the same in both themes.
 const ALLOWED = [
   ".brand-logo",                         // logo sits on a white disc
-  "rgba(7, 9, 15, 0.35) 0%",             // hero wash over the photo (dark in both themes)
-  "transparent 38%, rgba(7, 9, 15, 0.94)", // robot photo cards (dark in both themes)
-  "background: rgba(7, 9, 15, 0.6);",    // the status pill on a robot photo
-  "background: #ffffff;",                // sponsor tiles: logos are made for white
+  "transparent 38%, rgba(7, 9, 15, 0.94)", // robot photo cards on Home (dark in both themes); removed with the reel
+  "background: #ffffff;",                // sponsor logo tiles: logos are made for white
   ".sponsor-tile span { color: #0b1224",
   "-webkit-mask: linear-gradient(#000 0 0)", // mask shapes, not visible colours
-  "rgba(7, 9, 15, 0.72), rgba(7, 9, 15, 0)", // scrim behind the nav over the hero photo (dark in both themes)
   "mask-composite",
 ];
-const after = css.slice(css.indexOf(rootBlock) + rootBlock.length);
+const after = css.slice(pubStart + pubBlock.length);
 const literals = after.split("\n").filter((l) => /#[0-9a-fA-F]{3,8}\b|rgba?\(/.test(l) && !ALLOWED.some((a) => l.includes(a)));
 check("no stray colour literals outside the tokens", literals.length === 0, literals.slice(0, 4).map((l) => l.trim().slice(0, 70)).join(" | "));
 const gold = after.split("\n").filter((l) => /color: var\(--gold\)/.test(l) && !/background|border/.test(l) && !/text-stroke/.test(l));
 check("gold is never used as text colour (text uses --accent, which passes AA in both themes)", gold.length === 0, gold.slice(0, 3).map((l) => l.trim().slice(0, 70)).join(" | "));
 const onGold = after.split("\n").filter((l) => /background: var\(--gold(-2)?\)/.test(l) && /color: var\(--ink\)/.test(l));
 check("text on a gold fill uses --on-gold, not the page colour", onGold.length === 0, onGold.slice(0, 3).map((l) => l.trim().slice(0, 70)).join(" | "));
-check("the film grain is switched off in the light theme", /:root\[data-theme="light"\] \{ --grain: 0; \}/.test(css) && /prefers-color-scheme: light\) \{ :root:not\(\[data-theme="dark"\]\) \{ --grain: 0; \}/.test(css));
+// the retired effects are gone from the stylesheet and the scripts
+const RETIRED = /\.marquee|\.tilt|\.magnetic|\.cursor-dot|\.footer-giant|\.kicker|\[data-reveal\]|\.scroll-cue|\.rise\b|--grain|kenburns|\.fade-in|--giant|--aurora/;
+check("the stylesheet has none of the retired effects (marquee, grain, magnetic, tilt, pointer glow, parallax, reveal, giant footer number)", !RETIRED.test(css), (css.match(RETIRED) || [])[0]);
+check("no page or script keeps a retired effect's hook (data-reveal, magnetic, tilt, marquee, parallax, pointer glow)",
+  !allHtml.concat(["js/components.js"]).some((f) => /data-reveal|\bmagnetic\b|\btilt\b|marquee|--py|--mx|splitWords|setupCursor/.test(read(f))));
 
 function finish() {
   console.log(failed === 0 ? `ALL PASSED (${passed})` : `${failed} FAILED, ${passed} passed`);

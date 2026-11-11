@@ -1,34 +1,16 @@
 // Shared header/footer, injected on every page so nav only lives in one place.
 
+// The header: flat links, no dropdowns (Outreach, Media and Contact are in the footer and linked from About).
 const NAV_LINKS = [
-  {
-    label: "About",
-    children: [
-      { label: "About the Team", href: "about.html", desc: "Who we are, our school, our mission and our history." },
-      { label: "Our Robots", href: "robots.html", desc: "Every robot we have built, season by season." },
-      { label: "Contact", href: "contact.html", desc: "Questions? Write to us." },
-    ],
-  },
-  {
-    label: "Outreach & Media",
-    children: [
-      { label: "Outreach", href: "outreach.html", desc: "How we bring robotics to our community." },
-      { label: "Media", href: "media.html", desc: "Photos, videos and press." },
-    ],
-  },
+  { label: "Robots", href: "robots.html" },
+  { label: "About", href: "about.html" },
   { label: "Sponsors", href: "sponsors.html" },
-  {
-    label: "Join the Team",
-    children: [
-      { label: "Become a Team Member", href: "member.html", desc: "For students who want to design, build and compete with us." },
-      { label: "Become a Mentor", href: "mentor.html", desc: "For adults who want to guide students with their time and expertise." },
-    ],
-  },
+  { label: "Join", href: "member.html" },
   { label: "Resources", href: "resources.html" },
 ];
 
 // Pages that should highlight a different nav item
-const NAV_ALIASES = { "robot.html": "robots.html" };
+const NAV_ALIASES = { "robot.html": "robots.html", "mentor.html": "member.html" };
 
 function currentPage() {
   const path = window.location.pathname.split("/").pop();
@@ -369,46 +351,50 @@ function renderSchoolBadge() {
 }
 
 function renderHeader() {
-  const brand = `
-      <div class="brand-group">
+  // The protected portal mounts the static shell bar after /me.json and /apps.json load.
+  if (isPortalPage()) return "";
+  const active = currentPage();
+  const links = NAV_LINKS.map((l) => `<a href="${l.href}" class="nav-link"${l.href === active ? ' aria-current="page"' : ""}>${l.label}</a>`).join("");
+  return `
+  <header class="site-header" id="hdr">
+    <div class="wrap hd">
       ${renderSchoolBadge()}
       <span class="brand-sep" aria-hidden="true"></span>
       <a href="${pageHref("index.html")}" class="brand">
-        <img${imgAttrs(SITE.logo, 200)}${ck("SITE.logo")} alt="${esc(altFor(SITE.logo, SITE.teamName + " logo"))}" class="brand-logo" width="40" height="40" />
-        <span class="brand-text"><strong${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</strong> ${isPortalPage() ? "Portal" : `<span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span>`}</span>
+        <img${imgAttrs(SITE.logo, 200)}${ck("SITE.logo")} alt="${esc(altFor(SITE.logo, SITE.teamName + " logo"))}" class="brand-logo" width="36" height="36" />
+        <span class="brand-text"><strong${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</strong><span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span></span>
       </a>
-      </div>`;
-
-  // The protected portal mounts the static shell bar after /me.json and /apps.json load.
-  if (isPortalPage()) return "";
-
-  const active = currentPage();
-  const links = NAV_LINKS.map((l) => {
-    if (!l.children) return `<a href="${l.href}" class="nav-link${l.href === active ? " active" : ""}">${l.label}</a>`;
-    const here = l.children.some((c) => c.href === active);
-    return `<div class="nav-group">
-        <button type="button" class="nav-link nav-drop${here ? " active" : ""}" aria-expanded="false">${l.label}</button>
-        <div class="nav-menu">${l.children.map((c) =>
-          `<a href="${c.href}"${c.href === active ? ' aria-current="page"' : ""}><strong>${c.label}</strong><span>${c.desc}</span></a>`).join("")}</div>
-      </div>`;
-  }).join("");
-  return `
-  <header class="site-header">
-    <div class="header-inner">
-      ${brand}
-      <button class="nav-toggle" aria-label="Open menu" aria-expanded="false">
-        <span></span><span></span><span></span>
-      </button>
-      <nav class="site-nav">
+      <button type="button" class="nav-toggle" id="menuBtn" aria-expanded="false" aria-controls="site-nav">Menu</button>
+      <nav class="site-nav" id="site-nav" aria-label="Main">
         ${links}
-        ${renderThemeSwitch()}
-        <a href="${PORTAL_URL}" class="nav-login">${loginLabel()}</a>
+        <a href="${PORTAL_URL}" class="btn btn-gold nav-login">${loginLabel()}</a>
       </nav>
     </div>
   </header>`;
 }
 
+// The team e-mail address (a mailto link) with a Copy button. The click is handled once for the page (mountLayout).
+function emailAddress() {
+  return `<span class="addr"><a class="addr-t" href="mailto:${esc(SITE.email)}"${ck("SITE.email")}>${esc(SITE.email)}</a><button type="button" class="btn btn-line btn-sm" data-copy aria-live="polite">Copy</button></span>`;
+}
+
+function copyAddress(button) {
+  const text = button.parentNode.querySelector(".addr-t");
+  const reset = (label) => { button.textContent = label; setTimeout(() => { button.textContent = "Copy"; }, 2000); };
+  const select = () => {                                // no clipboard access: select the address so Ctrl/Cmd+C works
+    try { const r = document.createRange(); r.selectNodeContents(text); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); } catch (e) { /* ignore */ }
+    reset("Selected");
+  };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text.textContent).then(() => reset("Copied"), select);
+    else select();
+  } catch (e) { select(); }
+}
+
 function renderFooter() {
+  const portal = isPortalPage();
+  const page = (href, label) => `<li><a href="${pageHref(href)}">${label}</a></li>`;
+  const instagram = isSet(SITE.instagram) ? `<a href="${esc(safeUrl(SITE.instagram))}" target="_blank" rel="noopener"${ckHref("SITE.instagram")}>Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span> ↗</a>` : "";
   return `
   <footer class="site-footer">
     <div class="footer-inner">
@@ -418,18 +404,27 @@ function renderFooter() {
         ${schoolMark("footer-school")}
       </div>
       <div class="footer-col">
-        <a href="${pageHref("contact.html")}">Contact us</a>
-        <a href="mailto:${esc(SITE.email)}"${ck("SITE.email")}>${esc(SITE.email)}</a>
+        <p class="label">Contact</p>
+        ${emailAddress()}
+        ${instagram}
       </div>
       <div class="footer-col">
-        <a href="${pageHref("sponsors.html")}">Become a Sponsor</a>
-        <a href="${pageHref("mentor.html")}">Become a Mentor</a>
-        <a href="${pageHref("member.html")}">Become a Team Member</a>
-        ${isPortalPage() ? `<a href="/install">Install the app</a>` : `<a href="${PORTAL_URL}">${loginLabel()}</a>
-        <a href="${REQUEST_URL}">Request an account</a>`}
+        <p class="label">Pages</p>
+        <ul>
+          ${page("sponsors.html", "Become a sponsor")}
+          ${page("mentor.html", "Become a mentor")}
+          ${page("member.html", "Become a team member")}
+          ${page("robots.html", "Robots")}
+          ${page("about.html", "About")}
+          ${page("outreach.html", "Outreach")}
+          ${page("media.html", "Media")}
+          ${page("resources.html", "Resources")}
+          ${page("contact.html", "Contact")}
+          ${portal ? `<li><a href="/install">Install the app</a></li>` : `<li><a href="${PORTAL_URL}">${loginLabel()}</a></li>
+          <li><a href="${REQUEST_URL}">Request an account</a></li>`}
+        </ul>
       </div>
     </div>
-    <div class="footer-giant" aria-hidden="true"${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</div>
     <p class="footer-copy"><span>© ${new Date().getFullYear()} <span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span>, FRC Team <span${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span>.</span> <span><a href="${pageHref("privacy.html")}">Privacy</a> · <a href="${pageHref("terms.html")}">Terms</a></span></p>
   </footer>`;
 }
@@ -456,214 +451,16 @@ async function clearOfflineCaches() {
   } catch (e) { /* nothing to clear, or not allowed: sign out anyway */ }
 }
 
-// ---------- Theme: Light / Dark / System ----------
-// "System" (the default) leaves data-theme off <html>, so the page follows the visitor's system setting.
-// Light and Dark are stored the shell kit's way (D92, INTEGRATION §9b): a `theme` cookie for the whole site
-// domain, so the portal's app bar and these pages share one choice, plus the old localStorage key while other
-// subdomains migrate. The inline script in each page's <head> (scripts/theme-init.mjs, from the kit) applies it
-// before the page paints. applyTheme matches the kit's for an explicit Light or Dark choice: data-theme,
-// the dark/light class and color-scheme. System clears the inline color-scheme. The head script snapshots
-// matchMedia into that inline style, and a snapshot of "light" keeps the page light after the saved choice
-// is dropped while the system is dark. With the inline style gone, the stylesheet's "light dark" follows
-// the system setting.
-const THEME_KEY = "theme";
-
-function themeCookieAttrs(maxAge) {
-  const { scheme, domain } = siteBase();
-  const host = domain.replace(/:\d+$/, "");                 // cookies ignore ports
-  const local = host === "localhost" || /\.localhost$/.test(host) || /^[0-9.]+$/.test(host);
-  return `; Path=/; Max-Age=${maxAge}; SameSite=Lax${local ? "" : `; Domain=.${host}`}${scheme === "https" ? "; Secure" : ""}`;
-}
-
-function storedTheme() {
-  try {
-    const m = document.cookie.match(/(?:^|;\s*)theme=(light|dark)(?:;|$)/);
-    if (m) return m[1];
-  } catch (e) { /* cookies blocked */ }
-  try {
-    const t = localStorage.getItem(THEME_KEY);
-    return t === "light" || t === "dark" ? t : "system";
-  } catch (e) {
-    return "system";           // storage blocked (private window, site data off): the choice just doesn't persist
-  }
-}
-
-function applyTheme(choice) {
-  const root = document.documentElement;
-  const explicit = choice === "light" || choice === "dark";
-  const dark = choice === "dark" || (!explicit && matchMedia("(prefers-color-scheme: dark)").matches);
-  if (explicit) root.dataset.theme = choice;
-  else delete root.dataset.theme;
-  if (root.classList) { root.classList.toggle("dark", dark); root.classList.toggle("light", !dark); }
-  if (root.style) {
-    if (explicit) root.style.colorScheme = choice;
-    else if (root.style.removeProperty) root.style.removeProperty("color-scheme");
-    else root.style.colorScheme = "";
-  }
-  document.querySelectorAll(".theme-switch button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.theme === choice)));
-}
-
-function setTheme(choice) {
-  const keep = choice === "light" || choice === "dark";
-  try { document.cookie = `${THEME_KEY}=${keep ? choice : ""}${themeCookieAttrs(keep ? 34560000 : 0)}`; } catch (e) { /* cookies blocked */ }
-  try {
-    if (!keep) localStorage.removeItem(THEME_KEY);
-    else localStorage.setItem(THEME_KEY, choice);
-  } catch (e) { /* not saved, still applied */ }
-  applyTheme(keep ? choice : "system");
-}
-
-const THEME_OPTIONS = [
-  { value: "light", label: "Light", icon: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>' },
-  { value: "dark", label: "Dark", icon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>' },
-  { value: "system", label: "System", icon: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>' },
-];
-
-function renderThemeSwitch() {
-  const current = storedTheme();
-  return `<div class="theme-switch" role="group" aria-label="Colour theme">${THEME_OPTIONS.map((o) => `
-    <button type="button" data-theme="${o.value}" aria-pressed="${o.value === current}" title="${o.label}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${o.icon}</svg><span class="sr">${o.label}</span>
-    </button>`).join("")}</div>`;
-}
-
-function bindThemeSwitch() {
-  document.querySelectorAll(".theme-switch button").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.theme)));
-}
-
-// Another tab changed the theme: follow it. Not on the portal, where the shell kit's app bar owns the theme
-// (cookie first, D92) and reapplies it whenever the tab comes back.
-addEventListener("storage", (e) => {
-  if (isPortalPage()) return;
-  if (e.key === THEME_KEY || e.key === null) applyTheme(storedTheme());
-});
-// A choice made in another tab or app (the cookie has no event): pick it up when this tab comes back.
-document.addEventListener("visibilitychange", () => {
-  if (!isPortalPage() && document.visibilityState === "visible") applyTheme(storedTheme());
-});
-
-// ---------- Motion and effects ----------
-// All of it is decoration: pages work without it, and none of it runs when the visitor
-// has asked their system for reduced motion.
-
+// ---------- Motion ----------
+// The public site has no ambient effects. The few motions it keeps (number ticker, next-event border beam, About
+// timeline fill) are ported from Magic UI and Aceternity UI (docs/PUBLIC_REDESIGN_PROPOSAL.md §5a) and are
+// static when the visitor has asked their system for reduced motion.
 const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const FINE_POINTER = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
-// Wrap each word of an element's text so it can rise into place (class "rise").
-function splitWords(el) {
-  if (!el || el.dataset.split) return;
-  el.dataset.split = "1";
-  let i = 0;
-  const walk = (node) => {
-    [...node.childNodes].forEach((child) => {
-      if (child.nodeType === Node.TEXT_NODE) {
-        const frag = document.createDocumentFragment();
-        child.textContent.split(/(\s+)/).forEach((part) => {
-          if (!part) return;
-          if (/^\s+$/.test(part)) { frag.append(part); return; }
-          const w = document.createElement("span");
-          w.className = "w";
-          const inner = document.createElement("span");
-          inner.textContent = part;
-          inner.style.setProperty("--wi", i++);
-          w.append(inner);
-          frag.append(w);
-        });
-        child.replaceWith(frag);
-      } else if (child.nodeType === Node.ELEMENT_NODE && child.tagName !== "BR") {
-        walk(child);
-      }
-    });
-  };
-  walk(el);
-  el.classList.add("rise");
-}
-
-// Reveal [data-reveal] elements as they scroll into view.
-function setupReveal(root = document) {
-  const els = [...root.querySelectorAll("[data-reveal]:not(.in)")];
-  if (REDUCED_MOTION || !("IntersectionObserver" in window)) { els.forEach((e) => e.classList.add("in")); return; }
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach((en) => {
-      if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
-    });
-  }, { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
-  els.forEach((e) => io.observe(e));
-}
-
-// Count numbers in [data-count] up from zero when they come into view.
-function setupCounters(root = document) {
-  root.querySelectorAll("[data-count]:not([data-counted])").forEach((el) => {
-    el.dataset.counted = "1";
-    const target = Number(el.dataset.count);
-    if (REDUCED_MOTION || !("IntersectionObserver" in window)) { el.textContent = target; return; }
-    const io = new IntersectionObserver((en) => {
-      if (!en[0].isIntersecting) return;
-      io.disconnect();
-      const start = performance.now();
-      const tick = (now) => {
-        const p = Math.min(1, (now - start) / 1400);
-        el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
-        if (p < 1) requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-    }, { threshold: 0.6 });
-    io.observe(el);
-  });
-}
-
-// Pointer effects: tilt on .tilt, spotlight on .spot and .app-card, magnetic .magnetic buttons.
-function setupPointerFx(root = document) {
-  if (REDUCED_MOTION || !FINE_POINTER) return;
-  root.querySelectorAll(".tilt:not([data-fx])").forEach((c) => {
-    c.dataset.fx = "1";
-    c.addEventListener("pointermove", (e) => {
-      const r = c.getBoundingClientRect();
-      c.style.setProperty("--ry", `${((e.clientX - r.left) / r.width - 0.5) * 8}deg`);
-      c.style.setProperty("--rx", `${-((e.clientY - r.top) / r.height - 0.5) * 8}deg`);
-    });
-    c.addEventListener("pointerleave", () => { c.style.setProperty("--rx", "0deg"); c.style.setProperty("--ry", "0deg"); });
-  });
-  root.querySelectorAll(".spot:not([data-fx-spot]), .app-card:not([data-fx-spot])").forEach((c) => {
-    c.dataset.fxSpot = "1";
-    c.addEventListener("pointermove", (e) => {
-      const r = c.getBoundingClientRect();
-      c.style.setProperty("--x", `${e.clientX - r.left}px`);
-      c.style.setProperty("--y", `${e.clientY - r.top}px`);
-    });
-  });
-  root.querySelectorAll(".magnetic:not([data-fx])").forEach((b) => {
-    b.dataset.fx = "1";
-    b.addEventListener("pointermove", (e) => {
-      const r = b.getBoundingClientRect();
-      b.style.setProperty("--bx", `${(e.clientX - r.left - r.width / 2) * 0.25}px`);
-      b.style.setProperty("--by", `${(e.clientY - r.top - r.height / 2) * 0.35}px`);
-    });
-    b.addEventListener("pointerleave", () => { b.style.setProperty("--bx", "0px"); b.style.setProperty("--by", "0px"); });
-  });
-}
-
-// A small gold dot that follows the mouse and grows over links.
-function setupCursor() {
-  if (REDUCED_MOTION || !FINE_POINTER || document.querySelector(".cursor-dot")) return;
-  const dot = document.createElement("div");
-  dot.className = "cursor-dot";
-  dot.setAttribute("aria-hidden", "true");
-  document.body.append(dot);
-  addEventListener("pointermove", (e) => {
-    dot.classList.add("on");
-    dot.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
-    dot.classList.toggle("big", Boolean(e.target.closest("a, button, input, [role=button]")));
-  }, { passive: true });
-  document.documentElement.addEventListener("pointerleave", () => dot.classList.remove("on"));
-}
-
-// Run every effect on whatever is on the page now. Pages that add content later call it again.
-function initEffects(root = document) {
-  setupReveal(root);
-  setupCounters(root);
-  setupPointerFx(root);
-}
+// ---------- Theme ----------
+// Public pages are dark only: <html data-site="public"> and <meta name="color-scheme" content="dark"> in each page's
+// HTML, no script. They never read or write the shared `theme` cookie or the old localStorage key, so a light choice
+// made in the portal (the shell kit owns that) neither changes these pages nor is changed by them.
 
 let layoutStarted = false;
 
@@ -672,9 +469,6 @@ function mountLayout() {
   if (!isPortalPage()) document.getElementById("site-header").innerHTML = renderHeader();
   document.getElementById("site-footer").innerHTML = renderFooter();
 
-  bindThemeSwitch();
-  // Re-apply after the head script. System must not keep the script's pinned color-scheme (see applyTheme).
-  if (!isPortalPage()) applyTheme(storedTheme());
   const header = document.querySelector(".site-header");
   const badgeImg = header && header.querySelector(".school-badge-img");
   if (badgeImg) {
@@ -682,60 +476,34 @@ function mountLayout() {
     badgeImg.addEventListener("error", hideBadge);
     if (badgeImg.complete && !badgeImg.naturalWidth) hideBadge();
   }
-  // Pages without a full-screen hero get a solid header from the start.
-  if (header && !document.querySelector(".hero")) header.classList.add("solid");
-  if (header) header.classList.toggle("scrolled", scrollY > 30);
 
-  const toggle = document.querySelector(".nav-toggle");
-  const nav = document.querySelector(".site-nav");
-  if (toggle) {
-    toggle.addEventListener("click", () => {
-      const isOpen = nav.classList.toggle("open");
-      toggle.setAttribute("aria-expanded", String(isOpen));
-      toggle.setAttribute("aria-label", isOpen ? "Close menu" : "Open menu");
-      document.body.classList.toggle("nav-open", isOpen);
+  // The phone menu: a button that opens the links under the bar. Escape closes it and returns focus to the button.
+  const toggle = document.getElementById("menuBtn");
+  if (toggle && header) {
+    const setOpen = (open) => { header.classList.toggle("open", open); toggle.setAttribute("aria-expanded", String(open)); };
+    toggle.addEventListener("click", () => setOpen(!header.classList.contains("open")));
+    header.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && header.classList.contains("open")) { setOpen(false); toggle.focus(); }
     });
   }
-
-  // Dropdowns open on hover, or on keyboard focus (CSS). A click does not keep one open; only a screen that
-  // cannot hover (a tablet) opens one with a tap. Escape or an outside tap closes it.
-  const canHover = matchMedia("(hover: hover)");
-  document.querySelectorAll(".nav-drop").forEach((btn) => {
-    const group = btn.parentElement;
-    const set = (open) => { group.classList.toggle("open", open); btn.setAttribute("aria-expanded", String(open)); };
-    btn.addEventListener("click", () => { if (!canHover.matches) set(!group.classList.contains("open")); });
-    document.addEventListener("click", (e) => { if (!group.contains(e.target)) set(false); });
-    group.addEventListener("keydown", (e) => { if (e.key === "Escape") { set(false); btn.focus(); } });
-  });
 
   // The installable app: register the service worker, and clear what it stored when someone signs out.
   registerServiceWorker();
   if (isPortalPage()) setSignedInHint(true);
-  // A sign-out link clears the stored files first (waiting at most a second), then goes on to sign out.
-  document.addEventListener("click", (e) => {
-    const link = e.target.closest && e.target.closest("a[data-signout]");
-    if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
-    e.preventDefault();
-    setSignedInHint(false);
-    Promise.race([clearOfflineCaches(), new Promise((r) => setTimeout(r, 1000))]).then(() => { location.href = link.href; });
-  });
-
-  // Big page headings rise in word by word.
-  document.querySelectorAll(".page-header h1, .robot-hero h1").forEach(splitWords);
 
   if (!layoutStarted) {
     layoutStarted = true;
-    addEventListener("scroll", () => {
-      const h = document.querySelector(".site-header");
-      if (h) h.classList.toggle("scrolled", scrollY > 30);
-    }, { passive: true });
-    setupCursor();
+    document.addEventListener("click", (e) => {
+      const copy = e.target.closest && e.target.closest("[data-copy]");
+      if (copy) { copyAddress(copy); return; }
+      // A sign-out link clears the stored files first (waiting at most a second), then goes on to sign out.
+      const link = e.target.closest && e.target.closest("a[data-signout]");
+      if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      e.preventDefault();
+      setSignedInHint(false);
+      Promise.race([clearOfflineCaches(), new Promise((r) => setTimeout(r, 1000))]).then(() => { location.href = link.href; });
+    });
   }
-  // After the page's own render function has filled in its content.
-  setTimeout(() => {
-    document.querySelectorAll(".page-header h1, .robot-hero h1").forEach(splitWords);
-    initEffects();
-  }, 0);
 }
 
 // Wait for the DOM and the content, then build the layout (the loader runs this).

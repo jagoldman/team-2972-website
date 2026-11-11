@@ -11,7 +11,8 @@
 //   - 320px: no horizontal scroll (portal home, menus open, /install, public home), in light and dark
 //   - sign-out link (INTEGRATION §1)
 //   - public hosts: no app bar, no shell script, no identity fetch; the 2972_in "Portal" label still works;
-//     a theme chosen in the portal bar carries to the public site and back (one cookie, D92)
+//     public pages are dark only (Midnight & brass): a theme chosen in the portal bar (one cookie, D92) does not change
+//     them, they have no theme switch, and they never delete or rewrite that cookie
 // Contrast in both themes is test/theme-test.sh (it covers the new tiles).
 // Needs Playwright with its Chromium from an existing install (nothing is added to landing):
 //   LANDING_TEST_NODE_MODULES=/path/to/node_modules node test/portal-shell-test.mjs
@@ -252,7 +253,8 @@ try {
     await page.waitForSelector(".site-header");
     check(`320px ${theme}: public home has no horizontal scroll`, (await over(page)) <= 0, `${await over(page)}px`);
     const toggle = await page.$eval(".nav-toggle", (b) => { const r = b.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), Math.round(r.right)]; });
-    check(`320px ${theme}: the menu button keeps its 44px and sits on screen`, toggle[0] === 44 && toggle[1] === 44 && toggle[2] <= 320, toggle);
+    check(`320px ${theme}: the menu button is at least 44px and sits on screen`, toggle[0] >= 44 && toggle[1] >= 44 && toggle[2] <= 320, toggle);
+    check(`320px ${theme}: the public home stays dark (Midnight & brass), whatever the saved theme`, (await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgb(16, 24, 39)");
     check(`320px ${theme}: the team number shows, the team name is hidden below 360px`, (await page.isVisible(".brand-text strong")) && !(await page.isVisible(".brand-text > span")));
     await context.close();
   }
@@ -271,17 +273,34 @@ try {
       check(`public ${path}: the public header keeps its nav and the 2972_in "Portal" label`, (await page.textContent(".site-header .nav-login")).trim() === "Portal" && (await page.$$(".site-header .site-nav .nav-link")).length >= 3);
       await page.close();
     }
-    // one theme choice for the whole site (D92): Dark in the portal bar shows on the public site, and back
+    // One theme cookie for the portal and the apps (D92). Public pages are dark only: a choice made in the portal bar
+    // does not change them, and they leave the cookie and the old key exactly as they found them.
     const portal = (await openPortal(context)).page;
     await portal.click("#shell-bar [aria-controls$='-theme']");
-    await portal.click("#shell-bar .shbar-theme .shbar-choice >> text=Dark");
+    await portal.click("#shell-bar .shbar-theme .shbar-choice >> text=Light");
+    const themeState = (page) => page.evaluate(() => ({ attr: document.documentElement.dataset.theme || null, cookie: (document.cookie.match(/(?:^|;\s*)theme=([^;]*)/) || [])[1] || null, key: localStorage.getItem("theme"),
+      bg: getComputedStyle(document.body).backgroundColor, scheme: getComputedStyle(document.documentElement).colorScheme }));
+    check("Light chosen in the portal bar: the portal itself is light", (await themeState(portal)).attr === "light" && (await themeState(portal)).cookie === "light");
     const pub = await context.newPage();
     await pub.goto(PUBLIC + "/about.html");
-    await pub.waitForSelector(".site-header .theme-switch");
-    check("Dark chosen in the portal bar: the public site opens dark, its switch shows Dark", (await pub.evaluate(() => document.documentElement.dataset.theme)) === "dark" && (await pub.getAttribute('.theme-switch button[data-theme="dark"]', "aria-pressed")) === "true");
-    await pub.click('.theme-switch button[data-theme="light"]');
+    await pub.evaluate(() => localStorage.setItem("theme", "light"));   // the old key lives per origin: seed this one
+    for (const path of ["/about.html", "/robots.html", "/privacy.html"]) {
+      await pub.goto(PUBLIC + path);
+      await pub.waitForSelector(".site-header .nav-login");
+      await pub.waitForTimeout(200);
+      const st = await themeState(pub);
+      check(`Light saved (cookie and old key): public ${path} is still dark, sets no data-theme, and leaves the cookie as "light"`, st.bg === "rgb(16, 24, 39)" && st.scheme === "dark" && st.attr === null && st.cookie === "light" && st.key === "light", st);
+      check(`public ${path}: no theme switch`, (await pub.$$(".theme-switch")).length === 0);
+    }
+    await portal.click("#shell-bar [aria-controls$='-theme']");
+    await portal.click("#shell-bar .shbar-theme .shbar-choice >> text=Match my device");
+    await pub.goto(PUBLIC + "/about.html");
+    await pub.waitForSelector(".site-header .nav-login");
+    await pub.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await pub.waitForTimeout(150);
+    check('"Match my device" chosen in the portal bar (cookie cleared): public stays dark and does not recreate the cookie', (await themeState(pub)).bg === "rgb(16, 24, 39)" && (await themeState(pub)).cookie === null);
     await portal.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
-    check("Light chosen on the public site: the portal follows when its tab comes back", (await portal.evaluate(() => document.documentElement.dataset.theme)) === "light");
+    check("the portal keeps its own theme handling after public pages were visited", (await themeState(portal)).attr === null);
     await pub.close(); await portal.close();
     // the editor's preview serves these pages under /site/: the wordmark probe follows the script, not the root
     {

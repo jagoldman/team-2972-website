@@ -129,8 +129,12 @@ for (const page of pages) {
   check(`${page}: links the manifest`, /<link rel="manifest" href="\/manifest\.webmanifest" \/>/.test(head));
   check(`${page}: favicon and Apple touch icon are the ${app} icons, and the files exist`, head.includes(`href="/pwa-icons/${app}/icon.svg"`) && head.includes(`href="/pwa-icons/${app}/apple-touch-icon.png"`) && exists(`pwa-icons/${app}/apple-touch-icon.png`));
   check(`${page}: installable-app tags for Android and iOS`, /name="mobile-web-app-capable"/.test(head) && /name="apple-mobile-web-app-capable"/.test(head) && new RegExp(`apple-mobile-web-app-title" content="${portal ? "2972 Portal" : "Team 2972"}"`).test(head));
-  const [tl, td] = portal ? ["#0b1224", "#0b101d"] : ["#f7f8fa", "#07090f"];   // portal: the app bar's --rail, light / dark
-  check(`${page}: theme colours for light and dark`, new RegExp(`name="theme-color" content="${tl}" media="\\(prefers-color-scheme: light\\)"`).test(head) && new RegExp(`name="theme-color" content="${td}" media="\\(prefers-color-scheme: dark\\)"`).test(head));
+  if (!html.includes('data-site="public"')) {   // themed pages: light / dark colours (the portal's are the app bar's --rail)
+    const [tl, td] = portal ? ["#0b1224", "#0b101d"] : ["#f7f8fa", "#07090f"];
+    check(`${page}: theme colours for light and dark`, new RegExp(`name="theme-color" content="${tl}" media="\\(prefers-color-scheme: light\\)"`).test(head) && new RegExp(`name="theme-color" content="${td}" media="\\(prefers-color-scheme: dark\\)"`).test(head));
+  } else {        // the public site is dark only (Midnight & brass): one theme colour, the page's --ink
+    check(`${page}: one theme colour, the dark page colour (public pages are dark only)`, /<meta name="theme-color" content="#101827" \/>/.test(head) && (head.match(/name="theme-color"/g) || []).length === 1);
+  }
 }
 
 // ---------- the offline page ----------
