@@ -41,13 +41,15 @@
     <p>Your team apps will appear here as soon as that's done.</p>
   </div>
 
+  <!-- Search stays outside #main-apps. That section hides when every visible app is under More,
+       and the field (and the / shortcut that focuses it) has to stay usable whenever any app is shown. -->
+  <div class="apps-head" id="apps-head" hidden>
+    <h2 id="main-apps-h">Apps</h2>
+    <label class="app-search" id="search-wrap" hidden>
+      <input id="q" type="search" placeholder="Find an app" aria-label="Find an app" autocomplete="off" />
+    </label>
+  </div>
   <section class="portal-section" id="main-apps" aria-labelledby="main-apps-h" hidden>
-    <div class="apps-head">
-      <h2 id="main-apps-h">Apps</h2>
-      <label class="app-search" id="search-wrap" hidden>
-        <input id="q" type="search" placeholder="Find an app" aria-label="Find an app" autocomplete="off" />
-      </label>
-    </div>
     <div class="app-grid" id="app-grid"></div>
   </section>
   <section class="portal-section" id="more-apps" aria-labelledby="more-apps-h" hidden>
@@ -191,8 +193,11 @@ onContent(async () => {
     const more = shown.filter((t) => t.more);
     document.getElementById("app-grid").replaceChildren(...main.map(renderTile));
     document.getElementById("more-list").replaceChildren(...more.map(renderMoreLink));
+    document.getElementById("main-apps-h").hidden = main.length === 0;
     document.getElementById("main-apps").hidden = main.length === 0;
     document.getElementById("more-apps").hidden = more.length === 0;
+    // The search row is not inside #main-apps, so a More-only catalog still shows the field.
+    document.getElementById("apps-head").hidden = shown.length === 0;
     document.getElementById("search-wrap").hidden = shown.length === 0;
     document.getElementById("portal-empty").hidden = shown.length > 0;
     applySearch();

@@ -6,7 +6,7 @@
 //   <div id="shell-bar"></div>
 //   <script type="module">
 //     import { mountAppBar } from "/shell/static/shell.js";
-//     mountAppBar(document.getElementById("shell-bar"), { appName: "Portal", appId: "portal",
+//     mountAppBar(document.getElementById("shell-bar"), { appName: "Gears & Buccaneers", appId: "portal",
 //       siteScheme: "https", siteDomain: "2972robotics.com", source: "landing" });
 //   </script>
 //

@@ -985,8 +985,9 @@ a.school-mark-wrap:hover { color: var(--accent); }
 /* Portal home: the demo's compact tiles (2 across, then 3, then 4) and a plain More list.
    Colours are the landing tokens, which match the shell kit. */
 .portal-section { display: grid; gap: 10px; margin-top: 28px; }
-.apps-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
-.portal-section h2, .portal-section h3, #access > h2 { margin: 0; font: 600 1.05rem/1.3 var(--font); letter-spacing: 0; color: var(--text); }
+.apps-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-top: 28px; }
+#main-apps { margin-top: 10px; }
+.apps-head h2, .portal-section h2, .portal-section h3, #access > h2 { margin: 0; font: 600 1.05rem/1.3 var(--font); letter-spacing: 0; color: var(--text); }
 .app-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 @media (min-width: 641px) { .app-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 961px) { .app-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

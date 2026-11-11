@@ -158,9 +158,20 @@ export function modeCookie(mode, site) {
   return `${MODE_COOKIE}=${parseMode(mode)}${cookieAttributes(site, COOKIE_MAX_AGE)}`;
 }
 
+/**
+ * Tell this tab that the bar wrote the mode or theme cookie.
+ * `mode` is "build" | "competition". `theme` is "light" | "dark" | "system".
+ * No-op when there is no window (server render, Node) or it cannot dispatch.
+ */
+function emitShellChange(mode, theme, win = typeof window === "undefined" ? undefined : window) {
+  if (!win || typeof win.dispatchEvent !== "function" || typeof CustomEvent !== "function") return;
+  win.dispatchEvent(new CustomEvent("shell:change", { detail: { mode, theme } }));
+}
+
 export function setModeCookie(mode, site, doc = document) {
   const choice = parseMode(mode);
   doc.cookie = modeCookie(choice, site);
+  emitShellChange(choice, parseTheme(readCookie(doc.cookie, THEME_COOKIE)));
   return choice;
 }
 
@@ -199,7 +210,9 @@ export function setTheme(choice, site, doc = document, win = window) {
   } catch {
     // Storage blocked: the cookie still carries the choice.
   }
-  return applyTheme(c, doc, win);
+  const applied = applyTheme(c, doc, win);
+  emitShellChange(parseMode(readCookie(doc.cookie, MODE_COOKIE)), c, win);
+  return applied;
 }
 
 /**

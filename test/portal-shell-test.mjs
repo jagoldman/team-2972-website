@@ -181,6 +181,25 @@ try {
     await context.close();
   }
 
+  // ---------- a catalog whose every visible app is under More ----------
+  {
+    const onlyMore = JSON.stringify([
+      { id: "skills", name: "Skills", description: "Marked more.", host: "skills", groups: [], more: true },
+      { id: "handbook", name: "Team Handbook", description: "Always under More.", path: "/resources.html", groups: [] },
+    ]);
+    const { context } = await newContext(browser, { groups: "student", apps: onlyMore });
+    const { page } = await openPortal(context);
+    check("only More: the main section is hidden and More lists every app", !(await page.isVisible("#main-apps")) && (await names(page, "#more-list li")).join() === "Skills,Team Handbook");
+    check("only More: the search field stays visible", await page.isVisible("#q") && await page.isVisible("#search-wrap") && await page.isVisible("#apps-head"));
+    await page.keyboard.press("/");
+    check("only More: / focuses the search field", await page.evaluate(() => document.activeElement === document.getElementById("q")));
+    await page.fill("#q", "hand");
+    check("only More: search still filters the More list", (await names(page, "#more-list li:not([hidden])")).join() === "Team Handbook");
+    await page.keyboard.press("Escape");
+    check("only More: Escape clears the search and leaves the field", (await page.inputValue("#q")) === "" && (await names(page, "#more-list li:not([hidden])")).join() === "Skills,Team Handbook" && await page.evaluate(() => document.activeElement !== document.getElementById("q")));
+    await context.close();
+  }
+
   // ---------- theme (the cases from the Sol review of 0b0f687) ----------
   {
     const { context } = await newContext(browser, { groups: "mentor" });

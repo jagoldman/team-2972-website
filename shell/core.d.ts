@@ -75,9 +75,11 @@ export function resolveTheme(doc?: Document, win?: Window, fallback?: ThemeChoic
 export function cookieAttributes(site: Site, maxAge: number): string;
 export function themeCookie(choice: ThemeChoice, site: Site): string;
 export function modeCookie(mode: Mode, site: Site): string;
+/** Writes the mode cookie. In a browser, also dispatches `shell:change` with `{ mode, theme }`. */
 export function setModeCookie(mode: Mode, site: Site, doc?: Document): Mode;
 export function initials(name?: string | null, email?: string | null): string;
 export function applyTheme(choice: ThemeChoice, doc?: Document, win?: Window): "light" | "dark";
+/** Writes the theme cookie and applies it. In a browser, also dispatches `shell:change` with `{ mode, theme }`. */
 export function setTheme(choice: ThemeChoice, site: Site, doc?: Document, win?: Window): "light" | "dark";
 export function themeInitScript(site: Site): string;
 export function iconPath(name: string): string;
