@@ -23,7 +23,7 @@ function load(contentSource) {
   ctx.document = { documentElement: {}, body: { hasAttribute: () => false }, querySelectorAll: () => [], querySelector: () => null, getElementById: () => ({}), addEventListener() {}, cookie: "" };
   vm.createContext(ctx);
   vm.runInContext(contentSource || read("js/content.js"), ctx, { filename: "content.js" });
-  vm.runInContext(read("js/components.js") + "\n;globalThis.T = { resultType, seasonStats, seasonLog, seasonSummary, seasonStatRow, parseResult, resultRow, resultsTable, parseEventDates, renderNextUp };", ctx, { filename: "components.js" });
+  vm.runInContext(read("js/components.js") + "\n;globalThis.T = { resultType, seasonStats, seasonLog, seasonSummary, seasonStatRow, parseResult, resultRow, resultsTable, parseEventDates, renderNextUp, sponsorNames };", ctx, { filename: "components.js" });
   return ctx;
 }
 const ctx = load();
@@ -153,6 +153,30 @@ const sliceBetween = (html, from, to) => html.slice(html.indexOf(from), to ? htm
     { event: "Second mystery", dates: "TBA", location: "Elsewhere, CO" },
   ]).T.renderNextUp(NOW);
   check("only unreadable dates are listed in order, with no countdown", /class="next-name"[^>]*>First mystery</.test(html) && sliceBetween(html, "Then").includes("Second mystery") && !/Season complete/.test(html) && !/days until/.test(html));
+}
+
+// ---------- sponsor names: public names, editor logo targets ----------
+{
+  const c = load(`const SITE = { teamNumber: "1", teamName: "T", school: "S", location: "L", founded: "2000", email: "a@example.com", instagram: "#", instagramHandle: "", schoolUrl: "#", logo: "" };
+    const ROBOTS = []; const SCHEDULE_2027 = [];`);
+  const tier = { sponsors: [
+    { name: "Placeholder Co", logo: "assets/placeholder-sponsor.svg", url: "https://example.com/p" },
+    { name: "Empty Logo", logo: "" },
+    { name: "Real Co", logo: "media:0123456789abcdef0123" },
+  ]};
+  const pub = c.T.sponsorNames(tier, 0);
+  const lis = pub.split("<li").slice(1);
+  check("public: a placeholder or empty logo is a name, with no logo image", lis.length === 3 && !lis[0].includes("placeholder-sponsor") && !lis[0].includes('class="logo"') && !lis[0].includes(".logo\"") && !lis[1].includes('class="logo"') && lis[0].includes("Placeholder Co") && lis[1].includes("Empty Logo"));
+  check("public: a placeholder with a url keeps the link hook on the name", lis[0].includes('data-ck-href="SPONSOR_TIERS[0].sponsors[0].url"') && lis[0].includes("https://example.com/p"));
+  check("public: a real logo is an image hook with class logo", lis[2].includes('class="logo"') && lis[2].includes('data-ck="SPONSOR_TIERS[0].sponsors[2].logo"') && lis[2].includes('data-ck-alt="SPONSOR_TIERS[0].sponsors[2].name"') && lis[2].includes("/media/0123456789abcdef0123-400.webp"));
+  const emptyPub = c.T.sponsorNames({ sponsors: [] }, 1);
+  check("public: an empty sponsor list keeps its list hook and no editor note", emptyPub.includes('data-ck="SPONSOR_TIERS[1].sponsors"') && !/No sponsors in this tier yet/.test(emptyPub));
+  c.__editorOverlay = true;
+  const ed = c.T.sponsorNames(tier, 0);
+  check("editor preview: a placeholder logo is a .logo image target", ed.includes('class="logo"') && ed.includes("placeholder-sponsor.svg") && ed.includes('data-ck="SPONSOR_TIERS[0].sponsors[0].logo"') && ed.includes('data-ck-alt="SPONSOR_TIERS[0].sponsors[0].name"'));
+  check("editor preview: an empty logo is a .logo image target", ed.includes('data-ck="SPONSOR_TIERS[0].sponsors[1].logo"') && ed.includes('data-ck-type="image"') && ed.includes('data-ck-alt="SPONSOR_TIERS[0].sponsors[1].name"') && ed.includes(">Logo</span>"));
+  const emptyEd = c.T.sponsorNames({ sponsors: [] }, 0);
+  check("editor preview: an empty sponsor list is a visible note inside its hook", emptyEd.includes('data-ck="SPONSOR_TIERS[0].sponsors"') && /data-ck-ignore>No sponsors in this tier yet/.test(emptyEd));
 }
 
 console.log(failed ? `\n${failed} FAILED, ${passed} passed` : `ALL PASSED (${passed})`);

@@ -340,22 +340,39 @@ function renderNextUp(now = new Date()) {
   </div></section>`;
 }
 
+// The editor's overlay.js sets this on the preview page (editor host, /site/<page>) before landing renders.
+// The public site never loads that script, so the flag stays unset.
+function inEditorPreview() {
+  return window.__editorOverlay === true;
+}
+
 // A sponsor shows as a name in type. When it has a real logo (not empty, not the grey placeholder) the logo is shown on a
 // white tile instead, and if the file fails to load the name takes its place (see the error handler in mountLayout).
 function realLogo(s) {
   return Boolean(s.logo) && !/placeholder/i.test(String(s.logo));
 }
+// A placeholder or empty logo is only a name on the public site. In the editor preview it is also an image
+// target (class "logo", with the logo field's data-ck) so the overlay can replace it.
+function editorLogoTarget(s, P) {
+  if (!inEditorPreview()) return "";
+  const alt = esc(altFor(s.logo, s.name + " logo"));
+  if (s.logo) return `<img class="logo"${imgAttrs(s.logo, 400)}${ck(`${P}.logo`)}${ckAlt(`${P}.name`)} alt="${alt}" title="${esc(s.name)}" loading="lazy" />`;
+  return `<span class="logo"${ck(`${P}.logo`, "image")}${ckAlt(`${P}.name`)} role="img" aria-label="${alt}">Logo</span>`;
+}
 function sponsorNames(tier, ti) {
   const base = `SPONSOR_TIERS[${ti}]`;
-  return `<ul class="names"${ck(`${base}.sponsors`)}>${tier.sponsors.map((s, j) => {
+  const items = tier.sponsors.map((s, j) => {
     const P = `${base}.sponsors[${j}]`;
     const name = `<span${ck(`${P}.name`)}>${esc(s.name)}</span>`;
     const href = isSet(s.url) ? safeUrl(s.url) : "";
-    if (!realLogo(s)) return `<li${ck(P)}>${href ? `<a class="name-link" href="${esc(href)}" target="_blank" rel="noopener"${ckHref(`${P}.url`)}>${name}</a>` : name}</li>`;
+    if (!realLogo(s)) return `<li${ck(P)}>${href ? `<a class="name-link" href="${esc(href)}" target="_blank" rel="noopener"${ckHref(`${P}.url`)}>${name}</a>` : name}${editorLogoTarget(s, P)}</li>`;
     const logoName = `<span class="sp-name"${ck(`${P}.name`)}>${esc(s.name)}</span>`;   // shown only if the logo fails to load
-    const img = `<img${imgAttrs(s.logo, 400)}${ck(`${P}.logo`)}${ckAlt(`${P}.name`)} alt="${esc(altFor(s.logo, s.name + " logo"))}" title="${esc(s.name)}" loading="lazy" data-sponsor-logo />`;
+    const img = `<img class="logo"${imgAttrs(s.logo, 400)}${ck(`${P}.logo`)}${ckAlt(`${P}.name`)} alt="${esc(altFor(s.logo, s.name + " logo"))}" title="${esc(s.name)}" loading="lazy" data-sponsor-logo />`;
     return `<li class="sponsor-tile"${ck(P)}>${href ? `<a href="${esc(href)}" target="_blank" rel="noopener"${ckHref(`${P}.url`)}>${img}${logoName}</a>` : img + logoName}</li>`;
-  }).join("")}</ul>`;
+  }).join("");
+  // An empty tier's list still needs a visible spot in the editor preview (the public page hides the whole tier).
+  const vacant = !tier.sponsors.length && inEditorPreview() ? `<li class="editor-empty" data-ck-ignore>No sponsors in this tier yet.</li>` : "";
+  return `<ul class="names"${ck(`${base}.sponsors`)}>${items}${vacant}</ul>`;
 }
 
 // ---------- Season log ----------

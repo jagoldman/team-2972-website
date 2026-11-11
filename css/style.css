@@ -357,6 +357,29 @@ a.sl-col:hover { background: var(--hover); color: var(--text); text-decoration: 
 .names .sponsor-tile.logo-failed img { display: none; }
 .names .sponsor-tile.logo-failed .sp-name { color: var(--text); position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; }
 .names .sponsor-tile a { display: inline-block; }
+/* Placeholder and empty logos are names on the public site. In the editor preview each one also has a
+   .logo target (js/components.js). Real logos sit in .sponsor-tile and keep that tile's own rules. */
+.names > li:not(.sponsor-tile) > .logo {
+  display: inline-block;
+  height: 44px;
+  max-width: 140px;
+  margin-left: 12px;
+  vertical-align: middle;
+  object-fit: contain;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 4px 8px;
+  box-sizing: border-box;
+}
+.names > li:not(.sponsor-tile) > span.logo {
+  min-width: 72px;
+  color: var(--on-gold);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 36px;
+  text-align: center;
+}
+.names .editor-empty { color: var(--text-2); font-size: 1rem; font-weight: 400; letter-spacing: 0; }
 
 /* ---------- Page header (pages not yet moved to the match-sheet layout, and the portal's install page) ---------- */
 .page-header { position: relative; padding: clamp(40px, 6vw, 80px) var(--gutter) clamp(32px, 5vw, 56px); border-bottom: 1px solid var(--line); }

@@ -37,10 +37,11 @@ onContent(() => {
     ? `<div class="photo r32"><img${imgAttrs(today.image, 800)}${ck("HISTORY.today.image")}${ckAlt("HISTORY.today.imageAlt")} alt="${esc(altFor(today.image, today.imageAlt || today.heading))}" loading="lazy" width="1000" height="666"></div>` : "";
   const packet = safeUrl(contentGet("SPONSOR_PACKET_URL"));
 
-  // A tier with no sponsors yet is not shown (it stays in the page, hidden, so the editor still has its list).
+  // A tier with no sponsors yet is hidden on the public site. In the editor preview (window.__editorOverlay,
+  // set by the editor's overlay.js) it is shown, so its tier and list hooks can be reached.
   const tiers = SPONSOR_TIERS.map((tier, i) => {
-    const has = tier.sponsors.length > 0;
-    return `<section class="band${has && i % 2 ? " alt" : ""}"${has ? "" : " hidden"}${ck(`SPONSOR_TIERS[${i}]`)}><div class="wrap">
+    const show = tier.sponsors.length > 0 || inEditorPreview();
+    return `<section class="band${show && i % 2 ? " alt" : ""}"${show ? "" : " hidden"}${ck(`SPONSOR_TIERS[${i}]`)}><div class="wrap">
       <h2 class="h2"${ck(`SPONSOR_TIERS[${i}].tier`)}>${esc(tier.tier)}</h2>
       ${tier.banner ? `<img class="sponsor-banner"${imgAttrs(tier.banner, 1600)}${ck(`SPONSOR_TIERS[${i}].banner`)} alt="${esc(altFor(tier.banner, tier.tier + " banner"))}" loading="lazy" />` : ""}
       ${sponsorNames(tier, i)}</div></section>`;
