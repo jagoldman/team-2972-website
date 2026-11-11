@@ -1,0 +1,1059 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Team 2972 Redesign Demo</title>
+<meta name="theme-color" content="#101827">
+<style>
+@font-face { font-family: "Inter"; src: url("fonts/inter-latin.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Bricolage Grotesque"; src: url("fonts/bricolage-grotesque-latin.woff2") format("woff2"); font-weight: 200 800; font-display: swap; }
+:root {
+  --ink: #101827; --ink-2: #152033; --ink-3: #1c293b;
+  --line: rgba(243, 245, 250, 0.09); --line-2: rgba(243, 245, 250, 0.18);
+  --hover: rgba(243, 245, 250, 0.06); --hover-2: rgba(243, 245, 250, 0.08);
+  --text: #f3f5fa; --text-2: #c5cfdd; --mute: #b4c0d1; --ph-num: #b4c0d1;
+  --gold: #e6b849; --gold-2: #f2cd74; --on-gold: #101827;
+  --accent: #e6b849; --accent-2: #f2cd74;
+  --tint: rgba(230, 184, 73, 0.1); --tint-line: rgba(230, 184, 73, 0.35);
+  color-scheme: dark;
+}
+:root {
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --gl: max(clamp(16px, 4vw, 48px), env(safe-area-inset-left, 0px));
+  --gr: max(clamp(16px, 4vw, 48px), env(safe-area-inset-right, 0px));
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ink); color: var(--text); font-family: var(--font); font-size: 1.0625rem; line-height: 1.6; -webkit-text-size-adjust: 100%; overflow-x: hidden; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--ink); }
+img { display: block; max-width: 100%; }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+h1, h2, h3, h4 { font-family: var(--display); margin: 0; text-wrap: balance; }
+h1:focus { outline: none; }
+p { margin: 0 0 16px; max-width: 65ch; }
+ul, ol, dl { margin: 0; padding: 0; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.wrap { width: 100%; max-width: calc(1200px + var(--gl) + var(--gr)); margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+@media (min-width: 400px) { .wrap { padding-left: var(--gl); padding-right: var(--gr); } }
+.band { padding-block: clamp(40px, 6vw, 80px); }
+.band.alt { background: var(--ink-2); }
+.band.tight { padding-block: clamp(24px, 3.4vw, 48px); }
+.band.rules { border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); }
+
+.label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mute); margin: 0 0 8px; }
+.label.gold { color: var(--accent); }
+.h1 { font-weight: 800; font-size: clamp(2.2rem, 4.6vw, 3.6rem); letter-spacing: -0.03em; line-height: 1.05; margin: 0 0 16px; }
+.h2 { font-weight: 700; font-size: clamp(1.6rem, 3vw, 2.3rem); letter-spacing: -0.025em; line-height: 1.12; margin: 0 0 12px; }
+.h3 { font-weight: 700; font-size: 1.3rem; letter-spacing: -0.02em; line-height: 1.2; margin: 0 0 8px; }
+.lead { font-size: 1.15rem; color: var(--text-2); }
+.mute { color: var(--mute); }
+.small { font-size: 0.875rem; }
+.tab { font-variant-numeric: tabular-nums; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 22px; border-radius: 999px; font: 600 1rem/1 var(--font); text-decoration: none; border: 1px solid transparent; cursor: pointer; }
+.btn-gold { background: var(--gold); color: var(--on-gold); }
+.btn-line { background: transparent; color: var(--text); border-color: var(--line-2); }
+.btn-sm { min-height: 44px; padding: 0 16px; font-size: 0.9rem; }
+.btns { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 24px; }
+.tl-link { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; color: var(--accent); text-decoration: none; }
+.tl-link:hover { text-decoration: underline; }
+.addr { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.addr-t { font-weight: 600; color: var(--text); user-select: all; overflow-wrap: anywhere; }
+.pill { display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--gold); color: var(--on-gold); font-size: 0.78rem; font-weight: 600; line-height: 1.4; }
+.chip { display: inline-block; padding: 3px 12px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--text-2); font-size: 0.78rem; font-weight: 600; line-height: 1.4; }
+
+.demo-strip { background: var(--ink-2); border-bottom: 1px solid var(--line); font-size: 0.8rem; color: var(--mute); padding-block: 6px; }
+.site-header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--ink); border-bottom: 1px solid var(--line); }
+.hd { display: flex; flex-wrap: wrap; align-items: center; gap: 0 14px; min-height: 64px; }
+.school-d { display: inline-flex; align-items: center; min-height: 44px; flex: none; }
+.school-d img { height: 34px; width: auto; }
+.vr { width: 1px; height: 28px; background: var(--line-2); flex: none; }
+[hidden] { display: none !important; }
+.brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text); min-height: 44px; padding-block: 8px; }
+.brand img { border-radius: 50%; }
+.brand-t { display: flex; flex-direction: column; line-height: 1.1; }
+.brand-t b { font-family: var(--display); font-weight: 800; font-size: 1.25rem; color: var(--accent); letter-spacing: -0.02em; }
+.brand-t span { font-size: 0.78rem; color: var(--text-2); }
+.menu-btn { display: none; margin-left: auto; min-height: 44px; padding: 0 18px; border-radius: 999px; background: transparent; border: 1px solid var(--line-2); color: var(--text); font: 600 0.95rem var(--font); cursor: pointer; }
+.nav { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+.nav a.nl { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; border-radius: 999px; color: var(--text-2); text-decoration: none; font-weight: 500; }
+.nav a.nl:hover { background: var(--hover); color: var(--text); }
+.nav a.nl[aria-current="page"] { color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); border-radius: 0; }
+.nav a.btn { margin-left: 6px; padding: 0 18px; }
+@media (max-width: 1000px) {
+  .hd { gap: 0 10px; }
+  .brand { gap: 8px; }
+  .menu-btn { display: inline-flex; align-items: center; }
+  .nav { display: none; flex-direction: column; align-items: stretch; width: 100%; margin: 0; padding-bottom: 16px; }
+  .site-header.open .nav { display: flex; }
+  .nav a.nl { border-radius: 0; border-top: 1px solid var(--line); }
+  .nav a.btn { margin: 12px 0 0; }
+}
+
+.hero-grid { display: grid; grid-template-columns: 5fr 7fr; gap: clamp(24px, 4vw, 56px); align-items: center; }
+.hero h1 { font-weight: 800; font-size: clamp(2.4rem, 5.2vw, 4.6rem); letter-spacing: -0.04em; line-height: 1; margin: 0 0 20px; }
+.photo { border-radius: 14px; overflow: hidden; background: var(--ink-3); border: 1px solid var(--line); }
+.photo img { width: 100%; height: 100%; object-fit: cover; }
+.r43 { aspect-ratio: 4 / 3; } .r32 { aspect-ratio: 3 / 2; } .r11 { aspect-ratio: 1 / 1; }
+figure { margin: 0; }
+figcaption { font-size: 0.85rem; color: var(--mute); margin-top: 8px; }
+
+.next { display: grid; grid-template-columns: 1.4fr 1fr; gap: clamp(24px, 4vw, 56px); align-items: start; }
+.next-name { font-family: var(--display); font-weight: 700; font-size: clamp(1.8rem, 3.6vw, 2.9rem); letter-spacing: -0.03em; line-height: 1.08; margin: 0 0 8px; text-wrap: balance; }
+.countdown { font-family: var(--display); font-weight: 700; font-size: 1.3rem; color: var(--accent); margin: 12px 0 0; }
+.later { list-style: none; }
+.later li { padding: 12px 0; border-top: 1px solid var(--line); }
+.later b { font-family: var(--display); font-size: 1.1rem; display: block; }
+
+.sl-wrap { overflow-x: auto; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-top: 24px; padding-top: 8px; }
+.sl-grid { display: grid; grid-template-columns: repeat(18, minmax(56px, 1fr)); min-width: 1008px; }
+.sl-col { display: flex; flex-direction: column; align-items: center; padding: 8px 2px; border-radius: 8px; color: var(--text); text-decoration: none; min-width: 0; }
+a.sl-col:hover { background: var(--hover); }
+.sl-marks { height: 112px; width: 100%; display: flex; flex-direction: column-reverse; align-items: center; gap: 4px; border-bottom: 1px solid var(--line-2); padding-bottom: 8px; }
+.sl-dash { color: var(--mute); }
+.sl-year { font-weight: 700; font-size: 0.9rem; font-variant-numeric: tabular-nums; margin-top: 8px; }
+.sl-name { font-size: 0.7rem; color: var(--mute); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-height: 1.2em; }
+.m-gold { fill: var(--gold); stroke: var(--accent); stroke-width: 1; }
+.m-ring { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.m-out { fill: none; stroke: var(--accent); stroke-width: 2; }
+.m-dot { fill: var(--accent); }
+.m-grey { fill: none; stroke: var(--mute); stroke-width: 2; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 24px; list-style: none; margin-top: 16px; font-size: 0.875rem; color: var(--text-2); }
+.legend li { display: inline-flex; align-items: center; gap: 8px; }
+.sl-sum { color: var(--text-2); font-variant-numeric: tabular-nums; margin: 0; }
+
+.names { display: flex; flex-wrap: wrap; gap: 12px 40px; list-style: none; margin: 16px 0 24px; font-family: var(--display); font-weight: 600; font-size: 1.25rem; letter-spacing: -0.01em; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(24px, 4vw, 56px); align-items: center; }
+.grid2.top { align-items: start; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.fchip { min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--text); font: 600 0.95rem var(--font); cursor: pointer; }
+.fchip[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; }
+.card { display: flex; flex-direction: column; border: 1px solid var(--line-2); border-radius: 14px; overflow: hidden; background: var(--ink-3); color: var(--text); text-decoration: none; min-width: 0; }
+.card .photo { border: 0; border-radius: 0; }
+.card-b { padding: 16px; display: flex; flex-direction: column; gap: 4px; flex: 1; align-items: flex-start; }
+.card-b .label { margin: 0; }
+.card-b p { color: var(--text-2); font-size: 0.95rem; margin: 0; }
+.ph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 100%; height: 100%; background: var(--ink-3); background-image: repeating-linear-gradient(135deg, transparent 0 10px, var(--line) 10px 11px); }
+.ph b { font-family: var(--display); font-size: 3rem; font-weight: 800; color: var(--ph-num); line-height: 1; font-variant-numeric: tabular-nums; }
+.ph span { font-size: 0.8rem; color: var(--mute); letter-spacing: 0.08em; text-transform: uppercase; }
+.archive { border-top: 1px solid var(--line-2); margin-top: 48px; padding-top: 32px; }
+
+.sec { border-top: 1px solid var(--line); padding-block: 32px; }
+.sec h2 { font-weight: 700; font-size: 1.5rem; letter-spacing: -0.02em; margin: 0 0 16px; }
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mute); font-weight: 600; padding: 8px 12px; border-bottom: 1px solid var(--line-2); }
+td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td:first-child { border-left: 3px solid transparent; }
+tr.win td:first-child { border-left-color: var(--gold); }
+.specs { display: grid; grid-template-columns: minmax(120px, 1fr) 2fr; }
+.specs dt, .specs dd { margin: 0; padding: 12px 0; border-top: 1px solid var(--line); }
+.specs dt { color: var(--mute); font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; padding-right: 16px; }
+.mech { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 40px; }
+.mech h3 { font-size: 1.05rem; margin-bottom: 4px; }
+.mech p { color: var(--text-2); margin: 0; }
+.links { list-style: none; }
+.links li { border-top: 1px solid var(--line); }
+.links a { display: flex; align-items: center; min-height: 44px; }
+.pn { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-top: 1px solid var(--line-2); padding-top: 24px; margin-top: 16px; }
+.pn a { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; text-decoration: none; }
+.crumb { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; text-decoration: none; margin-bottom: 8px; }
+.rhead-meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+
+.dated { list-style: none; max-width: 760px; }
+.dated li { display: grid; grid-template-columns: 4.5rem 1fr; gap: 16px; padding: 12px 0; border-top: 1px solid var(--line); }
+.dated b { font-family: var(--display); color: var(--accent); font-variant-numeric: tabular-nums; font-size: 1.1rem; }
+
+.roles { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 24px 0; }
+.roles p { color: var(--text-2); margin: 0; font-size: 0.95rem; }
+.roles h4 { font-size: 1rem; margin-bottom: 4px; }
+.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; list-style: none; margin-top: 24px; }
+.steps li { border-top: 2px solid var(--line-2); padding-top: 20px; position: relative; min-width: 0; }
+.steps li::before { content: ""; position: absolute; top: -6px; left: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.steps .step-d { color: var(--mute); font-size: 0.875rem; margin: 0; }
+.vgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0 32px; margin-top: 16px; }
+.vgrid div { border-top: 1px solid var(--line-2); padding: 12px 0 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.vgrid b { font-family: var(--display); font-weight: 700; font-size: 1.05rem; }
+.vgrid span { color: var(--text-2); font-size: 0.875rem; }
+.seg { display: inline-flex; max-width: 100%; padding: 4px; gap: 4px; border: 1px solid var(--line-2); border-radius: 999px; margin: 24px 0 28px; }
+.segb { min-height: 44px; padding: 0 28px; border-radius: 999px; border: 0; background: transparent; color: var(--text); font: 600 1rem var(--font); cursor: pointer; }
+.segb[aria-selected="true"] { background: var(--gold); color: var(--on-gold); }
+.segb:not([aria-selected="true"]):hover { background: var(--hover); }
+.sheet div { display: grid; grid-template-columns: 9rem 1fr; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line-2); min-width: 0; }
+.sheet div:last-child { border-bottom: 1px solid var(--line-2); }
+.sheet dt { color: var(--mute); font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+.sheet dd { margin: 0; font-weight: 500; }
+.school-box { border: 1px solid var(--line-2); border-radius: 14px; background: var(--ink-3); padding: 24px; }
+.school-box .wm { margin-bottom: 16px; }
+.wm { display: block; aspect-ratio: 414 / 157; max-width: 100%; background: var(--text); -webkit-mask: url("img/dawson-wordmark.png") left center / contain no-repeat; mask: url("img/dawson-wordmark.png") left center / contain no-repeat; }
+.wm-a { display: inline-block; max-width: 100%; }
+.school-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 28px; }
+.school-line .label { margin: 0; }
+.disc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 clamp(24px, 4vw, 56px); align-items: start; }
+.disc { border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); margin-bottom: -1px; }
+.disc summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; padding: 6px 0; cursor: pointer; list-style: none; font-family: var(--display); font-weight: 700; font-size: 1.1rem; }
+.disc summary::-webkit-details-marker { display: none; }
+.disc summary::after { content: "+"; font-size: 1.5rem; line-height: 1; color: var(--accent); }
+.disc[open] summary::after { content: "\2013"; }
+.disc summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.disc p { color: var(--text-2); margin: 0 0 16px; }
+.hl { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; max-width: none; margin-top: 8px; }
+
+.site-footer { border-top: 1px solid var(--line-2); background: var(--ink-2); padding-block: clamp(32px, 5vw, 56px); }
+.ft { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 32px; }
+.ft ul { list-style: none; }
+.ft li a { display: inline-flex; align-items: center; min-height: 44px; }
+.ft p { color: var(--text-2); }
+
+@media (max-width: 760px) {
+  .hero-grid, .grid2, .next, .ft { grid-template-columns: 1fr; }
+  .hero-grid .photo-col { order: -1; }
+  .roles, .mech, .disc-row, .hl { grid-template-columns: 1fr; }
+  .sheet div { grid-template-columns: 7.5rem 1fr; }
+  .disc-row .disc + .disc { margin-top: 16px; }
+  .steps { grid-template-columns: 1fr; gap: 0; }
+  .steps li { border-top: 0; border-left: 2px solid var(--line-2); padding: 0 0 24px 20px; }
+  .steps li::before { top: 4px; left: -6px; }
+  .specs { grid-template-columns: 1fr; }
+  .specs dt { padding-bottom: 0; border-bottom: 0; }
+  .specs dd { border-top: 0; padding-top: 4px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .card, .fchip, .sl-col, .nav a.nl, .tl-link { transition: background-color 0.15s, border-color 0.15s, color 0.15s; }
+  .btn-gold:hover { background: var(--gold-2); }
+  .btn-line:hover { background: var(--hover); }
+  .card:hover { border-color: var(--accent); }
+}
+.btn-gold:hover { background: var(--gold-2); }
+.btn-line:hover { background: var(--hover); }
+.card:hover { border-color: var(--accent); }
+.fchip:hover { background: var(--hover); }
+.fchip[aria-pressed="true"]:hover { background: var(--gold-2); }
+
+/* Border Beam — ported from Magic UI (registry/magicui/border-beam.tsx), colours swapped for tokens. Defaults: size 50, duration 6s, borderWidth 1, linear */
+.next-card { position: relative; border: 1px solid var(--line-2); border-radius: 14px; background: var(--ink-3); padding: clamp(24px, 3vw, 32px); }
+.beam { display: none; }
+
+.stats { display: flex; flex-wrap: wrap; gap: 20px 0; list-style: none; margin: 0; }
+.stats li { display: flex; flex-direction: column; padding: 0 clamp(20px, 3.5vw, 44px); border-left: 1px solid var(--line-2); }
+.stats li:first-child { padding-left: 0; border-left: 0; }
+.stat-n { display: block; font-family: var(--display); font-weight: 800; font-size: clamp(2.2rem, 4.5vw, 3.4rem); line-height: 1.1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.stat-l { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mute); }
+.count-big { margin: 12px 0 0; display: flex; flex-direction: column; }
+.count-big .stat-n { color: var(--accent); }
+@media (max-width: 520px) {
+  .stats li, .stats li:first-child { padding: 0 24px 0 0; border-left: 0; }
+}
+
+/* Bento Grid — ported from Magic UI (registry/magicui/bento-grid.tsx): 3 cols, gap 1rem, card anatomy and hover wash; rows shortened to fit text and the link is always visible */
+.bento { display: grid; width: 100%; grid-template-columns: 1fr; gap: 16px; margin-top: 24px; }
+.bc { position: relative; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; min-width: 0; border-radius: 12px; background: var(--ink-3); }
+.bc-bg { position: relative; }
+.bc-bg img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.bc-main { margin-top: auto; position: relative; }
+.bc-body { display: flex; flex-direction: column; gap: 4px; padding: 16px 16px 4px; }
+.bc-name { font-family: var(--display); font-size: 1.25rem; font-weight: 600; line-height: 1.75rem; color: var(--text); margin: 0; }
+.bc-body p { max-width: 32rem; margin: 0; color: var(--text-2); font-size: 0.95rem; }
+.bc-cta { display: flex; align-items: center; padding: 0 16px 8px; }
+.bc-cta a { display: inline-flex; align-items: center; min-height: 44px; font-size: 0.875rem; font-weight: 500; color: var(--accent); text-underline-offset: 4px; text-decoration: none; }
+.bc-cta a:hover, .bc-cta a:focus-visible { text-decoration: underline; }
+.bc-cta a span { margin-left: 8px; }
+.bc-wash { position: absolute; inset: 0; pointer-events: none; }
+.bc .shop-chips { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 8px 0 0; }
+@media (min-width: 1024px) {
+  .bento { grid-template-columns: repeat(3, 1fr); grid-auto-rows: minmax(13rem, auto); }
+  .bc-stud { grid-row: span 2; }
+  .bc-shop { grid-column: span 2; flex-direction: row; justify-content: flex-start; }
+  .bc-stud .bc-bg { flex: 1; min-height: 0; }
+  .bc-bg img { position: absolute; inset: 0; height: 100%; aspect-ratio: auto; }
+  .bc-shop .bc-bg { flex: 0 0 42%; }
+  .bc-shop .bc-main { flex: 1; margin-top: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bc-body, .bc-cta, .bc-wash { transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1); }
+  .bc:hover .bc-wash { background: color-mix(in srgb, var(--text) 3%, transparent); }
+}
+/* Number Ticker — ported from Magic UI (registry/magicui/number-ticker.tsx): spring damping 60, stiffness 100, once on first view, en-US text */
+
+/* Timeline — ported from Aceternity UI (components/ui/timeline.tsx): sticky marker + title, track with fade mask, scroll-driven fill (start 10% to end 50%) */
+.tl { position: relative; }
+.tl-row { display: flex; justify-content: flex-start; padding-top: 40px; }
+.tl-side { position: sticky; top: 10rem; align-self: flex-start; z-index: 5; display: flex; flex-direction: column; align-items: center; max-width: 20rem; }
+.tl-mark { position: absolute; left: 12px; width: 40px; height: 40px; border-radius: 50%; background: var(--ink); display: flex; align-items: center; justify-content: center; }
+.tl-mark i { display: block; width: 16px; height: 16px; border-radius: 50%; background: var(--ink-2); border: 1px solid var(--line-2); }
+.tl-t { font-family: var(--display); font-weight: 700; color: var(--mute); font-variant-numeric: tabular-nums; margin: 0; }
+.tl-t-d { display: none; }
+.tl-t-m { display: block; font-size: 1.5rem; line-height: 2rem; margin-bottom: 16px; text-align: left; }
+.tl-body { position: relative; width: 100%; padding: 0 16px 0 80px; min-width: 0; }
+.tl-item { margin-bottom: 12px; }
+.tl-item p { margin: 0; }
+.tl-track { position: absolute; left: 2rem; top: 0; bottom: 0; width: 2px; overflow: hidden; background: linear-gradient(to bottom, transparent 0%, var(--line-2), transparent 99%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, var(--text) 10%, var(--text) 90%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0%, var(--text) 10%, var(--text) 90%, transparent 100%); }
+.tl-fill { display: none; position: absolute; top: 0; left: 0; right: 0; width: 2px; height: 0; opacity: 0; border-radius: 999px; background: linear-gradient(to top, var(--gold) 0%, var(--accent) 10%, transparent); }
+@media (min-width: 768px) {
+  .tl-row { padding-top: 3.5rem; gap: 40px; }
+  .tl-side { flex-direction: row; width: 100%; }
+  .tl-t-d { display: block; font-size: 3rem; line-height: 1; padding-left: 80px; }
+  .tl-t-m { display: none; }
+  .tl-body { padding-left: 16px; }
+}
+@media (min-width: 1024px) { .tl-side { max-width: 24rem; } }
+@media (prefers-reduced-motion: no-preference) {
+  .tl-fill { display: block; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .card .photo img { transition: transform 250ms; }
+  .card:hover .photo img { transform: scale(1.03); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  @supports (offset-path: rect(0 auto auto 0 round 14px)) {
+    @keyframes beam { to { offset-distance: 100%; } }
+    .beam { display: block; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; border: 1px solid transparent; -webkit-mask-image: linear-gradient(transparent, transparent), linear-gradient(var(--text), var(--text)); mask-image: linear-gradient(transparent, transparent), linear-gradient(var(--text), var(--text)); -webkit-mask-clip: padding-box, border-box; mask-clip: padding-box, border-box; -webkit-mask-composite: source-in; mask-composite: intersect; }
+    .beam i { position: absolute; width: 50px; aspect-ratio: 1; offset-path: rect(0 auto auto 0 round 14px); offset-distance: 0%; background: linear-gradient(to left, var(--gold), var(--gold-2), transparent); animation: beam 6s linear infinite; }
+  }
+}
+/* ---------- new views, phone pass ---------- */
+button.tl-link { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; cursor: pointer; }
+.fchip { max-width: 100%; }
+.res-tools { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0 32px; }
+.res-tools .chips { flex: 1 1 320px; }
+.res-q-w { display: flex; flex-direction: column; gap: 4px; flex: 1 1 260px; max-width: 420px; margin-bottom: 16px; }
+.res-q-w .label { margin: 0; }
+#res-q { height: 44px; width: 100%; padding: 0 14px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--ink-3); color: var(--text); font: 500 1rem var(--font); }
+#res-q:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.res-cols { columns: 2; column-gap: clamp(24px, 4vw, 56px); margin-top: 16px; }
+.res-cat { break-inside: avoid; margin-bottom: 32px; }
+.res-list { list-style: none; }
+.res-list li { border-top: 1px solid var(--line); padding: 0 0 10px; }
+.res-list a { display: inline-block; padding: 10px 0 4px; overflow-wrap: anywhere; }
+.res-note { display: block; color: var(--text-2); font-size: 0.875rem; }
+.sl-wrap, .tbl-wrap { position: relative; }
+.disc-list { max-width: 760px; margin-top: 16px; }
+.cad-ul { margin: 0 0 16px; padding-left: 20px; color: var(--text-2); }
+.cad-ul li { margin-bottom: 4px; }
+.cards-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
+.links.rows li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0 16px; }
+.links.rows li > span { padding: 8px 0; }
+.links li.press { padding: 8px 0 10px; }
+.links li.press a { display: inline; min-height: 0; overflow-wrap: anywhere; }
+.links li.press span { display: block; }
+.tl-links { display: flex; flex-wrap: wrap; gap: 0 24px; margin: 0; }
+.addr-big .addr-t { font-family: var(--display); font-size: clamp(1.2rem, 5.2vw, 1.8rem); font-weight: 700; }
+.route { list-style: none; border-bottom: 1px solid var(--line-2); }
+.route li { border-top: 1px solid var(--line-2); }
+.route a { display: flex; align-items: center; min-height: 64px; font-family: var(--display); font-weight: 700; font-size: 1.25rem; color: var(--text); text-decoration: none; }
+.route a:hover { color: var(--accent); }
+@media (max-width: 760px) {
+  .res-cols { columns: 1; }
+  .cards-2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 400px) {
+  .brand-t span { display: none; }
+  .menu-btn { padding: 0 14px; }
+  .hd { gap: 0 8px; }
+}
+</style>
+</head>
+<body>
+
+<div class="demo-strip"><div class="wrap">Redesign demo · Midnight &amp; brass · Dark mode</div></div>
+<header class="site-header" id="hdr">
+  <div class="wrap hd">
+    <a class="school-d" href="https://www.dawsonschool.org" target="_blank" rel="noopener"><img src="img/dawson-d.png" width="42" height="34" alt="Dawson School"></a><span class="vr" aria-hidden="true"></span>
+    <a class="brand" href="#home"><img src="img/logo.png" width="36" height="36" alt="Team 2972 logo"><span class="brand-t"><b>2972</b><span>Gears &amp; Buccaneers</span></span></a>
+    <button type="button" class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="nav">Menu</button>
+    <nav class="nav" id="nav" aria-label="Main">
+      <a class="nl" href="#robots" data-r="robots">Robots</a>
+      <a class="nl" href="#about" data-r="about">About</a>
+      <a class="nl" href="#sponsors" data-r="sponsors">Sponsors</a>
+      <a class="nl" href="#join" data-r="join">Join</a>
+      <a class="nl" href="#resources" data-r="resources">Resources</a>
+      <a class="btn btn-gold" href="#home" title="Not part of this demo">Team login</a>
+    </nav>
+  </div>
+</header>
+<main id="view"></main>
+<footer class="site-footer" id="ftr"></footer>
+
+<script>
+"use strict";
+var SITE = {
+  teamNumber: "2972", teamName: "Gears & Buccaneers", school: "Dawson School", location: "Lafayette, Colorado",
+  founded: "2008", mission: "Building a confident and capable next generation through competitive robotics.",
+  email: "robotics@dawsonschool.org", instagram: "https://www.instagram.com/frc2972/", instagramHandle: "@frc2972",
+  onshapePublic: "https://cad.onshape.com/publications/27b8b2d91c3dcba99076bea5/w/6f7554126c007d8690fa9643/e/fd2bdc75e190c38dc9e2f4d9",
+  schoolUrl: "https://www.dawsonschool.org",
+  memberImageAlt: "Two Team 2972 students at the driver station during a match"
+};
+var SCHEDULE_2027 = [
+  { event: "Intermountain West Regional", dates: "March 24-27, 2027", location: "Ford Idaho Center, Nampa, ID" },
+  { event: "Denver Regional", dates: "April 7-10, 2027", location: "Denver, CO" }
+];
+var ANNUAL_EVENTS = [
+  { name: "Fall competition", when: "October", description: "The KCMT Offseason Tournament (the Kendrick Castillo Memorial Tournament, a Colorado offseason event), plus robot demos at Broomfield Days." },
+  { name: "Official season begins", when: "November", description: "New students join, we train on the shop and software, and build season starts, running until spring break in March or April." },
+  { name: "Kickoff", when: "January", description: "FIRST reveals the new game. We pick a strategy and design the robot." },
+  { name: "Two regionals", when: "March and April 2027", description: "The Intermountain West Regional in Nampa, Idaho (March 24-27), then the Denver Regional, our home event (April 7-10)." }
+];
+var ABOUT_SCHOOL = { heading: "About Dawson School", body: "Team 2972 consists of students mainly from Dawson School, an independent, private, college-prep school serving students in grades K-12 on a 107-acre campus in Lafayette, Colorado. Dawson's small class sizes and hands-on approach to learning give our students the freedom to dive deep into engineering, design, and teamwork long before college." };
+var ABOUT_FIRST = { heading: "What is FIRST Robotics?", body: "FIRST Robotics Competition (FRC) challenges high school students to design, build, and program an industrial-size robot in just six weeks to compete in a new game each season. Teams combine the excitement of sport with the rigor of science and technology — working alongside professional engineers and mentors to solve a common problem. Along the way, students learn to manage a real budget, market their brand, and work as a business as much as an engineering team." };
+var VALUES = [
+  { name: "Respect", text: "Treat people, equipment, and spaces with care." },
+  { name: "Growth", text: "Learn new skills, try hard things, and improve every day." },
+  { name: "Safety", text: "Protect yourself and your teammates at all times." },
+  { name: "Teamwork", text: "Communicate, support each other, and solve problems together." },
+  { name: "Ownership", text: "Take responsibility for your work, tools, and commitments." },
+  { name: "Inclusion", text: "Everyone belongs, contributes, and can succeed here." },
+  { name: "Fun", text: "Enjoy the challenge and the journey." }
+];
+var HISTORY = {
+  milestones: [
+    { year: "2008", items: [{ kind: "team", text: "Founded as Robotics Club (RC) Dawson by a Dawson physics teacher, working out of the back of the physics room." }] },
+    { year: "2009", items: [{ kind: "comp", text: "Our first FRC season." }] },
+    { year: "2011", items: [{ kind: "comp", text: "Won the [Colorado Regional](robot.html?year=2011) with an aggressive defensive strategy." }] },
+    { year: "2013", items: [{ kind: "comp", text: "Built our best robot of the team's first five years and moved into the top 25, where we stayed until 2017." }] },
+    { year: "2014", items: [{ kind: "comp", text: "Ranked 7th at the Colorado Regional and captained the 4th alliance to the semifinals." }] },
+    { year: "2019", items: [{ kind: "comp", text: "Ranked 9th in qualifiers and captained alliance 8 in Colorado." }] },
+    { year: "2021", items: [{ kind: "team", text: "Moved out of the physics room and into a new, larger space." }] },
+    { year: "2023", items: [
+      { kind: "comp", text: "Ranked 9th and led alliance 7 at the Green Country Regional." },
+      { kind: "team", text: "Started a machine shop and wrote the team's first handbook." }] },
+    { year: "2025", imageAlt: "The shop with its CNC router, bandsaw and tool cabinets", items: [{ kind: "team", text: "Added a lathe and a CNC router to the shop." }] },
+    { year: "2026", items: [
+      { kind: "comp", text: "Our robot [Theseus](robot.html?year=2026) won the Utah Regional as the second pick of Alliance 2." },
+      { kind: "team", text: "Building a permanent two-thirds-length practice field." }] }
+  ],
+  today: {
+    heading: "Where we are now",
+    paragraphs: ["Team 2972 is growing and doing well. Grants from the Dawson Parent Association and private donations have turned a back room into a real workshop, and we are building a permanent two-thirds-length practice field. Students machine parts on a lathe, a CNC mill and a CNC router, cut stock on horizontal and vertical bandsaws and a miter saw, and prototype on new 3D printers and a laser engraver/cutter. A new parts library keeps the components we need on hand, so we spend our time building instead of waiting on orders. Students learn to design, make and wire a competition robot with mentors and parent volunteers beside them."],
+    imageAlt: "Team 2972 students cheering in the stands with 2 9 7 2 number signs"
+  }
+};
+var NO_PHOTO = { "2011": 1, "2010": 1, "2009": 1 };
+var ROBOTS = [
+  { year: "2026", game: "REBUILT", name: "Theseus", status: "In service", tagline: "Utah Regional winners.", stats: "3 events · Utah Regional Winners · 2nd pick, Alliance 2",
+    results: [
+      { event: "Denver Regional", result: "Rank 49 of 55 (2-7-0)", tba: "2026code" },
+      { event: "Utah Regional", result: "Rank 38 of 42 — 2nd pick of Alliance 2, won the event", tba: "2026utwv" },
+      { event: "Kendrick Castillo Memorial Tournament (KCMT)", result: "Rank 14 of 31 (7-5-0) — 2nd pick, Alliance 5", tba: "2026cokc" }],
+    awards: ["Utah Regional Winners"] },
+  { year: "2025", game: "Reefscape", name: "Sea Bunny", status: "In service", imagePosition: "100% 70%", tagline: "Three-stage elevator that scores Coral on every level.", stats: "2 events · best rank #27 at KCMT · 3rd pick, Alliance 5",
+    gameSummary: "Reefscape is the 2025 game, themed around clean oceans. Two alliances of three robots each score PVC pipes (called Coral) and playground balls (called Algae) onto goals. At the end of each match, robots move to a truss structure called the Barge and climb metal Cages to earn additional points.",
+    gameVideo: "https://www.youtube.com/watch?v=YWbxcjlY9JY",
+    specs: [{ label: "Weight", value: "120 lbs" }, { label: "Dimensions", value: "30\" W x 30\" L x 86\" H" }, { label: "Drive system", value: "4-wheel SDS MK4i swerve drive" }],
+    mechanisms: [{ name: "Elevator", text: "Three-stage, continuous elevator." }, { name: "Coral scoring", text: "Scores Coral on all levels." }, { name: "Climber", text: "Deployable low-hang cage climber." }, { name: "Algae picker", text: "Removed during the season." }],
+    results: [
+      { event: "Colorado Springs Scrimmage", result: "Scrimmage" },
+      { event: "Minnesota North Star Regional", result: "Rank 42 of 47 (3-8-0)", tba: "2025mnum" },
+      { event: "Kendrick Castillo Memorial Tournament (KCMT)", result: "Rank 27 of 40 — 3rd pick, Alliance 5", tba: "2025cokc" }],
+    videos: ["https://www.youtube.com/watch?v=CB1DmHxDGQw"],
+    links: [{ label: "Code (GitHub)", url: "https://github.com/Gears-and-Buccaneers/2025" }, { label: "CAD (Onshape)", url: SITE.onshapePublic }] },
+  { year: "2024", game: "Crescendo", name: "Sea Shanty", status: "Retired", imagePosition: "67% 84%", tagline: "Picked for playoff alliances at both regionals.", stats: "3 events · best rank #18 at KCMT · playoffs at both regionals",
+    gameSummary: "Crescendo is the 2024 game, themed around music. Two alliances of three robots each shoot orange rings (called Notes) into goals, and hang on chains at the end of the match.",
+    results: [
+      { event: "Green Country Regional", result: "Rank 22 of 43 — 2nd pick, Alliance 7", tba: "2024oktu" },
+      { event: "Greater Kansas City Regional", result: "Rank 20 of 42 — 2nd pick, Alliance 5", tba: "2024mokc" },
+      { event: "Kendrick Castillo Memorial Tournament (KCMT)", result: "Rank 18 of 45", tba: "2024cokc" }] },
+  { year: "2023", game: "Charged Up", name: "Scurvy", status: "Retired", tagline: "Telescoping arm and a 12-auto playbook.", stats: "2 regionals · rank #9 at Green Country · alliance captain",
+    gameSummary: "Charged Up is the 2023 game. Two alliances of three robots each place cones and cubes onto a grid of scoring nodes, then drive onto and balance a tilting Charge Station.",
+    description: "Scurvy is very narrow and light, making him ideal for a triple balance on the Charge Station. To prevent sliding off after climbing, we lock our wheels.",
+    specs: [{ label: "Frame", value: "24\" x 35\" rectangular chassis" }, { label: "Drive system", value: "Swerve drive, Falcon 500 motors" }, { label: "Autonomous", value: "12 different autos, 100% success rate" }],
+    mechanisms: [
+      { name: "Gripper", text: "Dual pneumatics on a 4-bar mechanism with automatic piece orientation. Picks up cones and cubes from the player station and the ground." },
+      { name: "Boom", text: "Two-stage AndyMark Climber-in-a-Box on a 10:1 CIM. Extends and retracts 46\" in 0.5 seconds, placing cubes on all levels and cones on the bottom and middle." },
+      { name: "Auto", text: "Every permutation of placing a piece on any level, auto-balancing the Charge Station, and exiting the community." },
+      { name: "Drivetrain", text: "Each swerve module has a drive motor and a turning motor for effortless maneuverability and fast turning." }],
+    results: [
+      { event: "Utah Regional", result: "Rank 24 of 44 (5-7-0)", tba: "2023utwv" },
+      { event: "Green Country Regional", result: "Rank 9 of 47 — Captain, Alliance 7", tba: "2023oktu" }],
+    binder: "https://drive.google.com/file/d/1XdiwEkw05dp_5GzMkJupP0Q2C5FbEdBQ/view?usp=sharing" },
+  { year: "2022", game: "Rapid React", name: "Kunagunda", status: "Retired", imagePosition: "59% 64%", stats: "2 regionals · rebuilding year",
+    gameSummary: "Rapid React is the 2022 game. Robots shoot Cargo balls into a central Hub and climb the rungs of a Hangar at the end of the match.",
+    results: [{ event: "Colorado Regional", result: "Rank 41 of 41 (1-12-0)", tba: "2022code" }, { event: "Utah Regional", result: "Rank 32 of 40 (3-8-0)", tba: "2022utwv" }] },
+  { year: "2019", game: "Destination: Deep Space", name: "", status: "Retired", imagePosition: "66% 68%", stats: "2 regionals · rank #9 in Colorado · alliance captain",
+    gameSummary: "Destination: Deep Space is the 2019 game. Robots place Hatch Panels and Cargo on Rockets and a Cargo Ship, starting with a vision-limited Sandstorm period, and climb onto the HAB platform at the end.",
+    results: [
+      { event: "Colorado Regional", result: "Rank 9 of 53 — Captain, Alliance 8 (quarterfinals)", tba: "2019code" },
+      { event: "Utah Regional", result: "Rank 22 of 49 — 2nd pick, Alliance 7 (quarterfinals)", tba: "2019utwv" }] },
+  { year: "2018", game: "Power Up", name: "Helga", status: "Retired", stats: "1 regional · rank #15 · semifinalist",
+    gameSummary: "Power Up is the 2018 game, themed as an arcade video game. Robots place Power Cubes on Switches and a Scale, and climb at the end of the match.",
+    results: [{ event: "Utah Regional", result: "Rank 15 of 52 — 2nd pick, Alliance 2 (semifinals)", tba: "2018utwv" }] },
+  { year: "2017", game: "Steamworks", name: "", status: "Retired", imagePosition: "79% 89%", stats: "1 regional · rank #31",
+    gameSummary: "Steamworks is the 2017 game, themed around steampunk airships. Robots deliver Gears to the Airship, shoot Fuel into the Boiler, and climb ropes at the end of the match.",
+    results: [{ event: "Utah Regional", result: "Rank 31 of 48 (4-5-1)", tba: "2017utwv" }] },
+  { year: "2016", game: "Stronghold", name: "Sir Lancebot", status: "Retired", stats: "2 regionals · best rank #17",
+    gameSummary: "Stronghold is the 2016 game, themed as a medieval siege. Robots breach defenses, shoot Boulders into the opposing Castle tower, and scale it at the end of the match.",
+    results: [{ event: "Colorado Regional", result: "Rank 17 of 48 (6-5-0)", tba: "2016code" }, { event: "Las Vegas Regional", result: "Rank 29 of 49 (4-7-0)", tba: "2016nvlv" }] },
+  { year: "2015", game: "Recycle Rush", name: "Centaurian", status: "Retired", stats: "2 regionals · best rank #23",
+    gameSummary: "Recycle Rush is the 2015 game. Robots stack Totes and top them with Recycling Containers, with no defense between alliances.",
+    videos: ["https://www.youtube.com/watch?v=DmapW3sVOgU"],
+    results: [{ event: "Arkansas Rock City Regional", result: "Rank 32 — 2nd pick in playoffs", tba: "2015arfa" }, { event: "Colorado Regional", result: "Rank 23", tba: "2015code" }] },
+  { year: "2014", game: "Aerial Assist", name: "", status: "Retired", imagePosition: "86% 20%", stats: "2 regionals · rank #7 in Colorado · alliance captain",
+    gameSummary: "Aerial Assist is the 2014 game. Alliance partners pass large exercise balls to each other and score them in goals, earning bonus points for assists and truss shots.",
+    results: [{ event: "Hub City Regional", result: "Rank 17 (7-7-0) — 2nd pick in playoffs", tba: "2014txlu" }, { event: "Colorado Regional", result: "Rank 7 (10-6-0) — Captain, Alliance 4 (semifinals)", tba: "2014code" }] },
+  { year: "2013", game: "Ultimate Ascent", name: "Odd-Job", status: "Retired", imagePosition: "66% 93%", stats: "1 regional · rank #17 · playoffs",
+    gameSummary: "Ultimate Ascent is the 2013 game. Robots shoot flying discs into goals and climb a metal pyramid at the end of the match.",
+    description: "Our best robot to date at the time, moving the team into the top 25. Our alliance was the first to block two cross-court frisbee shots from \"King TeC\" (2169).",
+    results: [{ event: "Colorado Regional", result: "Rank 17 (6-7-0) — 2nd pick in playoffs", tba: "2013code" }],
+    videos: ["https://www.youtube.com/watch?v=ysP5KEcw9FU&t=9s"],
+    matchVideos: [{ label: "Quarterfinal 1-2: blocking 2169's frisbee shots", url: "https://youtu.be/xhr9v2J8u3k?t=110" }] },
+  { year: "2012", game: "Rebound Rumble", name: "Tim Tebot", status: "Retired", stats: "1 regional",
+    gameSummary: "Rebound Rumble is the 2012 game. Robots shoot foam basketballs into hoops and balance on bridges at the end of the match.",
+    results: [{ event: "Greater Kansas City Regional", result: "Rank 56 (3-6-0)", tba: "2012kc" }] },
+  { year: "2011", game: "Logo Motion", name: "", status: "Retired", stats: "Colorado Regional Winners · Championship qualifier",
+    gameSummary: "Logo Motion is the 2011 game. Robots hang inflatable tubes on pegs to form the FIRST logo, then deploy minibots that race up poles at the end of the match.",
+    description: "Our motto was \"Is that fear I see?\" Despite a barely operational robot, we won the Colorado Regional with an aggressive defensive strategy.",
+    results: [{ event: "Colorado Regional", result: "Rank 39 (9-7-0) — won the event", tba: "2011co" }, { event: "FIRST Championship, Archimedes Division", result: "Rank 88 (0-10-0)", tba: "2011arc" }],
+    awards: ["Colorado Regional Winners"] },
+  { year: "2010", game: "Breakaway", name: "", status: "Retired", stats: "1 regional",
+    gameSummary: "Breakaway is the 2010 game. Robots kick soccer balls into goals over a field divided by bumps, and hang from a tower at the end of the match.",
+    results: [{ event: "Colorado Regional", result: "Rank 39 (1-5-3)", tba: "2010co" }] },
+  { year: "2009", game: "Lunacy", name: "", status: "Retired", stats: "Rookie season",
+    gameSummary: "Lunacy is the 2009 game, played on a slippery floor that simulates the moon's low gravity. Robots tow trailers and score Orbit Balls into the opposing alliance's trailers.",
+    results: [{ event: "Colorado Regional", result: "Rank 27 (3-4-0)", tba: "2009co" }] }
+];
+var SPONSOR_TIERS = [
+  { tier: "2025 Sponsors", sponsors: [] },
+  { tier: "2024 Sponsors", sponsors: [{ name: "BAE Systems" }, { name: "Syniti" }, { name: "NVIDIA" }, { name: "Hirsh Precision Products" }, { name: "The Goldman Family" }, { name: "Dawson School" }, { name: "Dawson Parent Association" }, { name: "Haas" }, { name: "Hagerty" }] }
+];
+var SPONSOR_PACKET_URL = "https://drive.google.com/file/d/1pQur7KkQSo5CY8GExVnrh-9iaMpoMrnf/view?usp=sharing";
+
+/* ---------- helpers ---------- */
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]; }); }
+function pl(n, w) { return n + " " + w + (n === 1 ? "" : "s"); }
+function robotName(r) { return r.name || (r.year + " Robot"); }
+function tbaTeamYear(y) { return "https://www.thebluealliance.com/team/" + SITE.teamNumber + "/" + y; }
+function ext(url, text) { return "<a href=\"" + esc(url) + "\" target=\"_blank\" rel=\"noopener\">" + esc(text) + "</a>"; }
+function addr() { return "<span class=\"addr\"><span class=\"addr-t\">" + esc(SITE.email) + "</span><button type=\"button\" class=\"btn btn-line btn-sm\" data-copy>Copy</button></span>"; }
+function mdLinks(text) {
+  var re = /\[([^\]]+)\]\(robot\.html\?year=(\d{4})\)/g, out = "", last = 0, m;
+  while ((m = re.exec(text))) {
+    out += esc(text.slice(last, m.index)) + "<a href=\"#robot-" + m[2] + "\">" + esc(m[1]) + "</a>";
+    last = m.index + m[0].length;
+  }
+  return out + esc(text.slice(last));
+}
+var MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+function parseDates(s) {
+  var m = /([A-Za-z]+)\.?\s+(\d{1,2})(?:\s*[-–—]\s*(?:([A-Za-z]+)\.?\s+)?(\d{1,2}))?\s*,?\s*(\d{4})/.exec(String(s || ""));
+  if (!m) return null;
+  var m1 = MONTHS[m[1].slice(0, 3).toLowerCase()];
+  var m2 = m[3] ? MONTHS[m[3].slice(0, 3).toLowerCase()] : m1;
+  if (m1 == null || m2 == null) return null;
+  var y = +m[5];
+  return { start: new Date(y, m1, +m[2]), end: new Date(y, m2, +(m[4] || m[2]), 23, 59, 59) };
+}
+function parseResult(res) {
+  var raw = String(res || ""), rank = "–", record = "–", playoffs = raw, parsed = false;
+  var r = /Rank (\d+)(?: of (\d+))?/.exec(raw);
+  if (r) {
+    parsed = true;
+    rank = r[2] ? r[1] + " of " + r[2] : r[1];
+    var rec = /\((\d+-\d+-\d+)\)/.exec(raw);
+    if (rec) record = rec[1];
+    var i = raw.indexOf(" — ");
+    playoffs = i >= 0 ? raw.slice(i + 3) : "–";
+  }
+  return { rank: rank, record: record, playoffs: playoffs, parsed: parsed };
+}
+function resType(s) {
+  s = String(s || "");
+  if (/won the event/i.test(s)) return "win";
+  if (/captain/i.test(s)) return "cap";
+  if (/pick|playoffs|semifinal|quarterfinal/i.test(s)) return "po";
+  return "played";
+}
+function hasType(r, fn) { return (r.results || []).some(function (x) { return fn(resType(x.result)); }); }
+function ytLink(url, text) { return ext(url, text + " ↗"); }
+
+/* ---------- season log ---------- */
+function markSvg(type, ev) {
+  var big = type === "win", sz = big ? 28 : 22, t = "<title>" + esc(ev.event + ": " + ev.result) + "</title>", body;
+  if (type === "win") body = "<circle class=\"m-gold\" cx=\"14\" cy=\"14\" r=\"9\"/><circle class=\"m-ring\" cx=\"14\" cy=\"14\" r=\"12.5\"/>";
+  else if (type === "cap") body = "<circle class=\"m-gold\" cx=\"14\" cy=\"14\" r=\"9\"/>";
+  else if (type === "po") body = "<circle class=\"m-out\" cx=\"14\" cy=\"14\" r=\"9\"/><circle class=\"m-dot\" cx=\"14\" cy=\"14\" r=\"3.5\"/>";
+  else body = "<circle class=\"m-grey\" cx=\"14\" cy=\"14\" r=\"9\"/>";
+  return "<svg width=\"" + sz + "\" height=\"" + sz + "\" viewBox=\"0 0 28 28\" role=\"img\" aria-label=\"" + esc(ev.event + ": " + ev.result) + "\">" + t + body + "</svg>";
+}
+function legendSvg(type) { return markSvg(type, { event: "", result: "" }).replace(/<title>.*?<\/title>/, "").replace(/role="img" aria-label=""/, "aria-hidden=\"true\""); }
+function seasonStats() {
+  var wins = 0, po = 0;
+  ROBOTS.forEach(function (r) { (r.results || []).forEach(function (x) { var t = resType(x.result); if (t === "win") wins++; if (t !== "played") po++; }); });
+  return { seasons: ROBOTS.length, wins: wins, po: po };
+}
+function firstYear() { return Math.min.apply(null, ROBOTS.map(function (r) { return +r.year; })); }
+function seasonLog() {
+  var ys = ROBOTS.map(function (r) { return +r.year; }), lo = Math.min.apply(null, ys), hi = Math.max.apply(null, ys), cols = "";
+  for (var y = lo; y <= hi; y++) {
+    var r = ROBOTS.find(function (x) { return +x.year === y; });
+    if (!r) { cols += "<div class=\"sl-col\" title=\"No season in " + y + "\"><div class=\"sl-marks\"><span class=\"sl-dash\" aria-hidden=\"true\">–</span></div><span class=\"sl-year\">" + y + "<span class=\"vh\"> (no season)</span></span><span class=\"sl-name\"></span></div>"; continue; }
+    var res = r.results || [], wins = res.filter(function (x) { return resType(x.result) === "win"; });
+    var label = y + (r.name ? ", " + r.name : "") + ": " + pl(res.length, "event") + wins.map(function (w) { return ", won the " + w.event; }).join("");
+    cols += "<a class=\"sl-col\" href=\"#robot-" + y + "\" aria-label=\"" + esc(label) + "\"><span class=\"sl-marks\">" +
+      res.map(function (x) { return markSvg(resType(x.result), x); }).join("") + "</span><span class=\"sl-year\">" + y + "</span><span class=\"sl-name\" title=\"" + esc(r.name) + "\">" + esc(r.name) + "</span></a>";
+  }
+  return "<div class=\"sl-wrap\" role=\"region\" aria-label=\"Season log, scrolls sideways\" tabindex=\"0\"><div class=\"sl-grid\">" + cols + "</div></div>" +
+    "<ul class=\"legend\"><li>" + legendSvg("win") + " Won the event</li><li>" + legendSvg("cap") + " Alliance captain</li><li>" + legendSvg("po") + " Picked or in the playoffs</li><li>" + legendSvg("played") + " Played the event</li></ul>";
+}
+function seasonSummary() {
+  var s = seasonStats();
+  return "<p class=\"sl-sum\">" + pl(s.seasons, "season") + " · " + pl(s.wins, "event win") + " · " + pl(s.po, "playoff event") + "</p>";
+}
+
+/* ---------- views ---------- */
+function nextUp() {
+  var now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var list = SCHEDULE_2027.map(function (e) { return { e: e, d: parseDates(e.dates) }; }).filter(function (x) { return x.d; });
+  var up = list.filter(function (x) { return x.d.end >= now; });
+  if (!up.length) return "<div class=\"band rules alt tight\"><div class=\"wrap\"><p class=\"label\">Next event</p><p class=\"next-name\">Season complete</p></div></div>";
+  var n = up[0], cd, cdHtml;
+  var days = Math.round((n.d.start - today) / 86400000);
+  if (days < 0) cd = "Happening now";
+  else cd = days === 0 ? "Starts today" : days === 1 ? "Tomorrow" : null;
+  cdHtml = cd == null ? "<p class=\"countdown count-big\"><span class=\"stat-n\">" + days + "</span><span class=\"stat-l\">days until the first match day</span></p>" : "<p class=\"countdown\">" + cd + "</p>";
+  var rest = up.slice(1).map(function (x) { return "<li><b>" + esc(x.e.event) + "</b><span class=\"mute\">" + esc(x.e.dates) + " · " + esc(x.e.location) + "</span></li>"; }).join("");
+  return "<section class=\"band rules alt tight\" aria-label=\"Next event\"><div class=\"wrap next\"><div class=\"next-card\"><span class=\"beam\" aria-hidden=\"true\"><i></i></span><p class=\"label gold\">Next event</p><p class=\"next-name\">" + esc(n.e.event) + "</p><div>" + esc(n.e.dates) + " · " + esc(n.e.location) + "</div>" + cdHtml + "</div>" +
+    (rest ? "<div><p class=\"label\">Then</p><ul class=\"later\">" + rest + "</ul></div>" : "") + "</div></section>";
+}
+function refreshNext() {
+  var el = document.getElementById("nextUp");
+  if (el) el.innerHTML = nextUp();
+}
+function heroTitle() {
+  var r = ROBOTS.find(function (x) { return x.awards && x.awards.length; });
+  if (!r) return esc(SITE.teamName);
+  return esc(r.awards[0].replace(/Winners/, "winners") + ", " + r.year + ".");
+}
+function names(t) { return "<ul class=\"names\">" + t.sponsors.map(function (s) { return "<li>" + esc(s.name) + "</li>"; }).join("") + "</ul>"; }
+function newestTier() { return SPONSOR_TIERS.find(function (t) { return t.sponsors.length; }); }
+function wm(h) {
+  return "<a class=\"wm-a\" href=\"" + esc(SITE.schoolUrl) + "\" target=\"_blank\" rel=\"noopener\"><span class=\"wm\" role=\"img\" aria-label=\"Dawson School\" style=\"height:" + h + "px;width:" + Math.round(h * 414 / 157) + "px\"></span></a>";
+}
+function ws(s) { return String(s).replace(/\s+/g, " ").trim(); }
+var RM = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
+/* Number ticker: spring (damping 60, stiffness 100, mass 1) from 0 to the value, once, when first in view. The DOM already holds the final number. */
+function tickerRun(el, to) {
+  var fmt = new Intl.NumberFormat("en-US"), x = 0, v = 0, last = null;
+  el.textContent = fmt.format(0);
+  function frame(t) {
+    var dt = last == null ? 0 : Math.min((t - last) / 1000, 0.05), n = Math.max(1, Math.ceil(dt * 240)), h = dt / n, i;
+    last = t;
+    for (i = 0; i < n; i++) { v += (-100 * (x - to) - 60 * v) * h; x += v * h; }
+    if (Math.abs(v) < 0.01 && Math.abs(x - to) < 0.01) { el.textContent = fmt.format(to); return; }
+    el.textContent = fmt.format(Number(x.toFixed(0)));
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  setTimeout(function () { el.textContent = fmt.format(to); }, 6000);
+}
+function initTickers(root) {
+  if (RM.matches || !("IntersectionObserver" in window)) return;
+  Array.prototype.forEach.call(root.querySelectorAll("[data-ticker]"), function (el) {
+    var to = +el.getAttribute("data-ticker");
+    if (!isFinite(to)) return;
+    var io = new IntersectionObserver(function (en) {
+      if (!en.some(function (e) { return e.isIntersecting; })) return;
+      io.disconnect();
+      tickerRun(el, to);
+    });
+    io.observe(el);
+  });
+}
+function seasonStatRow() {
+  var s = seasonStats();
+  var items = [[s.seasons, "season"], [s.wins, "event win"], [s.po, "playoff event"]];
+  return "<ul class=\"stats\" aria-label=\"Competition record\">" + items.map(function (x) {
+    return "<li><b class=\"stat-n\" data-ticker=\"" + x[0] + "\">" + x[0] + "</b><span class=\"stat-l\">" + x[1] + (x[0] === 1 ? "" : "s") + "</span></li>";
+  }).join("") + "</ul>";
+}
+/* Timeline fill: progress from container top at 10% of the viewport to container bottom at 50% (Aceternity offset ["start 10%", "end 50%"]); opacity ramps over the first 10% */
+var tlBusy = false;
+function tlUpdate() {
+  tlBusy = false;
+  var t = document.getElementById("tline"), f = t && t.querySelector(".tl-fill");
+  if (!f || RM.matches) return;
+  var r = t.getBoundingClientRect(), vh = window.innerHeight || document.documentElement.clientHeight;
+  var span = r.height - 0.4 * vh, p = span > 0 ? (0.1 * vh - r.top) / span : (r.top <= 0.1 * vh ? 1 : 0);
+  p = Math.max(0, Math.min(1, p));
+  f.style.height = (p * r.height).toFixed(1) + "px";
+  f.style.opacity = Math.min(1, p / 0.1).toFixed(3);
+}
+function tlSchedule() { if (tlBusy) return; tlBusy = true; requestAnimationFrame(tlUpdate); }
+
+function bento(cls, bg, name, desc, href, cta) {
+  return "<article class=\"bc " + cls + "\"><div class=\"bc-bg\">" + bg + "</div><div class=\"bc-main\"><div class=\"bc-body\"><h3 class=\"bc-name\">" + name + "</h3>" + desc + "</div>" +
+    "<div class=\"bc-cta\"><a href=\"" + href + "\">" + esc(cta) + "<span aria-hidden=\"true\">→</span></a></div></div><div class=\"bc-wash\"></div></article>";
+}
+function viewHome() {
+  var tier = newestTier(), shop = ["Lathe", "CNC mill", "CNC router", "Horizontal and vertical bandsaws", "Miter saw", "3D printers", "Laser engraver/cutter", "Parts library"];
+  var sents = ws(HISTORY.today.paragraphs[0]).match(/[^.]+\./g) || [];
+  var stu = sents.filter(function (x) { return /^\s*Students machine parts/.test(x); })[0];
+  var shopTxt = (sents[0] || "").trim() + (stu ? " " + stu.trim() : "");
+  return "<section class=\"band tight hero\"><div class=\"wrap hero-grid\"><div><p class=\"label gold\">FRC Team " + SITE.teamNumber + " · " + esc(SITE.school) + " · " + esc(SITE.location) + "</p><h1 tabindex=\"-1\">" + heroTitle() + "</h1><p class=\"lead\">" + esc(SITE.mission) + "</p>" +
+    "<div class=\"btns\"><a class=\"btn btn-gold\" href=\"#join\">Join the team</a><a class=\"btn btn-line\" href=\"#sponsors\">Sponsor a season</a></div><div class=\"school-line\"><span class=\"label\">A Dawson School team</span>" + wm(34) + "</div></div>" +
+    "<figure class=\"photo-col\"><div class=\"photo r43\"><img src=\"img/hero.jpg\" width=\"1500\" height=\"1125\" alt=\"Team 2972 with the winner's banner and their robot at the 2026 Utah Regional\"></div><figcaption>Utah Regional, West Valley City, 2026. The robot is <a href=\"#robot-2026\">Theseus</a>.</figcaption></figure></div></section>" +
+    "<div id=\"nextUp\">" + nextUp() + "</div>" +
+    "<section class=\"band\"><div class=\"wrap\"><h2 class=\"h2\">Competition record</h2>" + seasonStatRow() + seasonLog() + "</div></section>" +
+    "<section class=\"band alt\"><div class=\"wrap\"><h2 class=\"h2\">Find your way in</h2><div class=\"bento\">" +
+    bento("bc-stud", "<img src=\"img/drivers.jpg\" width=\"1000\" height=\"1000\" loading=\"lazy\" alt=\"" + esc(SITE.memberImageAlt) + "\">", "Students", "<p>For students who want to design, build and compete with us.</p>", "#join", "How to join") +
+    bento("bc-spons", "", "Sponsors", "<p>Every dollar goes directly toward robot parts, competition fees, travel, and outreach.</p>", "#sponsors", "Sponsor the team") +
+    bento("bc-ment", "", "Mentors", "<p>For adults who want to guide students with their time and expertise.</p>", "#join-mentors", "Become a mentor") +
+    bento("bc-shop", "<img src=\"img/shop.jpg\" width=\"1000\" height=\"750\" loading=\"lazy\" alt=\"" + esc(HISTORY.milestones.filter(function (m) { return m.year === "2025"; })[0].imageAlt) + "\">", esc(HISTORY.today.heading), "<p>" + esc(shopTxt) + "</p><ul class=\"shop-chips\">" + shop.map(function (x) { return "<li class=\"chip\">" + esc(x) + "</li>"; }).join("") + "</ul>", "#sponsors", "Support the shop") +
+    "</div></div></section>" +
+    (tier ? "<section class=\"band alt\"><div class=\"wrap\"><p class=\"label\">Sponsors, " + esc(tier.tier.replace(/\s*Sponsors?\s*/i, "").trim()) + " season</p>" + names(tier) + "<a class=\"btn btn-line\" href=\"#sponsors\">Become a sponsor</a></div></section>" : "");
+}
+
+var curFilter = "all";
+var FILTERS = [["all", "All"], ["win", "Event winners"], ["po", "Playoffs"], ["svc", "In service"]];
+function passes(r, f) {
+  if (f === "win") return hasType(r, function (t) { return t === "win"; });
+  if (f === "po") return hasType(r, function (t) { return t !== "played"; });
+  if (f === "svc") return r.status === "In service";
+  return true;
+}
+function card(r) {
+  var photo = NO_PHOTO[r.year] ? "<div class=\"ph\"><b>" + r.year + "</b><span>Photo wanted</span></div>"
+    : "<img src=\"img/r" + r.year + ".jpg\" width=\"1000\" height=\"750\" loading=\"lazy\" alt=\"" + esc(r.name ? r.name + ", the " + r.year + " robot" : "The " + r.year + " robot") + "\"" + (r.imagePosition ? " style=\"object-position:" + esc(r.imagePosition) + "\"" : "") + ">";
+  return "<a class=\"card\" href=\"#robot-" + r.year + "\"><div class=\"photo r43\">" + photo + "</div><div class=\"card-b\"><p class=\"label\">" + r.year + " · " + esc(r.game) + "</p><h3 class=\"h3\">" + esc(robotName(r)) + "</h3>" +
+    (r.stats ? "<p>" + esc(r.stats) + "</p>" : "") + (r.status === "In service" ? "<span class=\"chip\">In service</span>" : "") + "</div></a>";
+}
+function gridHtml() {
+  var list = ROBOTS.filter(function (r) { return passes(r, curFilter); });
+  return { count: "Showing " + list.length + " of " + ROBOTS.length, html: list.map(card).join("") };
+}
+function highlights() {
+  var li = [];
+  HISTORY.milestones.forEach(function (m) { m.items.forEach(function (it) { if (it.kind === "comp") li.push("<li><b>" + esc(m.year) + "</b><span>" + mdLinks(it.text) + "</span></li>"); }); });
+  return "<h2 class=\"h2\" style=\"margin-top:40px\">Highlights</h2><ul class=\"dated hl\">" + li.join("") + "</ul>";
+}
+function viewRobots() {
+  var g = gridHtml();
+  return "<section class=\"band\"><div class=\"wrap\"><h1 class=\"h1\" tabindex=\"-1\">Our robots</h1><p class=\"lead\">Every robot we have built, season by season.</p>" + seasonSummary() + seasonLog() + highlights() + "</div></section>" +
+    "<section class=\"band alt\"><div class=\"wrap\"><div class=\"chips\" role=\"group\" aria-label=\"Filter robots\">" +
+    FILTERS.map(function (f) { return "<button type=\"button\" class=\"fchip\" data-filter=\"" + f[0] + "\" aria-pressed=\"" + (curFilter === f[0]) + "\">" + f[1] + "</button>"; }).join("") +
+    "</div><p class=\"small mute tab\" id=\"count\" aria-live=\"polite\">" + g.count + "</p><div class=\"cards\" id=\"grid\">" + g.html + "</div>" +
+    "<div class=\"archive\"><h2 class=\"h2\">Help us fill in the archive</h2><p>We don't have photos or names for many of our older robots. Were you on the team? Send photos, robot names, or stories to</p>" + addr() + "</div></div></section>";
+}
+
+function resultsTable(r) {
+  var rows = (r.results || []).map(function (x) {
+    var p = parseResult(x.result), win = resType(x.result) === "win";
+    return "<tr" + (win ? " class=\"win\"" : "") + "><td>" + esc(x.event) + (win ? " <span class=\"pill\">Winner</span>" : "") + "</td><td>" + esc(p.rank) + "</td><td>" + esc(p.record) + "</td><td>" + esc(p.playoffs) + "</td><td>" +
+      (x.tba ? ext("https://www.thebluealliance.com/event/" + x.tba, "The Blue Alliance ↗") : "") + "</td></tr>";
+  }).join("");
+  return "<div class=\"tbl-wrap\" role=\"region\" aria-label=\"Results, scrolls sideways\" tabindex=\"0\"><table><thead><tr><th scope=\"col\">Event</th><th scope=\"col\">Rank</th><th scope=\"col\">Record</th><th scope=\"col\">Playoffs</th><th scope=\"col\"><span class=\"vh\">Link</span></th></tr></thead><tbody>" + rows + "</tbody></table></div>";
+}
+function sec(title, body) { return "<section class=\"sec\"><h2>" + esc(title) + "</h2>" + body + "</section>"; }
+function viewRobot(year) {
+  var i = ROBOTS.findIndex(function (x) { return x.year === year; }), r = ROBOTS[i], newer = ROBOTS[i - 1], older = ROBOTS[i + 1];
+  var photo = NO_PHOTO[year] ? "" : "<div class=\"photo r43\"><img src=\"img/r" + year + ".jpg\" width=\"1000\" height=\"750\" alt=\"" + esc(r.name ? r.name + ", the " + year + " robot" : "The " + year + " robot") + "\"" + (r.imagePosition ? " style=\"object-position:" + esc(r.imagePosition) + "\"" : "") + "></div>";
+  var out = "<section class=\"band tight\"><div class=\"wrap\"><a class=\"crumb\" href=\"#robots\">← All robots</a><div class=\"" + (photo ? "grid2" : "") + "\">" + photo + "<div><p class=\"label gold\">" + year + " · " + esc(r.game) + "</p><h1 class=\"h1\" tabindex=\"-1\">" + esc(robotName(r)) + "</h1>" +
+    (r.tagline ? "<p class=\"lead\">" + esc(r.tagline) + "</p>" : "") + (r.stats ? "<p class=\"tab\">" + esc(r.stats) + "</p>" : "") +
+    "<div class=\"rhead-meta\">" + (r.awards || []).map(function (a) { return "<span class=\"pill\">" + esc(a) + "</span>"; }).join("") + (r.status ? "<span class=\"chip\">" + esc(r.status) + "</span>" : "") + "</div></div></div></div></section>";
+  out += "<div class=\"wrap\" style=\"padding-bottom:clamp(40px,6vw,80px)\">";
+  if (r.results && r.results.length) out += sec("Results", resultsTable(r));
+  if (r.gameSummary || r.gameVideo) out += sec("The game", (r.gameSummary ? "<p>" + esc(r.gameSummary) + "</p>" : "") + (r.gameVideo ? "<p>" + ytLink(r.gameVideo, "Watch the game animation on YouTube") + "</p>" : ""));
+  if (r.description) out += sec("About the robot", "<p>" + esc(r.description) + "</p>");
+  if (r.specs && r.specs.length) out += sec("Specs", "<dl class=\"specs\">" + r.specs.map(function (s) { return "<dt>" + esc(s.label) + "</dt><dd>" + esc(s.value) + "</dd>"; }).join("") + "</dl>");
+  if (r.mechanisms && r.mechanisms.length) out += sec("Mechanisms", "<div class=\"mech\">" + r.mechanisms.map(function (m) { return "<div><h3>" + esc(m.name) + "</h3><p>" + esc(m.text) + "</p></div>"; }).join("") + "</div>");
+  var ls = [];
+  if (r.reveal) ls.push(ytLink(r.reveal, "Robot reveal on YouTube"));
+  (r.videos || []).forEach(function (v, k) { ls.push(ytLink(v, (r.videos.length > 1 ? "Season video " + (k + 1) : "Season video") + ", watch on YouTube")); });
+  (r.matchVideos || []).forEach(function (v) { ls.push(ytLink(v.url, "Match video: " + v.label)); });
+  if (r.binder) ls.push(ext(r.binder, "Technical binder ↗"));
+  (r.buildBlog || []).concat(r.links || []).forEach(function (l) { ls.push(ext(l.url, l.label + " ↗")); });
+  ls.push(ext(tbaTeamYear(year), "Season on The Blue Alliance ↗"));
+  out += sec("Videos and links", "<ul class=\"links\">" + ls.map(function (l) { return "<li>" + l + "</li>"; }).join("") + "</ul>");
+  out += "<nav class=\"pn\" aria-label=\"Seasons\"><span>" + (older ? "<a href=\"#robot-" + older.year + "\">← " + older.year + (older.name ? " · " + esc(older.name) : "") + "</a>" : "") + "</span><span>" +
+    (newer ? "<a href=\"#robot-" + newer.year + "\">" + newer.year + (newer.name ? " · " + esc(newer.name) : "") + " →</a>" : "") + "</span></nav></div>";
+  return out;
+}
+
+function viewSponsors() {
+  var team = [];
+  HISTORY.milestones.forEach(function (m) { m.items.forEach(function (it) { if (it.kind === "team") team.push({ y: m.year, t: it.text }); }); });
+  team.sort(function (a, b) { return b.y - a.y; });
+  var tiers = SPONSOR_TIERS.filter(function (t) { return t.sponsors.length; });
+  return "<section class=\"band\"><div class=\"wrap grid2 top\"><div><h1 class=\"h1\" tabindex=\"-1\">Sponsor the team</h1><p class=\"lead\">Team 2972 runs on the generosity of local businesses, families, and our school.</p>" +
+    "<p>Every dollar goes directly toward robot parts, competition fees, travel, and outreach, and toward improving our shop: the tools, machines and workspace where students build.</p>" +
+    "<div class=\"btns\"><a class=\"btn btn-gold\" href=\"" + esc(SPONSOR_PACKET_URL) + "\" target=\"_blank\" rel=\"noopener\">Sponsorship packet ↗</a>" + addr() + "</div></div>" +
+    "<div class=\"photo r32\"><img src=\"img/stands.jpg\" width=\"1000\" height=\"666\" loading=\"lazy\" alt=\"" + esc(HISTORY.today.imageAlt) + "\"></div></div></section>" +
+    "<section class=\"band alt\"><div class=\"wrap\"><h2 class=\"h2\">What support has built</h2><p>" + esc(ws(HISTORY.today.paragraphs[0])) + "</p><ul class=\"dated\">" +
+    team.slice(0, 3).map(function (x) { return "<li><b>" + esc(x.y) + "</b><span>" + esc(x.t) + "</span></li>"; }).join("") + "</ul></div></section>" +
+    tiers.map(function (t, i) { return "<section class=\"band" + (i % 2 ? " alt" : "") + "\"><div class=\"wrap\"><h2 class=\"h2\">" + esc(t.tier) + "</h2>" + names(t) + "</div></section>"; }).join("");
+}
+
+function first(s) { s = ws(s); var i = s.indexOf(". "); return i < 0 ? s : s.slice(0, i + 1); }
+
+function viewJoin(which) {
+  var m = which === "mentors";
+  var roles = [["Teach and coach", "Help students learn new skills, such as CAD, programming, wiring and machining, and grow as people."], ["Guide, not do", "Ask questions and steer how the team solves the season's challenge, without handing over the solution."], ["Business and outreach", "Not every mentor builds robots. Mentors also help with logistics, planning, fundraising and community events."], ["Support at competition", "Advise students between matches. During a match, the student drive team makes the decisions."]];
+  var tabs = [["students", "Students"], ["mentors", "Mentors"]];
+  var seg = '<div class="seg" role="tablist" aria-label="Join as">' + tabs.map(function (t) {
+    var on = (t[0] === "mentors") === m;
+    return '<button type="button" role="tab" class="segb" id="tab-' + t[0] + '" aria-controls="panel-' + t[0] + '" aria-selected="' + on + '" tabindex="' + (on ? 0 : -1) + '" data-tab="' + t[0] + '">' + t[1] + '</button>';
+  }).join("") + '</div>';
+  var students = '<div role="tabpanel" id="panel-students" aria-labelledby="tab-students"' + (m ? " hidden" : "") + '><div class="grid2 top">' +
+    '<div><p>' + esc("Team 2972 is made up of students mainly from Dawson School. Members work on the robot, on the business side of the team, and in the community, alongside mentors who guide them.") + '</p><p>Write to us and we will tell you how the team works and when we meet.</p><p>' + addr() + '</p></div>' +
+    '<div class="photo r11" style="max-width:420px"><img src="img/drivers.jpg" width="1000" height="1000" loading="lazy" alt="' + esc(SITE.memberImageAlt) + '"></div></div></div>';
+  var mentors = '<div role="tabpanel" id="panel-mentors" aria-labelledby="tab-mentors"' + (m ? "" : " hidden") + '>' +
+    '<p>Mentors guide the students\' process. The students still do the learning, and the work, as far as their skills allow.</p><div class="roles">' +
+    roles.map(function (r) { return '<div><h4>' + esc(r[0]) + '</h4><p>' + esc(first(r[1])) + '</p></div>'; }).join("") + '</div>' +
+    '<p>We\'re always looking for engineers, parents, and professionals willing to share their time and expertise with our students.</p><p>' + addr() + '</p>' +
+    '<p class="label" style="margin-top:24px">Read more from FIRST</p><ul class="links" style="max-width:640px">' +
+    '<li>' + ext("https://community.firstinspires.org/the-role-of-mentors-in-first-robotics-competition", "The Role of Mentors in FIRST Robotics Competition") + '</li>' +
+    '<li>' + ext("https://www.firstinspires.org/hubfs/web/program/frc/resources/frc-mentor-guide.pdf", "FRC Mentor Guide (PDF)") + '</li></ul></div>';
+  return '<section class="band"><div class="wrap"><h1 class="h1" tabindex="-1">Join the team</h1><p class="lead">No robotics background required.</p>' + seg + students + mentors + '</div></section>' +
+    '<section class="band alt"><div class="wrap"><h2 class="h2">The year at a glance</h2><ol class="steps">' +
+    ANNUAL_EVENTS.map(function (e) { return '<li><p class="label gold">' + esc(e.when) + '</p><h3 class="h3">' + esc(e.name) + '</h3><p class="step-d">' + esc(first(e.description)) + '</p></li>'; }).join("") + '</ol></div></section>';
+}
+
+function setTab(name) {
+  Array.prototype.forEach.call(document.querySelectorAll("[data-tab]"), function (b) {
+    var on = b.getAttribute("data-tab") === name;
+    b.setAttribute("aria-selected", String(on));
+    b.setAttribute("tabindex", on ? "0" : "-1");
+    var p = document.getElementById("panel-" + b.getAttribute("data-tab"));
+    if (p) p.hidden = !on;
+  });
+}
+
+function disc(o) { return '<details class="disc"><summary>' + esc(o.heading) + '</summary><p>' + esc(ws(o.body)) + '</p></details>'; }
+function viewAbout() {
+  var wins = [], team = HISTORY.milestones.map(function (m) {
+    return { m: m, items: m.items.filter(function (it) { return it.kind === "team"; }) };
+  }).filter(function (x) { return x.items.length; });
+  ROBOTS.slice().sort(function (a, b) { return a.year - b.year; }).forEach(function (r) {
+    (r.results || []).forEach(function (x) { if (/won the event/i.test(x.result)) wins.push(x.event + " " + r.year); });
+  });
+  var sheet = [["Team", "FRC " + SITE.teamNumber + ", " + SITE.teamName], ["School", SITE.school], ["Home", SITE.location], ["Founded", SITE.founded], ["Seasons played", String(ROBOTS.length)], ["Event wins", wins.join(" · ")]];
+  var imgs = { "2021": { src: "img/space2021.jpg", w: 900, h: 675, alt: "The team's workshop in 2021" }, "2025": { src: "img/shop.jpg", w: 1000, h: 750, alt: "" } };
+  return '<section class="band"><div class="wrap"><h1 class="h1" tabindex="-1">About the team</h1><p class="lead">' + esc(SITE.mission) + '</p>' +
+    '<div class="grid2 top" style="margin-top:32px"><dl class="sheet tab">' +
+    sheet.map(function (s) { return '<div><dt>' + esc(s[0]) + '</dt><dd>' + esc(s[1]) + '</dd></div>'; }).join("") + '</dl>' +
+    '<div class="school-box"><span class="wm" role="img" aria-label="Dawson School" style="width:100%;max-width:260px"></span><p>' + esc(first(ABOUT_SCHOOL.body)) + '</p><p style="margin:0">' + ext(SITE.schoolUrl, "Visit Dawson School ↗") + '</p></div></div>' +
+    '<div class="disc-row" style="margin-top:40px">' + disc(ABOUT_FIRST) + disc(ABOUT_SCHOOL) + '</div></div></section>' +
+    '<section class="band alt"><div class="wrap"><h2 class="h2">What we value</h2><div class="vgrid">' +
+    VALUES.map(function (v) { return '<div><b>' + esc(v.name) + '</b><span>' + esc(v.text) + '</span></div>'; }).join("") + '</div></div></section>' +
+    '<section class="band"><div class="wrap"><h2 class="h2">How the team grew</h2><div class="tl" id="tline" style="margin-top:24px">' +
+    team.map(function (x) {
+      var im = imgs[x.m.year], alt = im ? (im.alt || x.m.imageAlt || "") : "";
+      return '<div class="tl-row"><div class="tl-side"><div class="tl-mark" aria-hidden="true"><i></i></div><h3 class="tl-t tl-t-d">' + esc(x.m.year) + '</h3></div><div class="tl-body"><h3 class="tl-t tl-t-m">' + esc(x.m.year) + '</h3>' + x.items.map(function (it) { return '<div class="tl-item"><p>' + mdLinks(it.text) + '</p></div>'; }).join("") +
+        (im ? '<div class="photo r43" style="max-width:320px;margin-top:12px"><img src="' + im.src + '" width="' + im.w + '" height="' + im.h + '" loading="lazy" alt="' + esc(alt) + '"></div>' : "") + '</div></div>';
+    }).join("") +
+    '<div class="tl-track" aria-hidden="true"><i class="tl-fill"></i></div></div><p style="margin:24px 0 0"><a class="tl-link" href="#robots">Competition results are on the Robots page →</a></p><p class="tl-links"><a class="tl-link" href="#outreach">Outreach →</a><a class="tl-link" href="#media">Media →</a></p></div></section>';
+}
+
+var RESOURCE_LINKS = [
+  { "category": "Team Documents", "items": [ { "label": "Student, Family, and Mentor Handbook 2025–2026", "url": "https://docs.google.com/document/d/1cmYxwgvPZEGiw9m3zzVnzU7u41QOKLFab4hHGOfGd5U/edit?usp=sharing" }, { "label": "Game Analysis and Planning Template", "url": "https://docs.google.com/document/d/1fZVxb6nVicIAbYfuTFl0PZAnThBFkbATEzExnshtqF0/edit?usp=sharing" } ] },
+  { "category": "Software & Controls", "items": [ { "label": "Team GitHub", "url": "https://github.com/Gears-and-Buccaneers" }, { "label": "WPILib documentation", "url": "https://docs.wpilib.org" }, { "label": "Driver Station", "url": "https://docs.wpilib.org/en/stable/docs/software/driverstation/driver-station.html" }, { "label": "CTRE Phoenix Tuner X", "url": "https://v6.docs.ctr-electronics.com/en/stable/docs/tuner/index.html" }, { "label": "AdvantageKit", "url": "https://docs.advantagekit.org" }, { "label": "AdvantageScope", "url": "https://docs.advantagescope.org" }, { "label": "PathPlanner", "url": "https://pathplanner.dev" }, { "label": "AprilTags", "url": "https://docs.wpilib.org/en/stable/docs/software/vision-processing/apriltag/apriltag-intro.html" } ] },
+  { "category": "CAD & Manufacturing", "items": [ { "label": "Our robots in Onshape (public)", "url": "https://cad.onshape.com/publications/27b8b2d91c3dcba99076bea5/w/6f7554126c007d8690fa9643/e/fd2bdc75e190c38dc9e2f4d9", "note": "View Team 2972's robot CAD in your browser. No account needed." }, { "label": "Onshape for FRC (frcdesign.org)", "url": "https://www.frcdesign.org", "note": "Free Onshape lessons built for FRC, from first sketch to full robot." }, { "label": "Onshape Learning Center", "url": "https://learn.onshape.com", "note": "Onshape's own courses on parts, assemblies and drawings." }, { "label": "ReCalc", "url": "https://www.reca.lc", "note": "Calculators for gear ratios, belts, chains, arms and elevators." }, { "label": "Chief Delphi: CAD forum", "url": "https://www.chiefdelphi.com/c/technical/cad/68", "note": "Other teams' CAD releases and design questions." } ] },
+  { "category": "Build & Parts", "items": [ { "label": "WCP documentation", "url": "https://docs.wcproducts.com", "note": "West Coast Products: guides for its gearboxes, swerve and build system." }, { "label": "WCP store", "url": "https://wcproducts.com", "note": "COTS mechanisms, gears, belts and structure." }, { "label": "REV ION build system", "url": "https://docs.revrobotics.com/ion-build", "note": "REV's guides for its extrusion, brackets and motion parts." }, { "label": "REV FRC Kickoff Concepts", "url": "https://docs.revrobotics.com/frc-kickoff-concepts", "note": "Example mechanisms REV designs for each new game." }, { "label": "AndyMark", "url": "https://www.andymark.com", "note": "Kit of Parts chassis, wheels, gearboxes and field parts." }, { "label": "Swerve Drive Specialties", "url": "https://www.swervedrivespecialties.com", "note": "MK4 swerve modules and their docs." }, { "label": "The ThriftyBot", "url": "https://www.thethriftybot.com", "note": "Swerve, tubing and low-cost parts." } ] },
+  { "category": "Electronics", "items": [ { "label": "FRC Wiring Basics", "url": "https://docs.wpilib.org/en/stable/docs/zero-to-robot/step-1/intro-to-frc-robot-wiring.html" }, { "label": "Getting Started with Electronics", "url": "https://www.chiefdelphi.com/t/how-to-get-started-with-electronics/507902/8" }, { "label": "WPILib hardware basics", "url": "https://docs.wpilib.org/en/stable/docs/hardware/hardware-basics/index.html", "note": "The control system parts and how they connect." }, { "label": "WPILib wiring best practices", "url": "https://docs.wpilib.org/en/stable/docs/hardware/hardware-basics/wiring-best-practices.html", "note": "Wire gauge, connectors and strain relief that survive a season." }, { "label": "CAN addressing", "url": "https://docs.wpilib.org/en/stable/docs/software/can-devices/can-addressing.html", "note": "How motor controllers and sensors get their CAN IDs." }, { "label": "REV Power Distribution Hub", "url": "https://docs.revrobotics.com/ion-control/pdh/overview", "note": "Breakers, channels and status lights." }, { "label": "REV SPARK MAX", "url": "https://docs.revrobotics.com/brushless/spark-max/overview", "note": "Wiring and setup for the SPARK MAX motor controller." }, { "label": "CTRE hardware reference", "url": "https://v6.docs.ctr-electronics.com/en/stable/docs/hardware-reference/index.html", "note": "Talon FX, CANcoder, Pigeon 2 and CANivore." }, { "label": "FRC radio (Vivid-Hosting)", "url": "https://frc-radio.vivid-hosting.net", "note": "Setting up and updating the robot radio." } ] },
+  { "category": "Game Analysis and Strategy", "items": [ { "label": "Game Analysis and Strategy Workshop (Team 1100)", "url": "https://www.youtube.com/watch?v=CEKrkLYDAO0" }, { "label": "Strategic Design Workshop (Citrus Circuits)", "url": "https://www.youtube.com/watch?v=G6X3SrMmX3g&list=PL6j32uphg3L9sVDfxSlGSCuZr67C7WBE5&index=1" }, { "label": "Effective FIRST Strategies 2025 (Karthik Kanagasabapathy)", "url": "https://www.youtube.com/watch?v=cemXDEzBMhM&t=4717s", "note": "Opens at 1:18:37." } ] },
+  { "category": "Scouting & Alliance Selection", "items": [ { "label": "Effective FIRST Strategies 2025 (Karthik Kanagasabapathy)", "url": "https://www.youtube.com/watch?v=cemXDEzBMhM", "note": "How strong teams think about strategy, from game analysis to match play." }, { "label": "Alliance Selection Process (FIRST)", "url": "https://www.youtube.com/watch?v=xr69EMH4BZM", "note": "FIRST's own explanation of how alliance selection works." }, { "label": "Scouting and Competition Strategy (Brian Maher and Joe Blay, Stuy Splash 2020)", "url": "https://www.youtube.com/watch?v=LcYxxZJn15c", "note": "Turning scouting data into match plans and a pick list." }, { "label": "Scouting and Strategy Workshop (Team 5199)", "url": "https://www.youtube.com/watch?v=IFDuudYQ230", "note": "Setting up a scouting team: what to record and how to use it." } ] },
+  { "category": "General FRC", "items": [ { "label": "FIRST", "url": "https://www.firstinspires.org" }, { "label": "Chief Delphi (FRC forum)", "url": "https://www.chiefdelphi.com" }, { "label": "The Blue Alliance", "url": "https://www.thebluealliance.com" }, { "label": "Statbotics", "url": "https://www.statbotics.io" }, { "label": "Help Now Call Center (Compass Alliance)", "url": "https://www.thecompassalliance.org/call-center" } ] },
+  { "category": "Other teams' resources", "items": [ { "label": "Spectrum 3847", "url": "https://www.spectrum3847.org/resources/", "note": "Guides and lessons the team shares with other teams, plus an archive of older ones." }, { "label": "The Cheesy Poofs (254)", "url": "https://www.team254.com/resources/", "note": "Technical binders, robot code and documents for every season." }, { "label": "Robonauts Everybot (118)", "url": "https://www.118everybot.org/", "note": "A simple, low-cost robot design for each FRC and FTC game." }, { "label": "Citrus Circuits (1678)", "url": "https://www.citruscircuits.org/resources", "note": "Competition resources and technical references." }, { "label": "Mechanical Advantage (6328)", "url": "https://www.littletonrobotics.org/about-6328/resources-2/", "note": "Team documents (business plans, award submissions) and links for FRC teams." }, { "label": "NASA FRC resources", "url": "https://robotics.nasa.gov/frc-resources/", "note": "A long list of resources from many teams and sponsors." } ] }
+];
+var CAD_OVERVIEW = [
+  { "heading": "What are 3D models?", "body": "3D models are digital versions of real parts. Instead of drawing something on paper, we build it on the computer in full 3D. This lets us see how the robot will look and how everything will fit together before we make anything in real life." },
+  { "heading": "Why 3D modeling matters", "list": [ "See the whole robot before we build it", "Check if parts crash into each other", "Change designs quickly (a single edit updates the whole model)", "Measure weight and balance", "Make the robot look cleaner and work better" ], "after": "At Team 2972, we use Onshape for CAD because it's easy to learn, works in the browser, and lets everyone work together on the same model." },
+  { "heading": "What is CAM?", "body": "CAM is the step after CAD. If CAD is the design, CAM is the instructions. CAM turns our 3D models into the machine steps needed to actually make the parts using CNC machines, routers, laser cutters, or 3D printers. Think of CAD as drawing a cookie cutter, and CAM as generating the actual recipe and baking steps." },
+  { "heading": "Why CAM matters", "list": [ "Make custom parts that fit perfectly", "Cut metal and plastic accurately", "Preview mistakes before we actually cut anything", "Print parts with the right strength and settings" ] },
+  { "heading": "Tools we use", "list": [ "Onshape CAM Studio — easy toolpaths connected directly to our CAD", "Fusion 360 CAM — for more advanced CNC work", "Bambu Studio & OrcaSlicer — for slicing 3D prints so the printer knows what to do" ] },
+  { "heading": "How it all fits together", "list": [ "CAD → We design the robot in Onshape.", "CAM → We create the cutting/printing instructions.", "Manufacturing → We CNC, laser-cut, or 3D print the parts.", "Assembly → We build the robot knowing things will actually fit." ] }
+];
+var OUTREACH_EVENTS = [
+  { "name": "Broomfield Days", "date": "Annual", "description": "Robot demos for the Broomfield community.", "image": "out-broomfield.jpg", "w": 800, "h": 534 },
+  { "name": "Dawson Fest", "date": "Annual", "description": "Showing our robot to Dawson families.", "image": "out-dawsonfest.jpg", "w": 800, "h": 534 },
+  { "name": "Qualcomm Demo Day", "date": "", "description": "A robot demo and visit with Qualcomm.", "image": "out-qualcomm.jpg", "w": 800, "h": 534 },
+  { "name": "Hirsh Precision Products Visit", "date": "", "description": "A demo day with our sponsor Hirsh Precision Products.", "image": "out-hirsh.jpg", "w": 800, "h": 598 }
+];
+var MEDIA_VIDEOS = [
+  { "url": "https://www.youtube.com/embed/fZ4p6_IFnls", "caption": "2026 Utah Regional, Final 1" },
+  { "url": "https://www.youtube.com/embed/ysP5KEcw9FU", "caption": "" }
+];
+var MEDIA_PUBLICITY = [
+  { "title": "Dawson School team gears up for first robotics contest", "url": "https://www.denverpost.com/2014/02/03/dawson-school-team-gears-up-for-first-robotics-contest/", "outlet": "The Denver Post, Feb 2014" },
+  { "title": "Dawson students design, build robots for competition", "url": "https://www.dailycamera.com/2014/01/31/dawson-students-design-build-robots-for-competition/", "outlet": "Daily Camera, Jan 2014" },
+  { "title": "Dawson School students use Lego robots to learn simple coding skills", "url": "https://www.coloradohometownweekly.com/2015/12/13/dawson-school-students-use-lego-robots-to-learn-simple-coding-skills/", "outlet": "Colorado Hometown Weekly, Dec 2015" }
+];
+
+/* ---------- resources ---------- */
+var resCat = "all", resQ = "";
+function resMatch(it, q) { q = q.toLowerCase(); return !q || (it.label + " " + (it.note || "")).toLowerCase().indexOf(q) >= 0; }
+function resList() {
+  var n = 0, html = RESOURCE_LINKS.map(function (g) {
+    if (resCat !== "all" && g.category !== resCat) return "";
+    var items = g.items.filter(function (it) { return resMatch(it, resQ); });
+    if (!items.length) return "";
+    n += items.length;
+    return "<div class=\"res-cat\"><h2 class=\"label\">" + esc(g.category) + "</h2><ul class=\"res-list\">" + items.map(function (it) {
+      return "<li>" + ext(it.url, it.label + " ↗") + (it.note ? "<span class=\"res-note\">" + esc(it.note) + "</span>" : "") + "</li>";
+    }).join("") + "</ul></div>";
+  }).join("");
+  if (!n) html = "<p>No resources match. <button type=\"button\" class=\"tl-link\" data-resclear>Clear the search.</button></p>";
+  return { count: "Showing " + pl(n, "link"), html: html };
+}
+function resRefresh() {
+  var g = resList();
+  document.getElementById("res-list").innerHTML = g.html;
+  document.getElementById("res-count").textContent = g.count;
+}
+function cadPart(p) {
+  return "<details class=\"disc\"><summary>" + esc(p.heading) + "</summary>" + (p.body ? "<p>" + esc(p.body) + "</p>" : "") +
+    (p.list ? "<ul class=\"cad-ul\">" + p.list.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" : "") + (p.after ? "<p>" + esc(p.after) + "</p>" : "") + "</details>";
+}
+function viewResources() {
+  resCat = "all"; resQ = "";
+  var g = resList();
+  return "<section class=\"band\"><div class=\"wrap\"><h1 class=\"h1\" tabindex=\"-1\">Resources</h1><p class=\"lead\">Documents, code, and guides for team members and other FRC teams.</p>" +
+    "<div class=\"res-tools\"><div class=\"chips\" role=\"group\" aria-label=\"Filter by category\">" +
+    [["all", "All"]].concat(RESOURCE_LINKS.map(function (c) { return [c.category, c.category]; })).map(function (f) { return "<button type=\"button\" class=\"fchip\" data-rescat=\"" + esc(f[0]) + "\" aria-pressed=\"" + (resCat === f[0]) + "\">" + esc(f[1]) + "</button>"; }).join("") + "</div>" +
+    "<div class=\"res-q-w\"><label class=\"label\" for=\"res-q\">Search resources</label><input type=\"search\" id=\"res-q\" autocomplete=\"off\"></div></div>" +
+    "<p class=\"small mute tab\" id=\"res-count\" aria-live=\"polite\">" + g.count + "</p><div class=\"res-cols\" id=\"res-list\">" + g.html + "</div></div></section>" +
+    "<section class=\"band alt\"><div class=\"wrap\"><h2 class=\"h2\">3D CAD and CAM, explained</h2><div class=\"disc-list\">" + CAD_OVERVIEW.map(cadPart).join("") + "</div></div></section>";
+}
+
+/* ---------- outreach, media, contact ---------- */
+function viewOutreach() {
+  return "<section class=\"band\"><div class=\"wrap\"><h1 class=\"h1\" tabindex=\"-1\">Outreach</h1><p class=\"lead\">How we give back to the FIRST and Dawson community.</p>" +
+    "<p>From mentoring FIRST LEGO League teams to running STEM demos, we try to pass on what FIRST has given us.</p><div class=\"cards-2\">" +
+    OUTREACH_EVENTS.map(function (e) {
+      return "<div class=\"card\"><div class=\"photo r32\"><img src=\"img/" + esc(e.image) + "\" width=\"" + e.w + "\" height=\"" + e.h + "\" loading=\"lazy\" alt=\"" + esc(e.name + ", Team 2972 outreach") + "\"></div><div class=\"card-b\">" +
+        (e.date ? "<p class=\"label\">" + esc(e.date) + "</p>" : "") + "<h2 class=\"h3\">" + esc(e.name) + "</h2><p>" + esc(e.description) + "</p></div></div>";
+    }).join("") + "</div></div></section>" +
+    "<section class=\"band alt\"><div class=\"wrap\"><h2 class=\"h2\">Dawson FLL</h2><p>Team 2972 supports Dawson School's FIRST LEGO League program, mentoring younger students as they take their first steps in robotics.</p></div></section>";
+}
+function ytWatch(url) {
+  var m = /^https:\/\/www\.youtube\.com\/embed\/([A-Za-z0-9_-]+)/.exec(String(url));
+  return m ? "https://www.youtube.com/watch?v=" + m[1] : url;
+}
+function viewMedia() {
+  var vids = MEDIA_VIDEOS.filter(function (v) { return v.url; }), pub = MEDIA_PUBLICITY.filter(function (p) { return p.url && p.title; });
+  return "<section class=\"band\"><div class=\"wrap\"><h1 class=\"h1\" tabindex=\"-1\">Media</h1><p class=\"lead\">Photos, videos, and press coverage of the team.</p></div></section>" +
+    (vids.length ? "<section class=\"band alt tight\"><div class=\"wrap\"><h2 class=\"h2\">Videos</h2><ul class=\"links rows\">" + vids.map(function (v) {
+      return "<li><span>" + esc(v.caption || "Team 2972 video") + "</span>" + ytLink(ytWatch(v.url), "Watch on YouTube") + "</li>";
+    }).join("") + "</ul></div></section>" : "") +
+    (pub.length ? "<section class=\"band tight\"><div class=\"wrap\"><h2 class=\"h2\">In the press</h2><ul class=\"links\">" + pub.map(function (p) {
+      return "<li class=\"press\">" + ext(p.url, p.title + " ↗") + "<span class=\"mute small\">" + esc(p.outlet) + "</span></li>";
+    }).join("") + "</ul><p style=\"margin-top:16px\">Press inquiries are welcome. We coordinate them with Dawson School before materials or comments go out, so please reach us through the <a href=\"#contact\">contact page</a>.</p></div></section>" : "") +
+    "<section class=\"band alt tight\"><div class=\"wrap\"><h2 class=\"h2\">Photos</h2><p>More photos are on our robot pages and on Instagram.</p><div class=\"tl-links\"><a class=\"tl-link\" href=\"#robots\">Robot pages →</a>" + ext(SITE.instagram, "Instagram " + SITE.instagramHandle + " ↗").replace("<a ", "<a class=\"tl-link\" ") + "</div></div></section>";
+}
+function viewContact() {
+  return "<section class=\"band\"><div class=\"wrap\"><h1 class=\"h1\" tabindex=\"-1\">Contact</h1><p class=\"lead\">Questions, sponsorship interest, or want to mentor? Reach out.</p>" +
+    "<div class=\"grid2 top\" style=\"margin-top:32px\"><div><p class=\"label\">Email</p><p>With any questions or concerns, please reach out.</p><div class=\"addr-big\">" + addr() + "</div>" +
+    "<p class=\"label\" style=\"margin-top:32px\">Instagram</p><p>Follow along with build season and competitions. We don't check Instagram messages, so please email us instead.</p><p>" + ext(SITE.instagram, "Instagram " + SITE.instagramHandle + " ↗") + "</p>" +
+    "<p class=\"label\" style=\"margin-top:32px\">School</p><p>" + esc(SITE.school) + ", " + esc(SITE.location) + "</p><p>" + ext(SITE.schoolUrl, "Visit Dawson School ↗") + "</p></div>" +
+    "<div><p class=\"label\">Where to next</p><ul class=\"route\"><li><a href=\"#join\">Join as a student →</a></li><li><a href=\"#join-mentors\">Mentor the team →</a></li><li><a href=\"#sponsors\">Sponsor the team →</a></li></ul></div></div></div></section>";
+}
+
+function viewFooter() {
+  return "<div class=\"wrap ft\"><div><p class=\"h3\" style=\"font-family:var(--display)\">FRC Team " + SITE.teamNumber + " · " + esc(SITE.school) + " · " + esc(SITE.location) + " · Since " + esc(SITE.founded) + "</p><p>" + esc(SITE.teamName) + "</p>" + wm(40) + "</div>" +
+    "<div><p class=\"label\">Contact</p><p>" + addr() + "</p><p>" + ext(SITE.instagram, "Instagram " + SITE.instagramHandle + " ↗") + "</p></div>" +
+    "<div><p class=\"label\">Pages</p><ul><li><a href=\"#sponsors\">Become a sponsor</a></li><li><a href=\"#join-mentors\">Become a mentor</a></li><li><a href=\"#join\">Become a team member</a></li><li><a href=\"#robots\">Robots</a></li><li><a href=\"#about\">About</a></li><li><a href=\"#outreach\">Outreach</a></li><li><a href=\"#media\">Media</a></li><li><a href=\"#resources\">Resources</a></li><li><a href=\"#contact\">Contact</a></li></ul></div></div>";
+}
+
+/* ---------- router ---------- */
+function resolve(hash) {
+  var h = String(hash || "").replace(/^#/, "");
+  if (!/^[A-Za-z0-9-]+$/.test(h)) return "home";
+  if (h === "home" || h === "robots" || h === "sponsors" || h === "join" || h === "join-mentors" || h === "about" || h === "resources" || h === "outreach" || h === "media" || h === "contact") return h;
+  var m = /^robot-(\d{4})$/.exec(h);
+  if (m && ROBOTS.some(function (r) { return r.year === m[1]; })) return h;
+  return "home";
+}
+function render() {
+  var r = resolve(location.hash), html, m = /^robot-(\d{4})$/.exec(r);
+  if (m) html = viewRobot(m[1]);
+  else if (r === "join-mentors") html = viewJoin("mentors");
+  else html = { home: viewHome, robots: viewRobots, sponsors: viewSponsors, join: viewJoin, about: viewAbout, resources: viewResources, outreach: viewOutreach, media: viewMedia, contact: viewContact }[r]();
+  var view = document.getElementById("view");
+  view.innerHTML = html;
+  var key = m ? "robots" : r === "join-mentors" ? "join" : r;
+  Array.prototype.forEach.call(document.querySelectorAll(".nav a.nl"), function (a) {
+    if (a.getAttribute("data-r") === key) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  });
+  document.getElementById("hdr").classList.remove("open");
+  document.getElementById("menuBtn").setAttribute("aria-expanded", "false");
+  initTickers(view);
+  window.scrollTo(0, 0);
+  tlUpdate();
+  var h1 = view.querySelector("h1");
+  if (h1) { h1.setAttribute("tabindex", "-1"); h1.focus({ preventScroll: true }); }
+}
+function init() {
+  document.getElementById("ftr").innerHTML = viewFooter();
+  window.addEventListener("hashchange", render);
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") refreshNext(); });
+  setInterval(refreshNext, 30 * 60 * 1000);
+  document.addEventListener("keydown", function (e) {
+    var t = e.target;
+    if (!t || !t.getAttribute || t.getAttribute("role") !== "tab") return;
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    var next = t.getAttribute("data-tab") === "students" ? "mentors" : "students";
+    setTab(next);
+    var nb = document.getElementById("tab-" + next);
+    if (nb) nb.focus();
+    e.preventDefault();
+  });
+  document.getElementById("menuBtn").addEventListener("click", function () {
+    var o = document.getElementById("hdr").classList.toggle("open");
+    this.setAttribute("aria-expanded", String(o));
+  });
+  document.addEventListener("input", function (e) {
+    if (e.target && e.target.id === "res-q") { resQ = e.target.value; resRefresh(); }
+  });
+  document.addEventListener("click", function (e) {
+    var rc = e.target.closest ? e.target.closest("[data-rescat]") : null;
+    if (rc) {
+      resCat = rc.getAttribute("data-rescat");
+      Array.prototype.forEach.call(document.querySelectorAll("[data-rescat]"), function (b) { b.setAttribute("aria-pressed", String(b === rc)); });
+      resRefresh();
+      return;
+    }
+    if (e.target.closest && e.target.closest("[data-resclear]")) {
+      resQ = "";
+      var qi = document.getElementById("res-q");
+      if (qi) { qi.value = ""; qi.focus(); }
+      resRefresh();
+      return;
+    }
+    var tb = e.target.closest ? e.target.closest("[data-tab]") : null;
+    if (tb) { setTab(tb.getAttribute("data-tab")); return; }
+    var f = e.target.closest ? e.target.closest("[data-filter]") : null;
+    if (f) {
+      curFilter = f.getAttribute("data-filter");
+      var g = gridHtml();
+      document.getElementById("grid").innerHTML = g.html;
+      document.getElementById("count").textContent = g.count;
+      Array.prototype.forEach.call(document.querySelectorAll("[data-filter]"), function (b) { b.setAttribute("aria-pressed", String(b === f)); });
+      return;
+    }
+    var b = e.target.closest ? e.target.closest("[data-copy]") : null;
+    if (!b) return;
+    var t = b.parentNode.querySelector(".addr-t"), txt = t.textContent;
+    var done = function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 2000); };
+    var sel = function () {
+      try { var rg = document.createRange(); rg.selectNodeContents(t); var s = window.getSelection(); s.removeAllRanges(); s.addRange(rg); } catch (x) { /* ignore */ }
+      b.textContent = "Selected"; setTimeout(function () { b.textContent = "Copy"; }, 2000);
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, sel); else sel();
+    } catch (x) { sel(); }
+  });
+  window.addEventListener("scroll", tlSchedule, { passive: true });
+  window.addEventListener("resize", tlSchedule, { passive: true });
+  render();
+}
+if (typeof document !== "undefined") init();
+</script>
+
+</body>
+</html>
