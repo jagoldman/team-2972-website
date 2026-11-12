@@ -155,7 +155,7 @@ try {
 
     check("sign-out goes to the outpost sign_out on the portal host (INTEGRATION §1)", (await page.getAttribute("#sign-out", "href")) === `${PORTAL}/outpost.goauthentik.io/sign_out`);
     check("the request-access cards are shown", await page.isVisible("#access") && (await page.$$("#access-body a[href^='mailto:']")).length >= 1);
-    check("the account button falls back to the portal and shows initials", (await page.textContent("#shell-bar")).includes("PE"));
+    check("the account button links to Account and shows initials", (await page.getAttribute("#shell-bar .shbar-acct", "href")) === "http://account.landing.test/" && (await page.textContent("#shell-bar")).includes("PE"));
 
     await page.press("#q", "Escape").catch(() => {});
     await page.fill("#q", "alumni");

@@ -34,3 +34,18 @@ test("portal mode subscription refreshes after a kit click and can be removed", 
   remove();
   assert.equal(listeners.size, 0);
 });
+
+
+test("portal passes the configured Account URL to the app bar", async () => {
+  let props;
+  const context = vm.createContext({
+    document: { getElementById: () => ({}) },
+    fetch: async (url) => ({ ok: true, json: async () => url === "/me.json" ? { name: "Pat", groups: "" } : [] }),
+    siteBase: () => ({ scheme: "https", domain: "example.test" }),
+    parseGroups: () => [], resolveTiles: () => [],
+    mountAppBar: (_root, opts) => { props = opts; },
+  });
+  vm.runInContext(source, context);
+  await context.mountPortalShell();
+  assert.equal(props.accountHref, "https://account.example.test/");
+});
