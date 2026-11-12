@@ -154,7 +154,7 @@ async function openPage(url, theme) {
   for (let i = 0; i < 200 && !ready(); i++) await sleep(50);
   const w = f.contentWindow;
   if (url === "portal/index.html") for (let i = 0; i < 100 && !(w.document.querySelector("#app-grid .app-card") || (w.document.getElementById("no-group") && !w.document.getElementById("no-group").hidden)); i++) await sleep(50);
-  if (url.startsWith("portal/")) for (let i = 0; i < 100 && !w.document.querySelector("#shell-bar .shbar-theme"); i++) await sleep(50);
+  if (url.startsWith("portal/")) for (let i = 0; i < 100 && !w.document.querySelector("#shell-bar [aria-label=Theme]"); i++) await sleep(50);
   await sleep(300);
   return { frame: f, win: w, doc: w.document };
 }
@@ -205,15 +205,18 @@ const SITE_PAGES = ["index.html", "about.html", "mentor.html", "member.html", "r
       }
       // the portal's switch is the shared app bar's (D101): a cookie for every subdomain (D92), plus the old key
       if (url === "portal/index.html") {
-        const [light, dark, system] = [...doc.querySelectorAll("#shell-bar .shbar-theme .shbar-choice")];
+        const [system, light, dark] = [...doc.querySelectorAll("#shell-bar [aria-label=Theme] .shbar-choice")];
         const cookie = () => (doc.cookie.match(/(?:^|;\s*)theme=([^;]*)/) || [])[1] || null;
-        report(!!light && !!dark && !!system && doc.querySelector("#shell-bar .shbar-theme").closest("[hidden]") !== null, `${url}: the app bar has the Light / Dark / Match my device choices, closed by default`);
+        report(!!light && !!dark && !!system && doc.querySelector("#shell-bar [aria-label=Theme]").closest("[hidden]") !== null, `${url}: the app bar has the Light / Dark / Match my device choices, closed by default`);
         const cookieIs = (v) => cookie() === v;
         if (light && dark && system) {
+          doc.querySelector("#shell-bar .shbar-acct").click();
           dark.click(); await sleep(80);
           report(doc.documentElement.dataset.theme === "dark" && cookieIs("dark") && win.localStorage.getItem("theme") === "dark" && dark.getAttribute("aria-pressed") === "true", `${url}: Dark sets the theme, the theme cookie and the old key`);
+          doc.querySelector("#shell-bar .shbar-acct").click();
           light.click(); await sleep(80);
           report(doc.documentElement.dataset.theme === "light" && cookieIs("light") && light.getAttribute("aria-pressed") === "true" && dark.getAttribute("aria-pressed") === "false", `${url}: Light replaces it and moves the pressed state`);
+          doc.querySelector("#shell-bar .shbar-acct").click();
           system.click(); await sleep(80);
           report(doc.documentElement.dataset.theme === undefined && cookie() === null && win.localStorage.getItem("theme") === null && system.getAttribute("aria-pressed") === "true", `${url}: Match my device clears the cookie and the old key`);
         }

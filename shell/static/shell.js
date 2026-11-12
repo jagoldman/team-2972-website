@@ -166,7 +166,7 @@ export function mountAppBar(root, opts) {
   const accountPanel = h("div", { id: `${id}-account`, class: "shbar-panel shbar-account", role: "group", "aria-label": "Account", hidden: true },
     h("div", { class: "shbar-identity" }, identityName, identityGroups),
     h("div", { role: "group", "aria-label": "Theme" }, h("p", { class: "shbar-eyebrow", text: "Theme" }), choices.map(([, b]) => b)),
-    notificationLink, accountLink, h("a", { class: "shbar-choice", href: signOutHref(site), text: "Sign out" }));
+    notificationLink, accountLink, h("a", { class: "shbar-choice", href: signOutHref(site), "data-signout": "", text: "Sign out" }));
 
   const blurOut = (e) => {
     // Only when focus lands on something else (Tab); a null target is a mouse click, handled by pointerdown.
@@ -185,7 +185,7 @@ export function mountAppBar(root, opts) {
     { class: "shbar" },
     opts.skipToId ? h("a", { class: "shbar-skip", href: `#${opts.skipToId}`, text: "Skip to content" }) : null,
     appsBox,
-    h("a", { class: "shbar-brand", "aria-label": "Portal home", href: portal, target: "_blank", rel: "noopener noreferrer" }, h("span", { class: "shbar-badge", "aria-hidden": "true", text: "2972" }), sr("Portal home")),
+    h("a", { class: "shbar-brand", "aria-label": "Portal home", href: portal }, h("span", { class: "shbar-badge", "aria-hidden": "true", text: "2972" }), sr("Portal home")),
     appName,
     h("span", { class: "shbar-grow" }),
     chip,
@@ -246,8 +246,9 @@ export function mountAppBar(root, opts) {
     try {
       if (opts.source === "landing") {
         const [apps, me] = await Promise.all([getJson(opts.appsUrl || "/apps.json"), getJson(opts.meUrl || "/me.json")]);
-        if (!state.user) state.user = { name: me.name, email: me.email, groups: typeof me.groups === "string" ? me.groups.split("|").map((g) => g.trim()).filter(Boolean) : [] };
-        state.tiles = resolveTiles(apps, parseGroups(me.groups), site);
+        const groups = Array.isArray(me.groups) ? me.groups : typeof me.groups === "string" ? me.groups.split("|").map((g) => g.trim()).filter(Boolean) : [];
+        if (!state.user) state.user = { name: me.name, email: me.email, groups };
+        state.tiles = resolveTiles(apps, parseGroups(groups.join("|")), site);
       } else {
         const d = await getJson(opts.appsUrl || "/_shell/apps");
         state.tiles = Array.isArray(d.tiles) ? d.tiles : [];

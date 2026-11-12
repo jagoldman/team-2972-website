@@ -114,11 +114,10 @@ try {
     check(`${label}: "waiting for an admin" notice ${wantMain || wantMore ? "hidden" : "shown"}`, notice === !(wantMain || wantMore));
     check(`${label}: More section ${wantMore ? "shown" : "hidden"} on the home page`, (await page.isVisible("#more-apps")) === !!wantMore);
     await page.click("#shell-bar .shbar-appsbtn");
-    const menuMain = (await names(page, "#shell-bar .shbar-apps ul.shbar-grid:not(.shbar-more > ul) > li")).join(",");
-    const menuMore = (await names(page, "#shell-bar .shbar-more li")).join(",");
+    const menuMain = (await names(page, "#shell-bar .shbar-apps ul.shbar-grid > li")).join(",");
     // the Apps menu has no coming-soon order rule of its own; compare as sets
     const set = (s) => s.split(",").filter(Boolean).sort().join(",");
-    check(`${label}: the Apps menu lists the same tiles (main and More)`, set(menuMain) === set(wantMain) && set(menuMore) === set(wantMore), { menuMain, menuMore });
+    check(`${label}: the Apps menu lists the same tiles (main and More)`, set(menuMain) === set([wantMain, wantMore].filter(Boolean).join(",")), { menuMain });
     if (!wantMain && !wantMore) check(`${label}: the Apps menu explains there are no apps yet`, /an admin still has to add you/.test(await page.textContent("#shell-bar .shbar-apps")));
     check(`${label}: no script errors`, errors.length === 0, errors.join(" | "));
     await context.close();
@@ -131,12 +130,7 @@ try {
     await page.focus("#shell-bar .shbar-appsbtn");
     await page.keyboard.press("Enter");
     check("Enter on the launcher opens the Apps menu", await page.isVisible("#shell-bar .shbar-apps") && (await page.getAttribute("#shell-bar .shbar-appsbtn", "aria-expanded")) === "true");
-    check("More in the Apps menu is collapsed by default", (await page.$eval("#shell-bar .shbar-more", (d) => d.open)) === false && !(await page.isVisible("#shell-bar .shbar-more li")));
-    await page.focus("#shell-bar .shbar-more summary");
-    await page.keyboard.press("Enter");
-    check("Enter on More opens it", await page.$eval("#shell-bar .shbar-more", (d) => d.open) && await page.isVisible("#shell-bar .shbar-more li"));
-    await page.keyboard.press("Space");
-    check("Space on More closes it again", (await page.$eval("#shell-bar .shbar-more", (d) => d.open)) === false);
+    check("Apps displays a flat list", (await page.$$("#shell-bar .shbar-more")).length === 0);
     await page.keyboard.press("Escape");
     check("Escape closes the Apps menu and returns focus to the launcher", !(await page.isVisible("#shell-bar .shbar-apps")) && await page.$eval("#shell-bar .shbar-appsbtn", (b) => b === document.activeElement));
     await page.evaluate(() => scrollTo(0, 600));
@@ -146,16 +140,23 @@ try {
     const left = await page.$eval("#shell-bar .shbar-appsbtn", (b) => b.getBoundingClientRect().left);
     check("the nine-dot launcher is at the far left of the bar", left < 24, `left=${left}`);
 
-    const links = await page.$$eval("#app-grid a, #more-list a, #shell-bar .shbar-apps a, #shell-bar a.shbar-brand", (as) => as.map((a) => ({ href: a.href, target: a.target, rel: a.rel })));
+    const links = await page.$$eval("#app-grid a, #more-list a, #shell-bar .shbar-apps a", (as) => as.map((a) => ({ href: a.href, target: a.target, rel: a.rel })));
     const bad = links.filter((l) => l.target !== "_blank" || !l.rel.split(/\s+/).includes("noopener"));
-    check(`every app link and the logo open a new tab with rel=noopener (${links.length} links)`, links.length >= 10 && bad.length === 0, bad);
+    check(`every app link opens a new tab with rel=noopener (${links.length} links)`, links.length >= 10 && bad.length === 0, bad);
     const hrefs = await page.$$eval("#app-grid a", (as) => as.map((a) => a.getAttribute("href")));
     check("host tiles and path tiles are built from the site domain", hrefs.includes("http://tasks.landing.test/") && hrefs.includes("http://landing.test/resources.html"), hrefs);
     check("coming-soon tiles are not links", (await page.$$eval("#app-grid .coming-soon", (els) => els.map((e) => e.tagName + e.getAttribute("aria-disabled")))).join() === "DIVtrue");
 
-    check("sign-out goes to the outpost sign_out on the portal host (INTEGRATION §1)", (await page.getAttribute("#sign-out", "href")) === `${PORTAL}/outpost.goauthentik.io/sign_out`);
+    await page.click("#shell-bar .shbar-acct");
+    const menu = page.locator("#shell-bar .shbar-account");
+    const rows = await menu.locator(':scope > [role="group"], :scope > a').evaluateAll(els => els.map(e => e.getAttribute("aria-label") || e.textContent.trim()));
+    check("account menu rows are in order", JSON.stringify(rows) === JSON.stringify(["Theme", "Notification settings", "All account settings", "Sign out"]), rows);
+    const choices = await menu.locator('[aria-label="Theme"] button').allTextContents();
+    check("theme choices are in order", JSON.stringify(choices.map(x => x.trim())) === JSON.stringify(["Match my device", "Light", "Dark"]), choices);
+    check("sign-out goes to the portal outpost", (await menu.locator("a[data-signout]").getAttribute("href")) === `${PORTAL}/outpost.goauthentik.io/sign_out`);
+    await page.keyboard.press("Escape");
     check("the request-access cards are shown", await page.isVisible("#access") && (await page.$$("#access-body a[href^='mailto:']")).length >= 1);
-    check("the account button links to Account and shows initials", (await page.getAttribute("#shell-bar .shbar-acct", "href")) === "http://account.landing.test/" && (await page.textContent("#shell-bar")).includes("PE"));
+    check("the account button shows initials", (await page.textContent("#shell-bar .shbar-acct")).includes("PE"));
 
     await page.press("#q", "Escape").catch(() => {});
     await page.fill("#q", "alumni");
@@ -163,6 +164,13 @@ try {
     check("the greeting is the first name", (await page.textContent("#greeting")).replace(/\s+/g, " ").trim() === "Hi Pat.");
     check("search filters across both sections", (await names(page, "#app-grid .app-card:not([hidden]), #more-list li:not([hidden])")).join() === "Alumni News");
     await page.fill("#q", "");
+    let cleared = [];
+    await page.exposeFunction("recordCacheDeletion", (name) => { cleared.push(name); });
+    await page.evaluate(() => Object.defineProperty(window, "caches", { configurable: true, value: { keys: async () => ["2972-offline", "other"], delete: async (name) => { await window.recordCacheDeletion(name); return true; } } }));
+    await page.click("#shell-bar .shbar-acct");
+    await page.locator("#shell-bar .shbar-account a[data-signout]").click();
+    await page.waitForURL(/outpost\.goauthentik\.io\/sign_out/);
+    check("sign-out clears stored 2972 offline files before navigation", JSON.stringify(cleared) === JSON.stringify(["2972-offline"]), cleared);
     await context.close();
   }
 
@@ -207,12 +215,12 @@ try {
     await context.addCookies([site("theme", "dark")]);
     await context.addInitScript(() => { try { if (!sessionStorage.getItem("seeded")) { localStorage.setItem("theme", "light"); sessionStorage.setItem("seeded", "1"); } } catch (e) {} });
     let { page } = await openPortal(context);
-    const state = () => page.evaluate(() => ({ theme: document.documentElement.dataset.theme, label: document.querySelector("#shell-bar [aria-controls$='-theme'] .shbar-sr")?.textContent,
+    const state = () => page.evaluate(() => ({ theme: document.documentElement.dataset.theme, label: document.querySelector("#shell-bar [aria-label=Theme] button[aria-pressed=true]")?.textContent.trim(),
       bg: getComputedStyle(document.body).backgroundColor, cookie: (document.cookie.match(/(?:^|;\s*)theme=([^;]*)/) || [])[1] || null }));
     let s = await state();
-    check("cookie dark + old key light: page and bar both dark", s.theme === "dark" && s.label === "Theme: Dark" && s.bg === "rgb(7, 9, 15)", s);
-    await page.click("#shell-bar .shbar-icon[aria-controls$='-theme']");
-    await page.click("#shell-bar .shbar-theme .shbar-choice >> text=Light");
+    check("cookie dark + old key light: page and bar both dark", s.theme === "dark" && s.label === "Dark" && s.bg === "rgb(7, 9, 15)", s);
+    await page.click("#shell-bar .shbar-acct");
+    await page.click('#shell-bar [aria-label="Theme"] .shbar-choice >> text=Light');
     s = await state();
     const cookies = await context.cookies(PORTAL);
     const c = cookies.find((x) => x.name === "theme");
@@ -238,10 +246,9 @@ try {
     const cols = await page.$$eval("#app-grid .app-card", (els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().left))).size);
     check(`320px ${theme}: tiles sit two to a row`, cols === 2, `${cols} columns`);
     await page.click("#shell-bar .shbar-appsbtn");
-    await page.click("#shell-bar .shbar-more summary");
-    check(`320px ${theme}: Apps menu with More open has no horizontal scroll`, (await over(page)) <= 0, `${await over(page)}px`);
+    check(`320px ${theme}: Apps menu open has no horizontal scroll`, (await over(page)) <= 0, `${await over(page)}px`);
     await page.keyboard.press("Escape");
-    await page.click("#shell-bar .shbar-icon[aria-controls$='-theme']");
+    await page.click("#shell-bar .shbar-acct");
     check(`320px ${theme}: theme menu open has no horizontal scroll`, (await over(page)) <= 0, `${await over(page)}px`);
     await page.close();
     ({ page } = await openPortal(context, "/install"));
@@ -276,8 +283,8 @@ try {
     // One theme cookie for the portal and the apps (D92). Public pages are dark only: a choice made in the portal bar
     // does not change them, and they leave the cookie and the old key exactly as they found them.
     const portal = (await openPortal(context)).page;
-    await portal.click("#shell-bar [aria-controls$='-theme']");
-    await portal.click("#shell-bar .shbar-theme .shbar-choice >> text=Light");
+    await portal.click("#shell-bar .shbar-acct");
+    await portal.click('#shell-bar [aria-label="Theme"] .shbar-choice >> text=Light');
     const themeState = (page) => page.evaluate(() => ({ attr: document.documentElement.dataset.theme || null, cookie: (document.cookie.match(/(?:^|;\s*)theme=([^;]*)/) || [])[1] || null, key: localStorage.getItem("theme"),
       bg: getComputedStyle(document.body).backgroundColor, scheme: getComputedStyle(document.documentElement).colorScheme }));
     check("Light chosen in the portal bar: the portal itself is light", (await themeState(portal)).attr === "light" && (await themeState(portal)).cookie === "light");
@@ -292,8 +299,8 @@ try {
       check(`Light saved (cookie and old key): public ${path} is still dark, sets no data-theme, and leaves the cookie as "light"`, st.bg === "rgb(16, 24, 39)" && st.scheme === "dark" && st.attr === null && st.cookie === "light" && st.key === "light", st);
       check(`public ${path}: no theme switch`, (await pub.$$(".theme-switch")).length === 0);
     }
-    await portal.click("#shell-bar [aria-controls$='-theme']");
-    await portal.click("#shell-bar .shbar-theme .shbar-choice >> text=Match my device");
+    await portal.click("#shell-bar .shbar-acct");
+    await portal.click('#shell-bar [aria-label="Theme"] .shbar-choice >> text=Match my device');
     await pub.goto(PUBLIC + "/about.html");
     await pub.waitForSelector(".site-header .nav-login");
     await pub.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
