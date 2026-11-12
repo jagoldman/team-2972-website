@@ -63,7 +63,6 @@
     <p class="section-lead">The Team Drive and the team's Onshape CAD are shared by invitation. Ask for access and an admin will add you.</p>
     <div id="access-body"></div>
   </section>
-  <p><a class="btn btn-outline" id="sign-out" data-signout href="#">Sign out</a></p>
 </main>
 
 <div id="site-footer"></div>
@@ -143,7 +142,6 @@ function renderMoreLink(t) {
 }
 
 onContent(async () => {
-  document.getElementById("sign-out").href = SIGNOUT_URL;
   initInstallBanner();
   document.getElementById("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 

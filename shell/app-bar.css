@@ -90,8 +90,8 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 0;
   border-radius: 10px;
@@ -178,6 +178,8 @@
 }
 /* The account initials: a round navy button, not gold. */
 .shbar-acct {
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: var(--rail-2);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
@@ -230,9 +232,9 @@
   left: max(8px, env(safe-area-inset-left, 0px));
   width: min(600px, calc(100vw - 16px));
 }
-.shbar-theme {
+.shbar-account {
   right: max(8px, env(safe-area-inset-right, 0px));
-  width: min(260px, calc(100vw - 16px));
+  width: min(288px, calc(100vw - 16px));
   gap: 4px;
 }
 .shbar-panel-head {
@@ -258,7 +260,7 @@
   background: var(--surface-3);
 }
 .shbar-mode button {
-  min-height: 34px;
+  min-height: 44px;
   padding: 5px 12px;
   border: 0;
   border-radius: 6px;
@@ -292,7 +294,7 @@
 .shbar-btn {
   display: inline-flex;
   align-items: center;
-  min-height: 34px;
+  min-height: 44px;
   padding: 4px 12px;
   border-radius: var(--r-ctl, 8px);
   color: var(--accent-ink) !important;
@@ -377,7 +379,7 @@ a.shbar-item:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 6px 10px;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -411,7 +413,7 @@ a.shbar-item:hover {
     grid-template-columns: minmax(0, 1fr);
   }
   .shbar-mode button {
-    min-height: 40px;
+    min-height: 44px;
   }
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -428,3 +430,8 @@ a.shbar-item:hover {
     border-bottom: 1px solid CanvasText;
   }
 }
+
+.shbar-identity { overflow-wrap: anywhere; padding: 4px 10px; }
+.shbar-identity small { display: block; color: var(--mute); font-size: .8rem; }
+.shbar-account .shbar-choice { width: 100%; min-height: 44px; }
+.shbar-brand { min-width: 44px; min-height: 44px; justify-content: center; }

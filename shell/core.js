@@ -56,6 +56,21 @@ export function portalHref(site) {
   return `${site.scheme}://portal.${site.domain}/`;
 }
 
+/** Account doors share the trusted site configuration with portal and cookies. */
+export function accountHref(site) {
+  return `${site.scheme}://account.${site.domain}/`;
+}
+export function notificationSettingsHref(site) {
+  return `${accountHref(site)}#notifications`;
+}
+export function signOutHref(site) {
+  return `${portalHref(site)}outpost.goauthentik.io/sign_out`;
+}
+/** Raw groups retain display; parseGroups intentionally filters it out for tile access. */
+export function hasAccountMenu(user, enabled = true) {
+  return !!(enabled && user && (user.name || user.email) && !user.groups?.includes("display"));
+}
+
 /**
  * apps.json + the person's groups → the tiles for the Apps menu, already resolved to links.
  * Tiles are kept for both modes; the bar filters by mode (filterByMode) so a mode change needs no refetch.
@@ -271,7 +286,7 @@ export function iconPath(name) {
 
 /** Labels shared by both builds, so the React and static bars read the same to a screen reader. */
 export const THEME_CHOICES = Object.freeze([
+  ["system", "Match my device"],
   ["light", "Light"],
   ["dark", "Dark"],
-  ["system", "Match my device"],
 ]);

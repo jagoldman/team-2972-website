@@ -14,6 +14,9 @@
 // secret, INTEGRATION §2), filtered here with the same core.js rules. source "shell" (default): /_shell/apps.
 
 import {
+  accountHref,
+  hasAccountMenu,
+  signOutHref,
   MODE_COOKIE,
   THEME_CHOICES,
   THEME_COOKIE,
@@ -23,7 +26,6 @@ import {
   initials,
   parseGroups,
   parseMode,
-  parseTheme,
   portalHref,
   readCookie,
   resolveTheme,
@@ -97,7 +99,7 @@ async function getJson(url) {
 
 /**
  * Renders the bar into `root` (replacing its content) and returns { update(opts), destroy() }.
- * opts: appName, appId, siteScheme, siteDomain, user {name,email}, accountHref, source ("shell" | "landing"),
+ * opts: appName, appId, siteScheme, siteDomain, user {name,email,groups}, accountMenu (default true for identified non-display users), accountHref, source ("shell" | "landing"),
  * appsUrl, meUrl, tiles (already resolved; skips fetching), skipToId, onThemeChange.
  *
  * The bar is built once and then patched in place (never rebuilt), so focus and in-flight clicks survive
@@ -107,7 +109,7 @@ export function mountAppBar(root, opts) {
   const id = `shbar${++seq}`;
   const site = { scheme: opts.siteScheme, domain: opts.siteDomain };
   const portal = portalHref(site);
-  const account = opts.accountHref || portal;
+  const account = opts.accountHref ?? accountHref(site);
   const state = {
     panel: null,
     mode: parseMode(readCookie(document.cookie, MODE_COOKIE)),
@@ -139,14 +141,9 @@ export function mountAppBar(root, opts) {
     "nav",
     { id: `${id}-apps`, class: "shbar-panel shbar-apps", "aria-label": "All apps", hidden: true },
     h("div", { class: "shbar-panel-head" },
-      h("div", { class: "shbar-mode", role: "group", "aria-label": "App mode" }, modeChoices.map(([, button]) => button)),
-      h("a", { class: "shbar-linkbtn", href: account, target: "_blank", rel: "noopener noreferrer" }, "Account settings", sr(" (opens in a new tab)")),
-      h("a", { class: "shbar-btn", href: portal, target: "_blank", rel: "noopener noreferrer" }, "Portal home", sr(" (opens in a new tab)"))),
+      h("div", { class: "shbar-mode", role: "group", "aria-label": "App mode" }, modeChoices.map(([, button]) => button))),
     appsBody,
   );
-  const themeIconBox = h("span", { style: "display:contents" });
-  const themeLabel = h("span", { class: "shbar-sr" });
-  const themeBtn = h("button", { type: "button", class: "shbar-icon", "aria-expanded": "false", "aria-controls": `${id}-theme` }, themeIconBox, themeLabel);
   const choices = THEME_CHOICES.map(([c, label]) => {
     const b = h("button", { type: "button", class: "shbar-choice", "aria-pressed": "false" }, icon(themeIcon(c), 18), label);
     b.addEventListener("click", () => {
@@ -157,40 +154,42 @@ export function mountAppBar(root, opts) {
     });
     return [c, b];
   });
-  const themePanel = h(
-    "div",
-    { id: `${id}-theme`, class: "shbar-panel shbar-theme", role: "group", "aria-label": "Theme", hidden: true },
-    h("p", { class: "shbar-eyebrow", text: "Theme, shared by every 2972 app" }),
-    choices.map(([, b]) => b),
-  );
   const chip = h("a", { class: "shbar-chip", href: account, target: "_blank", rel: "noopener noreferrer", title: "Competition mode is on. Change it in Apps or Account.", hidden: true }, h("span", { "aria-hidden": "true" }, h("span", { class: "shbar-chip-short", text: "Comp" }), h("span", { class: "shbar-chip-long", text: "Competition mode" })), sr("Competition mode is on. Change it in Apps or Account (opens in a new tab)."));
   const appName = h("span", { class: "shbar-appname" });
   const acctInitials = h("span", { "aria-hidden": "true" });
   const acctLabel = h("span", { class: "shbar-sr" });
-  const acct = h("a", { class: "shbar-icon shbar-acct", href: account, target: "_blank", rel: "noopener noreferrer" }, acctInitials, acctLabel);
+  const acct = h("button", { type: "button", class: "shbar-icon shbar-acct", "aria-expanded": "false", "aria-controls": `${id}-account` }, acctInitials, acctLabel);
+  const identityName = h("b");
+  const identityGroups = h("small");
+  const accountLink = h("a", { class: "shbar-choice", href: account, text: "All account settings" });
+  const notificationLink = h("a", { class: "shbar-choice", href: `${account.split("#")[0]}#notifications`, text: "Notification settings" });
+  const accountPanel = h("div", { id: `${id}-account`, class: "shbar-panel shbar-account", role: "group", "aria-label": "Account", hidden: true },
+    h("div", { class: "shbar-identity" }, identityName, identityGroups),
+    h("div", { role: "group", "aria-label": "Theme" }, h("p", { class: "shbar-eyebrow", text: "Theme" }), choices.map(([, b]) => b)),
+    notificationLink, accountLink, h("a", { class: "shbar-choice", href: signOutHref(site), text: "Sign out" }));
 
   const blurOut = (e) => {
     // Only when focus lands on something else (Tab); a null target is a mouse click, handled by pointerdown.
     if (state.panel && e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) setPanel(null, false);
   };
   const appsBox = h("div", { class: "shbar-disclosure" }, appsBtn, appsPanel);
-  const themeBox = h("div", { class: "shbar-disclosure shbar-end" }, themeBtn, themePanel);
+  const accountBox = h("div", { class: "shbar-disclosure shbar-end" });
+  let accountMounted = false;
   appsBox.addEventListener("focusout", blurOut);
-  themeBox.addEventListener("focusout", blurOut);
+  accountBox.addEventListener("focusout", blurOut);
   appsBtn.addEventListener("click", () => setPanel(state.panel === "apps" ? null : "apps", false));
-  themeBtn.addEventListener("click", () => setPanel(state.panel === "theme" ? null : "theme", false));
+  acct.addEventListener("click", () => setPanel(state.panel === "account" ? null : "account", false));
 
   const header = h(
     "header",
     { class: "shbar" },
     opts.skipToId ? h("a", { class: "shbar-skip", href: `#${opts.skipToId}`, text: "Skip to content" }) : null,
     appsBox,
-    h("a", { class: "shbar-brand", href: portal, target: "_blank", rel: "noopener noreferrer" }, h("span", { class: "shbar-badge", "aria-hidden": "true", text: "2972" }), sr("Team 2972 portal (opens in a new tab)")),
+    h("a", { class: "shbar-brand", "aria-label": "Portal home", href: portal, target: "_blank", rel: "noopener noreferrer" }, h("span", { class: "shbar-badge", "aria-hidden": "true", text: "2972" }), sr("Portal home")),
     appName,
     h("span", { class: "shbar-grow" }),
     chip,
-    themeBox,
-    acct,
+    accountBox,
   );
   root.textContent = "";
   // The mount wrapper must not become the sticky header's containing block, or the bar scrolls away.
@@ -199,11 +198,7 @@ export function mountAppBar(root, opts) {
 
   // ---- patch ----
   function renderTiles() {
-    const moreOpen = appsBody.querySelector("details")?.open ?? false;
     const shown = state.tiles ? filterByMode(state.tiles, state.mode) : [];
-    const isMore = (tile) => tile.more || tile.external || tile.id === "handbook";
-    const main = shown.filter((tile) => !isMore(tile));
-    const more = shown.filter(isMore);
     const retry = h("button", { type: "button", class: "shbar-linkbtn", text: "Try again" });
     retry.addEventListener("click", load);
     appsBody.replaceChildren(
@@ -211,11 +206,7 @@ export function mountAppBar(root, opts) {
         state.tiles === null && !state.failed ? h("p", { class: "shbar-note", role: "status", text: "Loading apps…" }) : null,
         state.failed ? h("p", { class: "shbar-note", role: "status" }, "Couldn't load the apps. ", retry) : null,
         state.tiles !== null && !state.failed && shown.length === 0 ? h("p", { class: "shbar-note", text: "No apps here yet. If you just joined, an admin still has to add you to a group." }) : null,
-        main.length ? h("ul", { class: "shbar-grid" }, main.map((t) => tileEl(t, opts.appId))) : null,
-        more.length ? h("details", { class: "shbar-more", open: moreOpen },
-          h("summary", { id: `${id}-more`, text: "More" }),
-          h("ul", { class: "shbar-grid", "aria-labelledby": `${id}-more` }, more.map((tile) => tileEl(tile, opts.appId))),
-        ) : null,
+        shown.length ? h("ul", { class: "shbar-grid" }, shown.map((t) => tileEl(t, opts.appId))) : null,
       ].filter(Boolean),
     );
   }
@@ -223,16 +214,28 @@ export function mountAppBar(root, opts) {
     const who = (state.user && (state.user.name || state.user.email)) || "";
     appsBtn.setAttribute("aria-expanded", String(state.panel === "apps"));
     appsPanel.hidden = state.panel !== "apps";
-    themeBtn.setAttribute("aria-expanded", String(state.panel === "theme"));
-    themePanel.hidden = state.panel !== "theme";
+    const showAccount = hasAccountMenu(state.user, opts.accountMenu);
+    if (!showAccount && state.panel === "account") state.panel = null;
+    if (showAccount !== accountMounted) {
+      accountBox.replaceChildren(...(showAccount ? [acct, accountPanel] : []));
+      accountMounted = showAccount;
+    }
+    accountBox.hidden = !showAccount;
+    acct.hidden = !showAccount;
+    acct.setAttribute("aria-expanded", String(state.panel === "account"));
+    accountPanel.hidden = !showAccount || state.panel !== "account";
+    identityName.textContent = who;
+    identityGroups.textContent = state.user?.groups?.join(" · ") || "";
+    identityGroups.hidden = !identityGroups.textContent;
+    const accountUrl = opts.accountHref ?? accountHref(site);
+    accountLink.setAttribute("href", accountUrl);
+    notificationLink.setAttribute("href", `${accountUrl.split("#")[0]}#notifications`);
     for (const [choice, button] of modeChoices) button.setAttribute("aria-pressed", String(state.mode === choice));
-    themeIconBox.replaceChildren(icon(themeIcon(state.theme)));
-    themeLabel.textContent = `Theme: ${(THEME_CHOICES.find(([c]) => c === state.theme) || [])[1] || "Match my device"}`;
     for (const [c, b] of choices) b.setAttribute("aria-pressed", String(state.theme === c));
     chip.hidden = state.mode !== "competition";
     appName.textContent = opts.appName || "";
     acctInitials.textContent = initials(state.user && state.user.name, state.user && state.user.email);
-    acctLabel.textContent = `Account${who ? `: ${who}` : ""} (opens in a new tab)`;
+    acctLabel.textContent = `Account${who ? `: ${who}` : ""}`;
     acct.title = who ? `Account: ${who}` : "Account";
   }
 
@@ -243,7 +246,7 @@ export function mountAppBar(root, opts) {
     try {
       if (opts.source === "landing") {
         const [apps, me] = await Promise.all([getJson(opts.appsUrl || "/apps.json"), getJson(opts.meUrl || "/me.json")]);
-        if (!state.user) state.user = { name: me.name, email: me.email };
+        if (!state.user) state.user = { name: me.name, email: me.email, groups: typeof me.groups === "string" ? me.groups.split("|").map((g) => g.trim()).filter(Boolean) : [] };
         state.tiles = resolveTiles(apps, parseGroups(me.groups), site);
       } else {
         const d = await getJson(opts.appsUrl || "/_shell/apps");
@@ -260,7 +263,7 @@ export function mountAppBar(root, opts) {
     const was = state.panel;
     state.panel = p;
     render();
-    if (focusBack && was) (was === "theme" ? themeBtn : appsBtn).focus();
+    if (focusBack && was) (was === "account" ? acct : appsBtn).focus();
   }
 
   const onKey = (e) => {
@@ -303,7 +306,7 @@ export function mountAppBar(root, opts) {
     update(more) {
       Object.assign(opts, more);
       if (more.tiles) state.tiles = more.tiles;
-      if (more.user) state.user = more.user;
+      if ("user" in more) state.user = more.user;
       renderTiles();
       render();
     },

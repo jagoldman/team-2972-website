@@ -37,8 +37,7 @@ export async function mountPortalShell() {
   // The bar names the team, the same words the demo uses on Home.
   mountAppBar(document.getElementById("shell-bar"), {
     appName: "Gears & Buccaneers", siteScheme: site.scheme, siteDomain: site.domain,
-    accountHref: `${site.scheme}://account.${site.domain}/`,
-    tiles, user: { name: me.name, email: me.email }, skipToId: "main",
+    tiles, user: { name: me.name, email: me.email, groups: Array.isArray(me.groups) ? me.groups : (me.groups || "").split("|").map((g) => g.trim()).filter(Boolean) }, skipToId: "main",
   });
   return { me, groups, tiles, site };
 }

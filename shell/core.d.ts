@@ -3,6 +3,11 @@
 export type SiteGroup = "admin" | "mentor" | "student" | "parent" | "alumni";
 export type Mode = "build" | "competition";
 export type ThemeChoice = "light" | "dark" | "system";
+export interface ShellUser {
+  name?: string | null;
+  email?: string | null;
+  groups?: readonly string[];
+}
 export interface Site {
   scheme: "http" | "https";
   domain: string;
@@ -65,6 +70,10 @@ export function tileAllowed(tile: AppsJsonTile, groups: readonly string[]): bool
 export function tileModes(tile: AppsJsonTile): Mode[];
 export function tileHref(tile: AppsJsonTile, site: Site): string | null;
 export function portalHref(site: Site): string;
+export function accountHref(site: Site): string;
+export function notificationSettingsHref(site: Site): string;
+export function signOutHref(site: Site): string;
+export function hasAccountMenu(user?: ShellUser | null, enabled?: boolean): boolean;
 export function resolveTiles(appsJson: unknown, groups: readonly string[], site: Site): ShellTile[];
 export function filterByMode(tiles: readonly ShellTile[], mode: string | null | undefined): ShellTile[];
 export function parseMode(v: string | null | undefined): Mode;

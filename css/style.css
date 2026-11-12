@@ -765,7 +765,6 @@ tr.win td:first-child { border-left-color: var(--gold); }
 .morelinks .status-dot { margin-left: auto; }
 #access { display: grid; gap: 10px; margin-top: 36px; }
 #access[hidden] { display: none; }
-.portal-main > p:has(#sign-out) { margin-top: 36px; }
 .portal-notice p, .portal-error, .app-empty { margin: 0 0 8px; color: var(--text-2); }
 .portal-error[hidden], .app-empty[hidden], .portal-notice[hidden] { display: none; }
 
