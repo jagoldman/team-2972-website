@@ -46,7 +46,7 @@ const MODE_APPS = JSON.stringify([
   { id: "pit", name: "Pit Checklist", description: "Competition only.", host: "pit", groups: [], modes: ["competition"] },
   { id: "parts", name: "Parts", description: "Build only.", host: "parts", groups: [], modes: ["build"] },
   { id: "skills", name: "Skills", description: "Marked more.", host: "skills", groups: [], more: true },
-  { id: "handbook", name: "Team Handbook", description: "Always under More.", path: "/resources.html", groups: [] },
+  { id: "handbook", name: "Team Handbook", description: "Always under More.", path: "/resources.html", groups: [], ext: true },
 ]);
 
 async function newContext(browser, { groups = "mentor", apps = APPS, width = 1280 } = {}) {
@@ -179,6 +179,8 @@ try {
     const { context } = await newContext(browser, { groups: "student", apps: MODE_APPS });
     let { page } = await openPortal(context);
     check("build mode (no cookie): main tiles and More", (await names(page, "#app-grid .app-card")).join() === "Task App,Parts" && (await names(page, "#more-list li")).join() === "Skills,Team Handbook");
+    const extTile = page.locator("#more-list a").filter({ hasText: "Team Handbook" });
+    check("a same-site path with ext: true renders under More with the link-out arrow and opens in a new tab", (await extTile.count()) === 1 && ((await extTile.locator("span.ext").textContent()) || "").includes("↗") && (await extTile.getAttribute("target")) === "_blank");
     check("build mode: the bar does not show the competition chip", !(await page.isVisible("#shell-bar .shbar-chip")));
     await context.addCookies([site("mode", "competition")]);
     await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));

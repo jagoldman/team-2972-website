@@ -63,6 +63,10 @@ export function accountHref(site) {
 export function notificationSettingsHref(site) {
   return `${accountHref(site)}#notifications`;
 }
+/** The bell opens the inbox. Notification settings stay on `#notifications`. */
+export function inboxHref(site) {
+  return `${accountHref(site)}#inbox`;
+}
 export function signOutHref(site) {
   return `${portalHref(site)}outpost.goauthentik.io/sign_out`;
 }
@@ -88,7 +92,7 @@ export function resolveTiles(appsJson, groups, site) {
       name: t.name,
       description: typeof t.description === "string" ? t.description : "",
       href,
-      external: typeof t.url === "string",
+      external: typeof t.url === "string" || t.ext === true,
       comingSoon: !!t.comingSoon,
       more: !!t.more || typeof t.url === "string" || t.id === "handbook",
       icon: typeof t.icon === "string" ? t.icon : t.id,

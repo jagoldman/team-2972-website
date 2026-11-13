@@ -26,6 +26,8 @@ export interface AppsJsonTile {
   groups?: string[];
   modes?: Mode[];
   more?: boolean;
+  /** Link-out mark for a same-site path. Not an address; tileHref ignores it. */
+  ext?: boolean;
   icon?: string;
 }
 
@@ -72,6 +74,8 @@ export function tileHref(tile: AppsJsonTile, site: Site): string | null;
 export function portalHref(site: Site): string;
 export function accountHref(site: Site): string;
 export function notificationSettingsHref(site: Site): string;
+/** Same-tab inbox door: `<scheme>://account.<domain>/#inbox`. */
+export function inboxHref(site: Site): string;
 export function signOutHref(site: Site): string;
 export function hasAccountMenu(user?: ShellUser | null, enabled?: boolean): boolean;
 export function resolveTiles(appsJson: unknown, groups: readonly string[], site: Site): ShellTile[];

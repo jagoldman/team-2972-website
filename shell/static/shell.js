@@ -16,6 +16,7 @@
 import {
   accountHref,
   hasAccountMenu,
+  inboxHref,
   signOutHref,
   MODE_COOKIE,
   THEME_CHOICES,
@@ -100,7 +101,8 @@ async function getJson(url) {
 /**
  * Renders the bar into `root` (replacing its content) and returns { update(opts), destroy() }.
  * opts: appName, appId, siteScheme, siteDomain, user {name,email,groups}, accountMenu (default true for identified non-display users), accountHref, source ("shell" | "landing"),
- * appsUrl, meUrl, tiles (already resolved; skips fetching), skipToId, onThemeChange.
+ * appsUrl, meUrl, tiles (already resolved; skips fetching), skipToId, onThemeChange, showBell, inboxUrl.
+ * showBell (default off) fetches the inbox and, when it is available, shows the same same-tab bell as the React bar.
  *
  * The bar is built once and then patched in place (never rebuilt), so focus and in-flight clicks survive
  * every state change.
@@ -117,6 +119,7 @@ export function mountAppBar(root, opts) {
     tiles: opts.tiles || null,
     failed: false,
     user: opts.user || null,
+    inbox: { available: false, unread: 0 },
   };
 
   // ---- build once ----
@@ -155,6 +158,9 @@ export function mountAppBar(root, opts) {
     return [c, b];
   });
   const chip = h("a", { class: "shbar-chip", href: account, target: "_blank", rel: "noopener noreferrer", title: "Competition mode is on. Change it in Apps or Account.", hidden: true }, h("span", { "aria-hidden": "true" }, h("span", { class: "shbar-chip-short", text: "Comp" }), h("span", { class: "shbar-chip-long", text: "Competition mode" })), sr("Competition mode is on. Change it in Apps or Account (opens in a new tab)."));
+  const bellSr = sr("Notifications");
+  const bellCount = h("span", { class: "shbar-count", "aria-hidden": "true", hidden: true });
+  const bell = h("a", { class: "shbar-icon", href: inboxHref(site), hidden: true }, icon("bell"), bellSr, bellCount);
   const appName = h("span", { class: "shbar-appname" });
   const acctInitials = h("span", { "aria-hidden": "true" });
   const acctLabel = h("span", { class: "shbar-sr" });
@@ -189,6 +195,7 @@ export function mountAppBar(root, opts) {
     appName,
     h("span", { class: "shbar-grow" }),
     chip,
+    bell,
     accountBox,
   );
   root.textContent = "";
@@ -230,6 +237,16 @@ export function mountAppBar(root, opts) {
     const accountUrl = opts.accountHref ?? accountHref(site);
     accountLink.setAttribute("href", accountUrl);
     notificationLink.setAttribute("href", `${accountUrl.split("#")[0]}#notifications`);
+    const unread = state.inbox.unread;
+    bell.setAttribute("href", opts.accountHref ? `${String(opts.accountHref).split("#")[0]}#inbox` : inboxHref(site));
+    bell.removeAttribute("target");
+    bell.removeAttribute("rel");
+    bellSr.textContent = `Notifications${unread ? `, ${unread} unread` : ""}`;
+    bellCount.textContent = unread > 99 ? "99+" : unread ? String(unread) : "";
+    if (unread) bellCount.removeAttribute("hidden");
+    else bellCount.setAttribute("hidden", "");
+    if (opts.showBell && state.inbox.available) bell.removeAttribute("hidden");
+    else bell.setAttribute("hidden", "");
     for (const [choice, button] of modeChoices) button.setAttribute("aria-pressed", String(state.mode === choice));
     for (const [c, b] of choices) b.setAttribute("aria-pressed", String(state.theme === c));
     chip.hidden = state.mode !== "competition";
@@ -299,17 +316,42 @@ export function mountAppBar(root, opts) {
   };
   window.addEventListener("storage", onStorage);
 
+  let inboxKey = "";
+  async function loadInbox() {
+    if (!opts.showBell) {
+      state.inbox = { available: false, unread: 0 };
+      inboxKey = "";
+      render();
+      return;
+    }
+    const url = opts.inboxUrl || "/_shell/inbox";
+    if (inboxKey === url) return;
+    inboxKey = url;
+    try {
+      const d = await getJson(url);
+      if (inboxKey !== url) return;
+      state.inbox = { available: !!d.available, unread: Number(d.unread) || 0 };
+    } catch {
+      if (inboxKey === url) state.inbox = { available: false, unread: 0 };
+    }
+    render();
+  }
+
   render();
   renderTiles();
   if (!state.tiles) load();
+  if (opts.showBell) loadInbox();
 
   return {
     update(more) {
+      const refetch = ("showBell" in more && !!more.showBell !== !!opts.showBell) || ("inboxUrl" in more && more.inboxUrl !== opts.inboxUrl);
       Object.assign(opts, more);
       if (more.tiles) state.tiles = more.tiles;
       if ("user" in more) state.user = more.user;
+      if (refetch) inboxKey = "";
       renderTiles();
       render();
+      if (refetch) loadInbox();
     },
     destroy() {
       document.removeEventListener("keydown", onKey);
