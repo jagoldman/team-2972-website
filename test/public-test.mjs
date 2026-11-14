@@ -272,6 +272,11 @@ try {
       return { ok, cards: [...document.querySelectorAll(".rbt > li")].map((li) => [li.querySelector("a").getAttribute("href"), li.querySelector("h3").textContent]),
         log: [...document.querySelectorAll("#record a.sl-col")].pop().getAttribute("href") };
     });
+    // The season log from the keyboard: Tab from the log's scroll box reaches a year, which shows the site's 2px gold focus outline
+    await page.focus("#record .sl-wrap");
+    await page.keyboard.press("Tab");
+    const ring = await page.evaluate(() => { const e = document.activeElement, s = getComputedStyle(e); return { year: e.matches("#record a.sl-col"), style: s.outlineStyle, width: s.outlineWidth, color: s.outlineColor, accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() }; });
+    check("Home: a season-log year focused from the keyboard has the 2px solid gold outline", ring.year && ring.style === "solid" && ring.width === "2px" && ring.color === "rgb(230, 184, 73)" && ring.accent === "#e6b849", ring);
     check("Home: the robots row follows edited robot data (a new 2031 season leads, a renamed robot shows its new name)", after.ok && after.cards.length === 4 && after.cards[0][0] === "robot.html?year=2031" && after.cards[0][1] === "Newbot" && after.cards[1][1] === "Renamed" && after.log === "robot.html?year=2031", after);
     await context.close();
   }
