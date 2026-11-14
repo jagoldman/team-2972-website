@@ -140,7 +140,7 @@ try {
     await page.focus("#shell-bar .shbar-appsbtn");
     await page.keyboard.press("Enter");
     check("Enter on the launcher opens the Apps menu", await page.isVisible("#shell-bar .shbar-apps") && (await page.getAttribute("#shell-bar .shbar-appsbtn", "aria-expanded")) === "true");
-    // Kit 0.2.3: core apps first, then a More button (closed each time the menu opens) that reveals the rest.
+    // Kit 0.3.0: core apps first, then a More button (closed on a first visit, then remembered as left) that reveals the rest.
     const moreBtn = "#shell-bar .shbar-morebtn", moreUl = "#shell-bar .shbar-more > ul.shbar-grid";
     const moreState = async () => ({ expanded: await page.getAttribute(moreBtn, "aria-expanded"), shown: await page.isVisible(moreUl) });
     check("Apps: one More row whose button controls the More list", (await page.$$("#shell-bar .shbar-more")).length === 1 && (await page.getAttribute(moreBtn, "aria-controls")) === (await page.$eval(moreUl, (u) => u.id)));
@@ -157,12 +157,13 @@ try {
     ms = await moreState();
     check("a click on More opens it", ms.expanded === "true" && ms.shown, ms);
     const taskTile = page.locator("#shell-bar .shbar-apps a.shbar-item").filter({ hasText: "Task App" });
-    check("Apps tiles show the name only; the description is the tile's title", (await taskTile.getAttribute("title")) === "Fake tile for tests." && (await page.$$eval("#shell-bar .shbar-apps .shbar-item small", (els) => els.map((e) => e.textContent.trim()))).join() === "Coming soon");
+    const taskDesc = await taskTile.getAttribute("aria-describedby");
+    check("Apps tiles show the name only; the description is the tile's data-tip and hidden text", (await taskTile.getAttribute("title")) === null && (await taskTile.getAttribute("data-tip")) === "Fake tile for tests." && !!taskDesc && (await page.$eval(`[id="${taskDesc}"]`, (e) => e.classList.contains("shbar-sr") && e.textContent.trim())) === "Fake tile for tests." && (await page.$$eval("#shell-bar .shbar-apps .shbar-item small", (els) => els.map((e) => e.textContent.trim()))).join() === "Coming soon");
     await page.keyboard.press("Escape");
     check("Escape closes the Apps menu and returns focus to the launcher", !(await page.isVisible("#shell-bar .shbar-apps")) && await page.$eval("#shell-bar .shbar-appsbtn", (b) => b === document.activeElement));
     await page.keyboard.press("Enter");
     ms = await moreState();
-    check("reopening the Apps menu shows More closed again", (await page.isVisible("#shell-bar .shbar-apps")) && ms.expanded === "false" && !ms.shown, ms);
+    check("reopening the Apps menu keeps More open as it was left", (await page.isVisible("#shell-bar .shbar-apps")) && ms.expanded === "true" && ms.shown, ms);
     await page.keyboard.press("Escape");
     await page.evaluate(() => scrollTo(0, 600));
     const barTop = await page.$eval("#shell-bar header, #shell-bar .shbar", (b) => Math.round(b.getBoundingClientRect().top)).catch(() => null);
