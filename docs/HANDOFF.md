@@ -23,8 +23,15 @@ Built from `new-apps/briefs/r815/LANDING.md`, its addendum 1 and CONTRACT C1, C2
   inbox route there the kit draws no bell.
 - **Shop screen (C9):** a person whose only group is `display` gets no bar and no footer, only "Pick what this screen
   shows" with Door QR (`calendar./here/kiosk`), Pit monitor (`compete./pit/monitor`) and Projector
-  (`tasks./projector`; the Projector's path was still being built when this was written: check it, it is one line in
-  `DISPLAY_SCREENS`).
+  (`tasks./projector`, C13). An extra Authentik group next to `display` still gets the picker; no install banner there.
+- **Fix round after the review (C13, C14):** Recent activity shows the app first; the next-task card is the demo's in
+  full (project › subteam, milestone, steps, Waiting on, on hold, Blocked; "I'm stuck" and "Request a part" only with
+  their links; Done gold only when the task is not held back; Open is the ghost button); empty states once
+  `/today.json` answered (staff: "Nothing is waiting on you.", a student: "Nothing assigned to you"); on an event day
+  (`/event.json` `happeningNow`) the compact card and Competition's shift rows (`compete:` ids) first; the shop
+  screen's notice from `?blocked=<app id>` (name from apps.json). GET and POST give up after 10 s (`WAIT_MS`): 403/404
+  offer "Open task", a 5xx puts Done back, no answer says "We couldn't tell if that worked." and asks again. Done's
+  messages are one lasting `role=status` line (`#home-done-status`). `sw.js` v6 names `/today.json` and `/today/`.
 - **Public header (C8):** every page but Home reads "2972 Team" on one line, in a more compact bar on a phone
   (`renderHeader`, `.brand-short`). Home is unchanged. Shown first in `public-redesign-demo/inner-v2.html`.
 - **Tests:** `node --test test/portal-mode-test.cjs test/portal-home-test.mjs`; `test/portal-shell-test.mjs` covers the
