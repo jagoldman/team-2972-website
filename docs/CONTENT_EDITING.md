@@ -252,5 +252,23 @@ row is the four newest `ROBOTS` by year (`image`, `imagePosition`, `year`, `game
 newest `SPONSOR_TIERS` entry with sponsors, every name in type (logos stay on the Sponsors page).
 
 Data changed (user, 2026-11-13): `SCHEDULE_2027[1].location` is "Ritchie Center, University of Denver, Denver, CO", and
-`HISTORY.today.paragraphs[0]` names the drill presses. A published content.json overrides both until it is republished
-with them.
+`HISTORY.today.paragraphs[0]` names the drill presses.
+
+**What this means on the live site (read this before deploying).** These two facts are only in `js/content.js`, the
+built-in default. When the site has a published `content.json` from the Website editor, its `SCHEDULE_2027` replaces the
+whole schedule and its `HISTORY.today` replaces the whole "today" block, so:
+
+- the live site keeps showing the old words ("Denver, CO" with no Ritchie Center, and no drill presses in the sentence
+  that names the machines) until someone republishes from the Website editor with both facts in it;
+- running the content sync (`scripts/content-sync/sync.cjs`) before that would write the old words back into
+  `js/content.js`, undoing this change in the repo.
+
+**What a person must do:** in the Website editor, change the Denver Regional's place to "Ritchie Center, University of
+Denver, Denver, CO" and add the drill presses to the workshop sentence ("…a miter saw, drill on drill presses, and
+prototype…"), then publish. Only after that publish is the content sync safe to run.
+
+The new keys above are not affected that way: a published `SITE` or `HISTORY` that lacks them keeps the built-in values
+(the loader merges those two objects key by key), and the content sync keeps them too. But **the workshop tile's heading
+and machine list (`HISTORY.workshop`) cannot be edited in a draft made before this change**, because that draft's copy
+of `HISTORY` does not have them. They become editable once the Website editor is updated to know `HISTORY.workshop` (and
+the three `SITE.home*` keys); that editor change is a separate step, not part of this landing change.
