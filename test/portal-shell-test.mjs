@@ -296,7 +296,12 @@ try {
     const toggle = await page.$eval(".nav-toggle", (b) => { const r = b.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), Math.round(r.right)]; });
     check(`320px ${theme}: the menu button is at least 44px and sits on screen`, toggle[0] >= 44 && toggle[1] >= 44 && toggle[2] <= 320, toggle);
     check(`320px ${theme}: the public home stays dark (Midnight & brass), whatever the saved theme`, (await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgb(16, 24, 39)");
-    check(`320px ${theme}: the team number shows, the team name is hidden below 360px`, (await page.isVisible(".brand-text strong")) && !(await page.isVisible(".brand-text > span")));
+    // Home shows the full team name on a phone (approved home page, D154), clear of the Menu button; other pages still hide it.
+    const name = await page.$eval(".brand-text > span", (e) => Math.round(e.getBoundingClientRect().right)).catch(() => null);
+    check(`320px ${theme}: public home shows the team number and the full team name, clear of the Menu button`, (await page.isVisible(".brand-text strong")) && (await page.isVisible(".brand-text > span")) && name !== null && name <= toggle[2] - toggle[0], { name, toggle });
+    await page.goto(PUBLIC + "/about.html");
+    await page.waitForSelector(".site-header");
+    check(`320px ${theme}: other public pages: the team number shows, the team name is hidden below 360px`, (await page.isVisible(".brand-text strong")) && !(await page.isVisible(".brand-text > span")));
     await context.close();
   }
 

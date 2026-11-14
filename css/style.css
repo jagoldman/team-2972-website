@@ -261,11 +261,11 @@ figcaption { font-size: 0.85rem; color: var(--mute); margin-top: 8px; }
 .ft-name { font-family: var(--display); font-weight: 700; font-size: 1.15rem; color: var(--text); }
 .ft-sm { font-size: 0.9rem; }
 .ft-l .ft-sm { margin: 0; }
-.ft-l .school-mark-wrap { width: 79px; margin-top: 8px; }
+.ft-l .school-mark-wrap { width: 79px; margin-top: 2px; display: flex; align-items: center; min-height: 44px; }
 .ft-contact p { margin: 0; }
 .ft-contact a:not(.addr-t) { display: inline-flex; align-items: center; min-height: 44px; overflow-wrap: anywhere; color: var(--text-2); }
 .ft-contact .addr { margin: 4px 0; }
-.ft-contact .addr-t { font-weight: 400; color: var(--text-2); }
+.ft-contact .addr-t { display: inline-flex; align-items: center; min-height: 44px; font-weight: 400; color: var(--text-2); }
 .ft-links { columns: 2; column-gap: 24px; }
 .ft-links li { height: 34px; break-inside: avoid; }
 .ft-links li a { display: inline-flex; align-items: center; min-height: 44px; margin-top: -5px; color: var(--text-2); text-decoration: none; }
@@ -302,7 +302,7 @@ a.school-mark-wrap:hover { color: var(--accent); }
 .hero figcaption a { display: inline-block; padding: 11px 0; margin: -11px 0; text-decoration: underline; }   /* a 44px tap target */
 .school-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 28px; }
 .school-line .label { margin: 0; }
-.school-line .school-mark-wrap { width: 90px; }
+.school-line .school-mark-wrap { width: 90px; display: flex; align-items: center; min-height: 44px; }   /* a 44px tap target */
 @media (max-width: 760px) { .hero-grid { grid-template-columns: 1fr; } .hero-grid .photo-col { order: -1; } }
 
 /* Next event. Border Beam, ported from Magic UI (registry/magicui/border-beam.tsx), colours swapped for tokens.
