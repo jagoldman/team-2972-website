@@ -527,6 +527,10 @@ try {
     check(`${width}px: Done (gold), I'm stuck, Request a part, Open (ghost), with their links`, JSON.stringify(c.acts) === JSON.stringify([["Done", "gold", null], ["I'm stuck", "plain", `${TASKS}/my?task=t-41&do=stuck`],
       ["Request a part", "plain", `${TASKS}/my?task=t-41&do=part`], ["Open", "ghost", `${TASKS}/my?task=t-41`]]), c.acts);
     check(`${width}px: the full card has no sideways scroll`, (await over(page)) <= 0);
+    if (width === 390) {
+      const w = await page.$eval("#home-next .heroacts", (b) => [...b.children].map((e) => Math.round(e.getBoundingClientRect().width / b.getBoundingClientRect().width * 100)));
+      check("390px: as the demo's phone card, gold Done and the ghost Open take the whole row, the other two share one", w[0] === 100 && w[3] === 100 && w[1] < 55 && w[2] < 55, w);
+    }
     await page.$eval("#home-next", (e) => e.scrollIntoView({ block: "center" }));
     await shot(page, `next-full-${width}`);
     await context.close();
@@ -553,6 +557,7 @@ try {
     const { context } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: { ...TODAY.mentor, waiting: [] } });
     const { page } = await openPortal(context);
     await page.waitForSelector("#home-waiting");
+    check("an activity row without an app has no empty first column", !(await page.$("#home-activity .actapp")));
     check("staff with nothing waiting: the card says \"Nothing is waiting on you.\" (C13)", (await page.textContent("#home-waiting p")) === "Nothing is waiting on you." && (await page.getAttribute("#home-waiting", "data-guide")) === "wait");
     await shot(page, "empty-waiting-1280");
     await context.close();

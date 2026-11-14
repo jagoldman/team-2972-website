@@ -929,9 +929,10 @@ tr.win td:first-child { border-left-color: var(--gold); }
 .heroacts .btn svg { flex: none; }
 .home-status { margin: 8px 0 0; color: var(--mute); font-size: 0.875rem; }
 .home-status:empty { display: none; }
-@media (max-width: 640px) {
+@media (max-width: 640px) {   /* the demo's phone card: the gold button and the ghost Open take the whole row */
   .heroacts { display: grid; grid-template-columns: 1fr 1fr; }
-  .heroacts .btn:only-child { grid-column: 1 / -1; }
+  .heroacts .btn:only-child, .heroacts .btn:not(.btn-outline):not(.btn-ghost), .heroacts .btn-ghost { grid-column: 1 / -1; }
+  .heroacts .btn { white-space: nowrap; }
 }
 .actlink { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; color: inherit; text-decoration: none; }
 .actlink:hover { color: inherit; text-decoration: none; }

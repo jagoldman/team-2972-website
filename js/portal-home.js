@@ -420,7 +420,7 @@ export function activityCard(items, now = Date.now()) {
   for (const a of items) {
     const li = el("li", "li actli");
     const link = el("a", "actlink");
-    link.append(el("span", "actapp", a.app));
+    if (a.app) link.append(el("span", "actapp", a.app));
     const body = el("span", "grow");
     body.append(el("b", "", a.title));
     if (a.detail) body.append(document.createTextNode(` ${a.detail}`));
