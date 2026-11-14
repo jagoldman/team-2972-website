@@ -10,6 +10,9 @@
 //    in WIDTHS (never enlarged; EXIF rotation applied, then all metadata dropped).
 // 3. Writes <out>/manifest.json: { "<id>": [400, 800, 1200, 1600], ... } for the photos that worked.
 //    Caddy pastes it into /config.js, and imgUrl() uses a local file only when the manifest lists it.
+// 4. Writes <out>/og-image.jpg: SITE.heroImage cut to 1200x630 (the link-preview size), framed by SITE.heroPosition as
+//    the page frames it. index.html names it in its og:image tag (Caddy renders that tag with the site's address).
+//    No hero photo, or one that failed: no og-image.jpg, and the page's tag falls back to the site's app icon.
 //
 // A photo that cannot be downloaded or read (not shared publicly, deleted, network down) is left out with a
 // warning, and the page loads it from lh3 as before. Only a bug in this script fails the build.
@@ -35,19 +38,53 @@ function driveId(value) {
   return DRIVE_ID.test(s) ? s : (s.match(DRIVE_URL) || [])[1] || "";
 }
 
-// Every Drive ID in the content sections of a content.js source, sorted, no repeats.
-function extractDriveIds(source) {
+// The content sections of a content.js source.
+function contentOf(source) {
   const ctx = { window: {} };
   vm.createContext(ctx);
   vm.runInContext(`${source}\n;globalThis.__sections = contentSections;`, ctx, { timeout: 2000 });
+  return ctx.__sections || {};
+}
+
+// Every Drive ID in the content sections of a content.js source, sorted, no repeats.
+function extractDriveIds(source) {
+  return driveIdsIn(contentOf(source));
+}
+function driveIdsIn(sections) {
   const ids = new Set();
   const walk = (v) => {
     if (typeof v === "string") { const id = driveId(v); if (id) ids.add(id); }
     else if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === "object") Object.values(v).forEach(walk);
   };
-  walk(ctx.__sections);
+  walk(sections);
   return [...ids].sort();
+}
+
+// The link-preview picture: 1200x630, the size Facebook, LinkedIn and others ask for.
+const OG = { width: 1200, height: 630, file: "og-image.jpg" };
+// A CSS object-position ("50% 100%", "center top", "right") as fractions { x, y } from 0 to 1; the middle when unset or
+// not understood. The same values safePosition() in js/components.js accepts.
+function focusOf(position) {
+  const words = { left: 0, top: 0, center: 0.5, right: 1, bottom: 1 };
+  const part = (p) => (/^\d{1,3}(\.\d+)?%$/.test(p) ? Math.min(100, parseFloat(p)) / 100 : p in words ? words[p] : null);
+  const parts = String(position || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (parts.length === 1 && (parts[0] === "top" || parts[0] === "bottom")) return { x: 0.5, y: words[parts[0]] };
+  if (parts.length > 2) return { x: 0.5, y: 0.5 };
+  const x = parts.length ? part(parts[0]) : 0.5, y = parts.length > 1 ? part(parts[1]) : 0.5;
+  return x == null || y == null ? { x: 0.5, y: 0.5 } : { x, y };
+}
+// Cuts the saved hero photo (the largest width) to OG size, keeping the part `position` points at, as JPEG with no metadata.
+async function writeOgImage(sharp, file, position, outDir) {
+  const out = path.join(outDir, OG.file);
+  const meta = await sharp(file).metadata();
+  const scale = Math.max(OG.width / meta.width, OG.height / meta.height);
+  const w = Math.max(OG.width, Math.round(meta.width * scale)), h = Math.max(OG.height, Math.round(meta.height * scale));
+  const { x, y } = focusOf(position);
+  await sharp(file).resize({ width: w, height: h, fit: "fill" })
+    .extract({ left: Math.round((w - OG.width) * x), top: Math.round((h - OG.height) * y), width: OG.width, height: OG.height })
+    .jpeg({ quality: 82, mozjpeg: true }).toFile(`${out}.tmp`);
+  fs.renameSync(`${out}.tmp`, out);
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -88,7 +125,8 @@ async function convert(sharp, id, buf, outDir) {
 async function run(contentFile, outDir, log = console) {
   const sharp = require("sharp");
   sharp.cache(false);
-  const ids = extractDriveIds(fs.readFileSync(contentFile, "utf8"));
+  const sections = contentOf(fs.readFileSync(contentFile, "utf8"));
+  const ids = driveIdsIn(sections);
   fs.mkdirSync(outDir, { recursive: true });
   const manifest = {};
   let next = 0, bytes = 0;
@@ -110,10 +148,25 @@ async function run(contentFile, outDir, log = console) {
   // Only [\w-] IDs and numbers, so the JSON holds no ' or \ and can sit inside a JS string in config.js.
   fs.writeFileSync(path.join(outDir, "manifest.json"), JSON.stringify(sorted));
   log.log(`drive photos: ${Object.keys(sorted).length} of ${ids.length} saved (${Math.round(bytes / 1024)} KB) in ${outDir}`);
+  // The link-preview picture, from the hero photo when it was saved.
+  const site = sections.SITE || {};
+  const hero = driveId(site.heroImage);
+  fs.rmSync(path.join(outDir, OG.file), { force: true });
+  if (hero && sorted[hero]) {
+    try {
+      await writeOgImage(sharp, path.join(outDir, `${hero}-${sorted[hero][sorted[hero].length - 1]}.webp`), site.heroPosition, outDir);
+      log.log(`link-preview picture: ${OG.file} from the hero photo`);
+    } catch (e) {
+      fs.rmSync(path.join(outDir, `${OG.file}.tmp`), { force: true });
+      log.warn(`warning: no link-preview picture, the page will name the app icon instead: ${e.message}`);
+    }
+  } else {
+    log.warn("warning: the hero photo is not a saved Drive photo, so there is no link-preview picture (the page names the app icon)");
+  }
   return sorted;
 }
 
-module.exports = { WIDTHS, driveId, extractDriveIds, run };
+module.exports = { WIDTHS, OG, driveId, extractDriveIds, focusOf, run };
 
 if (require.main === module) {
   const root = path.join(__dirname, "..", "..");

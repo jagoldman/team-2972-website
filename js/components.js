@@ -304,15 +304,34 @@ function parseEventDates(text) {
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
+// The team's time zone: "today" for the next-event count is the date in Colorado, wherever the visitor is.
+const TEAM_TIME_ZONE = "America/Denver";
+// A calendar date as a whole number of days (so two dates subtract to a count of days, with no clock or DST in it).
+const dayNumber = (y, m, d) => Math.round(Date.UTC(y, m, d) / 86400000);
+// The day number of `now` in the team's time zone. Falls back to the browser's own date if Intl cannot do it.
+function teamDay(now) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: TEAM_TIME_ZONE, year: "numeric", month: "numeric", day: "numeric" }).formatToParts(now);
+    const get = (t) => Number((parts.find((p) => p.type === t) || {}).value);
+    const y = get("year"), m = get("month"), d = get("day");
+    if (y && m && d) return dayNumber(y, m - 1, d);
+  } catch (e) { /* no time zone data: use the browser's date */ }
+  return dayNumber(now.getFullYear(), now.getMonth(), now.getDate());
+}
+const dateDay = (d) => dayNumber(d.getFullYear(), d.getMonth(), d.getDate());   // parseEventDates() dates are local calendar dates
+// More than this many days away, the count is one plain line ("In 131 days"); this many or fewer, the large number.
+const BIG_COUNT_DAYS = 60;
+
 // The "Next event" strip: the soonest event in SCHEDULE_2027 that has not ended, how long until it starts, and the
-// rest after it. Computed in the browser from the schedule on every call (Home calls it on load, when the tab is shown
-// again and every 30 minutes), so there is no server job and nothing to edit. After the last event: "Season complete".
+// rest after it. Computed in the browser from the schedule and today's date in the team's time zone on every call (Home
+// calls it on load, when the tab is shown again and every 30 minutes), so there is no server job and nothing to edit.
+// After the last event: "Season complete".
 // A date this page cannot read ("Date TBD") stays in the list under the next event. It is never dropped, and the
 // season is not called complete while one remains. The strip carries the list's data-ck so an editor can always add an event.
 function renderNextUp(now = new Date()) {
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const today = teamDay(now);
   const dated = SCHEDULE_2027.map((e, i) => ({ e, i, d: parseEventDates(e.dates) }));
-  const upcoming = dated.filter((x) => x.d && x.d.end >= now).sort((a, b) => a.d.start - b.d.start || a.i - b.i);
+  const upcoming = dated.filter((x) => x.d && dateDay(x.d.end) >= today).sort((a, b) => a.d.start - b.d.start || a.i - b.i);
   const unread = dated.filter((x) => !x.d);
   const open = `<section class="band rules alt tight" aria-label="Next event"${ck("SCHEDULE_2027")}><div class="wrap next">`;
   // Nothing left that we can place, and nothing we failed to read: the season is over.
@@ -322,11 +341,12 @@ function renderNextUp(now = new Date()) {
   const [n, ...rest] = upcoming.length ? [...upcoming, ...unread] : unread;
   let when = "";
   if (n.d) {
-    const days = Math.round((n.d.start - today) / 86400000);
-    if (days < 0) when = `<p class="countdown">Happening now</p>`;
-    else if (days === 0) when = `<p class="countdown">Starts today</p>`;
-    else if (days === 1) when = `<p class="countdown">Tomorrow</p>`;
-    else when = `<p class="countdown count-big"><span class="stat-n">${days}</span><span class="stat-l">days until the event starts</span></p>`;
+    const days = dateDay(n.d.start) - today;
+    if (days < 0) when = `<p class="next-in">Happening now</p>`;
+    else if (days === 0) when = `<p class="next-in">Starts today</p>`;
+    else if (days === 1) when = `<p class="next-in">Tomorrow</p>`;
+    else if (days <= BIG_COUNT_DAYS) when = `<p class="countdown count-big"><span class="stat-n">${days}</span><span class="stat-l">days until the event starts</span></p>`;
+    else when = `<p class="next-in">In ${days} days</p>`;
   }
   const where = (x) => `<span${ck(`SCHEDULE_2027[${x.i}].dates`)}>${esc(x.e.dates)}</span> · <span${ck(`SCHEDULE_2027[${x.i}].location`)}>${keepState(esc(x.e.location))}</span>`;
   return `${open}
@@ -359,13 +379,14 @@ function editorLogoTarget(s, P) {
   if (s.logo) return `<img class="logo"${imgAttrs(s.logo, 400)}${ck(`${P}.logo`)}${ckAlt(`${P}.name`)} alt="${alt}" title="${esc(s.name)}" loading="lazy" />`;
   return `<span class="logo"${ck(`${P}.logo`, "image")}${ckAlt(`${P}.name`)} role="img" aria-label="${alt}">Logo</span>`;
 }
-function sponsorNames(tier, ti) {
+// { typeOnly: true } sets every sponsor's name in type, real logo or not (Home's sponsor strip).
+function sponsorNames(tier, ti, { typeOnly = false } = {}) {
   const base = `SPONSOR_TIERS[${ti}]`;
   const items = tier.sponsors.map((s, j) => {
     const P = `${base}.sponsors[${j}]`;
     const name = `<span${ck(`${P}.name`)}>${esc(s.name)}</span>`;
     const href = isSet(s.url) ? safeUrl(s.url) : "";
-    if (!realLogo(s)) return `<li${ck(P)}>${href ? `<a class="name-link" href="${esc(href)}" target="_blank" rel="noopener"${ckHref(`${P}.url`)}>${name}</a>` : name}${editorLogoTarget(s, P)}</li>`;
+    if (typeOnly || !realLogo(s)) return `<li${ck(P)}>${href ? `<a class="name-link" href="${esc(href)}" target="_blank" rel="noopener"${ckHref(`${P}.url`)}>${name}</a>` : name}${editorLogoTarget(s, P)}</li>`;
     const logoName = `<span class="sp-name"${ck(`${P}.name`)}>${esc(s.name)}</span>`;   // shown only if the logo fails to load
     const img = `<img class="logo"${imgAttrs(s.logo, 400)}${ck(`${P}.logo`)}${ckAlt(`${P}.name`)} alt="${esc(altFor(s.logo, s.name + " logo"))}" title="${esc(s.name)}" loading="lazy" data-sponsor-logo />`;
     return `<li class="sponsor-tile"${ck(P)}>${href ? `<a href="${esc(href)}" target="_blank" rel="noopener"${ckHref(`${P}.url`)}>${img}${logoName}</a>` : img + logoName}</li>`;
@@ -453,12 +474,45 @@ function seasonStatRow() {
     `<li><b class="stat-n" data-ticker="${n}">${n}</b><span class="stat-l">${word}${n === 1 ? "" : "s"}</span></li>`).join("")}</ul>`;
 }
 
-// Home: "Competition record" with the three numbers and the log.
+// Home: "Competition record" with the hint (SITE.homeRecordHint), the three numbers and the log. The log starts scrolled to
+// the newest year when it is wider than the screen (a phone).
 function renderRecord(el) {
   if (!el) return;
-  el.innerHTML = `<section class="band"><div class="wrap"><h2 class="h2">Competition record</h2>${seasonStatRow()}<div class="sl-host"></div></div></section>`;
+  const hint = SITE.homeRecordHint ? `<p class="rec-hint"${ck("SITE.homeRecordHint")}>${esc(SITE.homeRecordHint)}</p>` : "";
+  el.innerHTML = `<section class="band" aria-labelledby="rec-h"><div class="wrap"><div class="rec-head"><h2 class="h2" id="rec-h">Competition record</h2>${hint}</div>${seasonStatRow()}<div class="sl-host"></div></div></section>`;
   seasonLog(el.querySelector(".sl-host"));
   initTickers(el);
+  scrollLogToNewest(el);
+}
+
+// Scrolls a season log to its right-hand end (the newest year). Does nothing when the whole log fits.
+function scrollLogToNewest(root = document) {
+  const w = root.querySelector(".sl-wrap");
+  if (w && w.scrollWidth > w.clientWidth) w.scrollLeft = w.scrollWidth;
+}
+
+// Home: "The robots", the four newest seasons from ROBOTS (newest year first) as cards that open the robot's page, and a
+// link to the Robots page. A season with no photo shows its year in the photo's place.
+const HOME_ROBOTS = 4;
+function robotsRow() {
+  const newest = ROBOTS.map((r, i) => ({ r, i })).filter(({ r }) => Number.isFinite(Number(r.year)))
+    .sort((a, b) => Number(b.r.year) - Number(a.r.year) || a.i - b.i).slice(0, HOME_ROBOTS);
+  if (!newest.length) return "";
+  const cards = newest.map(({ r, i }, k) => {
+    const P = `ROBOTS[${i}]`;
+    const photo = r.image
+      ? `<div class="photo"><img${imgAttrs(r.image, 800)}${imgPos(r)}${ck(`${P}.image`)} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}"${k > 1 ? ` loading="lazy"` : ""} width="800" height="600"></div>`
+      : `<div class="photo ph"${ck(`${P}.image`, "image")}><b data-ck-ignore>${esc(r.year)}</b></div>`;
+    return `<li${ck(P)}><a class="card" href="${robotUrl(r)}">${photo}<div class="card-b">
+      <p class="label"><span${ck(`${P}.year`)}>${esc(r.year)}</span> · <span${ck(`${P}.game`)}>${esc(r.game)}</span></p>
+      <h3 class="h3"${ck(`${P}.name`)}>${esc(robotName(r))}</h3>
+      ${r.tagline ? `<p${ck(`${P}.tagline`)}>${esc(r.tagline)}</p>` : ""}</div></a></li>`;
+  }).join("");
+  const heading = SITE.homeRobotsHeading || "The robots";
+  return `<section class="band alt" aria-labelledby="rob-h"><div class="wrap">
+    <h2 class="h2" id="rob-h"${ck("SITE.homeRobotsHeading")}>${esc(heading)}</h2>
+    <ul class="rbt">${cards}</ul>
+    <div class="rbt-more"><a class="btn btn-line" href="robots.html">See all robots</a></div></div></section>`;
 }
 
 // ---------- Short text from long text ----------
@@ -614,7 +668,35 @@ function copyAddress(button) {
   } catch (e) { select(); }
 }
 
+// Home's footer (the approved home page, 2026-11-14): the same facts and links in less space, with the page links in two
+// columns. Every other page keeps renderFooter's three columns until they are redesigned too.
+function isHomePage() {
+  return document.body.hasAttribute("data-home");
+}
+function renderCompactFooter() {
+  const page = (href, label) => `<li><a href="${href}">${label}</a></li>`;
+  const instagram = isSet(SITE.instagram) ? `<p><a href="${esc(safeUrl(SITE.instagram))}" target="_blank" rel="noopener"${ckHref("SITE.instagram")}><span>Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span> ↗</span></a></p>` : "";
+  return `
+  <footer class="site-footer ft-compact">
+    <div class="wrap ft">
+      <div class="ft-l"><div>
+        <p class="ft-name"${ck("SITE.teamName")}>${esc(SITE.teamName)}</p>
+        <p class="ft-sm">FRC Team <span${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span> · <span${ck("SITE.school")}>${esc(SITE.school)}</span></p>
+        <p class="ft-sm"><span${ck("SITE.location")}>${esc(SITE.location)}</span> · Since <span${ck("SITE.founded")}>${esc(SITE.founded)}</span></p>
+      </div>${schoolMark("ft-school")}</div>
+      <div class="ft-contact"><p class="label">Contact</p><p>${emailAddress()}</p>${instagram}</div>
+      <nav aria-label="Footer"><p class="label">Pages</p><ul class="ft-links">
+        ${page("robots.html", "Robots")}${page("about.html", "About")}${page("sponsors.html", "Sponsors")}${page("member.html", "Join")}${page("mentor.html", "Mentor")}
+        ${page("outreach.html", "Outreach")}${page("media.html", "Media")}${page("resources.html", "Resources")}${page("contact.html", "Contact")}
+        <li><a href="${PORTAL_URL}">${loginLabel()}</a></li><li><a href="${REQUEST_URL}">Request an account</a></li>
+      </ul></nav>
+    </div>
+    <div class="wrap ft-bottom"><p>© ${new Date().getFullYear()} <span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span>, FRC Team <span${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span></p><p><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p></div>
+  </footer>`;
+}
+
 function renderFooter() {
+  if (isHomePage()) return renderCompactFooter();
   const portal = isPortalPage();
   const page = (href, label) => `<li><a href="${pageHref(href)}">${label}</a></li>`;
   const instagram = isSet(SITE.instagram) ? `<a href="${esc(safeUrl(SITE.instagram))}" target="_blank" rel="noopener"${ckHref("SITE.instagram")}>Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span> ↗</a>` : "";

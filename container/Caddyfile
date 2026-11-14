@@ -13,6 +13,9 @@
 #   Everything else                                  -> the public static site (identity ignored)
 #   /content/content.json, /media/<id>-<w>.webp      -> published content (read-only mounts), any host
 #   /img/drive/<drive id>-<w>.webp                   -> Drive photos saved at image build time (public and direct hosts)
+#   /img/drive/og-image.jpg                          -> the link-preview picture made from the hero photo at build time
+#   / and /index.html (public and direct hosts)      -> the home page, rendered as a template so its og: tags carry
+#                                                       full addresses built from SITE_SCHEME and SITE_DOMAIN
 #
 # The secret check is a plain header match, not constant-time. CONVENTIONS §4 allows this for
 # landing: it is reachable only on the Docker network and guards only the viewer's own identity.
@@ -31,6 +34,17 @@
 (gate) {
 	@no_secret not header X-Proxy-Secret {$PROXY_SHARED_SECRET}
 	respond @no_secret "Unauthorized" 401
+}
+
+# The home page is rendered from env SITE_SCHEME / SITE_DOMAIN too: its link-preview (og:) tags need the site's full
+# address, and a link-preview crawler runs no script. no-cache, because what it says depends on the environment.
+(home_page) {
+	@home path / /index.html
+	handle @home {
+		header Cache-Control "no-cache"
+		templates
+		file_server
+	}
 }
 
 # config.js is rendered from env SITE_SCHEME / SITE_DOMAIN.
@@ -114,6 +128,18 @@
 	}
 	handle @drive_photo {
 		header Cache-Control "public, max-age=31536000, immutable"
+		header X-Content-Type-Options "nosniff"
+		file_server
+	}
+	# The link-preview picture keeps its name when the hero photo changes, so it is cached for a day, not a year.
+	@og_image {
+		path /img/drive/og-image.jpg
+		file {
+			try_files {http.request.uri.path}
+		}
+	}
+	handle @og_image {
+		header Cache-Control "public, max-age=86400"
 		header X-Content-Type-Options "nosniff"
 		file_server
 	}
@@ -204,6 +230,7 @@
 			import config_js
 			import published
 			import drive_photos
+			import home_page
 			file_server
 		}
 	}
@@ -237,6 +264,7 @@
 			import config_js
 			import published
 			import drive_photos
+			import home_page
 			file_server
 		}
 	}

@@ -1,5 +1,22 @@
 # landing: handoff
 
+## 2026-11-14: Home, second version (D154, release 8.1)
+
+Home (`index.html`) now matches the approved prototype `public-redesign-demo/home-v2.html`: the team name leads the hero
+eyebrow; "The robots" row (the four newest `ROBOTS`, `robotsRow()`); the record has a hint and its log opens at the newest
+year on a phone (`scrollLogToNewest()`); the next-event count is a plain line ("In 130 days") until 60 days or fewer,
+counted from the date in Colorado (`TEAM_TIME_ZONE`, `teamDay()`); "Our workshop" is chips only and links to About; the
+sponsor strip sits in the doors' band, names in type, one "All sponsors" link; a compact footer (`renderCompactFooter()`).
+The phone header's team name and the compact footer are Home only (`<body data-home>`), so other pages are unchanged.
+New content keys are listed in `docs/CONTENT_EDITING.md`.
+
+**Link previews:** Caddy renders `index.html` as a template on the public and direct hosts (`home_page` in
+`container/Caddyfile`, `Cache-Control: no-cache`), so its `og:` tags carry full addresses built from `SITE_SCHEME` and
+`SITE_DOMAIN`. Keep every `{{...}}` inside an attribute value (test/drive-photos-test.cjs checks), or a plain local server
+breaks the head. `og-image.jpg` is made at image build time by `scripts/drive-photos/fetch.cjs` from the built-in
+`SITE.heroImage` (a Drive photo), framed by `heroPosition`; without it the tag names `pwa-icons/site/icon-512.png`. A hero
+changed only in the editor reaches the preview picture after the content sync and the next image build.
+
 ## 2026-11-11: public site redesign built (Midnight & brass, dark only)
 
 Built from `docs/PUBLIC_REDESIGN_PROPOSAL.md` and its approved demo (`public-redesign-demo/`) on `simple-ui`, one commit per
