@@ -12,7 +12,7 @@
 // name leading the eyebrow and in the phone header, the robots row (and that it follows the data), the season log's links
 // and its starting scroll on a phone, both day-count states (the browser clock is set; there is no ?today= hook), the
 // workshop tile, the sponsor strip and the three-link limit, the doors and sponsors in one band, the compact footer.
-// The header (C8, release 8.1.5) at 320, 390 and 1280: Home keeps the number over the full name; every other page reads
+// The header (C8, release 8.1.5) at 320, 360, 390 and 1280: Home keeps the number over the full name; every other page reads
 // "2972 Team" on one line, in a more compact bar on a phone.
 // Optional: PUBLIC_TEST_SHOTS=<dir> writes a full-page screenshot of every load there;
 //           PUBLIC_TEST_PHOTO_MAP=<json file {"<Drive id>": "<image file>"}> answers those Drive photos from local files (screenshots only).
@@ -371,7 +371,7 @@ try {
   }
 
   // ---------- the header (C8, release 8.1.5): Home keeps the full name, every other page reads "2972 Team" ----------
-  for (const width of [320, 390, 1280]) {
+  for (const width of [320, 360, 390, 1280]) {
     const { context, problems } = await newContext(browser, { width });
     const page = await context.newPage();
     for (const [name, path] of PAGES) {
