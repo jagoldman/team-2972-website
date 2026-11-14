@@ -495,13 +495,24 @@ function renderRecord(el) {
   el.innerHTML = `<section class="band" aria-labelledby="rec-h"><div class="wrap"><div class="rec-head"><h2 class="h2" id="rec-h">Competition record</h2>${hint}</div>${seasonStatRow()}<div class="sl-host"></div></div></section>`;
   seasonLog(el.querySelector(".sl-host"));
   initTickers(el);
+  const wrap = el.querySelector(".sl-wrap");
+  if (wrap) {
+    // Once the visitor moves the log themselves, it is theirs: a later scrollLogToNewest(..., { unlessMoved: true }) leaves it.
+    const mine = (e) => { if (e.type !== "keydown" || /^(Arrow|Page|Home|End)/.test(e.key)) wrap.slMoved = true; };
+    ["pointerdown", "wheel", "touchstart", "keydown"].forEach((t) => wrap.addEventListener(t, mine, { passive: true }));
+  }
   scrollLogToNewest(el);
 }
 
 // Scrolls a season log to its right-hand end (the newest year). Does nothing when the whole log fits.
-function scrollLogToNewest(root = document) {
+// { unlessMoved: true } (the page's load event, when fonts and photos have changed the width) also leaves the log alone
+// if the visitor has moved it: they touched it, or it is no longer where this function last put it.
+function scrollLogToNewest(root = document, { unlessMoved = false } = {}) {
   const w = root.querySelector(".sl-wrap");
-  if (w && w.scrollWidth > w.clientWidth) w.scrollLeft = w.scrollWidth;
+  if (!w || w.scrollWidth <= w.clientWidth) return;
+  if (unlessMoved && (w.slMoved || (w.slAutoLeft !== undefined && Math.abs(w.scrollLeft - w.slAutoLeft) > 1))) return;
+  w.scrollLeft = w.scrollWidth;
+  w.slAutoLeft = w.scrollLeft;
 }
 
 // Home: "The robots", the four newest seasons from ROBOTS (newest year first) as cards that open the robot's page, and a

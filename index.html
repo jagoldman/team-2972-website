@@ -122,7 +122,8 @@ onContent(() => {
   if (homeWired) return;
   homeWired = true;
   // The season log opens at the newest year on a phone: again once the fonts and photos have loaded (they change its width).
-  addEventListener("load", () => scrollLogToNewest(document));
+  // Not if the visitor has already scrolled it.
+  addEventListener("load", () => scrollLogToNewest(document, { unlessMoved: true }));
   // The countdown is worked out in the browser: again when the tab is shown, and every 30 minutes.
   const refresh = () => { const el = document.getElementById("nextUp"); if (el) el.innerHTML = renderNextUp(); };
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });

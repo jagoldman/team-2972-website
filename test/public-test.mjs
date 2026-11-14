@@ -280,6 +280,44 @@ try {
     check("Home: the robots row follows edited robot data (a new 2031 season leads, a renamed robot shows its new name)", after.ok && after.cards.length === 4 && after.cards[0][0] === "robot.html?year=2031" && after.cards[0][1] === "Newbot" && after.cards[1][1] === "Renamed" && after.log === "robot.html?year=2031", after);
     await context.close();
   }
+  // The season log on a phone: it opens at the newest year, and the page's load event does not pull it back there once the
+  // visitor has scrolled it (by hand, or with a wheel); untouched, the load event still puts it at the newest year.
+  {
+    const { context } = await newContext(browser, { width: 390 });
+    const page = await context.newPage();
+    await page.goto(PUBLIC + "/");
+    await page.waitForFunction(() => document.documentElement.classList.contains("content-ready"));
+    const r = await page.evaluate(async () => {
+      const w = document.querySelector("#record .sl-wrap"), max = () => w.scrollWidth - w.clientWidth, frame = () => new Promise((res) => requestAnimationFrame(() => res()));
+      const out = { start: [w.scrollLeft, max()] };
+      w.scrollLeft = 0; await frame();                         // the visitor drags it back to the first years
+      dispatchEvent(new Event("load")); await frame();
+      out.afterDrag = w.scrollLeft;
+      w.slMoved = false; w.scrollLeft = 120; await frame();    // moved without a pointer (scrollbar, assistive tech): position counts
+      dispatchEvent(new Event("load")); await frame();
+      out.afterMove = w.scrollLeft;
+      w.scrollLeft = 30; w.slAutoLeft = 30; w.dispatchEvent(new WheelEvent("wheel", { deltaX: -40 })); await frame();   // where it was left, but touched
+      dispatchEvent(new Event("load")); await frame();
+      out.afterWheel = w.scrollLeft;
+      return out;
+    });
+    check("Home 390px: the season log opens at the newest year", r.start[1] > 0 && r.start[0] >= r.start[1] - 1, r);
+    check("Home 390px: once the visitor has scrolled the log, the page's load event leaves it where they put it", r.afterDrag === 0 && r.afterMove === 120 && r.afterWheel === 30, r);
+    const fresh = await newContext(browser, { width: 390 });
+    const p2 = await fresh.context.newPage();
+    await p2.goto(PUBLIC + "/");
+    await p2.waitForFunction(() => document.documentElement.classList.contains("content-ready"));
+    const untouched = await p2.evaluate(async () => {
+      const w = document.querySelector("#record .sl-wrap");
+      w.style.paddingRight = "300px"; w.slAutoLeft = w.scrollLeft;   // the log grows (as when the fonts arrive)
+      dispatchEvent(new Event("load")); await new Promise((res) => requestAnimationFrame(() => res()));
+      return [w.scrollLeft, w.scrollWidth - w.clientWidth];
+    });
+    check("Home 390px: untouched, the load event still moves the log to its new end", untouched[0] >= untouched[1] - 1 && untouched[1] > 0, untouched);
+    await fresh.context.close();
+    await context.close();
+  }
+
   // The robots row's photos: the browser takes the copy that fits the card (400px on a phone, 800px on a 2x desktop)
   for (const [width, scale, want] of [[390, 1, "400"], [1440, 1, "400"], [1440, 2, "800"]]) {
     const context = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: scale, colorScheme: "dark" });
