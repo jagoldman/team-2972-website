@@ -99,9 +99,24 @@ check("Caddy: drive photos are served on the public and direct hosts", (caddy.ma
 check("Caddy: the link-preview picture is served by its own name, only when it exists, cached for a day", /@og_image \{\s*path \/img\/drive\/og-image\.jpg\s*file \{[\s\S]*?try_files[\s\S]*?handle @og_image \{\s*header Cache-Control "public, max-age=86400"/.test(caddy));
 check("Caddy: the home page is rendered as a template on the public and direct hosts", /\(home_page\) \{\s*@home path \/ \/index\.html\s*handle @home \{[\s\S]*?templates/.test(caddy) && (caddy.match(/import home_page/g) || []).length === 2);
 {
-  const head = read("index.html").split("</head>")[0];
-  const outside = head.replace(/"[^"]*"/g, '""');   // template actions may only sit inside attribute values
-  check("index.html: every template action is inside an attribute value (the head stays well formed without Caddy)", head.includes("{{") && !outside.includes("{{"));
+  // Caddy runs the WHOLE of index.html through its template engine, so "{{" anywhere else (the body, a script, a comment)
+  // would break the page in the container while a plain local server shows it fine. Template actions belong only inside
+  // attribute values in the <head>.
+  const templateProblems = (html) => {
+    const i = html.indexOf("</head>");
+    if (i < 0) return ["no </head>"];
+    const problems = [];
+    if (html.slice(0, i).replace(/"[^"]*"/g, '""').includes("{{")) problems.push("a template action in the head outside an attribute value");
+    if (html.slice(i).includes("{{")) problems.push("{{ after the head (body or script)");
+    return problems;
+  };
+  const page = read("index.html");
+  const head = page.split("</head>")[0];
+  check("index.html: template actions only inside attribute values in the head, and no {{ anywhere after it", page.includes("{{") && templateProblems(page).length === 0, templateProblems(page).join(", "));
+  const sample = '<html><head><meta content="{{env "X"}}"></head><body>';
+  check("the template rule catches {{ in the body, in a script and loose in the head", templateProblems(sample + "<p>{{oops}}</p></body>").length > 0
+    && templateProblems(sample + "<script>const t = `${a}{{b}}`;</script></body>").length > 0 && templateProblems("<html><head>{{if x}}<meta>{{end}}</head><body></body>").length > 0
+    && templateProblems(sample + "<p>fine</p></body>").length === 0);
   check("index.html: og:image is a full address built from SITE_SCHEME and SITE_DOMAIN, og-image.jpg or the app icon", /<meta property="og:image" content="\{\{env "SITE_SCHEME" \| html\}\}:\/\/\{\{env "SITE_DOMAIN" \| html\}\}\{\{if fileExists "\/img\/drive\/og-image\.jpg"\}\}\/img\/drive\/og-image\.jpg\{\{else\}\}\/pwa-icons\/site\/icon-512\.png\{\{end\}\}" \/>/.test(head));
   check("index.html: no address is typed in", !/2972robotics\.com|localhost/.test(head));
 }
