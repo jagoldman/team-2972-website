@@ -658,6 +658,11 @@ function renderHeader() {
   // The protected portal mounts the static shell bar after /me.json and /apps.json load.
   if (isPortalPage()) return "";
   const active = currentPage();
+  // Home keeps the number over the full team name; every other page reads "2972 Team" on one line (C8, release 8.1.5),
+  // more compact on a phone (css: .brand-short).
+  const name = isHomePage()
+    ? `<span class="brand-text"><strong${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</strong><span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span></span>`
+    : `<span class="brand-text brand-short"><strong${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</strong> <b class="brand-team">Team</b></span>`;
   const links = NAV_LINKS.map((l) => `<a href="${l.href}" class="nav-link"${l.href === active ? ' aria-current="page"' : ""}>${l.label}</a>`).join("");
   return `
   <header class="site-header" id="hdr">
@@ -666,7 +671,7 @@ function renderHeader() {
       <span class="brand-sep" aria-hidden="true"></span>
       <a href="${pageHref("index.html")}" class="brand">
         <img${imgAttrs(SITE.logo, 200)}${ck("SITE.logo")} alt="${esc(altFor(SITE.logo, SITE.teamName + " logo"))}" class="brand-logo" width="36" height="36" />
-        <span class="brand-text"><strong${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</strong><span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span></span>
+        ${name}
       </a>
       <button type="button" class="nav-toggle" id="menuBtn" aria-expanded="false" aria-controls="site-nav">Menu</button>
       <nav class="site-nav" id="site-nav" aria-label="Main">

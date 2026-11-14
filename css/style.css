@@ -207,6 +207,17 @@ figcaption { font-size: 0.85rem; color: var(--mute); margin-top: 8px; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
 .brand-text strong { font-family: var(--display); font-weight: 800; font-size: 1.25rem; color: var(--accent); letter-spacing: -0.02em; }
 .brand-text > span { font-size: 0.78rem; color: var(--text-2); }
+/* Every page but Home (C8, release 8.1.5): "2972 Team" on one line, the number in brass. */
+.brand-text.brand-short { flex-direction: row; align-items: baseline; gap: 0.3em; white-space: nowrap; }
+.brand-short .brand-team { font-family: var(--display); font-weight: 700; font-size: 1.25rem; color: var(--text); letter-spacing: -0.02em; }
+@media (max-width: 640px) {   /* on a phone the inner header is more compact: a shorter bar and smaller marks */
+  body:not([data-home]) .site-header .hd { min-height: 56px; gap: 0 8px; }
+  body:not([data-home]) .school-badge-img { height: 28px; }
+  body:not([data-home]) .brand-sep { height: 22px; }
+  body:not([data-home]) .brand { gap: 8px; padding-block: 6px; }
+  body:not([data-home]) .brand-logo { width: 30px; height: 30px; }
+  .brand-short strong, .brand-short .brand-team { font-size: 1.1rem; }
+}
 .nav-toggle { display: none; margin-left: auto; min-height: 44px; min-width: 44px; padding: 0 18px; border-radius: 999px; background: transparent; border: 1px solid var(--line-2); color: var(--text); font: 600 0.95rem var(--font); cursor: pointer; }
 .nav-toggle:hover { background: var(--hover); }
 .site-nav { display: flex; align-items: center; gap: 2px; margin-left: auto; }

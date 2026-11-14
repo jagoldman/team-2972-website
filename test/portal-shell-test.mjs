@@ -301,7 +301,8 @@ try {
     check(`320px ${theme}: public home shows the team number and the full team name, clear of the Menu button`, (await page.isVisible(".brand-text strong")) && (await page.isVisible(".brand-text > span")) && name !== null && name <= toggle[2] - toggle[0], { name, toggle });
     await page.goto(PUBLIC + "/about.html");
     await page.waitForSelector(".site-header");
-    check(`320px ${theme}: other public pages: the team number shows, the team name is hidden below 360px`, (await page.isVisible(".brand-text strong")) && !(await page.isVisible(".brand-text > span")));
+    // Release 8.1.5 (C8): other pages read "2972 Team" on one line instead of the number alone.
+    check(`320px ${theme}: other public pages: the header reads "2972 Team" and not the full team name`, (await page.isVisible(".brand-text strong")) && (await page.isVisible(".brand-short .brand-team")) && !(await page.isVisible(".brand-text > span")) && ((await page.textContent(".brand-text")) || "").replace(/\s+/g, " ").trim() === "2972 Team");
     await context.close();
   }
 

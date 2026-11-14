@@ -12,6 +12,8 @@
 // name leading the eyebrow and in the phone header, the robots row (and that it follows the data), the season log's links
 // and its starting scroll on a phone, both day-count states (the browser clock is set; there is no ?today= hook), the
 // workshop tile, the sponsor strip and the three-link limit, the doors and sponsors in one band, the compact footer.
+// The header (C8, release 8.1.5) at 320, 390 and 1280: Home keeps the number over the full name; every other page reads
+// "2972 Team" on one line, in a more compact bar on a phone.
 // Optional: PUBLIC_TEST_SHOTS=<dir> writes a full-page screenshot of every load there;
 //           PUBLIC_TEST_PHOTO_MAP=<json file {"<Drive id>": "<image file>"}> answers those Drive photos from local files (screenshots only).
 // Needs Playwright with its Chromium from an existing install (nothing is added to landing):
@@ -365,6 +367,39 @@ try {
     await page.waitForFunction(() => document.documentElement.classList.contains("content-ready"));
     check("Sponsors page: the sentence that names the machines includes the drill presses", /miter saw, drill on drill presses, and prototype/.test(await page.textContent("body")));
     check("Sponsors page: keeps the three-column footer (Home's compact footer is Home's only)", (await page.$(".site-footer .footer-inner")) !== null && (await page.$(".ft-compact")) === null);
+    await context.close();
+  }
+
+  // ---------- the header (C8, release 8.1.5): Home keeps the full name, every other page reads "2972 Team" ----------
+  for (const width of [320, 390, 1280]) {
+    const { context, problems } = await newContext(browser, { width });
+    const page = await context.newPage();
+    for (const [name, path] of PAGES) {
+      await page.goto(PUBLIC + path);
+      await page.waitForSelector(".site-header .brand");
+      const h = await page.evaluate(() => {
+        const brand = document.querySelector(".site-header .brand"), text = brand.querySelector(".brand-text");
+        const num = text.querySelector("strong"), team = text.querySelector(".brand-team"), full = text.querySelector(":scope > span");
+        const toggle = document.querySelector(".nav-toggle"), tr = toggle.getBoundingClientRect();
+        const shown = (e) => !!e && e.getClientRects().length > 0 && getComputedStyle(e).display !== "none";
+        return {
+          words: text.textContent.replace(/\s+/g, " ").trim(), short: text.classList.contains("brand-short"),
+          oneLine: !!team && Math.abs(num.getBoundingClientRect().bottom - team.getBoundingClientRect().bottom) < 4,
+          fullShown: shown(full), barH: Math.round(document.querySelector(".site-header .hd").getBoundingClientRect().height),
+          clear: shown(toggle) ? brand.getBoundingClientRect().right <= tr.left : true,
+          over: document.documentElement.scrollWidth - innerWidth,
+        };
+      });
+      if (name === "index") {
+        check(`header ${width}px Home: the number over the full team name, unchanged`, !h.short && h.words === "2972Gears & Buccaneers" && h.fullShown, h);
+        if (width < 641) check(`header ${width}px Home: the bar keeps its height on a phone`, h.barH >= 64, h);
+      } else {
+        check(`header ${width}px ${name}: reads "2972 Team" on one line`, h.short && h.words === "2972 Team" && h.oneLine && !h.fullShown, h);
+        check(`header ${width}px ${name}: ${width < 641 ? "a compact bar on a phone" : "the full-height bar"}, clear of Menu, no sideways scroll`,
+          (width < 641 ? h.barH >= 56 && h.barH <= 58 : h.barH >= 64) && h.clear && h.over <= 0, h);
+      }
+    }
+    check(`header ${width}px: no console error or failed request`, problems.length === 0, problems);
     await context.close();
   }
 
