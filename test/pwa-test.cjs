@@ -236,7 +236,8 @@ const okNetwork = async () => basic("from the network");
   }
   const NEVER = ["/me.json", "/apps.json", "/outpost.goauthentik.io/sign_out", "/outpost.goauthentik.io/start", "/content/content.json", "/media/00000000000000000001-400.webp",
     "/config.js", "/sw.js", "/manifest.webmanifest", "/healthz", "/portal/index.html", "/portal/manifest.webmanifest", "/random.json",
-    "/css/../me.json", "/js/../apps.json", "/css/app.json", "/js/x.json", "/css/x.html", "/fonts/..%2fme.json", "/ME.JSON", "/me.json?x=1", "/apps.json?v=2"];
+    "/css/../me.json", "/js/../apps.json", "/css/app.json", "/js/x.json", "/css/x.html", "/fonts/..%2fme.json", "/ME.JSON", "/me.json?x=1", "/apps.json?v=2",
+    "/today.json", "/today.json?x=1", "/today/task-done", "/_shell/inbox", "/event.json"];
   for (const p of NEVER) {
     const x = makeWorker({ fetchImpl: okNetwork });
     const r = await x.request(origin + p);

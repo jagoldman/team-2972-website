@@ -10,7 +10,8 @@
 //
 // Change VERSION when this file's rules or the precached list change. Old caches are deleted on activate.
 
-const VERSION = "v5";   // v5: the public site is Midnight & brass, dark only (new stylesheet and scripts; public pages no longer carry the theme script)
+const VERSION = "v6";   // v6: /today.json and /today/ (the portal home's cards, release 8.1.5) are named in NEVER_STORE
+                       // v5: the public site is Midnight & brass, dark only (new stylesheet and scripts; public pages no longer carry the theme script)
                        // v4: offline.html's theme script only reads the choice (never writes the shared cookie)
                        // v3: offline.html has the shell kit's theme script (one site-wide cookie, also on editor.)
                        // v2: styles and scripts come from the network first (an old copy no longer outlives a deploy)
@@ -33,6 +34,7 @@ const CODE_TYPES = /\.(?:css|js)$/i;        // network first; see the fetch hand
 // Never stored, even if a path above would match.
 const NEVER_STORE = [
   /^\/me\.json$/, /^\/apps\.json$/,            // who is signed in, and what they may open
+  /^\/today\.json$/, /^\/today\//,             // the portal home's cards and its Done (one person's own)
   /^\/outpost\.goauthentik\.io\//,             // sign-in and sign-out
   /^\/content\//, /^\/media\//,                // published content
   /^\/config\.js$/, /^\/sw\.js$/, /^\/manifest\.webmanifest$/, /^\/healthz$/,
