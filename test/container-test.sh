@@ -108,6 +108,45 @@ case "$cfg" in
   *) echo "FAIL config.js not rendered: $cfg"; fail=1 ;;
 esac
 
+echo "-- link previews: the home page's og: tags are in the served HTML, with full addresses from SITE_SCHEME and SITE_DOMAIN"
+for h in $D www.$D; do
+  for p in / /index.html; do
+    page=$(curl -s -H "Host: $h" "$URL$p")
+    case "$page" in *"{{"*) echo "FAIL $h $p still has template actions"; fail=1 ;; *) echo "ok   $h $p is rendered (no template actions left)" ;; esac
+    og=$(printf '%s' "$page" | sed -n 's/.*<meta property="og:image" content="\([^"]*\)".*/\1/p')
+    case "$og" in
+      "http://$D/img/drive/og-image.jpg"|"http://$D/pwa-icons/site/icon-512.png") echo "ok   $h $p og:image is a full address: $og" ;;
+      *) echo "FAIL $h $p og:image is '$og'"; fail=1 ;;
+    esac
+    for t in 'property="og:title" content="Team 2972 Gears &amp; Buccaneers | Dawson School FRC"' 'property="og:type" content="website"' \
+             "property=\"og:url\" content=\"http://$D/\"" 'property="og:description"' 'property="og:image:alt"' 'name="twitter:card"'; do
+      printf '%s' "$page" | grep -qF "$t" && echo "ok   $h $p has $t" || { echo "FAIL $h $p has no $t"; fail=1; }
+    done
+  done
+done
+hp=$(curl -s -D - -o /dev/null -H "Host: $D" "$URL/" | tr -d '\r')
+echo "$hp" | grep -qi '^cache-control: no-cache' && echo "ok   the home page revalidates (Cache-Control: no-cache)" || { echo "FAIL home page cache header: $(echo "$hp" | grep -i '^cache-control')"; fail=1; }
+echo "$hp" | grep -qi '^content-type: text/html' && echo "ok   the home page is text/html" || { echo "FAIL home page content type"; fail=1; }
+og=$(curl -s -H "Host: $D" "$URL/" | sed -n 's/.*<meta property="og:image" content="http:\/\/[^/]*\([^"]*\)".*/\1/p')
+check 200 "the og:image the page names is served ($og)" -H "Host: $D" "$URL$og"
+if [ "$og" = /img/drive/og-image.jpg ]; then
+  oh=$(curl -s -D - -o /dev/null -H "Host: $D" "$URL/img/drive/og-image.jpg" | tr -d '\r')
+  echo "$oh" | grep -qi '^content-type: image/jpeg' && echo "$oh" | grep -qi '^cache-control: public, max-age=86400' && echo "ok   og-image.jpg is a JPEG, cached for a day" || { echo "FAIL og-image.jpg headers"; fail=1; }
+  curl -s -H "Host: $D" "$URL/" | grep -qF 'property="og:image:width" content="1200"' && echo "ok   og:image size 1200x630 is stated" || { echo "FAIL og:image width"; fail=1; }
+else
+  echo "note no og-image.jpg in this build (the hero photo did not download), so the page names the app icon"
+fi
+# Another address in, the same address out: nothing is typed into the page.
+NAME3=landing-test-domain-$$
+docker run -d --rm --name "$NAME3" -p "127.0.0.1:$((HOST_PORT+2)):3001" \
+  -e PORT=3001 -e SITE_DOMAIN=example.org -e SITE_SCHEME=https -e PROXY_SHARED_SECRET=$SECRET "$IMAGE" >/dev/null
+trap 'docker stop "$NAME" "$NAME3" >/dev/null 2>&1 || true' EXIT
+URL3="http://127.0.0.1:$((HOST_PORT+2))"
+i=0; until curl -fs "$URL3/healthz" >/dev/null 2>&1; do i=$((i+1)); [ $i -lt 50 ] || { docker logs "$NAME3"; break; }; sleep 0.2; done
+og3=$(curl -s -H "Host: example.org" "$URL3/" | sed -n 's/.*<meta property="og:image" content="\([^"]*\)".*/\1/p')
+case "$og3" in https://example.org/*) echo "ok   SITE_DOMAIN=example.org, SITE_SCHEME=https: og:image is $og3" ;; *) echo "FAIL with another domain og:image is '$og3'"; fail=1 ;; esac
+docker stop "$NAME3" >/dev/null 2>&1 || true
+
 echo "-- installable app: manifest, service worker, offline page, icons"
 hdr_of() { curl -s -D - -o /dev/null "$@" | tr -d '\r'; }
 body_of() { curl -s "$@"; }
@@ -232,9 +271,9 @@ echo "-- nothing private in the image"
 for f in /srv/site/README.md /srv/site/CLAUDE.md /srv/site/.git /srv/site/test /srv/site/docs /srv/site/container /srv/site/.env.example /srv/site/.claude; do
   if docker exec "$NAME" test -e "$f"; then echo "FAIL image contains $f"; fail=1; fi
 done
-if docker exec "$NAME" sh -c 'find /srv/site \( -path /srv/site/pwa-icons -o -path /srv/site/brand \) -prune -o \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print | grep -q .'; then
+if docker exec "$NAME" sh -c 'find /srv/site \( -path /srv/site/pwa-icons -o -path /srv/site/brand -o -path /srv/site/img/drive/og-image.jpg \) -prune -o \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print | grep -q .'; then
   echo "FAIL image contains photos"; fail=1
-else echo "ok   no photos or repo files in the image (the app icons in pwa-icons/ and the logo in brand/ are meant to be there)"; fi
+else echo "ok   no photos or repo files in the image (the app icons in pwa-icons/, the logo in brand/ and the link-preview picture made at build time, img/drive/og-image.jpg, are meant to be there)"; fi
 
 # Every local image the pages and content.js name is in the image and served (test/assets-test.cjs lists them).
 missing=0

@@ -23,7 +23,7 @@ function load(contentSource) {
   ctx.document = { documentElement: {}, body: { hasAttribute: () => false }, querySelectorAll: () => [], querySelector: () => null, getElementById: () => ({}), addEventListener() {}, cookie: "" };
   vm.createContext(ctx);
   vm.runInContext(contentSource || read("js/content.js"), ctx, { filename: "content.js" });
-  vm.runInContext(read("js/components.js") + "\n;globalThis.T = { resultType, seasonStats, seasonLog, seasonSummary, seasonStatRow, parseResult, resultRow, resultsTable, parseEventDates, renderNextUp, sponsorNames };", ctx, { filename: "components.js" });
+  vm.runInContext(read("js/components.js") + "\n;globalThis.T = { resultType, seasonStats, seasonLog, seasonSummary, seasonStatRow, parseResult, resultRow, resultsTable, parseEventDates, renderNextUp, sponsorNames, robotsRow, teamDay };", ctx, { filename: "components.js" });
   return ctx;
 }
 const ctx = load();
@@ -124,6 +124,28 @@ const sliceBetween = (html, from, to) => html.slice(html.indexOf(from), to ? htm
   check("the real schedule's next event is the earlier regional, then Denver", /class="next-name"[^>]*>Intermountain West Regional</.test(html) && sliceBetween(html, "Then").includes("Denver Regional") && !/Season complete/.test(html));
   check("parseEventDates reads a same-month range and returns null for a non-date", T.parseEventDates("March 24-27, 2027").start.getMonth() === 2 && T.parseEventDates("Date TBD") === null && T.parseEventDates("") === null);
 }
+// ---------- next event: the day count (plain line over 60 days, the large number at 60 or fewer), in the team's time zone ----------
+{
+  const real = T.renderNextUp(NOW);
+  check("the Denver Regional's place is the Ritchie Center (user, 2026-11-13)", real.includes("Ritchie Center, University of Denver, Denver,&nbsp;CO"));
+  const at = (y, m, d) => T.renderNextUp(new Date(y, m, d, 12));
+  const big = (html) => (/class="countdown count-big"><span class="stat-n">(\d+)<\/span><span class="stat-l">days until the event starts</.exec(html) || [])[1];
+  const line = (html) => (/<p class="next-in">([^<]*)<\/p>/.exec(html) || [])[1];
+  const far = at(2026, 10, 14);
+  check("130 days away (Nov 14): one plain line, 'In 130 days', no large number", line(far) === "In 130 days" && big(far) === undefined, line(far));
+  check("61 days away (Jan 22): still the plain line", line(at(2027, 0, 22)) === "In 61 days" && big(at(2027, 0, 22)) === undefined);
+  check("60 days away (Jan 23): the large number", big(at(2027, 0, 23)) === "60" && line(at(2027, 0, 23)) === undefined);
+  check("23 days away (Mar 1): the large number", big(at(2027, 2, 1)) === "23");
+  check("the day before, the first day and during the event: Tomorrow, Starts today, Happening now (plain lines)",
+    line(at(2027, 2, 23)) === "Tomorrow" && line(at(2027, 2, 24)) === "Starts today" && line(at(2027, 2, 26)) === "Happening now");
+  check("after the first event ends, the next one is Denver", /class="next-name"[^>]*>Denver Regional</.test(at(2027, 2, 28)));
+  // 11 pm on March 22 in Colorado is already March 23 in UTC (and in most of the world): the count follows Colorado.
+  const evening = new Date(Date.UTC(2027, 2, 23, 5, 0));
+  check("today is the date in Colorado: 11 pm on Mar 22 Mountain time is still 2 days out, not Tomorrow", big(T.renderNextUp(evening)) === "2", line(T.renderNextUp(evening)) || big(T.renderNextUp(evening)));
+  check("teamDay: the Colorado date, whatever the instant's UTC date", T.teamDay(evening) === Math.round(Date.UTC(2027, 2, 22) / 86400000));
+  const lastDay = new Date(Date.UTC(2027, 2, 28, 5, 30));   // 11:30 pm Mar 27 in Colorado, the event's last day
+  check("on the event's last evening in Colorado it is still happening (not moved on to Denver)", line(T.renderNextUp(lastDay)) === "Happening now" && /Intermountain West Regional</.test(T.renderNextUp(lastDay)));
+}
 {
   const html = schedule([
     { event: "Later", dates: "April 7-10, 2027", location: "Denver, CO" },
@@ -155,6 +177,27 @@ const sliceBetween = (html, from, to) => html.slice(html.indexOf(from), to ? htm
   check("only unreadable dates are listed in order, with no countdown", /class="next-name"[^>]*>First mystery</.test(html) && sliceBetween(html, "Then").includes("Second mystery") && !/Season complete/.test(html) && !/days until/.test(html));
 }
 
+// ---------- Home: the robots row (the four newest seasons, from ROBOTS) ----------
+{
+  const row = T.robotsRow();
+  const years = [...row.matchAll(/<a class="card" href="robot\.html\?year=(\d{4})"/g)].map((m) => m[1]);
+  const want = ROBOTS.map((r) => r.year).sort((a, b) => b - a).slice(0, 4);
+  check("robots row: the four newest seasons in ROBOTS, newest first, each a link to its robot page", years.join() === want.join(), years.join());
+  check("robots row: names, year · game and taglines come from the data", ROBOTS.filter((r) => want.includes(r.year)).every((r) => row.includes(`>${r.name}</h3>`) && row.includes(`>${r.game}</span>`) && (!r.tagline || row.includes(`>${r.tagline}</p>`))));
+  check("robots row: every photo has alt text", (row.match(/<img /g) || []).length === 4 && (row.match(/<img [^>]*alt="[^"]+"/g) || []).length === 4);
+  check("robots row: a See all robots link to the Robots page, and the heading from SITE.homeRobotsHeading", /<a class="btn btn-line" href="robots\.html">See all robots<\/a>/.test(row) && /data-ck="SITE.homeRobotsHeading">The robots</.test(row));
+  check("robots row: each card is keyed to its season for the editor", want.every((y) => row.includes(`data-ck="ROBOTS[${ROBOTS.findIndex((r) => r.year === y)}]"`)));
+  const c = load(`const SITE = { teamNumber: "1", teamName: "T", school: "S", location: "L", founded: "2000", email: "a@example.com", instagram: "#", instagramHandle: "", schoolUrl: "#", logo: "", homeRobotsHeading: "Our machines" };
+    const ROBOTS = [{ year: "2019", game: "G19", name: "Old" }, { year: "2031", game: "<i>G31</i>", name: "<b>New</b>", image: "1AbCdEfGhIjKlMnOpQrStUvWxYz012345" },
+      { year: "2030", game: "G30", name: "" }, { year: "2028", game: "G28", name: "Mid" }, { year: "2010", game: "G10", name: "Older" }, { year: "x", game: "bad" }];`);
+  const r2 = c.T.robotsRow();
+  const y2 = [...r2.matchAll(/href="robot\.html\?year=(\d{4})"/g)].map((m) => m[1]);
+  check("robots row follows the data: sorted by year whatever the order, an unreadable year left out", y2.join() === "2031,2030,2028,2019", y2.join());
+  check("robots row: a robot with no name shows '<year> Robot', one with no photo shows its year in the photo's place", r2.includes(">2030 Robot</h3>") && /class="photo ph"[^>]*><b data-ck-ignore>2030<\/b>/.test(r2));
+  check("robots row: names and games are escaped, and the heading follows SITE.homeRobotsHeading", !/<b>New|<i>G31/.test(r2) && r2.includes("&lt;b&gt;New") && r2.includes(">Our machines</h2>"));
+  check("robots row: no seasons, no row", load("const SITE = {}; const ROBOTS = [];").T.robotsRow() === "");
+}
+
 // ---------- sponsor names: public names, editor logo targets ----------
 {
   const c = load(`const SITE = { teamNumber: "1", teamName: "T", school: "S", location: "L", founded: "2000", email: "a@example.com", instagram: "#", instagramHandle: "", schoolUrl: "#", logo: "" };
@@ -169,6 +212,8 @@ const sliceBetween = (html, from, to) => html.slice(html.indexOf(from), to ? htm
   check("public: a placeholder or empty logo is a name, with no logo image", lis.length === 3 && !lis[0].includes("placeholder-sponsor") && !lis[0].includes('class="logo"') && !lis[0].includes(".logo\"") && !lis[1].includes('class="logo"') && lis[0].includes("Placeholder Co") && lis[1].includes("Empty Logo"));
   check("public: a placeholder with a url keeps the link hook on the name", lis[0].includes('data-ck-href="SPONSOR_TIERS[0].sponsors[0].url"') && lis[0].includes("https://example.com/p"));
   check("public: a real logo is an image hook with class logo", lis[2].includes('class="logo"') && lis[2].includes('data-ck="SPONSOR_TIERS[0].sponsors[2].logo"') && lis[2].includes('data-ck-alt="SPONSOR_TIERS[0].sponsors[2].name"') && lis[2].includes("/media/0123456789abcdef0123-400.webp"));
+  const typed = c.T.sponsorNames(tier, 0, { typeOnly: true });
+  check("typeOnly (Home's strip): every sponsor is a name in type, a real logo too", !typed.includes("<img") && !typed.includes("sponsor-tile") && ["Placeholder Co", "Empty Logo", "Real Co"].every((n) => typed.includes(`>${n}</span>`)));
   const emptyPub = c.T.sponsorNames({ sponsors: [] }, 1);
   check("public: an empty sponsor list keeps its list hook and no editor note", emptyPub.includes('data-ck="SPONSOR_TIERS[1].sponsors"') && !/No sponsors in this tier yet/.test(emptyPub));
   c.__editorOverlay = true;

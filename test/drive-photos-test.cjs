@@ -85,11 +85,26 @@ const probes = [B, ` ${B} `, "short", "a".repeat(19), "a".repeat(20), "abc-def_g
 const disagree = probes.filter((p) => plain.imgUrl(p, 400).startsWith("https://lh3.googleusercontent.com/d/") !== Boolean(fetchPhotos.driveId(p)));
 check("the Drive ID rule is the same in imgUrl() and fetch.cjs", disagree.length === 0, disagree.join(" | "));
 
+// The link-preview picture is framed like the page frames the hero (SITE.heroPosition).
+const F = fetchPhotos.focusOf;
+check("focusOf: the hero's '50% 100%' keeps the bottom middle", JSON.stringify(F("50% 100%")) === '{"x":0.5,"y":1}');
+check("focusOf: keywords, one value, empty and nonsense", JSON.stringify([F("center top"), F("right"), F("bottom"), F(""), F("url(x)"), F("1% 2% 3%")]) ===
+  JSON.stringify([{ x: 0.5, y: 0 }, { x: 1, y: 0.5 }, { x: 0.5, y: 1 }, { x: 0.5, y: 0.5 }, { x: 0.5, y: 0.5 }, { x: 0.5, y: 0.5 }]));
+
 // ---------- 4. Caddy, Dockerfile, service worker ----------
 const caddy = read("container/Caddyfile");
 check("Caddy: /img/drive photos get a one-year immutable cache header", /\(drive_photos\)[\s\S]*?Cache-Control "public, max-age=31536000, immutable"/.test(caddy));
 check("Caddy: only existing files get that header", /@drive_photo \{[\s\S]*?file \{[\s\S]*?try_files/.test(caddy));
 check("Caddy: drive photos are served on the public and direct hosts", (caddy.match(/import drive_photos/g) || []).length === 2);
+check("Caddy: the link-preview picture is served by its own name, only when it exists, cached for a day", /@og_image \{\s*path \/img\/drive\/og-image\.jpg\s*file \{[\s\S]*?try_files[\s\S]*?handle @og_image \{\s*header Cache-Control "public, max-age=86400"/.test(caddy));
+check("Caddy: the home page is rendered as a template on the public and direct hosts", /\(home_page\) \{\s*@home path \/ \/index\.html\s*handle @home \{[\s\S]*?templates/.test(caddy) && (caddy.match(/import home_page/g) || []).length === 2);
+{
+  const head = read("index.html").split("</head>")[0];
+  const outside = head.replace(/"[^"]*"/g, '""');   // template actions may only sit inside attribute values
+  check("index.html: every template action is inside an attribute value (the head stays well formed without Caddy)", head.includes("{{") && !outside.includes("{{"));
+  check("index.html: og:image is a full address built from SITE_SCHEME and SITE_DOMAIN, og-image.jpg or the app icon", /<meta property="og:image" content="\{\{env "SITE_SCHEME" \| html\}\}:\/\/\{\{env "SITE_DOMAIN" \| html\}\}\{\{if fileExists "\/img\/drive\/og-image\.jpg"\}\}\/img\/drive\/og-image\.jpg\{\{else\}\}\/pwa-icons\/site\/icon-512\.png\{\{end\}\}" \/>/.test(head));
+  check("index.html: no address is typed in", !/2972robotics\.com|localhost/.test(head));
+}
 check("config.js: the manifest is filled in from img/drive/manifest.json", /drivePhotos: '\{\{readFile "img\/drive\/manifest\.json"\}\}'/.test(read("config.js")));
 const docker = read("Dockerfile");
 const froms = docker.match(/^FROM .*/gm) || [];
@@ -141,7 +156,14 @@ const contentSections = { SITE, ROBOTS };`);
     check("build: the manifest lists only the photos that worked", JSON.stringify(onDisk) === JSON.stringify({ [GOOD]: fresh.WIDTHS, [WIDE]: fresh.WIDTHS }) && JSON.stringify(result) === JSON.stringify(onDisk), JSON.stringify(onDisk));
     check("build: one warning per failed photo", warnings.length === 3 && [NOTSHARED, HTML, BROKEN].every((id) => warnings.some((w) => w.includes(id))), warnings.join(" | "));
     check("build: a 404 is not retried", hits[NOTSHARED] === 1, `${hits[NOTSHARED]} requests`);
-    check("build: nothing is left behind for failed photos", fs.readdirSync(out).every((f) => f === "manifest.json" || f.startsWith(GOOD) || f.startsWith(WIDE)), fs.readdirSync(out).join(" "));
+    check("build: nothing is left behind for failed photos (only the manifest, the saved photos and the link-preview picture)", fs.readdirSync(out).every((f) => f === "manifest.json" || f === fresh.OG.file || f.startsWith(GOOD) || f.startsWith(WIDE)), fs.readdirSync(out).join(" "));
+    const og = await sharp(path.join(out, fresh.OG.file)).metadata();
+    check("build: og-image.jpg is the hero photo cut to 1200x630, JPEG, with no metadata", og.format === "jpeg" && og.width === 1200 && og.height === 630 && !og.exif && !og.icc && !og.xmp, JSON.stringify({ f: og.format, w: og.width, h: og.height }));
+    // A hero that is not a saved photo (it failed here): no og-image.jpg, and a stale one from a run before is removed.
+    fs.writeFileSync(path.join(tmp, "content2.js"), `const SITE = { heroImage: "${NOTSHARED}" };\nconst contentSections = { SITE };`);
+    const warn2 = [];
+    await fresh.run(path.join(tmp, "content2.js"), out, { log() {}, warn: (m) => warn2.push(m) });
+    check("build: a hero photo that failed leaves no og-image.jpg (the page names the app icon) and says so", !fs.existsSync(path.join(out, fresh.OG.file)) && warn2.some((w) => /link-preview/.test(w)), warn2.join(" | "));
     const meta = {};
     for (const id of [GOOD, WIDE]) for (const w of fresh.WIDTHS) meta[`${id}-${w}`] = await sharp(path.join(out, `${id}-${w}.webp`)).metadata();
     check("build: every file is WebP", Object.values(meta).every((m) => m.format === "webp"));

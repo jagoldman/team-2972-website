@@ -8,6 +8,10 @@
 //   - the saved light choice is left exactly as it was (the portal owns it)
 // Keyboard walk-throughs: the header (and the phone Menu), the Robots filters, the Join switch, the Resources filters and search.
 // Home at 1440x900 shows, without scrolling, the headline, both buttons, the whole hero photo and the next event.
+// Home, the approved second version (2026-11-14), at 320, 390, 1000 and 1440: one h1, alt text, 44px tap targets, the team
+// name leading the eyebrow and in the phone header, the robots row (and that it follows the data), the season log's links
+// and its starting scroll on a phone, both day-count states (the browser clock is set; there is no ?today= hook), the
+// workshop tile, the sponsor strip and the three-link limit, the doors and sponsors in one band, the compact footer.
 // Optional: PUBLIC_TEST_SHOTS=<dir> writes a full-page screenshot of every load there;
 //           PUBLIC_TEST_PHOTO_MAP=<json file {"<Drive id>": "<image file>"}> answers those Drive photos from local files (screenshots only).
 // Needs Playwright with its Chromium from an existing install (nothing is added to landing):
@@ -187,6 +191,113 @@ try {
     const done = await p3.evaluate(() => [...document.querySelectorAll("[data-ticker]")].map((e) => [e.textContent, e.getAttribute("data-ticker")]));
     check("motion allowed: the record numbers end on the counted values", done.length === 3 && done.every(([t, n]) => t === n), done);
     await mo.context.close();
+  }
+
+  // ---------- Home, second version (public-redesign-demo/home-v2.html, D154) ----------
+  for (const width of [320, 390, 1000, 1440]) {
+    const { context, problems } = await newContext(browser, { width });
+    const page = await context.newPage();
+    await page.goto(PUBLIC + "/");
+    await page.waitForFunction(() => document.documentElement.classList.contains("content-ready"));
+    await page.waitForTimeout(600);
+    const h = await page.evaluate(() => {
+      const vis = (e) => e.getClientRects().length && getComputedStyle(e).visibility !== "hidden" && !e.closest("[hidden]");
+      const main = document.querySelector("main");
+      const small = [...document.querySelectorAll("a, button, [tabindex='0']")].filter(vis).map((e) => ({ e, r: e.getBoundingClientRect() }))
+        .filter(({ r }) => r.height < 44 || r.width < 24).map(({ e, r }) => `${e.tagName.toLowerCase()} "${(e.textContent || "").trim().slice(0, 20)}" ${Math.round(r.width)}x${Math.round(r.height)}`);
+      const brandName = document.querySelector(".brand-text > span"), br = brandName.getBoundingClientRect();
+      const wrap = document.querySelector("#record .sl-wrap");
+      const cols = [...document.querySelectorAll("#record .sl-col")];
+      const rows = [...document.querySelectorAll(".rbt > li")];
+      const shop = document.querySelector(".bc-shop");
+      const spons = document.querySelector(".spons");
+      const links = [...document.querySelectorAll(".ft-links a")].map((a) => Math.round(a.getBoundingClientRect().left));
+      return {
+        h1: document.querySelectorAll("h1").length, noAlt: [...document.querySelectorAll("img")].filter((i) => !i.hasAttribute("alt") || (vis(i) && !i.alt.trim())).map((i) => i.src),
+        small, eyebrow: document.querySelector(".hero .label").textContent,
+        brandName: { text: brandName.textContent, shown: vis(brandName) && getComputedStyle(brandName).display !== "none", inside: br.right <= innerWidth && br.left >= 0 },
+        hint: (document.querySelector("#record .rec-hint") || {}).textContent,
+        log: { left: wrap.scrollLeft, max: wrap.scrollWidth - wrap.clientWidth },
+        seasonLinks: cols.map((c) => [c.querySelector(".sl-year").firstChild.textContent, c.tagName === "A" ? c.getAttribute("href") : null]),
+        robots: rows.map((li) => ({ href: li.querySelector("a.card").getAttribute("href"), name: li.querySelector("h3").textContent, img: !!li.querySelector("img[alt]") })),
+        seeAll: [...document.querySelectorAll(".rbt-more a")].map((a) => [a.textContent, a.getAttribute("href")]),
+        shop: { name: shop.querySelector(".bc-name").textContent, chips: [...shop.querySelectorAll(".chip")].map((c) => c.textContent), paras: shop.querySelectorAll(".bc-body p").length, cta: shop.querySelector(".bc-cta a").getAttribute("href") },
+        spons: { label: spons.querySelector(".label").textContent.replace(/\s+/g, " "), names: [...spons.querySelectorAll(".names li")].map((l) => l.textContent.trim()), imgs: spons.querySelectorAll("img").length,
+          all: [...spons.querySelectorAll("a")].map((a) => [a.textContent, a.getAttribute("href")]), sameBand: spons.closest("section") === document.querySelector(".bento").closest("section") },
+        sponsorLinks: main.querySelectorAll('a[href="sponsors.html"]').length,
+        emptyTops: [...document.querySelectorAll(".bc-bg")].filter((b) => !b.children.length && b.getBoundingClientRect().height > 0).length,
+        gap: spons.getBoundingClientRect().top - document.querySelector(".bento").getBoundingClientRect().bottom,
+        footer: { compact: !!document.querySelector(".site-footer.ft-compact"), columns: getComputedStyle(document.querySelector(".ft-links")).columnCount, xs: [...new Set(links)].length, n: links.length,
+          privacy: !!document.querySelector('.ft-bottom a[href="privacy.html"]') && !!document.querySelector('.ft-bottom a[href="terms.html"]'),
+          login: !!document.querySelector(".ft-links a[href^='http'][href*='portal.']"), request: !!document.querySelector(".ft-links a[href$='/request']") },
+        denver: document.querySelector("#nextUp").textContent.includes("Ritchie Center, University of Denver, Denver"),
+        robotsData: ROBOTS.map((r) => r.year), machines: HISTORY.workshop.machines, sponsors: SPONSOR_TIERS.find((t) => t.sponsors.length).sponsors.map((x) => x.name),
+      };
+    });
+    const L = `Home ${width}px`;
+    check(`${L}: one h1, and every image has alt text`, h.h1 === 1 && h.noAlt.length === 0, h.noAlt);
+    check(`${L}: every link and button is a 44px tap target`, h.small.length === 0, h.small.slice(0, 5));
+    check(`${L}: the team name leads the hero eyebrow`, /^Gears & Buccaneers · FRC Team 2972 · Dawson School$/.test(h.eyebrow.trim()), h.eyebrow);
+    check(`${L}: the header shows the full team name, on screen`, h.brandName.text === "Gears & Buccaneers" && h.brandName.shown && h.brandName.inside, h.brandName);
+    const want = [...h.robotsData].sort((a, b) => b - a).slice(0, 4);
+    check(`${L}: The robots: the four newest robots, newest first, each with a photo and its name, linked to its page`, h.robots.length === 4 && h.robots.map((r) => r.href).join() === want.map((y) => `robot.html?year=${y}`).join() && h.robots.every((r) => r.img && r.name), h.robots);
+    check(`${L}: The robots: one See all robots link to the Robots page`, JSON.stringify(h.seeAll) === JSON.stringify([["See all robots", "robots.html"]]), h.seeAll);
+    check(`${L}: the season log says 'Select a year to see that robot.'`, h.hint === "Select a year to see that robot.", h.hint);
+    const seasons = h.seasonLinks.filter(([, href]) => href);
+    check(`${L}: every year with a season is a link to that year's robot (empty years are not links)`, seasons.length === h.robotsData.length && seasons.every(([y, href]) => href === `robot.html?year=${y}`) && h.seasonLinks.filter(([, href]) => !href).every(([y]) => !h.robotsData.includes(y)), h.seasonLinks);
+    if (width < 1000) check(`${L}: the season log opens scrolled to the newest year`, h.log.max > 0 && h.log.left >= h.log.max - 1, h.log);
+    else check(`${L}: the season log fits without scrolling`, h.log.max <= 0, h.log);
+    check(`${L}: Our workshop: that name, each machine once as a chip (drill presses too), no paragraph, link to About`, h.shop.name === "Our workshop" && h.shop.chips.join("|") === h.machines.join("|") && new Set(h.shop.chips).size === h.shop.chips.length && h.shop.chips.includes("Drill presses") && h.shop.paras === 0 && h.shop.cta === "about.html", h.shop);
+    check(`${L}: sponsor strip: 'Recent sponsors · 2024 season', every name in type, one All sponsors link`, h.spons.label.trim() === "Recent sponsors · 2024 season" && h.spons.names.join("|") === h.sponsors.join("|") && h.spons.imgs === 0 && JSON.stringify(h.spons.all) === JSON.stringify([["All sponsors →", "sponsors.html"]]), h.spons);
+    check(`${L}: no more than three links to the Sponsors page in the page body`, h.sponsorLinks <= 3 && h.sponsorLinks >= 1, h.sponsorLinks);
+    check(`${L}: the sponsors sit in the doors' band, close under them, and no tile has an empty top`, h.spons.sameBand && h.gap > 0 && h.gap <= 72 && h.emptyTops === 0, { gap: h.gap, empty: h.emptyTops });
+    check(`${L}: the compact footer: page links in two columns, Team Login, Request an account, Privacy and Terms`, h.footer.compact && h.footer.columns === "2" && h.footer.n === 11 && (width < 400 || h.footer.xs === 2) && h.footer.login && h.footer.request && h.footer.privacy, h.footer);
+    check(`${L}: the Denver Regional is at the Ritchie Center, University of Denver`, h.denver);
+    check(`${L}: no console errors or failed requests`, problems.length === 0, problems.slice(0, 3));
+    if (SHOTS) await page.screenshot({ path: join(SHOTS, `home-v2-${width}.png`), fullPage: true });
+    await context.close();
+  }
+  // The robots row follows the data (what the editor's live preview does: new content, the page re-renders)
+  {
+    const { context } = await newContext(browser, { width: 1440 });
+    const page = await context.newPage();
+    await page.goto(PUBLIC + "/");
+    await page.waitForFunction(() => document.documentElement.classList.contains("content-ready"));
+    const after = await page.evaluate(() => {
+      const robots = JSON.parse(JSON.stringify(ROBOTS));
+      robots.push({ year: "2031", game: "Future Game", name: "Newbot", tagline: "A test robot." });
+      robots[0].name = "Renamed";
+      const ok = window.setContent({ ROBOTS: robots });
+      return { ok, cards: [...document.querySelectorAll(".rbt > li")].map((li) => [li.querySelector("a").getAttribute("href"), li.querySelector("h3").textContent]),
+        log: [...document.querySelectorAll("#record a.sl-col")].pop().getAttribute("href") };
+    });
+    check("Home: the robots row follows edited robot data (a new 2031 season leads, a renamed robot shows its new name)", after.ok && after.cards.length === 4 && after.cards[0][0] === "robot.html?year=2031" && after.cards[0][1] === "Newbot" && after.cards[1][1] === "Renamed" && after.log === "robot.html?year=2031", after);
+    await context.close();
+  }
+  // Both day-count states, from the schedule and the date in Colorado (the browser clock is set; no test hook in the page)
+  for (const [when, expect] of [["2026-11-14T10:00:00-07:00", { line: "In 130 days" }], ["2027-01-22T10:00:00-07:00", { line: "In 61 days" }],
+    ["2027-01-23T10:00:00-07:00", { big: "60" }], ["2027-03-01T10:00:00-07:00", { big: "23" }], ["2027-03-23T05:30:00Z", { big: "2" }]]) {
+    const { context } = await newContext(browser, { width: 390 });
+    const page = await context.newPage();
+    await page.clock.setFixedTime(new Date(when));
+    await page.goto(PUBLIC + "/");
+    await page.waitForFunction(() => document.documentElement.classList.contains("content-ready"));
+    const c = await page.evaluate(() => ({ line: (document.querySelector(".next-card .next-in") || {}).textContent, big: (document.querySelector(".next-card .count-big .stat-n") || {}).textContent,
+      label: (document.querySelector(".next-card .count-big .stat-l") || {}).textContent }));
+    const ok = expect.line ? c.line === expect.line && c.big === undefined : c.big === expect.big && c.label === "days until the event starts" && c.line === undefined;
+    check(`Home day count on ${when}: ${expect.line ? `one plain line "${expect.line}"` : `the large number ${expect.big}`}`, ok, c);
+    if (SHOTS) await (await page.$("#nextUp")).screenshot({ path: join(SHOTS, `home-v2-daycount-${expect.line ? "line" : "big"}-${(expect.line || expect.big).replace(/\D/g, "")}.png`) });
+    await context.close();
+  }
+  // The workshop sentence (Sponsors page, HISTORY.today) names the drill presses too
+  {
+    const { context } = await newContext(browser, { width: 1440 });
+    const page = await context.newPage();
+    await page.goto(PUBLIC + "/sponsors.html");
+    await page.waitForFunction(() => document.documentElement.classList.contains("content-ready"));
+    check("Sponsors page: the sentence that names the machines includes the drill presses", /miter saw, drill on drill presses, and prototype/.test(await page.textContent("body")));
+    check("Sponsors page: keeps the three-column footer (Home's compact footer is Home's only)", (await page.$(".site-footer .footer-inner")) !== null && (await page.$(".ft-compact")) === null);
+    await context.close();
   }
 
   // ---------- keyboard ----------

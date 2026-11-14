@@ -27,7 +27,8 @@ const plain = (s) => norm(String(s).replace(/\[([^\]]+)\]\((?:[^()\s]|\([^()\s]*
 // plus any single fields only that page shows (keys).
 // Robot pages are chosen per mode, below.
 const PAGES = [
-  { url: "index.html", lists: ["ROBOTS", "SCHEDULE_2027"] },
+  { url: "index.html", lists: ["ROBOTS", "SCHEDULE_2027", "SPONSOR_TIERS", "HISTORY.workshop.machines"],
+    keys: ["SITE.homeRecordHint", "SITE.homeRobotsHeading", "SITE.homeSponsorsLabel", "HISTORY.workshop.heading", "ROBOTS[0].name", "ROBOTS[0].image"] },
   { url: "about.html", lists: ["VALUES", "STRATEGY", "HISTORY.milestones"] },
   { url: "member.html", lists: ["ANNUAL_EVENTS"] },
   { url: "mentor.html", lists: ["ANNUAL_EVENTS"] },
