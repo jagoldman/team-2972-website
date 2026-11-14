@@ -1,10 +1,10 @@
 {
-  "version": "0.2.3",
+  "version": "0.3.0",
   "profile": "static",
   "files": [
     {
       "path": "shell/VERSION",
-      "sha256": "3ab94c04d24986f3af288ba1cda2c0bbddbc5a89dff097182805f54578e1ea75"
+      "sha256": "d915cc95d6ca8f47ae297713ed46d4e5c5d99ddd29fc3c61e263bdf305f2b5b0"
     },
     {
       "path": "shell/tokens.css",
@@ -12,23 +12,39 @@
     },
     {
       "path": "shell/app-bar.css",
-      "sha256": "e2cecd06065b45f9eb3e6251c16c8a1e6b9147e5b7f3620b7b16f831d25139f8"
+      "sha256": "774e7159e8040f1045d0100f34ae258856c7b0bf642b7a69210fcec672631f00"
     },
     {
       "path": "shell/ui.css",
-      "sha256": "58a410ea787dc03693ece8ad4f1d05eac936eb271e469847ee9f66aecfce9f24"
+      "sha256": "e297502baf121495a3dc0b83c51ac2fda40f27638cc8d776f5617568a018ccec"
     },
     {
       "path": "shell/core.js",
-      "sha256": "35c86a8faaa97876af8e5cfa7e48f48edbc4298bac9b06c7a7c8eb7de367f873"
+      "sha256": "97812eb6cd54598bb2e5f2491f5054e62e4836b6855752c787bb126a163fdade"
     },
     {
       "path": "shell/core.d.ts",
-      "sha256": "b2630844793846863c88f72e5fa958a55790acb39452623a2c5957fd08a4eeb5"
+      "sha256": "fa2afcce936747f338ef9744603cc897dfb79787ed0b041f9eaa8f6510334d3d"
+    },
+    {
+      "path": "shell/tip.js",
+      "sha256": "81231433d3b0e49fad7b023839ed939bda1161ec75008a2794ce4785769d5ee6"
+    },
+    {
+      "path": "shell/tip.d.ts",
+      "sha256": "10308fbf7dcc8e4ebd37dded39b41b823597a9ad6d736b9802ddcca242386362"
+    },
+    {
+      "path": "shell/tip-text.js",
+      "sha256": "6773d5e40cb0ede077e0166fced91c2623d799ce3b98da31e2f57c65778780b3"
+    },
+    {
+      "path": "shell/tip-text.d.ts",
+      "sha256": "2c053f451f7ebca95400996821f144f09a56ec8b3d516247d7dc66ad348ee3ec"
     },
     {
       "path": "shell/static/shell.js",
-      "sha256": "e79c00f3ee41068424853a565789a22c8598123c715ebb6b23b254a70611320f"
+      "sha256": "5d59952f125671e1b7facdcaf5508acc6a5d2063ee90ddea1cccbd8675baafce"
     }
   ]
 }

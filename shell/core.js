@@ -7,6 +7,10 @@ export const SITE_GROUPS = Object.freeze(["admin", "mentor", "student", "parent"
 export const MODES = Object.freeze(["build", "competition"]);
 export const THEME_COOKIE = "theme";
 export const MODE_COOKIE = "mode";
+/** Which Apps-menu groups the person left open (D149): "more", "tools" or both, joined with ".". */
+export const GROUPS_COOKIE = "shellgroups";
+/** The Apps menu's remembered groups, in the order they are drawn. */
+export const MENU_GROUPS = Object.freeze(["tools", "more"]);
 /** 400 days, the longest a browser keeps a cookie (INTEGRATION §9b). */
 export const COOKIE_MAX_AGE = 34560000;
 
@@ -84,6 +88,8 @@ export function resolveTiles(appsJson, groups, site) {
   const out = [];
   for (const t of appsJson) {
     if (!t || typeof t.id !== "string" || typeof t.name !== "string") continue;
+    // A tool is never a tile (resolveTools); any other `tool` value is a mistake, and the entry is left out.
+    if (t.tool !== undefined && t.tool !== false) continue;
     if (!tileAllowed(t, groups)) continue;
     const href = tileHref(t, site);
     if (!href && !t.comingSoon) continue;
@@ -95,6 +101,46 @@ export function resolveTiles(appsJson, groups, site) {
       external: typeof t.url === "string" || t.ext === true,
       comingSoon: !!t.comingSoon,
       more: !!t.more || typeof t.url === "string" || t.id === "handbook",
+      icon: typeof t.icon === "string" ? t.icon : t.id,
+      modes: tileModes(t),
+    });
+  }
+  return out;
+}
+
+/**
+ * apps.json entries with `tool: true` + the person's groups → the Apps menu's Tools rows (D149). A tool is a small
+ * helper that opens in the same tab: never a tile, never a link-out. Same group, mode and address rules as tiles;
+ * `description` is the row's one line (printed), `tip` its hover description ("" when absent or the same as the line,
+ * since a tip never repeats what is printed).
+ * Only `tool: true` makes a tool. A tool lives on this site: a `url` counts only when its host is the site domain or
+ * one of its subdomains; a tool without such an address (or `comingSoon`) is left out.
+ */
+function onSite(href, site) {
+  try {
+    const host = new URL(href).hostname;
+    const domain = String(site.domain || "").replace(/:\d+$/, "").toLowerCase();
+    return !!domain && (host === domain || host.endsWith(`.${domain}`));
+  } catch {
+    return false;
+  }
+}
+
+export function resolveTools(appsJson, groups, site) {
+  if (!Array.isArray(appsJson)) return [];
+  const out = [];
+  for (const t of appsJson) {
+    if (!t || t.tool !== true || typeof t.id !== "string" || typeof t.name !== "string") continue;
+    if (!tileAllowed(t, groups)) continue;
+    const href = tileHref(t, site);
+    if (!href || !onSite(href, site)) continue;
+    const description = typeof t.description === "string" ? t.description : "";
+    out.push({
+      id: t.id,
+      name: t.name,
+      description,
+      tip: typeof t.tip === "string" && t.tip !== description ? t.tip : "",
+      href,
       icon: typeof t.icon === "string" ? t.icon : t.id,
       modes: tileModes(t),
     });
@@ -205,6 +251,41 @@ export function setModeCookie(mode, site, doc = document) {
   return choice;
 }
 
+/** The open Apps-menu groups in a cookie value, known ids only, in MENU_GROUPS order. Nothing → []. */
+export function parseOpenGroups(v) {
+  const have = new Set(typeof v === "string" ? v.split(".") : []);
+  return MENU_GROUPS.filter((g) => have.has(g));
+}
+
+/**
+ * document.cookie string that stores the open groups, with the mode cookie's attributes (site-wide, 400 days), so
+ * every app on the site opens the menu the same way on this device. No open group deletes the cookie.
+ */
+export function openGroupsCookie(open, site) {
+  const list = parseOpenGroups((open || []).join("."));
+  return list.length
+    ? `${GROUPS_COOKIE}=${list.join(".")}${cookieAttributes(site, COOKIE_MAX_AGE)}`
+    : `${GROUPS_COOKIE}=${cookieAttributes(site, 0)}`;
+}
+
+/** The groups this device left open (browser; [] on a first visit). */
+export function readOpenGroups(doc = document) {
+  return parseOpenGroups(readCookie(doc.cookie, GROUPS_COOKIE));
+}
+
+/**
+ * Opens or closes one group, stores the choice and returns the new list of open groups. `current` is the page's own
+ * list (the adapters pass it), so with cookies blocked opening a second group does not close the first.
+ */
+export function setGroupOpen(id, open, site, doc = document, current = null) {
+  const now = new Set(Array.isArray(current) ? parseOpenGroups(current.join(".")) : readOpenGroups(doc));
+  if (open) now.add(id);
+  else now.delete(id);
+  const list = parseOpenGroups([...now].join("."));
+  doc.cookie = openGroupsCookie(list, site);
+  return list;
+}
+
 /** Two letters for the account button. "Pat Example" → "PE"; falls back to the email. */
 export function initials(name, email) {
   const src = (typeof name === "string" && name.trim()) || (typeof email === "string" ? email.split("@")[0] : "");
@@ -289,6 +370,10 @@ export const ICONS = Object.freeze({
   resources: "M3 6h6l2 2h10v11H3z",
   more: "M5 12h.01M12 12h.01M19 12h.01",
   chevron: "M9 6l6 6-6 6",
+  trace: "M12 19l7-7 3 3-7 7zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18zM2 2l7.6 7.6M11 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
+  gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM10.3 3h3.4l.5 2.4 1.7.7 2-1.4 2.4 2.4-1.4 2 .7 1.7 2.4.5v3.4l-2.4.5-.7 1.7 1.4 2-2.4 2.4-2-1.4-1.7.7-.5 2.4h-3.4l-.5-2.4-1.7-.7-2 1.4-2.4-2.4 1.4-2-.7-1.7L3 13.7v-3.4l2.4-.5.7-1.7-1.4-2 2.4-2.4 2 1.4 1.7-.7z",
+  camera: "M3 8h4l2-3h6l2 3h4v11H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+  download: "M12 3v12M7 10l5 5 5-5M5 21h14",
   bell: "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0",
   flag: "M5 21V4M5 4h11l-2 4 2 4H5",
   sun: "M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4",

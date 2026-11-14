@@ -1,7 +1,7 @@
 // 2972 shell kit: the app bar without React or a build step, for landing (a static Caddy site).
 // Source of truth: infra/shell/static/shell.js. Same markup and classes as react/AppBar.tsx; change both together.
 //
-//   <link rel="stylesheet" href="/shell/tokens.css"><link rel="stylesheet" href="/shell/app-bar.css">
+//   <link rel="stylesheet" href="/shell/tokens.css"><link rel="stylesheet" href="/shell/app-bar.css"><link rel="stylesheet" href="/shell/ui.css">
 //   <script>/* themeInitScript output, inline in <head> */</script>
 //   <div id="shell-bar"></div>
 //   <script type="module">
@@ -12,6 +12,8 @@
 //
 // source "landing": tiles from the portal host's /apps.json and groups from /me.json (both behind the proxy
 // secret, INTEGRATION §2), filtered here with the same core.js rules. source "shell" (default): /_shell/apps.
+// mountAppBar also installs the shared hover description (../tip.js) for opts.tipIds or opts.appId; update() follows
+// a new id and destroy() removes it.
 
 import {
   accountHref,
@@ -29,12 +31,17 @@ import {
   parseMode,
   portalHref,
   readCookie,
+  readOpenGroups,
   resolveTheme,
   resolveTiles,
+  resolveTools,
+  setGroupOpen,
   setModeCookie,
   setTheme,
   splitMore,
 } from "../core.js";
+import { installTip } from "../tip.js";
+import { BAR_TIPS } from "../tip-text.js";
 
 const SVG = "http://www.w3.org/2000/svg";
 let seq = 0;
@@ -64,9 +71,15 @@ function icon(name, size = 20) {
 const themeIcon = (c) => (c === "light" ? "sun" : c === "dark" ? "moon" : "system");
 const sr = (text) => h("span", { class: "shbar-sr", text });
 
-// A tile shows its icon and name only; the description is the browser's hover text (title), so nothing is cut off.
-function tileEl(t, appId) {
-  const title = t.description || null;
+// The id of a tile's hidden description (ids from apps.json may hold any character).
+const descId = (base, kind, id) => `${base}-${kind}-${String(id).replace(/[^A-Za-z0-9_-]/g, "_")}`;
+
+// A tile shows its icon and name only; the description is its hover description (data-tip, ../tip.js), so nothing
+// is cut off, and visually hidden text the tile names in aria-describedby, so a screen reader always has it.
+function tileEl(t, appId, base) {
+  const tip = t.description || null;
+  const did = tip ? descId(base, "d", t.id) : null;
+  const desc = tip ? h("span", { id: did, class: "shbar-sr", text: tip }) : null;
   const body = [
     h("span", { class: "shbar-item-ic" }, icon(t.icon)),
     h(
@@ -77,7 +90,7 @@ function tileEl(t, appId) {
       t.comingSoon ? h("small", { text: "Coming soon" }) : null,
     ),
   ];
-  if (!t.href) return h("li", null, h("span", { class: "shbar-item is-soon", "aria-disabled": "true", title }, body));
+  if (!t.href) return h("li", null, h("span", { class: "shbar-item is-soon", "aria-disabled": "true", "data-tip": tip, "aria-describedby": did }, body), desc);
   return h(
     "li",
     null,
@@ -86,14 +99,44 @@ function tileEl(t, appId) {
       {
         class: "shbar-item",
         href: t.href,
-        title,
+        "data-tip": tip,
+        "aria-describedby": did,
         "aria-current": t.id === appId ? "page" : null,
         target: "_blank",
         rel: "noopener noreferrer",
       },
       body,
     ),
+    desc,
   );
+}
+
+// A tool row: icon, name and its one line; same tab (a tool is part of the site, not a link-out).
+function toolEl(t, appId, base) {
+  const did = t.tip ? descId(base, "t", t.id) : null;
+  return h(
+    "li",
+    null,
+    h(
+      "a",
+      { class: "shbar-toolrow", href: t.href, "aria-current": t.id === appId ? "page" : null, "data-tip": t.tip || null, "aria-describedby": did },
+      h("span", { class: "shbar-item-ic" }, icon(t.icon)),
+      h("span", { class: "shbar-item-text" }, h("b", { text: t.name }), t.description ? h("small", { text: t.description }) : null),
+    ),
+    t.tip ? h("span", { id: did, class: "shbar-sr", text: t.tip }) : null,
+  );
+}
+
+// The tip tables' ids: opts.tipIds (one id or a list), else opts.appId.
+const tipIdsOf = (opts) => (Array.isArray(opts.tipIds) ? opts.tipIds : [opts.tipIds ?? opts.appId ?? ""]).filter(Boolean);
+
+// The quiet row that opens a group (Tools, More): the word, a count, a chevron. A real button (D141, D149).
+function groupParts(id, label, listId) {
+  const count = h("span", { class: "shbar-groupcount", "aria-hidden": "true" });
+  const spoken = sr("");
+  const button = h("button", { type: "button", class: `shbar-groupbtn shbar-${id}btn`, "aria-expanded": "false", "aria-controls": listId, "data-tip": BAR_TIPS[id] },
+    h("span", { text: label }), count, spoken, icon("chevron", 16));
+  return { button, count, spoken };
 }
 
 async function getJson(url) {
@@ -105,7 +148,8 @@ async function getJson(url) {
 /**
  * Renders the bar into `root` (replacing its content) and returns { update(opts), destroy() }.
  * opts: appName, appId, siteScheme, siteDomain, user {name,email,groups}, accountMenu (default true for identified non-display users), accountHref, source ("shell" | "landing"),
- * appsUrl, meUrl, tiles (already resolved; skips fetching), skipToId, onThemeChange, showBell, inboxUrl.
+ * appsUrl, meUrl, tiles (already resolved; skips fetching), tools (resolved Tools rows, with tiles), skipToId, onThemeChange, showBell, inboxUrl,
+ * tipIds (the hover description's table ids: one id or a list; default appId).
  * showBell (default off) fetches the inbox and, when it is available, shows the same same-tab bell as the React bar.
  *
  * The bar is built once and then patched in place (never rebuilt), so focus and in-flight clicks survive
@@ -116,12 +160,16 @@ export function mountAppBar(root, opts) {
   const site = { scheme: opts.siteScheme, domain: opts.siteDomain };
   const portal = portalHref(site);
   const account = opts.accountHref ?? accountHref(site);
+  // False once a group cookie did not stick (cookies blocked): the page then keeps its own open groups.
+  let groupsStick = true;
   const state = {
     panel: null,
-    moreOpen: false,
+    // Tools and More stay open or closed as the person left them, on this device (the shellgroups cookie, D149).
+    open: [],
     mode: parseMode(readCookie(document.cookie, MODE_COOKIE)),
     theme: resolveTheme(document, window, opts.themeFallback),
     tiles: opts.tiles || null,
+    tools: opts.tools || [],
     failed: false,
     user: opts.user || null,
     inbox: { available: false, unread: 0 },
@@ -130,12 +178,12 @@ export function mountAppBar(root, opts) {
   // ---- build once ----
   const appsBtn = h(
     "button",
-    { type: "button", class: "shbar-appsbtn", "aria-expanded": "false", "aria-controls": `${id}-apps` },
+    { type: "button", class: "shbar-appsbtn", "aria-expanded": "false", "aria-controls": `${id}-apps`, "data-tip": BAR_TIPS.apps },
     icon("apps", 20),
     sr("Apps"),
   );
   const modeChoices = [["build", "Build"], ["competition", "Competition"]].map(([choice, label]) => {
-    const button = h("button", { type: "button", "aria-pressed": "false", text: label });
+    const button = h("button", { type: "button", "aria-pressed": "false", "data-tip": BAR_TIPS[choice], text: label });
     button.addEventListener("click", () => {
       state.mode = setModeCookie(choice, site);
       renderTiles();
@@ -151,17 +199,22 @@ export function mountAppBar(root, opts) {
   const failedNote = h("p", { class: "shbar-note", role: "status", hidden: true }, "Couldn't load the apps. ", retry);
   const emptyNote = h("p", { class: "shbar-note", text: "No apps here yet. If you just joined, an admin still has to add you to a group.", hidden: true });
   const mainList = h("ul", { class: "shbar-grid", hidden: true });
-  const moreCount = h("span", { class: "shbar-morecount", "aria-hidden": "true" });
-  const moreSr = sr("");
-  const moreBtn = h("button", { type: "button", class: "shbar-morebtn", "aria-expanded": "false", "aria-controls": `${id}-more` },
-    h("span", { text: "More" }), moreCount, moreSr, icon("chevron", 16));
+  const tools = groupParts("tools", "Tools", `${id}-tools`);
+  const toolsList = h("ul", { id: `${id}-tools`, class: "shbar-toollist", hidden: true });
+  const toolsBox = h("div", { class: "shbar-group shbar-tools", hidden: true }, tools.button, toolsList);
+  const moreGroup = groupParts("more", "More", `${id}-more`);
+  const moreBtn = moreGroup.button;
   const moreList = h("ul", { id: `${id}-more`, class: "shbar-grid", hidden: true });
-  const moreBox = h("div", { class: "shbar-more", hidden: true }, moreBtn, moreList);
-  moreBtn.addEventListener("click", () => {
-    state.moreOpen = !state.moreOpen;
-    renderMore();
-  });
-  const appsBody = h("div", { style: "display:contents" }, loadingNote, failedNote, emptyNote, mainList, moreBox);
+  const moreBox = h("div", { class: "shbar-group shbar-more", hidden: true }, moreBtn, moreList);
+  for (const [group, button] of [["tools", tools.button], ["more", moreBtn]]) {
+    button.addEventListener("click", () => {
+      state.open = setGroupOpen(group, !state.open.includes(group), site, document, state.open);
+      // Cookies blocked: the choice did not stick, so the page keeps its own list from now on.
+      groupsStick = readOpenGroups().join(".") === state.open.join(".");
+      renderGroups();
+    });
+  }
+  const appsBody = h("div", { style: "display:contents" }, loadingNote, failedNote, emptyNote, mainList, toolsBox, moreBox);
   const appsPanel = h(
     "nav",
     { id: `${id}-apps`, class: "shbar-panel shbar-apps", "aria-label": "All apps", hidden: true },
@@ -179,14 +232,14 @@ export function mountAppBar(root, opts) {
     });
     return [c, b];
   });
-  const chip = h("a", { class: "shbar-chip", href: account, target: "_blank", rel: "noopener noreferrer", title: "Competition mode is on. Change it in Apps or Account.", hidden: true }, h("span", { "aria-hidden": "true" }, h("span", { class: "shbar-chip-short", text: "Comp" }), h("span", { class: "shbar-chip-long", text: "Competition mode" })), sr("Competition mode is on. Change it in Apps or Account (opens in a new tab)."));
+  const chip = h("a", { class: "shbar-chip", href: account, target: "_blank", rel: "noopener noreferrer", "data-tip": BAR_TIPS.chip, hidden: true }, h("span", { "aria-hidden": "true" }, h("span", { class: "shbar-chip-short", text: "Comp" }), h("span", { class: "shbar-chip-long", text: "Competition mode" })), sr("Competition mode is on. Change it in Apps or Account (opens in a new tab)."));
   const bellSr = sr("Notifications");
   const bellCount = h("span", { class: "shbar-count", "aria-hidden": "true", hidden: true });
-  const bell = h("a", { class: "shbar-icon", href: inboxHref(site), hidden: true }, icon("bell"), bellSr, bellCount);
+  const bell = h("a", { class: "shbar-icon", href: inboxHref(site), "data-tip": BAR_TIPS.bell, hidden: true }, icon("bell"), bellSr, bellCount);
   const appName = h("span", { class: "shbar-appname" });
   const acctInitials = h("span", { "aria-hidden": "true" });
   const acctLabel = h("span", { class: "shbar-sr" });
-  const acct = h("button", { type: "button", class: "shbar-icon shbar-acct", "aria-expanded": "false", "aria-controls": `${id}-account` }, acctInitials, acctLabel);
+  const acct = h("button", { type: "button", class: "shbar-icon shbar-acct", "aria-expanded": "false", "aria-controls": `${id}-account`, "data-tip": BAR_TIPS.account }, acctInitials, acctLabel);
   const identityName = h("b");
   const identityGroups = h("small");
   const accountLink = h("a", { class: "shbar-choice", href: account, text: "All account settings" });
@@ -233,17 +286,25 @@ export function mountAppBar(root, opts) {
     loadingNote.hidden = !(state.tiles === null && !state.failed);
     failedNote.hidden = !state.failed;
     emptyNote.hidden = !(state.tiles !== null && !state.failed && shown.length === 0);
-    mainList.replaceChildren(...main.map((t) => tileEl(t, opts.appId)));
+    mainList.replaceChildren(...main.map((t) => tileEl(t, opts.appId, id)));
     mainList.hidden = main.length === 0;
-    moreList.replaceChildren(...rest.map((t) => tileEl(t, opts.appId)));
+    moreList.replaceChildren(...rest.map((t) => tileEl(t, opts.appId, id)));
     moreBox.hidden = rest.length === 0;
-    moreCount.textContent = String(rest.length);
-    moreSr.textContent = `, ${rest.length} ${rest.length === 1 ? "app" : "apps"}`;
-    renderMore();
+    moreGroup.count.textContent = String(rest.length);
+    moreGroup.spoken.textContent = `, ${rest.length} ${rest.length === 1 ? "app" : "apps"}`;
+    const shownTools = filterByMode(state.tools, state.mode);
+    toolsList.replaceChildren(...shownTools.map((t) => toolEl(t, opts.appId, id)));
+    toolsBox.hidden = shownTools.length === 0;
+    tools.count.textContent = String(shownTools.length);
+    tools.spoken.textContent = `, ${shownTools.length} ${shownTools.length === 1 ? "tool" : "tools"}`;
+    renderGroups();
   }
-  function renderMore() {
-    moreBtn.setAttribute("aria-expanded", String(state.moreOpen));
-    moreList.hidden = !state.moreOpen;
+  function renderGroups() {
+    for (const [group, button, list] of [["tools", tools.button, toolsList], ["more", moreBtn, moreList]]) {
+      const open = state.open.includes(group);
+      button.setAttribute("aria-expanded", String(open));
+      list.hidden = !open;
+    }
   }
   function render() {
     const who = (state.user && (state.user.name || state.user.email)) || "";
@@ -281,7 +342,6 @@ export function mountAppBar(root, opts) {
     appName.textContent = opts.appName || "";
     acctInitials.textContent = initials(state.user && state.user.name, state.user && state.user.email);
     acctLabel.textContent = `Account${who ? `: ${who}` : ""}`;
-    acct.title = who ? `Account: ${who}` : "Account";
   }
 
   async function load() {
@@ -293,10 +353,13 @@ export function mountAppBar(root, opts) {
         const [apps, me] = await Promise.all([getJson(opts.appsUrl || "/apps.json"), getJson(opts.meUrl || "/me.json")]);
         const groups = Array.isArray(me.groups) ? me.groups : typeof me.groups === "string" ? me.groups.split("|").map((g) => g.trim()).filter(Boolean) : [];
         if (!state.user) state.user = { name: me.name, email: me.email, groups };
-        state.tiles = resolveTiles(apps, parseGroups(groups.join("|")), site);
+        const siteGroups = parseGroups(groups.join("|"));
+        state.tiles = resolveTiles(apps, siteGroups, site);
+        state.tools = resolveTools(apps, siteGroups, site);
       } else {
         const d = await getJson(opts.appsUrl || "/_shell/apps");
         state.tiles = Array.isArray(d.tiles) ? d.tiles : [];
+        state.tools = Array.isArray(d.tools) ? d.tools : [];
       }
     } catch {
       state.failed = true;
@@ -308,10 +371,10 @@ export function mountAppBar(root, opts) {
   function setPanel(p, focusBack) {
     const was = state.panel;
     state.panel = p;
-    // More is closed every time the menu opens.
+    // Tools and More open as this device left them (another app or tab may have changed it).
     if (p === "apps" && was !== "apps") {
-      state.moreOpen = false;
-      renderMore();
+      if (groupsStick) state.open = readOpenGroups();
+      renderGroups();
     }
     render();
     if (focusBack && was) (was === "account" ? acct : appsBtn).focus();
@@ -370,6 +433,8 @@ export function mountAppBar(root, opts) {
     render();
   }
 
+  let tipKey = JSON.stringify(tipIdsOf(opts));
+  let removeTip = installTip(tipIdsOf(opts));
   render();
   renderTiles();
   if (!state.tiles) load();
@@ -379,7 +444,16 @@ export function mountAppBar(root, opts) {
     update(more) {
       const refetch = ("showBell" in more && !!more.showBell !== !!opts.showBell) || ("inboxUrl" in more && more.inboxUrl !== opts.inboxUrl);
       Object.assign(opts, more);
+      // A new app id (or tip ids) moves the tip to the new tables: install the new one before undoing the old.
+      const nextKey = JSON.stringify(tipIdsOf(opts));
+      if (nextKey !== tipKey) {
+        const undoOld = removeTip;
+        removeTip = installTip(tipIdsOf(opts));
+        undoOld();
+        tipKey = nextKey;
+      }
       if (more.tiles) state.tiles = more.tiles;
+      if (more.tools) state.tools = more.tools;
       if ("user" in more) state.user = more.user;
       if (refetch) inboxKey = "";
       renderTiles();
@@ -391,6 +465,7 @@ export function mountAppBar(root, opts) {
       document.removeEventListener("pointerdown", onDown);
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("storage", onStorage);
+      removeTip();
       root.textContent = "";
     },
   };

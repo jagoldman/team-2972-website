@@ -8,6 +8,7 @@
  *   .shell-pagehead                                                  plain h1 row, no band
  *   .shell-hero                                                      card with a 3 px gold left edge
  *   .shell-count  --warn                                             small rounded number
+ *   .shell-tip                                                       the hover description (drawn by tip.js)
  *
  * Gold is only the main button, the active-tab underline, the 2972 badge and "today" on a calendar. These
  * classes use gold for the tab underline and the hero edge only; everything else here is neutral or the ink.
@@ -250,4 +251,55 @@
 .shell-count--warn {
   background: var(--warn-bg);
   color: var(--warn);
+}
+
+/* ---------- Hover description (tip.js, D149) ----------
+   One shared <div id="shell-tip" role="tooltip" class="shell-tip"> for the whole page; tip.js places it with
+   position: fixed above (or below) the element and adds .on while it shows. Navy on light pages, light on dark ones
+   (the bar's pair, which the contrast tests cover). Above every other layer; never takes a pointer. No arrow. */
+.shell-tip {
+  position: fixed;
+  z-index: 1000;
+  top: 0;
+  left: 0;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--rail);
+  color: var(--rail-text);
+  font: 500 0.8rem/1.35 var(--body);
+  overflow-wrap: anywhere;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+.shell-tip.on {
+  opacity: 1;
+  visibility: visible;
+}
+:root[data-theme="dark"] .shell-tip,
+:root.dark .shell-tip {
+  background: var(--rail-text);
+  color: var(--rail);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .shell-tip {
+    background: var(--rail-text);
+    color: var(--rail);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .shell-tip {
+    transition: opacity 0.12s ease, visibility 0s 0.12s;
+  }
+  .shell-tip.on {
+    transition: opacity 0.12s ease;
+  }
+}
+@media (forced-colors: active) {
+  .shell-tip {
+    border: 1px solid CanvasText;
+  }
 }
