@@ -86,6 +86,16 @@ test("an Admin apps entry is marked for Home and stays under More in the 0.3.2 b
   assert.equal(calls[0].tiles.find((t) => t.id === "admin").more, true);
 });
 
+test("display with an extra, non-site group is still the shop screen (the real isDisplayOnly)", async () => {
+  const { isDisplayOnly } = await import("../js/portal-home.js");
+  const { context, calls } = shellWith("display|authentik Admins");
+  context.isDisplayOnly = isDisplayOnly;
+  const r = await context.mountPortalShell();
+  assert.equal(r.display, true);
+  assert.equal(calls.length, 0);
+  assert.deepEqual(Array.from(r.apps), []);
+});
+
 test("the shop screen (only display) gets no bar, and display with a site group is a person", async () => {
   let { context, calls } = shellWith("display");
   let r = await context.mountPortalShell();

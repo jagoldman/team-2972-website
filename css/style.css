@@ -907,6 +907,24 @@ tr.win td:first-child { border-left-color: var(--gold); }
 .next-eyebrow { margin: 0; color: var(--mute); font: 600 0.8rem/1.3 var(--font); }
 .nextup h2 { margin: 2px 0 4px; font: 700 1.3rem/1.25 var(--display); letter-spacing: -0.01em; }
 .nextup .mute { margin: 0 0 12px; color: var(--mute); }
+.nextup .small { margin: -4px 0 10px; font-size: 0.875rem; }
+.nextup .next-hold { color: var(--mute); }
+/* The demo's status words: a dot and the word, never colour alone (C14). */
+.pill-dot { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--text-2); white-space: nowrap; }
+.pill-dot::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--mute); }
+.pill-dot.bad { color: var(--bad); }
+.pill-dot.bad::before { background: var(--bad); }
+.next-steps { display: flex; align-items: center; gap: 10px; margin: -2px 0 12px; }
+.next-steps .small { margin: 0; }
+.next-bar { width: 160px; max-width: 45%; height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; flex: none; }
+.next-bar i { display: block; height: 100%; background: var(--ok); }
+/* An event day: the demo's compact next-task card (evcompact). */
+.hcard.hero.evcompact { border-left-color: var(--line-2); }
+.evcompact h2 { font-size: 1.1rem; }
+.btn.btn-ghost { background: transparent; border-color: transparent; color: var(--accent); }
+.btn.btn-ghost:hover { background: var(--tint); border-color: transparent; color: var(--accent); }
+.tcount.warn { background: var(--warn-bg); color: var(--warn); }
+#home-done-status { margin: 10px 0 0; }
 .heroacts { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
 .heroacts .btn svg { flex: none; }
 .home-status { margin: 8px 0 0; color: var(--mute); font-size: 0.875rem; }
@@ -918,9 +936,16 @@ tr.win td:first-child { border-left-color: var(--gold); }
 .actlink { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; color: inherit; text-decoration: none; }
 .actlink:hover { color: inherit; text-decoration: none; }
 .actlink:hover b { color: var(--accent); }
+.actlink .actapp { flex: none; width: 7rem; color: var(--mute); font-size: 0.85rem; overflow-wrap: anywhere; }
 .actlink .grow { flex: 1; min-width: 0; color: var(--text-2); overflow-wrap: anywhere; }
 .actlink b { color: var(--text); font-weight: 600; }
 .actlink .who { flex: none; white-space: nowrap; color: var(--mute); font-size: 0.8rem; }
+@media (max-width: 640px) {   /* the demo's phone rows: the app and the time on top, the words under them */
+  .actlink { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 12px; padding-block: 8px; }
+  .actlink .actapp { grid-column: 1; width: auto; font-size: 0.8rem; }
+  .actlink .who { grid-column: 2; grid-row: 1; }
+  .actlink .grow { grid-column: 1 / -1; }
+}
 
 .homegroups { display: grid; margin-top: 14px; border-bottom: 1px solid var(--line); }
 .homegroups[hidden], .homegroups .grp[hidden], .grpbody[hidden], .toolrow[hidden] { display: none; }
@@ -952,6 +977,8 @@ body[data-display] { color-scheme: dark; background: var(--ink); color: var(--te
 .dcard:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .dcard b { font: 700 1.6rem/1.2 var(--display); }
 .dcard .dmute { color: var(--text-2); font-size: 1.05rem; }
+.dsp .dnote { margin: 0; padding: 16px 20px; border: 1px solid var(--gold); border-radius: 14px; background: var(--ink-3); color: var(--text); font-size: 1.1rem; }
+body[data-display] .install-banner { display: none; }
 
 /* ---------- Install banner (portal home) and /install page ---------- */
 .install-banner {

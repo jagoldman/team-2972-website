@@ -3,7 +3,8 @@
 // The drawing is covered in the browser by test/portal-shell-test.mjs.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DISPLAY_SCREENS, displayHref, dueText, isDisplayOnly, isParentOnly, parseToday, rowsForMode, safeHref, whenText } from "../js/portal-home.js";
+import { DISPLAY_SCREENS, blockedAppName, displayHref, dueText, fetchToday, isDisplayOnly, isParentOnly, nextLine, parseToday, postTaskDone, rowsForMode,
+  safeHref, shiftFirst, taskHeld, whenText } from "../js/portal-home.js";
 
 const site = { scheme: "https", domain: "example.test" };
 const origin = "https://portal.example.test";
@@ -100,4 +101,80 @@ test("the shop screen's three choices go to the apps' real screens", () => {
     ["Pit monitor", "https://compete.example.test/pit/monitor"],
     ["Projector", "https://tasks.example.test/projector"],
   ]);
+});
+
+test("C13 and C14: activity.app, the next task's doors and its card fields", () => {
+  const d = parseToday({ v: 1,
+    activity: [{ app: "Parts & Inventory, with a name far longer than any app has", title: "Ordered", href: "/a", at: "2026-11-14T10:00:00Z" }],
+    next: { taskId: "t-1", title: "Wire it", href: "https://tasks.example.test/my?task=t-1", project: "Intake",
+      stuckHref: "https://tasks.example.test/my?task=t-1&do=stuck", partHref: "https://evil.test/?do=part",
+      subteam: "Electrical", milestone: "Robot drives", steps: { done: 2, total: 5 },
+      waitingOn: ["A", "B", "C", "D", 7, ""], onHold: "yes", blocked: true } }, site, origin);
+  assert.equal(d.activity[0].app.length, 40);
+  assert.ok(d.activity[0].app.endsWith("…"));
+  const n = d.next;
+  assert.equal(n.stuckHref, "https://tasks.example.test/my?task=t-1&do=stuck");
+  assert.equal(n.partHref, undefined, "an off-site door is dropped");
+  assert.deepEqual([n.subteam, n.milestone, n.steps, n.waitingOn, n.onHold, n.blocked], ["Electrical", "Robot drives", { done: 2, total: 5 }, ["A", "B", "C"], undefined, true]);
+  assert.equal(nextLine(n, "en-US"), "Intake › Electrical · for “Robot drives”");
+  for (const steps of [{ done: 6, total: 5 }, { done: -1, total: 5 }, { done: 1, total: 0 }, { done: "1", total: 2 }, { done: 1, total: 5000 }]) {
+    assert.equal(parseToday({ v: 1, next: { taskId: "t", title: "x", href: "/x", steps } }, site, origin).next.steps, undefined, JSON.stringify(steps));
+  }
+});
+
+test("C14: Done is gold only for a task that is not held back", () => {
+  assert.equal(taskHeld({ title: "x" }), false);
+  assert.equal(taskHeld({ blocked: true }), true);
+  assert.equal(taskHeld({ onHold: true }), true);
+  assert.equal(taskHeld({ waitingOn: ["A"] }), true);
+  assert.equal(taskHeld({ waitingOn: [] }), false);
+});
+
+test("C14: on an event day Competition's shift rows go first", () => {
+  const rows = [{ id: "calendar:practice" }, { id: "compete:shift-now:1" }, { id: "parts:x" }, { id: "compete:shift-next:2" }];
+  assert.deepEqual(shiftFirst(rows, true).map((r) => r.id), ["compete:shift-now:1", "compete:shift-next:2", "calendar:practice", "parts:x"]);
+  assert.deepEqual(shiftFirst(rows, false).map((r) => r.id), rows.map((r) => r.id));
+});
+
+test("C14: the shop screen's notice names an app from the list, never from the address", () => {
+  const apps = [{ id: "parts", name: "Parts & Inventory" }, { id: "tasks", name: "Tasks" }];
+  assert.equal(blockedAppName("?blocked=parts", apps), "Parts & Inventory");
+  assert.equal(blockedAppName("?blocked=unknown", apps), "");
+  assert.equal(blockedAppName("?blocked=%3Cimg%20src%3Dx%3E", apps), "");
+  assert.equal(blockedAppName("?blocked=Parts", apps), "", "ids are lower case");
+  assert.equal(blockedAppName("", apps), "");
+  assert.equal(blockedAppName("?blocked=parts", null), "");
+});
+
+test("the shop screen: display with an extra, non-site group still gets the picker", () => {
+  assert.equal(isDisplayOnly("display|authentik Admins"), true);
+  assert.equal(isDisplayOnly(["authentik Admins", "display"]), true);
+  assert.equal(isDisplayOnly("display|parent"), false);
+});
+
+test("Done's answers: ok, refused (403, 404, 4xx), failed (5xx, network), timeout", async () => {
+  const answer = (status) => async () => ({ ok: status >= 200 && status < 300, status });
+  assert.equal(await postTaskDone("t", { fetchImpl: answer(204) }), "ok");
+  for (const st of [403, 404, 409]) assert.equal(await postTaskDone("t", { fetchImpl: answer(st) }), "refused", String(st));
+  for (const st of [500, 502, 503]) assert.equal(await postTaskDone("t", { fetchImpl: answer(st) }), "failed", String(st));
+  assert.equal(await postTaskDone("t", { fetchImpl: async () => { throw new TypeError("network"); } }), "failed");
+  const hang = (_url, init) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
+  assert.equal(await postTaskDone("t", { fetchImpl: hang, timeout: 30 }), "timeout");
+  let sent;
+  await postTaskDone("t-9", { fetchImpl: async (url, init) => { sent = [url, init.method, init.body, !!init.signal]; return { ok: true, status: 204 }; } });
+  assert.deepEqual(sent, ["/today/task-done", "POST", JSON.stringify({ taskId: "t-9" }), true]);
+});
+
+test("/today.json that never answers is given up after the time limit", async () => {
+  const hang = (_url, init) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
+  const t0 = Date.now();
+  assert.equal(await fetchToday(site, origin, { fetchImpl: hang, timeout: 30 }), null);
+  assert.ok(Date.now() - t0 < 1000);
+});
+
+test("hostile text stays text: parseToday keeps it as a string for textContent", () => {
+  const evil = "<img src=x onerror=alert(1)>";
+  const d = parseToday({ v: 1, today: [{ title: evil, detail: evil, href: "/a", cta: { label: evil, href: "/b" } }] }, site, origin);
+  assert.equal(d.today[0].title, evil);
+  assert.equal(d.today[0].cta.label, evil);
 });

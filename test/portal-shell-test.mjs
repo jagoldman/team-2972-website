@@ -16,7 +16,11 @@
 //   - release 8.1.5 (C1, C2, C4, C9): the cards above the tiles from a fake /today.json per role (student, mentor,
 //     parent, admin) at 1280 and 390, in the demo's order; Done and its error; no /today.json leaves the 8.1 home;
 //     Tools, Admin apps and More as closed rows, remembered in shellgroups, and search across them; the shop screen's
-//     home for a display login; the kit's bell through /_shell/inbox; rows that belong to one mode (C12). PORTAL_TEST_SHOTS=<dir> saves viewport screenshots.
+//     home for a display login; the kit's bell through /_shell/inbox; rows that belong to one mode (C12).
+//   - the review's fix round (C13, C14): the full next-task card, a held-back task's plain Done, the empty states, the
+//     event day, the app column, Done's answers (403, 404, 5xx, no answer in 10 s), one POST for two presses, one
+//     lasting status line, hostile words, the shop screen's notice and an extra Authentik group, the amber chip's
+//     contrast, the install banner's start, the cookie re-read. PORTAL_TEST_SHOTS=<dir> saves viewport screenshots.
 // Contrast in both themes is test/theme-test.sh (it covers the new tiles).
 // Needs Playwright with its Chromium from an existing install (nothing is added to landing):
 //   LANDING_TEST_NODE_MODULES=/path/to/node_modules node test/portal-shell-test.mjs
@@ -55,26 +59,33 @@ const MODE_APPS = JSON.stringify([
 
 // today: what /today.json answers (an object, or a status number; default 404 = not set up). taskDone: the status
 // POST /today/task-done answers. inbox: what /_shell/inbox answers (default 404). Fakes only, @example.com.
-async function newContext(browser, { groups = "mentor", apps = APPS, width = 1280, height = 900, today = 404, taskDone = 204, inbox = 404 } = {}) {
+// event: what /event.json answers (default 404). taskDone "hang": the POST never answers. me: a status for /me.json.
+async function newContext(browser, { groups = "mentor", apps = APPS, width = 1280, height = 900, today = 404, taskDone = 204, inbox = 404, event = 404, me = 200 } = {}) {
   const context = await browser.newContext({ viewport: { width, height } });
   const seen = [];
   const posts = [];
-  const answers = { today };
+  const answers = { today, gets: 0 };
   await context.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     seen.push(url.href);
     const portal = url.host === "portal.landing.test";
     if (!portal && url.host !== "landing.test") return route.abort();
+    if (portal && url.pathname === "/me.json" && me !== 200) return route.fulfill({ status: me, body: "" });
     if (portal && url.pathname === "/me.json") {
       return route.fulfill({ contentType: "application/json", body: JSON.stringify({ email: "pat@example.com", name: "Pat Example", username: "pat@example.com", groups, uid: "u-1" }) });
     }
     if (portal && url.pathname === "/apps.json") return route.fulfill({ contentType: "application/json", body: apps });
+    if (portal && url.pathname === "/event.json") {
+      return typeof event === "number" ? route.fulfill({ status: event, body: "" }) : route.fulfill({ contentType: "application/json", body: JSON.stringify(event) });
+    }
     if (portal && url.pathname === "/today.json") {
+      answers.gets++;
       const t = typeof answers.today === "function" ? answers.today() : answers.today;
       return typeof t === "number" ? route.fulfill({ status: t, body: "" }) : route.fulfill({ contentType: "application/json", body: typeof t === "string" ? t : JSON.stringify(t) });
     }
     if (portal && url.pathname === "/today/task-done") {
       posts.push({ method: route.request().method(), body: route.request().postData(), type: route.request().headers()["content-type"] });
+      if (taskDone === "hang") return new Promise(() => {}); // no answer, ever: the page's own time limit must end it
       return route.fulfill({ status: taskDone, body: "" });
     }
     if (portal && url.pathname === "/_shell/inbox") {
@@ -333,8 +344,8 @@ try {
       today: [{ id: "cal-practice", section: "today", title: "Practice today, 3:30 to 6:00 pm", detail: "You are not signed in", href: `${CAL}/here?tab=today`, cta: { label: "Sign in", href: `${CAL}/here/scan` } }],
       waiting: [],
       next: { taskId: "t-41", title: "Wire the intake sensor", due: "2026-11-18", project: "Intake", href: `${TASKS}/my?task=t-41` },
-      activity: [{ title: "Your part request was ordered", detail: "Hex shaft, 1/2 in.", href: `${PARTS}/requests/7`, at: ago(5) },
-        { title: "A mentor signed off Drill press", href: "http://skills.landing.test/", at: ago(180) }] },
+      activity: [{ app: "Parts", title: "Your part request was ordered", detail: "Hex shaft, 1/2 in.", href: `${PARTS}/requests/7`, at: ago(5) },
+        { app: "Skills", title: "A mentor signed off Drill press", href: "http://skills.landing.test/", at: ago(180) }] },
     mentor: { v: 1,
       today: [{ id: "cal-practice", section: "today", title: "Practice today, 3:30 to 6:00 pm", detail: "12 people are signed in", href: `${CAL}/here?tab=today` }],
       waiting: [{ id: "parts-ok", section: "waiting", title: "2 part requests need an OK", detail: "", href: `${PARTS}/?tab=toorder`, count: 2 },
@@ -370,7 +381,7 @@ try {
   const over = (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   const settle = async (page) => { await page.waitForLoadState("networkidle"); await page.waitForTimeout(150); };
   const homeState = (page) => page.evaluate(() => {
-    const ids = [...document.querySelectorAll("#home-cards > section, #home-activity > section")].map((s) => s.id);
+    const ids = [...document.querySelectorAll("#home-card-list > section, #home-activity > section")].map((s) => s.id);
     const order = ["[data-guide-card]", "#home-cards", "#apps-head", "#home-groups", "#home-activity", "#access"].map((sel) => document.querySelector(sel));
     const inOrder = order.every((n, i) => i === 0 || (order[i - 1].compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING));
     const rows = (id) => [...document.querySelectorAll(`#${id} .rt`)].map((e) => e.textContent);
@@ -402,13 +413,15 @@ try {
       if (role === "student") {
         check("student: Today shows the practice and its Sign in button", h.today.join() === "Practice today, 3:30 to 6:00 pm" && h.ctas.length === 1 && h.ctas[0][0] === "Sign in" && h.ctas[0][1] === `${CAL}/here/scan`, h);
         check("student: the next-task card with its project and due date", h.next === "Wire the intake sensor" && /^Intake · due \w{3}, Nov 18$/.test(h.nextLine), h);
-        const gold = await page.$eval("#home-next .heroacts", (b) => [...b.children].map((e) => [e.textContent.trim(), e.classList.contains("btn-outline") ? "plain" : "gold"]));
-        check("student: Done is the one gold button, Open is plain", JSON.stringify(gold) === JSON.stringify([["Done", "gold"], ["Open (opens in a new tab)", "plain"]]), gold);
+        const gold = await page.$eval("#home-next .heroacts", (b) => [...b.children].map((e) => [e.firstChild.textContent.trim() || e.textContent.trim(), e.classList.contains("btn-outline") ? "plain" : e.classList.contains("btn-ghost") ? "ghost" : "gold"]));
+        check("student: Done is the one gold button, Open is the demo's ghost button", JSON.stringify(gold) === JSON.stringify([["Done", "gold"], ["Open", "ghost"]]), gold);
         check("student: Recent activity has the notices", h.activity.join("|") === "Your part request was ordered|A mentor signed off Drill press", h);
+        check("student: Recent activity names the app first, as the demo (C13)", (await page.$$eval("#home-activity .actlink", (as) => as.map((a) => a.firstElementChild.className + ":" + a.firstElementChild.textContent))).join() === "actapp:Parts,actapp:Skills");
         check("student: no Waiting on you card", !h.waiting.length);
       }
       if (role === "mentor") {
         check("mentor: Waiting on you rows with counts, and the guide's data-guide=\"wait\"", h.waiting.length === 3 && h.counts.join() === "2,3,1" && h.waitGuide === "wait", h);
+        check("mentor: the counts are the demo's amber chip", await page.$$eval("#home-waiting .tcount", (els) => els.length === 3 && els.every((e) => e.classList.contains("warn"))));
         check("mentor: no next-task card", h.next === null);
       }
       if (role === "parent") {
@@ -436,16 +449,244 @@ try {
     check("after Done the next task takes its place and has the focus", await page.evaluate(() => document.activeElement === document.querySelector("#home-next .heroacts button")));
     await context.close();
   }
-  {
-    const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: TODAY.student, taskDone: 500 });
+  // Done's answers (item 5): 403 and 404 offer "Open task"; a 5xx puts Done back; no answer in 10 s says so and asks
+  // for /today.json again (and never offers "Open task"). The Done messages live in one lasting status line.
+  for (const st of [403, 404]) {
+    const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: TODAY.student, taskDone: st });
     const { page } = await openPortal(context);
     await page.waitForSelector("#home-next");
     await page.click("#home-next .heroacts button");
     await page.waitForFunction(() => document.querySelector("#home-next .heroacts")?.firstElementChild?.tagName === "A");
-    const acts = await page.$$eval("#home-next .heroacts > *", (els) => els.map((e) => [e.tagName, e.textContent.trim(), e.getAttribute("href"), e.classList.contains("btn-outline")]));
-    check("an error from task-done: the card offers \"Open task\" (gold) instead of Done", acts.length === 1 && acts[0][0] === "A" && acts[0][1].startsWith("Open task") && acts[0][2] === `${TASKS}/my?task=t-41` && !acts[0][3], acts);
-    check("...says so in words, and focus is on Open task", /can't be marked done/.test(await page.textContent("#home-next .home-status")) && await page.evaluate(() => document.activeElement?.textContent.startsWith("Open task")));
-    await shot(page, "home-student-done-error-1280");
+    const acts = await page.$$eval("#home-next .heroacts > *", (els) => els.map((e) => [e.tagName, e.firstChild.textContent.trim(), e.getAttribute("href"), e.classList.contains("btn-outline") || e.classList.contains("btn-ghost")]));
+    check(`task-done ${st}: the card offers "Open task" (gold) instead of Done`, acts.length === 1 && acts[0][0] === "A" && acts[0][1] === "Open task" && acts[0][2] === `${TASKS}/my?task=t-41` && !acts[0][3], acts);
+    check(`task-done ${st}: says so in the status line, and focus is on Open task`, /can't be marked done/.test(await page.textContent("#home-cards [role=status]")) && await page.evaluate(() => document.activeElement?.textContent.startsWith("Open task")));
+    if (st === 403) await shot(page, "home-student-done-refused-1280");
+    await context.close();
+  }
+  {
+    const { context, posts } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: TODAY.student, taskDone: 503 });
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#home-next");
+    await page.click("#home-next .heroacts button");
+    await page.waitForFunction(() => /try again/.test(document.getElementById("home-done-status").textContent));
+    const s = await page.$eval("#home-next .heroacts button", (b) => ({ text: b.textContent.trim(), disabled: b.disabled, focused: b === document.activeElement }));
+    check("task-done 503: Done is back, focused, with a short message; no Open task", s.text === "Done" && !s.disabled && s.focused && !(await page.$("#home-next a[href$='t-41']:not(.btn-ghost)")), s);
+    await page.click("#home-next .heroacts button");
+    await page.waitForFunction(() => /try again/.test(document.getElementById("home-done-status").textContent) && !document.querySelector("#home-next .heroacts button").disabled);
+    check("task-done 503: Done can be pressed again", posts.length === 2, posts.length);
+    await context.close();
+  }
+  {
+    const { context, posts, answers } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: TODAY.student, taskDone: "hang" });
+    const page = await context.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.clock.install();
+    await page.goto(PORTAL + "/");
+    await page.waitForSelector("#home-next");
+    const status0 = await page.evaluate(() => { const s = document.querySelectorAll("#home-cards [role=status]"); s[0].dataset.mark = "kept"; return s.length; });
+    const gets0 = answers.gets;
+    // two quick presses send one POST (item 6)
+    await page.$eval("#home-next .heroacts button", (b) => { b.click(); b.click(); });
+    await page.waitForFunction(() => /Marking it done/.test(document.getElementById("home-done-status").textContent));
+    // no refresh while the POST is on its way, even when the tab comes back after a long time (item 7)
+    await page.clock.setSystemTime(Date.now() + 5 * 60000);
+    await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await page.waitForTimeout(200);
+    const getsWhilePending = answers.gets;
+    await page.clock.runFor(10500);
+    await page.waitForFunction(() => /couldn't tell if that worked/.test(document.getElementById("home-done-status").textContent));
+    await page.waitForTimeout(300);
+    check("two quick presses of Done send one POST", posts.length === 1, posts.length);
+    check("no /today.json request while the POST is on its way", getsWhilePending === gets0, { gets0, getsWhilePending });
+    check("no answer in 10 s: \"We couldn't tell if that worked.\" and /today.json is asked again", answers.gets === gets0 + 1, { gets0, now: answers.gets });
+    check("...and the card never offers Open task then", !(await page.$$eval("#home-next .heroacts a", (as) => as.some((a) => a.firstChild.textContent.trim() === "Open task"))));
+    const status1 = await page.evaluate(() => ({ n: document.querySelectorAll("#home-cards [role=status]").length, kept: document.querySelector("#home-cards [role=status]").dataset.mark === "kept" }));
+    check("one status line in #home-cards, the same one after the cards were drawn again", status0 === 1 && status1.n === 1 && status1.kept, { status0, status1 });
+    check("timeout: no script error", errors.length === 0, errors);
+    await context.close();
+  }
+
+  // C13 and C14: the next-task card in full, a held-back task, the empty states, the event day.
+  const FULL = { ...TODAY.student, next: { taskId: "t-41", title: "Wire the intake sensor", due: "2026-11-18", project: "Intake", subteam: "Electrical", milestone: "Robot drives",
+    steps: { done: 2, total: 5 }, href: `${TASKS}/my?task=t-41`, stuckHref: `${TASKS}/my?task=t-41&do=stuck`, partHref: `${TASKS}/my?task=t-41&do=part` } };
+  const card = (page) => page.evaluate(() => {
+    const c = document.getElementById("home-next");
+    return { cls: c.className, h2: c.querySelector("h2").textContent, line: c.querySelector(".next-line")?.textContent || "", steps: c.querySelector(".next-steps")?.textContent || "",
+      bar: c.querySelector(".next-bar i")?.style.width || "", waiting: c.querySelector(".next-waiting")?.textContent || "", hold: c.querySelector(".next-hold")?.textContent || "",
+      blocked: c.querySelector(".next-blocked")?.textContent || "", empty: c.querySelector("p.mute")?.textContent || "",
+      acts: [...c.querySelectorAll(".heroacts > *")].map((e) => [e.firstChild.nodeType === 3 ? e.firstChild.textContent.trim() : e.textContent.replace(" (opens in a new tab)", "").trim(),
+        e.classList.contains("btn-outline") ? "plain" : e.classList.contains("btn-ghost") ? "ghost" : "gold", e.getAttribute("href")]) };
+  });
+  for (const width of [1280, 390]) {
+    const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: FULL, width });
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#home-next .next-steps");
+    const c = await card(page);
+    check(`${width}px: the full next-task card: project › subteam, milestone, due date, steps`, c.line === "Intake › Electrical · for “Robot drives” · due Wed, Nov 18" && c.steps === "2 of 5 steps" && c.bar === "40%", c);
+    check(`${width}px: Done (gold), I'm stuck, Request a part, Open (ghost), with their links`, JSON.stringify(c.acts) === JSON.stringify([["Done", "gold", null], ["I'm stuck", "plain", `${TASKS}/my?task=t-41&do=stuck`],
+      ["Request a part", "plain", `${TASKS}/my?task=t-41&do=part`], ["Open", "ghost", `${TASKS}/my?task=t-41`]]), c.acts);
+    check(`${width}px: the full card has no sideways scroll`, (await over(page)) <= 0);
+    await page.$eval("#home-next", (e) => e.scrollIntoView({ block: "center" }));
+    await shot(page, `next-full-${width}`);
+    await context.close();
+  }
+  {
+    const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: { ...TODAY.student, next: { taskId: "t-41", title: "Mount the camera", project: "Vision", href: `${TASKS}/my?task=t-41` } } });
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#home-next");
+    const c = await card(page);
+    check("no stuckHref or partHref: only Done and Open (C13)", c.acts.map((a) => a[0]).join() === "Done,Open", c.acts);
+    await context.close();
+  }
+  for (const [label, extra, word] of [["waiting on another task", { waitingOn: ["Cut the plate", "Order the sensor"] }, "waiting"], ["on hold", { onHold: true }, "hold"], ["blocked", { blocked: true }, "blocked"]]) {
+    const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: { ...FULL, next: { ...FULL.next, ...extra } } });
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#home-next");
+    const c = await card(page);
+    const said = { waiting: c.waiting === "Waiting on Cut the plate, Order the sensor.", hold: c.hold === "This task is on hold.", blocked: c.blocked === "Blocked" }[word];
+    check(`a task ${label}: Done is a plain button and the card says so in words`, c.acts[0][0] === "Done" && c.acts[0][1] === "plain" && said, c);
+    if (word === "waiting") { await page.$eval("#home-next", (e) => e.scrollIntoView({ block: "center" })); await shot(page, "next-waiting-plain-done-1280"); }
+    await context.close();
+  }
+  {
+    const { context } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: { ...TODAY.mentor, waiting: [] } });
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#home-waiting");
+    check("staff with nothing waiting: the card says \"Nothing is waiting on you.\" (C13)", (await page.textContent("#home-waiting p")) === "Nothing is waiting on you." && (await page.getAttribute("#home-waiting", "data-guide")) === "wait");
+    await shot(page, "empty-waiting-1280");
+    await context.close();
+  }
+  {
+    const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: { ...TODAY.student, next: null } });
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#home-next");
+    const c = await card(page);
+    check("a student with no next task: \"Nothing assigned to you\" (C13)", c.h2 === "Nothing assigned to you" && c.empty === "Take something nobody has yet." && c.acts.length === 0, c);
+    await shot(page, "empty-next-1280");
+    await context.close();
+  }
+  for (const today of [404, { ...TODAY.mentor, waiting: [] }]) {
+    // a student who is not staff never gets an empty Waiting card; no answer at all draws no empty card for anyone
+    const { context } = await newContext(browser, { groups: today === 404 ? "mentor|student" : "student", apps: GROUPED_APPS, today });
+    const { page } = await openPortal(context);
+    await settle(page);
+    const ids = await page.$$eval("#home-card-list > section", (els) => els.map((e) => e.id));
+    check(`empty states only with an answer, and Waiting only for staff (${today === 404 ? "no answer" : "student"})`, today === 404 ? ids.length === 0 : !ids.includes("home-waiting") && ids.includes("home-next"), ids);
+    await context.close();
+  }
+  for (const width of [1280, 390]) {
+    const shift = { id: "compete:shift-now:e1:2026-11-14:18", section: "today", title: "Pit crew until 11:00", detail: "Then Scouting at 11:00.", href: "http://compete.landing.test/schedule" };
+    const today = { ...FULL, today: [...FULL.today, shift] };
+    const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today, width, event: { name: "Colorado Regional", happeningNow: true } });
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#home-next");
+    await settle(page);
+    const s = await page.evaluate(() => ({ rows: [...document.querySelectorAll("#home-today .todayrow")].map((r) => r.dataset.id), compact: document.getElementById("home-next").classList.contains("evcompact"),
+      h2: parseFloat(getComputedStyle(document.querySelector("#home-next h2")).fontSize) }));
+    check(`${width}px event day: Competition's shift row first and the compact next-task card (C14)`, s.rows[0] === shift.id && s.rows.length === 2 && s.compact && s.h2 <= 18, s);
+    await shot(page, `home-event-day-${width}`);
+    await context.close();
+  }
+  {
+    const shift = { id: "compete:shift-now:x", section: "today", title: "Pit crew until 11:00", href: "http://compete.landing.test/schedule" };
+    const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: { ...FULL, today: [...FULL.today, shift] }, event: { name: "Colorado Regional", happeningNow: false } });
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#home-next");
+    await settle(page);
+    const s = await page.evaluate(() => ({ first: document.querySelector("#home-today .todayrow").dataset.id, compact: document.getElementById("home-next").classList.contains("evcompact") }));
+    check("not an event day (happeningNow false): the order is the answer's and the card is the full one", s.first !== shift.id && !s.compact, s);
+    await context.close();
+  }
+
+  // The amber chip and the status words keep 4.5:1 in both themes.
+  for (const theme of ["light", "dark"]) {
+    const { context } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: TODAY.mentor });
+    await context.addCookies([site("theme", theme)]);
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#home-waiting .tcount");
+    const ratio = await page.$eval("#home-waiting .tcount.warn", (e) => {
+      const rgba = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+      const over = (top, under) => { const a = top[3] === undefined ? 1 : top[3]; return [0, 1, 2].map((i) => top[i] * a + under[i] * (1 - a)); };
+      let bg = rgba(getComputedStyle(e).backgroundColor), n = e.parentElement, under = null;
+      while (n && !under) { const c = rgba(getComputedStyle(n).backgroundColor); if (c.length && (c[3] === undefined || c[3] > 0.99)) under = c; n = n.parentElement; }
+      const back = over(bg, under || [255, 255, 255]);
+      const lum = (c) => { const [r, g, b] = c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+      const fg = over(rgba(getComputedStyle(e).color), back);
+      const [a, b] = [lum(fg), lum(back)].sort((x, y) => y - x);
+      return (a + 0.05) / (b + 0.05);
+    });
+    check(`${theme}: the amber count chip has at least 4.5:1 contrast`, ratio >= 4.5, ratio.toFixed(2));
+    await context.close();
+  }
+
+  // Hostile text everywhere the answer has words (item 6): it is shown as text; no element is made from it.
+  {
+    const evil = "<img src=x onerror=\"window.__xss=1\">";
+    const today = { v: 1,
+      today: [{ id: "a", section: "today", title: evil, detail: evil, href: `${CAL}/`, cta: { label: evil, href: `${CAL}/x` } }],
+      waiting: [{ id: "b", section: "waiting", title: evil, detail: evil, href: `${PARTS}/`, count: 1 }],
+      next: { taskId: evil, title: evil, project: evil, subteam: evil, milestone: evil, waitingOn: [evil], href: `${TASKS}/my`, stuckHref: `${TASKS}/my?do=stuck` },
+      activity: [{ app: evil, title: evil, detail: evil, href: `${PARTS}/`, at: ago(2) }] };
+    const { context } = await newContext(browser, { groups: "mentor|student", apps: GROUPED_APPS, today });
+    const { page, errors } = await openPortal(context);
+    await page.waitForSelector("#home-activity section");
+    await page.waitForTimeout(300);
+    const s = await page.evaluate(() => ({ imgs: document.querySelectorAll("main img").length, xss: window.__xss === 1,
+      shown: document.querySelector("#home-today .rt").textContent, app: document.querySelector("#home-activity .actapp").textContent }));
+    check("hostile words: no img element is created, nothing runs, the words show as text", s.imgs === 0 && !s.xss && s.shown.startsWith("<img") && s.app.startsWith("<img") && errors.length === 0, { s, errors });
+    await context.close();
+  }
+
+  // The shop screen's notice (C14) and an extra Authentik group (item 4).
+  const SHOP_APPS = JSON.stringify([...JSON.parse(GROUPED_APPS), { id: "parts", name: "Parts & Inventory", description: "Parts.", host: "parts", groups: ["admin", "mentor", "student"] }]);
+  for (const [query, want] of [["?blocked=parts", "Parts & Inventory isn't available on a display. Pick one of these instead."], ["?blocked=nope", null], ["?blocked=%3Cimg%20src%3Dx%3E", null], ["?blocked=Parts", null]]) {
+    for (const width of query === "?blocked=parts" ? [1280, 390] : [1280]) {
+      const { context, seen } = await newContext(browser, { groups: "display|authentik Admins", apps: SHOP_APPS, width });
+      const page = await context.newPage();
+      await page.goto(PORTAL + "/" + query);
+      await page.waitForSelector("#display-home");
+      await settle(page);
+      const note = await page.$eval("#display-home", (d) => d.querySelector(".dnote")?.textContent || null);
+      check(`shop screen ${query} (${width}px): ${want ? "the notice names the app from the list" : "no notice"}`, note === want, note);
+      if (query === "?blocked=parts" && width === 1280) {
+        check("display with an extra Authentik group gets the screen picker (item 4)", (await page.$$("#display-home .dcard")).length === 3 && !(await page.$("#shell-bar *")));
+        check("a shop-screen login asks for no /today.json or /event.json", !seen.some((u) => /\/(today|event)\.json/.test(u)), seen.filter((u) => /json/.test(u)));
+      }
+      if (query === "?blocked=parts") await shot(page, `display-blocked-${width}`);
+      await context.close();
+    }
+  }
+
+  // The install banner starts as early as in release 8.1: before /me.json answers, so even when it fails (item 7).
+  {
+    const { context } = await newContext(browser, { groups: "student", me: 500 });
+    const page = await context.newPage();
+    await page.goto(PORTAL + "/");
+    await page.waitForSelector("#portal-error:not([hidden])");
+    await page.waitForSelector(".install-banner", { timeout: 4000 }).catch(() => null);
+    check("the install banner still comes when /me.json fails (it starts first, as in 8.1)", !!(await page.$(".install-banner")));
+    await context.close();
+  }
+  {
+    const { context } = await newContext(browser, { groups: "display" });
+    const page = await context.newPage();
+    await page.goto(PORTAL + "/");
+    await page.waitForSelector("#display-home");
+    await page.waitForTimeout(1600);
+    check("the shop screen shows no install banner", !(await page.isVisible(".install-banner")));
+    await context.close();
+  }
+
+  // setOpen re-reads the cookie before it writes (item 7): a row opened in another tab meanwhile stays open.
+  {
+    const { context } = await newContext(browser, { groups: "admin", apps: GROUPED_APPS });
+    const { page } = await openPortal(context);
+    await page.click('[data-grp="tools"] .grphead');
+    await context.addCookies([site("shellgroups", "more")]); // another tab closed Tools and opened More
+    await page.click('[data-grp="adminapps"] .grphead');
+    const c = (await context.cookies(PORTAL)).find((x) => x.name === "shellgroups");
+    check("opening Admin apps keeps what the cookie says now (adminapps.more), not this page's old list", c && c.value === "adminapps.more", c);
     await context.close();
   }
 
@@ -471,7 +712,7 @@ try {
     const { context } = await newContext(browser, { groups: "mentor", today });
     const { page, errors } = await openPortal(context);
     await settle(page);
-    const s = await page.evaluate(() => ({ cards: document.querySelectorAll("#home-cards > *, #home-activity > *").length, tiles: document.querySelectorAll("#app-grid .app-card").length, access: !document.getElementById("access").hidden }));
+    const s = await page.evaluate(() => ({ cards: document.querySelectorAll("#home-card-list > *, #home-activity > *").length, tiles: document.querySelectorAll("#app-grid .app-card").length, access: !document.getElementById("access").hidden }));
     check(`/today.json ${label}: no card is drawn and the tiles and Get access are as before`, s.cards === 0 && s.tiles === 3 && s.access && errors.length === 0, { s, errors });
     if (label === "404") { await shot(page, "home-no-today-1280"); }
     await context.close();

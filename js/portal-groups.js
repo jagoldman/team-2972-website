@@ -76,12 +76,19 @@ export function moreLink(t) {
  * returns how many matched. Each list keeps a fixed id: #tools-list, #admin-list, #more-list.
  */
 export function mountHomeGroups(root, { site }) {
-  let open = new Set(parseHomeGroups(readCookie(document.cookie, GROUPS_COOKIE)));
+  const fromCookie = () => new Set(parseHomeGroups(readCookie(document.cookie, GROUPS_COOKIE)));
+  let open = fromCookie();
+  let sticks = true; // false once a write did not stick (cookies blocked): this page's own list is then the truth
   let query = "";
 
+  // Re-read the cookie before writing, so a row opened or closed meanwhile in another tab (or in the bar) is kept.
   function setOpen(id, on) {
-    if (on) open.add(id); else open.delete(id);
-    try { document.cookie = groupsCookie(HOME_GROUPS.filter((g) => open.has(g)), site); } catch { /* cookies blocked: this page remembers */ }
+    const now = sticks ? fromCookie() : open;
+    if (on) now.add(id); else now.delete(id);
+    open = now;
+    const list = HOME_GROUPS.filter((g) => open.has(g));
+    try { document.cookie = groupsCookie(list, site); } catch { /* cookies blocked */ }
+    sticks = [...fromCookie()].join(".") === list.join(".");
   }
   function show(grp, on) {
     grp.querySelector(".grphead").setAttribute("aria-expanded", String(on));

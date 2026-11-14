@@ -44,7 +44,11 @@
   <!-- Above the tiles, in the demo's order (release 8.1.5): the guide's "Get started" card (the kit draws it here),
        then Waiting on you, Today and the student's next task, from /today.json (js/portal-home.js). -->
   <div data-guide-card></div>
-  <div class="home-cards" id="home-cards"></div>
+  <div id="home-cards">
+    <div class="home-cards" id="home-card-list"></div>
+    <!-- One lasting status line for the Done messages: it stays when the cards are drawn again. -->
+    <p class="home-status" id="home-done-status" role="status"></p>
+  </div>
 
   <!-- Search stays outside #main-apps. That section hides when every visible app is under More,
        and the field (and the / shortcut that focuses it) has to stay usable whenever any app is shown. -->
@@ -80,7 +84,7 @@
 import { filterByMode, iconPath, parseMode, readCookie } from "/shell/core.js";
 import { bindPortalModeChange, mountPortalShell } from "/js/portal-shell.js";
 import { mountHomeGroups } from "/js/portal-groups.js";
-import { activityCard, displayHome, el, fetchToday, isParentOnly, nextCard, rowsForMode, svgIcon, todayCard, waitingCard } from "/js/portal-home.js";
+import { activityCard, blockedAppName, displayHome, el, fetchEventDay, fetchToday, isParentOnly, nextCard, rowsForMode, shiftFirst, svgIcon, todayCard, waitingCard } from "/js/portal-home.js";
 
 // t is a resolved kit tile (resolveTiles): href is null for coming-soon tiles. Every app opens in a new tab,
 // so the portal stays open (the demo and the kit's Apps menu do the same).
@@ -106,34 +110,30 @@ function renderTile(t) {
   return card;
 }
 
-// The shop screen (C9): "Pick what this screen shows" and nothing else: no bar, no greeting, no footer.
-function showDisplayHome(site) {
+// The shop screen (C9): "Pick what this screen shows" and nothing else: no bar, no greeting, no footer, no install
+// banner (css). `apps` names an app that refused the screen (?blocked=<id>, C14), from the list, never the address.
+function showDisplayHome(site, apps) {
   document.body.setAttribute("data-display", "");
   document.getElementById("site-header").hidden = true;
   document.getElementById("site-footer").hidden = true;
   const main = document.getElementById("main");
   main.className = "dsp-main";
-  main.replaceChildren(displayHome(site));
+  main.replaceChildren(displayHome(site, blockedAppName(location.search, apps)));
   document.title = "Pick a screen | Team 2972";
 }
 
 onContent(async () => {
-  const site0 = siteBase();
-  // /today.json is asked for at once, alongside the bar; a failure leaves the home as release 8.1 had it.
-  let todayAsked = Date.now();
-  const firstToday = fetchToday(site0);
+  initInstallBanner();
   document.getElementById("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
-  let me, groups, resolved, tools, site, display;
+  let me, groups, resolved, tools, site, display, apps;
   try {
-    ({ me, groups, tiles: resolved, tools, site, display } = await mountPortalShell());
+    ({ me, groups, tiles: resolved, tools, site, display, apps } = await mountPortalShell());
   } catch (err) {
     document.getElementById("portal-error").hidden = false;
     return;
   }
-  if (display) { showDisplayHome(site); return; }
-
-  initInstallBanner();
+  if (display) { showDisplayHome(site, apps); return; }
 
   // Names go in with textContent, never as HTML. The greeting is the first name only.
   const full = me.name || me.email || "there";
@@ -152,19 +152,27 @@ onContent(async () => {
   document.getElementById("access-body").innerHTML = renderRequestAccess({ name: me.name, email: me.email });
   document.getElementById("access").hidden = false;
 
-  // ---- Waiting on you, Today, the next task, Recent activity (C4) ----
-  // A row that belongs to one mode shows only in that mode (C12); a mode change redraws the cards.
+  // ---- Waiting on you, Today, the next task, Recent activity (C4, C12, C13, C14) ----
+  // /today.json and /event.json are asked for once the person is known; a failure leaves the home as release 8.1 had
+  // it. A row that belongs to one mode shows only in that mode (C12); a mode change redraws the cards. On an event
+  // day Competition's shift rows go first and the next-task card is the compact one (C14). Staff see Waiting on you
+  // and a student the next-task card even when empty, once /today.json answered (C13).
+  const staff = groups.includes("admin") || groups.includes("mentor");
+  const student = groups.includes("student");
+  const status = document.getElementById("home-done-status");
+  const say = (words) => { status.textContent = words; };
+  let todayAsked = Date.now(), posting = false, eventDay = false;
   let lastToday = null, cardsMode = null;
   function paintCards(data, focusNext = false) {
     if (!data) return;
     lastToday = data;
     const mode = cardsMode = parseMode(readCookie(document.cookie, "mode"));
     const cards = [
-      waitingCard(rowsForMode(data.waiting, mode)),
-      todayCard(rowsForMode(data.today, mode)),
-      groups.includes("student") ? nextCard(data.next, { onDone: () => refreshToday(true) }) : null,
+      waitingCard(rowsForMode(data.waiting, mode), { empty: staff }),
+      todayCard(shiftFirst(rowsForMode(data.today, mode), eventDay)),
+      student ? nextCard(data.next, { empty: true, compact: eventDay, say, onBusy: (on) => { posting = on; }, onDone: () => refreshToday(true) }) : null,
     ].filter(Boolean);
-    document.getElementById("home-cards").replaceChildren(...cards);
+    document.getElementById("home-card-list").replaceChildren(...cards);
     const act = isParentOnly(groups) ? null : activityCard(data.activity);
     document.getElementById("home-activity").replaceChildren(...(act ? [act] : []));
     if (focusNext) focusAfterDone();
@@ -175,13 +183,19 @@ onContent(async () => {
     if (target.id === "greeting") target.tabIndex = -1;
     target.focus();
   }
+  // Resolves to true when the cards were drawn again. Never while a Done is on its way (its answer redraws them).
   async function refreshToday(focusNext) {
+    if (posting) return false;
     todayAsked = Date.now();
     const data = await fetchToday(site);
-    if (data) paintCards(data, focusNext);
-    else if (focusNext) focusAfterDone();
+    if (data && !posting) { paintCards(data, focusNext); return true; }
+    if (focusNext) focusAfterDone();
+    return false;
   }
-  firstToday.then((data) => paintCards(data));
+  Promise.all([fetchToday(site), fetchEventDay()]).then(([data, onToday]) => {
+    eventDay = onToday;
+    if (!posting) paintCards(data);
+  });
 
   // ---- the tiles, then Tools, Admin apps and More as three closed rows (C1) ----
   // Coming-soon tiles go last in each list; the sort is stable, so apps.json order holds otherwise.
@@ -199,7 +213,7 @@ onContent(async () => {
   }
   function paintTiles() {
     if (groups.length === 0) return;
-    if (lastToday && cardsMode !== parseMode(readCookie(document.cookie, "mode"))) paintCards(lastToday);
+    if (lastToday && !posting && cardsMode !== parseMode(readCookie(document.cookie, "mode"))) paintCards(lastToday);
     const mode = parseMode(readCookie(document.cookie, "mode"));
     const shown = filterByMode(resolved, mode).sort((a, b) => !a.href - !b.href);
     const main = shown.filter((t) => !t.more && !t.adminGroup);
@@ -221,7 +235,7 @@ onContent(async () => {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
     paintTiles();
-    if (Date.now() - todayAsked > 60000) refreshToday(false);
+    if (!posting && Date.now() - todayAsked > 60000) refreshToday(false);
   });
 
   q.addEventListener("input", applySearch);
