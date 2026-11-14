@@ -209,6 +209,19 @@ function altFor(src, fallback) {
   return (info && info.alt) || fallback || "";
 }
 
+// An <img>'s src, srcset and sizes for a photo shown at different widths on different screens, so a phone fetches a
+// small copy: `widths` are the copies to offer (as for imgUrl), `sizes` the CSS width of the spot. An uploaded image
+// offers every width it has stored; a Drive photo offers each of `widths` (the copy this server saved, or lh3 at that
+// width), each named by the width in its own address. Anything else (a site path) is the plain src.
+//   `<img${imgSized(r.image, [400, 800], "(min-width: 1024px) 300px, 50vw")} alt="…">`
+function imgSized(src, widths, sizes) {
+  const media = imgSrcset(src);
+  const urls = [...new Set(widths.map((w) => imgUrl(src, w)))];
+  const sized = urls.map((u) => [u, Number((u.match(/-(\d+)\.webp$/) || u.match(/=w(\d+)$/) || [])[1])]).filter(([, w]) => w > 0);
+  const set = media || (sized.length > 1 ? sized.map(([u, w]) => `${esc(u)} ${w}w`).join(", ") : "");
+  return ` src="${esc(imgUrl(src, widths[0]))}"${set ? ` srcset="${set}" sizes="${esc(sizes)}"` : ""}`;
+}
+
 // The src (plus srcset and sizes for uploaded images) of an <img>, as attribute text for a template string:
 //   `<img${imgAttrs(m.photo, 400)} alt="…">`
 function imgAttrs(src, width) {
@@ -494,14 +507,17 @@ function scrollLogToNewest(root = document) {
 // Home: "The robots", the four newest seasons from ROBOTS (newest year first) as cards that open the robot's page, and a
 // link to the Robots page. A season with no photo shows its year in the photo's place.
 const HOME_ROBOTS = 4;
+// The CSS width of a card's photo: four columns from 1024px (about 285px in the 1200px page), two below that, one under
+// 350px. A phone takes the 400px copy (the 800px one on a 3x screen); a desktop the 400px or, on a 2x screen, the 800px.
+const ROBOT_ROW_SIZES = "(min-width: 1024px) 300px, (min-width: 350px) 50vw, 100vw";
 function robotsRow() {
   const newest = ROBOTS.map((r, i) => ({ r, i })).filter(({ r }) => Number.isFinite(Number(r.year)))
     .sort((a, b) => Number(b.r.year) - Number(a.r.year) || a.i - b.i).slice(0, HOME_ROBOTS);
   if (!newest.length) return "";
-  const cards = newest.map(({ r, i }, k) => {
+  const cards = newest.map(({ r, i }) => {
     const P = `ROBOTS[${i}]`;
     const photo = r.image
-      ? `<div class="photo"><img${imgAttrs(r.image, 800)}${imgPos(r)}${ck(`${P}.image`)} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}"${k > 1 ? ` loading="lazy"` : ""} width="800" height="600"></div>`
+      ? `<div class="photo"><img${imgSized(r.image, [400, 800], ROBOT_ROW_SIZES)}${imgPos(r)}${ck(`${P}.image`)} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}" loading="lazy" width="800" height="600"></div>`
       : `<div class="photo ph"${ck(`${P}.image`, "image")}><b data-ck-ignore>${esc(r.year)}</b></div>`;
     return `<li${ck(P)}><a class="card" href="${robotUrl(r)}">${photo}<div class="card-b">
       <p class="label"><span${ck(`${P}.year`)}>${esc(r.year)}</span> · <span${ck(`${P}.game`)}>${esc(r.game)}</span></p>

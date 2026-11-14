@@ -275,6 +275,30 @@ try {
     check("Home: the robots row follows edited robot data (a new 2031 season leads, a renamed robot shows its new name)", after.ok && after.cards.length === 4 && after.cards[0][0] === "robot.html?year=2031" && after.cards[0][1] === "Newbot" && after.cards[1][1] === "Renamed" && after.log === "robot.html?year=2031", after);
     await context.close();
   }
+  // The robots row's photos: the browser takes the copy that fits the card (400px on a phone, 800px on a 2x desktop)
+  for (const [width, scale, want] of [[390, 1, "400"], [1440, 1, "400"], [1440, 2, "800"]]) {
+    const context = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: scale, colorScheme: "dark" });
+    await context.route("**/*", async (route) => {
+      const url = new URL(route.request().url());
+      if (url.host === "lh3.googleusercontent.com") return route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#445"/></svg>' });
+      if (url.host !== "landing.test") return route.abort();
+      if (url.pathname === "/config.js") return route.fulfill({ contentType: "text/javascript", body: 'window.SITE_ENV = { scheme: "http", domain: "landing.test", drivePhotos: "{}" };' });
+      if (/^\/(content|media)\//.test(url.pathname)) return route.fulfill({ status: 404, body: "" });
+      const p = url.pathname === "/" ? "/index.html" : decodeURIComponent(url.pathname);
+      const file = normalize(join(root, p));
+      if (!file.startsWith(root) || !existsSync(file)) return route.fulfill({ status: 404, body: "" });
+      return route.fulfill({ contentType: TYPES[extname(file)] || "application/octet-stream", body: readFileSync(file) });
+    });
+    const page = await context.newPage();
+    await page.goto(PUBLIC + "/");
+    await page.waitForFunction(() => document.documentElement.classList.contains("content-ready"));
+    await page.evaluate(() => document.querySelector(".rbt").scrollIntoView());
+    await page.waitForFunction(() => [...document.querySelectorAll(".rbt img")].every((i) => i.complete && i.currentSrc));
+    const got = await page.$$eval(".rbt img", (imgs) => imgs.map((i) => i.currentSrc));
+    check(`Home ${width}px at ${scale}x: the robots row's photos load the ${want}px copies`, got.length === 4 && got.every((u) => u.endsWith(`=w${want}`)), got);
+    await context.close();
+  }
+
   // Both day-count states, from the schedule and the date in Colorado (the browser clock is set; no test hook in the page)
   for (const [when, expect] of [["2026-11-14T10:00:00-07:00", { line: "In 130 days" }], ["2027-01-22T10:00:00-07:00", { line: "In 61 days" }],
     ["2027-01-23T10:00:00-07:00", { big: "60" }], ["2027-03-01T10:00:00-07:00", { big: "23" }], ["2027-03-23T05:30:00Z", { big: "2" }]]) {

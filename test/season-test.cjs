@@ -185,6 +185,10 @@ const sliceBetween = (html, from, to) => html.slice(html.indexOf(from), to ? htm
   check("robots row: the four newest seasons in ROBOTS, newest first, each a link to its robot page", years.join() === want.join(), years.join());
   check("robots row: names, year · game and taglines come from the data", ROBOTS.filter((r) => want.includes(r.year)).every((r) => row.includes(`>${r.name}</h3>`) && row.includes(`>${r.game}</span>`) && (!r.tagline || row.includes(`>${r.tagline}</p>`))));
   check("robots row: every photo has alt text", (row.match(/<img /g) || []).length === 4 && (row.match(/<img [^>]*alt="[^"]+"/g) || []).length === 4);
+  check("robots row: all four photos are lazy (the row is never on the first screen)", (row.match(/<img [^>]*loading="lazy"/g) || []).length === 4);
+  const sets = [...row.matchAll(/<img src="([^"]+)" srcset="([^"]+)" sizes="([^"]+)"/g)];
+  check("robots row: each photo offers a 400px and an 800px copy, with the card's width as sizes (src is the 400px copy)",
+    sets.length === 4 && sets.every(([, src, set, sizes]) => /=w400$|-400\.webp$/.test(src) && /=w400 400w, \S+=w800 800w$|-400\.webp 400w, \S+-800\.webp 800w$/.test(set) && sizes === "(min-width: 1024px) 300px, (min-width: 350px) 50vw, 100vw"), sets.map((m) => m[2]).join(" | "));
   check("robots row: a See all robots link to the Robots page, and the heading from SITE.homeRobotsHeading", /<a class="btn btn-line" href="robots\.html">See all robots<\/a>/.test(row) && /data-ck="SITE.homeRobotsHeading">The robots</.test(row));
   check("robots row: each card is keyed to its season for the editor", want.every((y) => row.includes(`data-ck="ROBOTS[${ROBOTS.findIndex((r) => r.year === y)}]"`)));
   const c = load(`const SITE = { teamNumber: "1", teamName: "T", school: "S", location: "L", founded: "2000", email: "a@example.com", instagram: "#", instagramHandle: "", schoolUrl: "#", logo: "", homeRobotsHeading: "Our machines" };
