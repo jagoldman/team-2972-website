@@ -118,6 +118,16 @@ try {
     // the Apps menu has no coming-soon order rule of its own; compare as sets
     const set = (s) => s.split(",").filter(Boolean).sort().join(",");
     check(`${label}: the Apps menu lists the same tiles (main and More)`, set(menuMain) === set([wantMain, wantMore].filter(Boolean).join(",")), { menuMain });
+    // Kit 0.2.3: core tiles in the first list, the home page's More tiles behind the menu's More button (closed on
+    // open). With no core tile, the "more" tiles are the first list and there is no More row.
+    const menuCore = (await names(page, "#shell-bar .shbar-apps ul.shbar-grid:not(.shbar-more > ul) > li")).join(",");
+    const menuMore = (await names(page, "#shell-bar .shbar-apps .shbar-more > ul.shbar-grid > li")).join(",");
+    const wantCore = wantMain || wantMore, wantRest = wantMain ? wantMore : "";
+    check(`${label}: Apps menu core tiles [${wantCore}], More [${wantRest}]`, set(menuCore) === set(wantCore) && set(menuMore) === set(wantRest), { menuCore, menuMore });
+    const moreRow = await page.isVisible("#shell-bar .shbar-apps .shbar-morebtn");
+    check(`${label}: the Apps menu's More row ${wantRest ? "shown, closed" : "not shown"}`, wantRest
+      ? moreRow && (await page.getAttribute("#shell-bar .shbar-morebtn", "aria-expanded")) === "false" && !(await page.isVisible("#shell-bar .shbar-more > ul.shbar-grid"))
+      : !moreRow);
     if (!wantMain && !wantMore) check(`${label}: the Apps menu explains there are no apps yet`, /an admin still has to add you/.test(await page.textContent("#shell-bar .shbar-apps")));
     check(`${label}: no script errors`, errors.length === 0, errors.join(" | "));
     await context.close();
@@ -130,9 +140,30 @@ try {
     await page.focus("#shell-bar .shbar-appsbtn");
     await page.keyboard.press("Enter");
     check("Enter on the launcher opens the Apps menu", await page.isVisible("#shell-bar .shbar-apps") && (await page.getAttribute("#shell-bar .shbar-appsbtn", "aria-expanded")) === "true");
-    check("Apps displays a flat list", (await page.$$("#shell-bar .shbar-more")).length === 0);
+    // Kit 0.2.3: core apps first, then a More button (closed each time the menu opens) that reveals the rest.
+    const moreBtn = "#shell-bar .shbar-morebtn", moreUl = "#shell-bar .shbar-more > ul.shbar-grid";
+    const moreState = async () => ({ expanded: await page.getAttribute(moreBtn, "aria-expanded"), shown: await page.isVisible(moreUl) });
+    check("Apps: one More row whose button controls the More list", (await page.$$("#shell-bar .shbar-more")).length === 1 && (await page.getAttribute(moreBtn, "aria-controls")) === (await page.$eval(moreUl, (u) => u.id)));
+    let ms = await moreState();
+    check("Apps: More is closed when the menu opens", ms.expanded === "false" && !ms.shown, ms);
+    await page.focus(moreBtn);
+    await page.keyboard.press("Enter");
+    ms = await moreState();
+    check("Enter on More opens its list", ms.expanded === "true" && ms.shown && (await names(page, `${moreUl} > li`)).join() === "Everyone Link,Alumni News,GitHub,Team Drive", ms);
+    await page.keyboard.press(" ");
+    ms = await moreState();
+    check("Space on More closes it again", ms.expanded === "false" && !ms.shown, ms);
+    await page.click(moreBtn);
+    ms = await moreState();
+    check("a click on More opens it", ms.expanded === "true" && ms.shown, ms);
+    const taskTile = page.locator("#shell-bar .shbar-apps a.shbar-item").filter({ hasText: "Task App" });
+    check("Apps tiles show the name only; the description is the tile's title", (await taskTile.getAttribute("title")) === "Fake tile for tests." && (await page.$$eval("#shell-bar .shbar-apps .shbar-item small", (els) => els.map((e) => e.textContent.trim()))).join() === "Coming soon");
     await page.keyboard.press("Escape");
     check("Escape closes the Apps menu and returns focus to the launcher", !(await page.isVisible("#shell-bar .shbar-apps")) && await page.$eval("#shell-bar .shbar-appsbtn", (b) => b === document.activeElement));
+    await page.keyboard.press("Enter");
+    ms = await moreState();
+    check("reopening the Apps menu shows More closed again", (await page.isVisible("#shell-bar .shbar-apps")) && ms.expanded === "false" && !ms.shown, ms);
+    await page.keyboard.press("Escape");
     await page.evaluate(() => scrollTo(0, 600));
     const barTop = await page.$eval("#shell-bar header, #shell-bar .shbar", (b) => Math.round(b.getBoundingClientRect().top)).catch(() => null);
     check("the app bar stays at the top when the page scrolls (sticky)", barTop === 0, `top=${barTop}`);
