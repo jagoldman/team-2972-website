@@ -14,14 +14,14 @@
 
 /** The app bar's own controls (both adapters use these; the demo's words where it has them). */
 export const BAR_TIPS = Object.freeze({
-  apps: "Every app, tool and team link",
-  build: "Show the apps for build season",
-  competition: "Show the event apps: schedule, pit and scouting",
-  tools: "Small helpers that open on this site",
-  more: "Other apps and links to team sites",
-  chip: "Competition mode is on. Change it in Apps or Account.",
-  bell: "What is new for you in every app",
-  account: "Your theme, notices and account settings",
+  apps: "Every app, tool and team link.",
+  build: "Show the apps for build season.",
+  competition: "Show the event apps: schedule, pit and scouting.",
+  tools: "Small helpers that open on this site.",
+  more: "Other apps and links to team sites.",
+  chip: "Competition mode is on; change it in Apps or Account.",
+  bell: "What is new for you in every app.",
+  account: "Your theme, notices and account settings.",
 });
 
 const freeze = (o) => Object.freeze(Object.fromEntries(Object.entries(o).map(([k, v]) => [k, Object.freeze(v)])));

@@ -1,10 +1,10 @@
 {
-  "version": "0.3.0",
+  "version": "0.3.1",
   "profile": "static",
   "files": [
     {
       "path": "shell/VERSION",
-      "sha256": "d915cc95d6ca8f47ae297713ed46d4e5c5d99ddd29fc3c61e263bdf305f2b5b0"
+      "sha256": "79e3f22ca37c7fdf4c29ae3648d6b008c3cb6547260a453409275470919dc674"
     },
     {
       "path": "shell/tokens.css",
@@ -16,7 +16,7 @@
     },
     {
       "path": "shell/ui.css",
-      "sha256": "e297502baf121495a3dc0b83c51ac2fda40f27638cc8d776f5617568a018ccec"
+      "sha256": "5ab0411f975f079eb33c96e3d5f5a0b6816197a6806d1887f027684156a8fe8c"
     },
     {
       "path": "shell/core.js",
@@ -28,7 +28,7 @@
     },
     {
       "path": "shell/tip.js",
-      "sha256": "81231433d3b0e49fad7b023839ed939bda1161ec75008a2794ce4785769d5ee6"
+      "sha256": "78b8247628e4f6fc89d4b01759f48632cce0524ef6f27713c1a32cd56c10b31c"
     },
     {
       "path": "shell/tip.d.ts",
@@ -36,7 +36,7 @@
     },
     {
       "path": "shell/tip-text.js",
-      "sha256": "6773d5e40cb0ede077e0166fced91c2623d799ce3b98da31e2f57c65778780b3"
+      "sha256": "edea845cbb57103d4572b4344e1185744a37a532b53a7b0fd1a1ac525984a7c5"
     },
     {
       "path": "shell/tip-text.d.ts",

@@ -256,12 +256,21 @@
 /* ---------- Hover description (tip.js, D149) ----------
    One shared <div id="shell-tip" role="tooltip" class="shell-tip"> for the whole page; tip.js places it with
    position: fixed above (or below) the element and adds .on while it shows. Navy on light pages, light on dark ones
-   (the bar's pair, which the contrast tests cover). Above every other layer; never takes a pointer. No arrow. */
+   (the bar's pair, which the contrast tests cover). Above every other layer; never takes a pointer. No arrow.
+   Since 0.3.1 it is a manual popover (popover="manual") where the browser has the Popover API, so it is drawn in the
+   top layer, above a native modal <dialog>: these rules undo the browser's popover styles (inset, margin, border,
+   size, overflow), so it looks and is placed the same either way. */
 .shell-tip {
   position: fixed;
   z-index: 1000;
+  inset: auto;
   top: 0;
   left: 0;
+  margin: 0;
+  border: 0;
+  width: auto;
+  height: auto;
+  overflow: visible;
   max-width: min(280px, calc(100vw - 16px));
   padding: 6px 10px;
   border-radius: 6px;
@@ -296,6 +305,19 @@
   }
   .shell-tip.on {
     transition: opacity 0.12s ease;
+  }
+  /* The popover tip leaves the top layer only after it has faded (browsers without allow-discrete drop these two
+     rules and keep the ones above, so the tip then appears and goes at once, as a hidden popover is not drawn). */
+  .shell-tip[popover] {
+    transition: opacity 0.12s ease, visibility 0s 0.12s, display 0s 0.12s allow-discrete, overlay 0s 0.12s allow-discrete;
+  }
+  .shell-tip[popover].on {
+    transition: opacity 0.12s ease, display 0s allow-discrete, overlay 0s allow-discrete;
+  }
+  @starting-style {
+    .shell-tip[popover].on {
+      opacity: 0;
+    }
   }
 }
 @media (forced-colors: active) {

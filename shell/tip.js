@@ -6,10 +6,16 @@
 // status word (.shell-status), whose words come from tip-text.js for this page's app id(s). The description:
 //   - shows on mouse hover after half a second, and at once when a key press (Tab, Shift+Tab, an arrow key…) moved
 //     the focus to the element (:focus-visible); never from touch or a pen, and never when a script moved the focus;
+//     the pointer and the focus both use the nearest described element (0.3.1: a data-tip on a <label> shows when
+//     its input has the focus; a keyboard tip sits beside the focused element, or beside the label when the focused
+//     element is under 8 px either way or hidden);
 //   - hides on leave, blur, Escape (which then does nothing else, so a menu under it stays open), click, pointer down,
 //     resize and scroll (a keyboard tip follows its element while the page scrolls it into view, until the scrolling
 //     stops), and when its element, or its words, go away;
-//   - sits above the element (below when there is no room), always inside the window, above every other layer;
+//   - sits above the element (below when there is no room), always inside the window, above every other layer,
+//     a native modal <dialog> and a popover included (0.3.1): the tip is a manual popover, shown again each time so
+//     it is the newest thing in the browser's top layer; without the Popover API it is put inside the open modal
+//     dialog or popover that holds its element while it shows, and back at the end of <body> after;
 //   - is one shared role="tooltip" element, announced with aria-describedby on the element while it shows;
 //   - is set as text, never as markup.
 // The text is worked out when the pointer or the focus arrives; nothing is written onto elements that are not being
@@ -25,6 +31,7 @@ const DELAY = 500; // ms of mouse hover before the tip shows
 const KEY_MOMENT = 300; // ms: focus this soon after a navigation key counts as moved by the keyboard
 const SCROLL_FIRST = 300; // ms a keyboard tip waits for the scroll that brings its element into view to start
 const SCROLL_QUIET = 150; // ms without a scroll event that count as "the scrolling has stopped"
+const MIN_SPOT = 8; // px: a focused element smaller than this either way (or hidden) has its tip beside its describer
 const NAV_KEYS = new Set(["Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown"]);
 
 const idList = (ids) => (Array.isArray(ids) ? ids : [ids]).filter((id) => typeof id === "string" && id !== "");
@@ -100,7 +107,9 @@ export function hideTip() {
 function start(doc, win) {
   const now = () => Date.now();
   let tip = null;
-  let anchor = null;
+  let anchor = null; // the element whose words show (it carries data-tip, or is a kit tab or status word)
+  let owner = null; // the element the tip describes: the anchor, or the focused element inside it (aria-describedby)
+  let spot = null; // the element the tip is placed beside
   let pending = null;
   let timer = null;
   let oldDesc = null;
@@ -111,6 +120,7 @@ function start(doc, win) {
   let keyAt = -Infinity;
   let pointerAt = -Infinity;
   let watch = null;
+  let popover = false; // the tip is a manual popover (the browser has the Popover API)
   const self = { doc, callers: [] };
   // Every installed caller's ids, the latest caller's first.
   const ids = () => [...new Set(self.callers.slice().reverse().flatMap((c) => c.ids))];
@@ -134,50 +144,122 @@ function start(doc, win) {
       tip.id = TIP_ID;
       tip.className = "shell-tip";
       tip.setAttribute("role", "tooltip");
+      // The top layer (above a modal dialog and any popover) when the browser can; .shell-tip in ui.css undoes the
+      // browser's popover styles, so the look and the placement are the same either way.
+      popover = typeof tip.showPopover === "function" && typeof tip.hidePopover === "function";
+      if (popover) tip.setAttribute("popover", "manual");
       doc.body.appendChild(tip);
     }
     return tip;
   }
+  const isOpen = (el) => {
+    try {
+      return el.matches(":popover-open");
+    } catch {
+      return false; // no Popover API
+    }
+  };
+  // Without the Popover API: the open modal dialog or popover nearest the element, which is in the top layer.
+  function layer(a) {
+    for (let n = a; n && n !== doc.body; n = n.parentElement) {
+      if (isOpen(n)) return n;
+      if (n.tagName === "DIALOG" && n.hasAttribute("open")) {
+        try {
+          if (n.matches(":modal")) return n;
+        } catch {
+          return n; // no :modal: an open dialog is taken to be modal (inside it the tip draws the same)
+        }
+      }
+    }
+    return null;
+  }
+  // Puts the shown tip above everything, its element's dialog or popover included.
+  function lift(t, a) {
+    if (popover) {
+      try {
+        if (isOpen(t)) t.hidePopover();
+        t.showPopover(); // again each time: the newest top-layer element is drawn on top
+      } catch {
+        // not shown as a popover (left the page): it still draws as a fixed box
+      }
+      return;
+    }
+    const host = layer(a) || doc.body;
+    if (t.parentNode !== host) host.appendChild(t);
+  }
+  function lower(t) {
+    if (popover) {
+      if (isOpen(t)) {
+        try {
+          t.hidePopover();
+        } catch {
+          // already hidden
+        }
+      }
+    } else if (t.parentNode && t.parentNode !== doc.body && doc.body) {
+      doc.body.appendChild(t); // back out of the dialog
+    }
+  }
   function place() {
-    if (!anchor || !tip) return;
-    const r = anchor.getBoundingClientRect();
+    if (!spot || !tip) return;
+    const r = spot.getBoundingClientRect();
     const p = placeTip(r, tip.offsetWidth, tip.offsetHeight, doc.documentElement.clientWidth || win.innerWidth, win.innerHeight);
     tip.style.top = `${p.top}px`;
     tip.style.left = `${p.left}px`;
+    if (!popover && tip.parentNode !== doc.body) {
+      // Inside a dialog that makes its own frame for fixed boxes (a transform, a filter): measure and correct.
+      const got = tip.getBoundingClientRect();
+      const dy = Math.round(got.top - p.top);
+      const dx = Math.round(got.left - p.left);
+      if (dy || dx) {
+        tip.style.top = `${p.top - dy}px`;
+        tip.style.left = `${p.left - dx}px`;
+      }
+    }
   }
   // While a tip shows: its element's words (attributes and text) and whether the element is still on the page.
   // Nothing else on the page is read or watched.
   function follow() {
     if (!anchor) return;
     const words = text(anchor);
-    if (!anchor.isConnected || !words) return hide();
+    if (!anchor.isConnected || !owner.isConnected || !words) return hide();
     if (tip && tip.textContent !== words) {
       tip.textContent = words;
       place();
     }
   }
-  function show(a, keyboard) {
+  // `a` carries the words; `focused` (keyboard) is the element that has the focus, `a` itself or inside it.
+  function show(a, keyboard, focused = a) {
     pending = null;
     const words = text(a);
     if (!words || !a.isConnected) return;
     hide();
     anchor = a;
+    owner = focused;
+    spot = focused;
+    if (focused !== a) {
+      // A tiny or hidden focused element (a visually hidden file input in its label): beside the label instead.
+      const r = focused.getBoundingClientRect();
+      if (!(r.width >= MIN_SPOT && r.height >= MIN_SPOT)) spot = a;
+    }
     byKeyboard = keyboard;
     keepUntil = keyboard ? now() + SCROLL_FIRST : 0;
     const t = box();
     t.textContent = words; // text, never markup
     t.classList.add("on");
+    lift(t, focused);
     place();
     // The element's own description is kept; the tip is added only when it says something new (a tile already
-    // carries its description as hidden text, so a screen reader does not hear it twice).
-    oldDesc = a.getAttribute("aria-describedby");
+    // carries its description as hidden text, so a screen reader does not hear it twice). It goes on the focused
+    // element, which is what a screen reader reads.
+    oldDesc = focused.getAttribute("aria-describedby");
     const ids0 = (oldDesc || "").split(/\s+/).filter((id) => id && id !== TIP_ID);
     const repeats = ids0.some((id) => {
       const d = doc.getElementById(id);
       return d && d.textContent.trim() === words.trim();
     });
     addedDesc = !repeats;
-    if (addedDesc) a.setAttribute("aria-describedby", [...ids0, TIP_ID].join(" "));
+    if (addedDesc) focused.setAttribute("aria-describedby", [...ids0, TIP_ID].join(" "));
     watch = new win.MutationObserver(follow);
     watch.observe(a, { attributes: true, attributeFilter: ["data-tip", "data-tab", "class"], characterData: true, childList: true, subtree: true });
     watch.observe(doc.body, { childList: true, subtree: true }); // only to notice the element leaving the page
@@ -190,15 +272,20 @@ function start(doc, win) {
       watch.disconnect();
       watch = null;
     }
-    if (anchor && addedDesc) {
-      if (oldDesc) anchor.setAttribute("aria-describedby", oldDesc);
-      else anchor.removeAttribute("aria-describedby");
+    if (owner && addedDesc) {
+      if (oldDesc) owner.setAttribute("aria-describedby", oldDesc);
+      else owner.removeAttribute("aria-describedby");
     }
     anchor = null;
+    owner = null;
+    spot = null;
     oldDesc = null;
     addedDesc = false;
     byKeyboard = false;
-    if (tip) tip.classList.remove("on");
+    if (tip) {
+      tip.classList.remove("on");
+      lower(tip);
+    }
   }
 
   const on = [];
@@ -247,16 +334,18 @@ function start(doc, win) {
     } catch {
       // an old browser without :focus-visible: the key press is enough
     }
+    // The same lookup as the pointer's: the focused element's own words, else the nearest described element around
+    // it (a data-tip on a <label> around its input).
     let el = null;
     try {
-      el = a.matches(TIP_SELECTOR) && text(a) ? a : null;
+      el = described(a);
     } catch {
       el = null;
     }
-    if (el) show(el, true);
+    if (el) show(el, true, a);
   });
   listen(doc, "focusout", (e) => {
-    if (e.target === anchor || e.target === pending) hide();
+    if (e.target === anchor || e.target === owner || e.target === pending) hide();
   });
   listen(win, "scroll", () => {
     if (!anchor) return hide(); // also cancels a hover still waiting
@@ -276,6 +365,14 @@ function start(doc, win) {
     hide();
   }, true);
   listen(win, "resize", () => hide());
+  // The dialog or popover holding the element closes (by a script, say): the tip goes with it.
+  const closes = (e) => {
+    if (anchor && e.target && e.target !== tip && typeof e.target.contains === "function" && e.target.contains(anchor)) hide();
+  };
+  listen(doc, "close", closes, true);
+  listen(doc, "toggle", (e) => {
+    if (e.newState === "closed") closes(e);
+  }, true);
 
   self.hide = hide;
   self.remove = () => {
