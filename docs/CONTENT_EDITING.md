@@ -234,3 +234,23 @@ No section or key was added, renamed or removed in `js/content.js`, so the edito
   `kind: "team"` items of `HISTORY.milestones` as the timeline (with their photos).
 - Sponsors: a `SPONSOR_TIERS` entry with no sponsors is not shown (still in the page, hidden, so its list can be edited).
 - Derived text (the hero headline, the countdown, the record numbers) is computed in the browser; a click on the headline edits the award.
+
+## Home page, second version (2026-11-14, D154)
+
+New keys, all optional (the page has the same words built in when one is missing). The editor's schema keeps them as loose
+text today (`obj(...).catchall(loose)`); the editor may want proper fields for them:
+
+- `SITE.homeRecordHint` ("Select a year to see that robot."): the line beside "Competition record".
+- `SITE.homeRobotsHeading` ("The robots"): the heading of the row of the four newest robots.
+- `SITE.homeSponsorsLabel` ("Recent sponsors"): the sponsor strip's label, shown as "<label> · <year> season".
+- `HISTORY.workshop = { heading, machines[] }` ("Our workshop" and the nine machines): the workshop tile, its machines as
+  chips. They sit beside `HISTORY.today`, not inside it, because a published `HISTORY.today` replaces that object whole.
+
+Where fields now show on Home: the hero eyebrow is `SITE.teamName · FRC Team SITE.teamNumber · SITE.school`; "The robots"
+row is the four newest `ROBOTS` by year (`image`, `imagePosition`, `year`, `game`, `name`, `tagline`); the workshop tile is
+`HISTORY.workshop` plus the newest milestone photo (it no longer shows a `HISTORY.today` sentence); the sponsor strip is the
+newest `SPONSOR_TIERS` entry with sponsors, every name in type (logos stay on the Sponsors page).
+
+Data changed (user, 2026-11-13): `SCHEDULE_2027[1].location` is "Ritchie Center, University of Denver, Denver, CO", and
+`HISTORY.today.paragraphs[0]` names the drill presses. A published content.json overrides both until it is republished
+with them.

@@ -55,6 +55,10 @@ const SITE = {
   memberImageAlt: "Two Team 2972 students at the driver station during a match",
   schoolLogo: "media:ec3bf41661c1556a00ab",
   schoolUrl: "https://www.dawsonschool.org",
+  // Words on the home page (index.html) that are not part of another section.
+  homeRecordHint: "Select a year to see that robot.", // beside "Competition record", above the season log
+  homeRobotsHeading: "The robots",                     // the row of the four newest robots
+  homeSponsorsLabel: "Recent sponsors",                // the sponsor strip: "<label> · <year> season"
 };
 
 // The Blue Alliance links are built from the team number — never stored.
@@ -64,7 +68,7 @@ const tbaEvent = (key) => `https://www.thebluealliance.com/event/${key}`;
 // Upcoming competitions — edit dates/events each season
 const SCHEDULE_2027 = [
   { event: "Intermountain West Regional", dates: "March 24-27, 2027", location: "Ford Idaho Center, Nampa, ID" },
-  { event: "Denver Regional", dates: "April 7-10, 2027", location: "Denver, CO" },
+  { event: "Denver Regional", dates: "April 7-10, 2027", location: "Ritchie Center, University of Denver, Denver, CO" },
 ];
 
 // Our year, framed around the school year (shown on the About page, in order)
@@ -164,13 +168,19 @@ const HISTORY = {
       `Team 2972 is growing and doing well. Grants from the Dawson Parent Association and private
       donations have turned a back room into a real workshop, and we are building a permanent
       two-thirds-length practice field. Students machine parts on a lathe, a CNC mill and a CNC router, cut stock on
-      horizontal and vertical bandsaws and a miter saw, and prototype on new 3D printers and a laser
+      horizontal and vertical bandsaws and a miter saw, drill on drill presses, and prototype on new 3D printers and a laser
       engraver/cutter. A new parts library keeps the components we need on hand, so we spend our time
       building instead of waiting on orders. Students learn to design, make and wire a competition
       robot with mentors and parent volunteers beside them.`,
     ],
     image: "1vbL6lHeviIg9wOlDE50PeHCVIAfGmPYN",
     imageAlt: "Team 2972 students cheering in the stands with 2 9 7 2 number signs",
+  },
+  // The "Our workshop" tile on the home page: its heading and the machines, shown once each as chips.
+  // Keep the list in step with the machines named in today.paragraphs.
+  workshop: {
+    heading: "Our workshop",
+    machines: ["Lathe", "CNC mill", "CNC router", "Horizontal and vertical bandsaws", "Miter saw", "Drill presses", "3D printers", "Laser engraver/cutter", "Parts library"],
   },
 };
 
