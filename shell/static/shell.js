@@ -33,6 +33,7 @@ import {
   resolveTiles,
   setModeCookie,
   setTheme,
+  splitMore,
 } from "../core.js";
 
 const SVG = "http://www.w3.org/2000/svg";
@@ -63,7 +64,9 @@ function icon(name, size = 20) {
 const themeIcon = (c) => (c === "light" ? "sun" : c === "dark" ? "moon" : "system");
 const sr = (text) => h("span", { class: "shbar-sr", text });
 
+// A tile shows its icon and name only; the description is the browser's hover text (title), so nothing is cut off.
 function tileEl(t, appId) {
+  const title = t.description || null;
   const body = [
     h("span", { class: "shbar-item-ic" }, icon(t.icon)),
     h(
@@ -71,10 +74,10 @@ function tileEl(t, appId) {
       { class: "shbar-item-text" },
       h("b", null, t.name, t.external ? h("span", { "aria-hidden": "true", text: " ↗" }) : null),
       t.href ? sr(" (opens in a new tab)") : null,
-      h("small", { text: t.comingSoon ? "Coming soon" : t.description }),
+      t.comingSoon ? h("small", { text: "Coming soon" }) : null,
     ),
   ];
-  if (!t.href) return h("li", null, h("span", { class: "shbar-item is-soon", "aria-disabled": "true" }, body));
+  if (!t.href) return h("li", null, h("span", { class: "shbar-item is-soon", "aria-disabled": "true", title }, body));
   return h(
     "li",
     null,
@@ -83,6 +86,7 @@ function tileEl(t, appId) {
       {
         class: "shbar-item",
         href: t.href,
+        title,
         "aria-current": t.id === appId ? "page" : null,
         target: "_blank",
         rel: "noopener noreferrer",
@@ -114,6 +118,7 @@ export function mountAppBar(root, opts) {
   const account = opts.accountHref ?? accountHref(site);
   const state = {
     panel: null,
+    moreOpen: false,
     mode: parseMode(readCookie(document.cookie, MODE_COOKIE)),
     theme: resolveTheme(document, window, opts.themeFallback),
     tiles: opts.tiles || null,
@@ -139,7 +144,24 @@ export function mountAppBar(root, opts) {
     });
     return [choice, button];
   });
-  const appsBody = h("div", { style: "display:contents" });
+  // The panel's body is built once and patched (hidden toggles, list contents), so focus on More survives.
+  const retry = h("button", { type: "button", class: "shbar-linkbtn", text: "Try again" });
+  retry.addEventListener("click", () => load());
+  const loadingNote = h("p", { class: "shbar-note", role: "status", text: "Loading apps…", hidden: true });
+  const failedNote = h("p", { class: "shbar-note", role: "status", hidden: true }, "Couldn't load the apps. ", retry);
+  const emptyNote = h("p", { class: "shbar-note", text: "No apps here yet. If you just joined, an admin still has to add you to a group.", hidden: true });
+  const mainList = h("ul", { class: "shbar-grid", hidden: true });
+  const moreCount = h("span", { class: "shbar-morecount", "aria-hidden": "true" });
+  const moreSr = sr("");
+  const moreBtn = h("button", { type: "button", class: "shbar-morebtn", "aria-expanded": "false", "aria-controls": `${id}-more` },
+    h("span", { text: "More" }), moreCount, moreSr, icon("chevron", 16));
+  const moreList = h("ul", { id: `${id}-more`, class: "shbar-grid", hidden: true });
+  const moreBox = h("div", { class: "shbar-more", hidden: true }, moreBtn, moreList);
+  moreBtn.addEventListener("click", () => {
+    state.moreOpen = !state.moreOpen;
+    renderMore();
+  });
+  const appsBody = h("div", { style: "display:contents" }, loadingNote, failedNote, emptyNote, mainList, moreBox);
   const appsPanel = h(
     "nav",
     { id: `${id}-apps`, class: "shbar-panel shbar-apps", "aria-label": "All apps", hidden: true },
@@ -206,16 +228,22 @@ export function mountAppBar(root, opts) {
   // ---- patch ----
   function renderTiles() {
     const shown = state.tiles ? filterByMode(state.tiles, state.mode) : [];
-    const retry = h("button", { type: "button", class: "shbar-linkbtn", text: "Try again" });
-    retry.addEventListener("click", load);
-    appsBody.replaceChildren(
-      ...[
-        state.tiles === null && !state.failed ? h("p", { class: "shbar-note", role: "status", text: "Loading apps…" }) : null,
-        state.failed ? h("p", { class: "shbar-note", role: "status" }, "Couldn't load the apps. ", retry) : null,
-        state.tiles !== null && !state.failed && shown.length === 0 ? h("p", { class: "shbar-note", text: "No apps here yet. If you just joined, an admin still has to add you to a group." }) : null,
-        shown.length ? h("ul", { class: "shbar-grid" }, shown.map((t) => tileEl(t, opts.appId))) : null,
-      ].filter(Boolean),
-    );
+    // Core apps first; the "more" tiles sit behind the More row. With no core app, the "more" tiles are the list.
+    const { main, rest } = splitMore(shown);
+    loadingNote.hidden = !(state.tiles === null && !state.failed);
+    failedNote.hidden = !state.failed;
+    emptyNote.hidden = !(state.tiles !== null && !state.failed && shown.length === 0);
+    mainList.replaceChildren(...main.map((t) => tileEl(t, opts.appId)));
+    mainList.hidden = main.length === 0;
+    moreList.replaceChildren(...rest.map((t) => tileEl(t, opts.appId)));
+    moreBox.hidden = rest.length === 0;
+    moreCount.textContent = String(rest.length);
+    moreSr.textContent = `, ${rest.length} ${rest.length === 1 ? "app" : "apps"}`;
+    renderMore();
+  }
+  function renderMore() {
+    moreBtn.setAttribute("aria-expanded", String(state.moreOpen));
+    moreList.hidden = !state.moreOpen;
   }
   function render() {
     const who = (state.user && (state.user.name || state.user.email)) || "";
@@ -280,6 +308,11 @@ export function mountAppBar(root, opts) {
   function setPanel(p, focusBack) {
     const was = state.panel;
     state.panel = p;
+    // More is closed every time the menu opens.
+    if (p === "apps" && was !== "apps") {
+      state.moreOpen = false;
+      renderMore();
+    }
     render();
     if (focusBack && was) (was === "account" ? acct : appsBtn).focus();
   }

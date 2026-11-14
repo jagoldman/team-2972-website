@@ -107,6 +107,17 @@ export function filterByMode(tiles, mode) {
   return (tiles || []).filter((t) => (t.modes || MODES).includes(m));
 }
 
+/**
+ * The Apps menu's two lists: `main` (tiles without `more`, shown first) and `rest` (the "more" tiles, behind the
+ * More row). With no core tile, the "more" tiles are the main list and there is no More row. Order is kept.
+ */
+export function splitMore(tiles) {
+  const list = tiles || [];
+  const core = list.filter((t) => !t.more);
+  const more = list.filter((t) => t.more);
+  return core.length ? { main: core, rest: more } : { main: more, rest: [] };
+}
+
 export function parseMode(v) {
   return v === "competition" ? "competition" : "build";
 }
@@ -277,6 +288,7 @@ export const ICONS = Object.freeze({
   handbook: "M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z",
   resources: "M3 6h6l2 2h10v11H3z",
   more: "M5 12h.01M12 12h.01M19 12h.01",
+  chevron: "M9 6l6 6-6 6",
   bell: "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0",
   flag: "M5 21V4M5 4h11l-2 4 2 4H5",
   sun: "M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4",

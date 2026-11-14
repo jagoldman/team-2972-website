@@ -80,6 +80,8 @@ export function signOutHref(site: Site): string;
 export function hasAccountMenu(user?: ShellUser | null, enabled?: boolean): boolean;
 export function resolveTiles(appsJson: unknown, groups: readonly string[], site: Site): ShellTile[];
 export function filterByMode(tiles: readonly ShellTile[], mode: string | null | undefined): ShellTile[];
+/** Apps menu lists: core tiles (`main`) and the "more" tiles behind the More row (`rest`). No core tile: the "more" tiles are `main`. */
+export function splitMore(tiles: readonly ShellTile[] | null | undefined): { main: ShellTile[]; rest: ShellTile[] };
 export function parseMode(v: string | null | undefined): Mode;
 export function parseTheme(v: string | null | undefined): ThemeChoice;
 export function readCookie(cookieString: string | null | undefined, name: string): string | null;

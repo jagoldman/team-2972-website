@@ -304,29 +304,60 @@
 .shbar-btn:hover {
   background: var(--tint);
 }
-.shbar-more > summary {
-  cursor: pointer;
-  padding: 10px 8px;
-  color: var(--mute);
-  font-weight: 600;
-  font-size: 0.8rem;
-  border-radius: 8px;
-}
-.shbar-more > summary:hover {
-  background: var(--surface-2);
-}
-.shbar-more[open] > summary {
-  margin-bottom: 6px;
-}
+/* Apps lists: two columns at every width (a lone last tile sits in the left column). */
 .shbar-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
-/* Compact tile: icon, name, short description. Hover is grey; the current app is tint and ink. */
+/* More: one quiet row under the core apps (the demo's .grp); closed each time the menu opens; the chevron turns. */
+.shbar-more {
+  display: grid;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.shbar .shbar-morebtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-2);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: left;
+}
+.shbar .shbar-morebtn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.shbar-morecount {
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+.shbar-morebtn svg {
+  margin-left: auto;
+  color: var(--mute);
+}
+.shbar-morebtn[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+/* Compact tile: icon and name only; the description is the tile's title (hover text). Hover is grey; the current app is tint and ink. */
 .shbar-item {
   display: flex;
   align-items: center;
@@ -365,12 +396,12 @@ a.shbar-item:hover {
   display: block;
   font-size: 0.92rem;
   font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
+/* Only "Coming soon" is printed under a name; descriptions are never printed in the menu. */
 .shbar-item small {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
+  display: block;
   color: var(--mute);
   font-size: 0.78rem;
   line-height: 1.3;
@@ -409,9 +440,6 @@ a.shbar-item:hover {
   .shbar-chip-long {
     display: none;
   }
-  .shbar-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .shbar-mode button {
     min-height: 44px;
   }
@@ -420,8 +448,12 @@ a.shbar-item:hover {
   .shbar-appsbtn,
   .shbar-icon,
   .shbar-item,
-  .shbar-choice {
+  .shbar-choice,
+  .shbar-morebtn {
     transition: background-color 0.12s;
+  }
+  .shbar-morebtn svg {
+    transition: transform 0.15s ease;
   }
 }
 @media (forced-colors: active) {
