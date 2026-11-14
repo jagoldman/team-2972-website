@@ -1,5 +1,36 @@
 # landing: handoff
 
+## 2026-11-14: release 8.1.5, the portal home as the demo's and the "2972 Team" header (branch `r815`)
+
+Built from `new-apps/briefs/r815/LANDING.md`, its addendum 1 and CONTRACT C1, C2, C3, C4, C8, C9, C12.
+
+- **Portal home** (`portal/index.html`): above the tiles, in the demo's order (`portal-demo/js/core.js` `views.portal`),
+  the guide's slot `<div data-guide-card></div>` (empty until the kit 0.4.0 sync wires `mountGuideCard`), then
+  **Waiting on you** (`data-guide="wait"`), **Today** and the student's **next-task card** (gold Done posts `{taskId}`
+  to same-origin `/today/task-done`; on an error the card offers "Open task"). Under the tiles: **Tools, Admin apps,
+  More** as three closed rows, then **Recent activity** (not for a parent-only person). The search box, "Get access"
+  and the install banner stay; search opens a row that has a match without saving it.
+- **Data:** `GET /today.json` (infra's Caddy sends it to Account `/api/today`). `js/portal-home.js` checks every part
+  (`parseToday`: version 1, on-site links only, text cut to length, `modes` per row, C12). A part with no data is not
+  drawn; a failed, missing or wrong-version answer leaves the home as release 8.1 had it. The service worker never
+  stores it (only `/css/`, `/js/` and the like are storable).
+- **The rows** (`js/portal-groups.js`, `mountHomeGroups`): apps.json entries with `"group": "admin"` are Admin apps,
+  `tool: true` entries are Tools (same tab, "All tools" last, `tools.<domain>/`), the rest of `more` is More. Open or
+  closed is the site-wide `shellgroups` cookie with ids `tools`, `adminapps`, `more`. This one module is landing's
+  own code until the kit's static profile has the helper; **the kit 0.4.0 sync replaces it**. Until then the 0.3.2
+  bar shows the Admin apps under its More (`js/portal-shell.js` `barTiles`) and its Tools row from `resolveTools`.
+- **Bell:** `showBell: true` on the portal; the kit reads same-origin `/_shell/inbox` (portal host only, C3). With no
+  inbox route there the kit draws no bell.
+- **Shop screen (C9):** a person whose only group is `display` gets no bar and no footer, only "Pick what this screen
+  shows" with Door QR (`calendar./here/kiosk`), Pit monitor (`compete./pit/monitor`) and Projector
+  (`tasks./projector`; the Projector's path was still being built when this was written: check it, it is one line in
+  `DISPLAY_SCREENS`).
+- **Public header (C8):** every page but Home reads "2972 Team" on one line, in a more compact bar on a phone
+  (`renderHeader`, `.brand-short`). Home is unchanged. Shown first in `public-redesign-demo/inner-v2.html`.
+- **Tests:** `node --test test/portal-mode-test.cjs test/portal-home-test.mjs`; `test/portal-shell-test.mjs` covers the
+  four roles with fake `/today.json` at 1280 and 390, Done and its error, C12, no `/today.json`, the rows, search, the
+  shop screen and the bell (`PORTAL_TEST_SHOTS=<dir>` saves screenshots); `test/public-test.mjs` covers the header.
+
 ## 2026-11-14: Home, second version (D154, release 8.1)
 
 Home (`index.html`) now matches the approved prototype `public-redesign-demo/home-v2.html`: the team name leads the hero
@@ -163,6 +194,7 @@ is in `../landing`, so keep `main` checked out there and use `git worktree` for 
 | `test/menu-test.sh` | Chrome | the phone Menu button on public pages: opens under the bar, every item on screen and 44px, Escape |
 | `LANDING_TEST_NODE_MODULES=<node_modules with playwright> node test/public-test.mjs` | Playwright | every public page, 3 widths x 3 ways of asking for light: dark, no overflow, no console errors, contrast, no text over photos; keyboard walk-throughs; Home 1440x900 |
 | `node test/season-test.cjs` | node | season log marks and counts, results-table parser, hostile input |
+| `node --test test/portal-mode-test.cjs test/portal-home-test.mjs` | node | the portal adapter (mode, bell, Admin apps, shop screen) and the `/today.json` checks (links, modes, dates, roles) |
 | `LANDING_TEST_NODE_MODULES=<node_modules with playwright> node test/portal-shell-test.mjs` | Playwright + its Chromium (an existing install, e.g. another app's) | portal app bar and home grid (D101): tiles per group, main then More, mode cookie, Apps menu keyboard, new-tab links, theme cookie, 320px, sign-out; public pages have no bar. No server: requests are answered in memory |
 | `test/url-injection-test.sh` | Chrome | `robot.html?year=` cannot inject markup |
 | `node test/legal-test.cjs` | node | privacy and terms pages: head, links, contact, no placeholders, no invented retention/consent claims |
