@@ -880,6 +880,78 @@ tr.win td:first-child { border-left-color: var(--gold); }
 .portal-notice p, .portal-error, .app-empty { margin: 0 0 8px; color: var(--text-2); }
 .portal-error[hidden], .app-empty[hidden], .portal-notice[hidden] { display: none; }
 
+/* Portal home, release 8.1.5 (the demo's Home): above the tiles the guide's card, Waiting on you, Today and the
+   student's next task; under them Tools, Admin apps and More as closed rows; then Recent activity. */
+[data-guide-card] { margin-top: 20px; }
+[data-guide-card]:empty { display: none; }
+.home-cards { display: grid; gap: 14px; margin-top: 20px; }
+.home-cards:empty { display: none; }
+#home-activity { margin-top: 32px; }
+.hcard { background: var(--ink-3); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px 12px; min-width: 0; }
+.hcard h2 { margin: 0 0 4px; font: 600 1.05rem/1.3 var(--font); letter-spacing: 0; color: var(--text); }
+.hcard .list { list-style: none; margin: 0; padding: 0; display: grid; }
+.hcard .li { display: flex; align-items: center; gap: 8px 12px; min-height: 52px; padding: 4px; border-top: 1px solid var(--line); min-width: 0; }
+.hcard .li:first-child { border-top: 0; }
+.todayrow { flex-wrap: nowrap; border-radius: 8px; }
+.todayrow:hover { background: var(--hover); }
+.rowlink { flex: 1; min-width: 0; min-height: 44px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 10px; align-items: center; color: inherit; text-decoration: none; }
+.rowlink:hover { color: inherit; text-decoration: none; }
+.rowlink .rt { grid-column: 1; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.rowlink .rl { grid-column: 1; color: var(--mute); font-size: 0.88rem; overflow-wrap: anywhere; }
+.rowlink .tcount { grid-column: 2; grid-row: 1 / span 2; }
+.rowlink .chev { grid-column: 3; grid-row: 1 / span 2; color: var(--mute); font-size: 1.25rem; line-height: 1; }
+.tcount { display: inline-block; min-width: 22px; padding: 0 7px; border-radius: 999px; background: var(--tint-2); color: var(--text); font-size: 0.78rem; font-weight: 700; line-height: 22px; text-align: center; white-space: nowrap; }
+.todayrow .btn { flex: none; padding: 8px 14px; }
+.hcard.hero { border-left: 3px solid var(--gold); }
+.nextup .eyebrow { margin: 0; }
+.nextup h2 { margin: 2px 0 4px; font: 700 1.3rem/1.25 var(--display); letter-spacing: -0.01em; }
+.nextup .mute { margin: 0 0 12px; color: var(--mute); }
+.heroacts { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+.heroacts .btn svg { flex: none; }
+.home-status { margin: 8px 0 0; color: var(--mute); font-size: 0.875rem; }
+.home-status:empty { display: none; }
+@media (max-width: 640px) {
+  .heroacts { display: grid; grid-template-columns: 1fr 1fr; }
+  .heroacts .btn:only-child { grid-column: 1 / -1; }
+}
+.actlink { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; color: inherit; text-decoration: none; }
+.actlink:hover { color: inherit; text-decoration: none; }
+.actlink:hover b { color: var(--accent); }
+.actlink .grow { flex: 1; min-width: 0; color: var(--text-2); overflow-wrap: anywhere; }
+.actlink b { color: var(--text); font-weight: 600; }
+.actlink .who { flex: none; white-space: nowrap; color: var(--mute); font-size: 0.8rem; }
+
+.homegroups { display: grid; margin-top: 14px; border-bottom: 1px solid var(--line); }
+.homegroups[hidden], .homegroups .grp[hidden], .grpbody[hidden], .toolrow[hidden] { display: none; }
+.grp { border-top: 1px solid var(--line); }
+.grphead { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 4px; border: 0; border-radius: 8px; background: none; color: var(--text-2); font: 600 0.92rem/1.2 var(--font); text-align: left; cursor: pointer; }
+.grphead:hover { background: var(--hover); color: var(--text); }
+.grpchev { margin-left: auto; display: inline-grid; color: var(--mute); transition: transform 0.15s ease; }
+.grphead[aria-expanded="true"] .grpchev { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { .grpchev { transition: none; } }
+.grpbody { display: grid; gap: 2px; padding: 2px 0 10px; }
+.toollist { display: grid; gap: 2px; }
+.toolrow { display: flex; gap: 10px; align-items: center; min-height: 52px; padding: 6px 4px; border-radius: 10px; color: var(--text); text-decoration: none; min-width: 0; }
+.toolrow:hover { background: var(--hover); color: var(--text); text-decoration: none; }
+.toolrow .ic { flex: none; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--tint); color: var(--accent); }
+.toolrow b { display: block; font-size: 0.92rem; font-weight: 600; }
+.toolrow small { display: block; color: var(--mute); font-size: 0.8rem; line-height: 1.3; }
+.toolrow.all { min-height: 44px; justify-content: space-between; color: var(--accent); font-weight: 600; font-size: 0.92rem; }
+.homegroups .morelinks { display: flex; flex-wrap: wrap; gap: 0 22px; padding: 0 4px; }
+
+/* The shop screen's home (C9): always dark (the portal's dark tokens), three large links. */
+body[data-display] { color-scheme: dark; background: var(--ink); color: var(--text); }
+.dsp-main { padding: 28px max(24px, env(safe-area-inset-left, 0px)) 48px max(24px, env(safe-area-inset-right, 0px)); }
+.dsp { display: grid; gap: 22px; max-width: var(--max-width); margin: 0 auto; }
+.dsp h1 { margin: 0; font: 800 clamp(1.6rem, 4vw, 3rem)/1.1 var(--display); letter-spacing: -0.02em; }
+.dsp-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 860px) { .dsp-grid { grid-template-columns: minmax(0, 1fr); } }
+.dcard { display: grid; gap: 10px; align-content: start; min-height: 140px; padding: 22px; border-radius: 14px; background: var(--ink-3); border: 1px solid var(--line-2); color: var(--text); text-decoration: none; }
+.dcard:hover { border-color: var(--accent); color: var(--text); text-decoration: none; }
+.dcard:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.dcard b { font: 700 1.6rem/1.2 var(--display); }
+.dcard .dmute { color: var(--text-2); font-size: 1.05rem; }
+
 /* ---------- Install banner (portal home) and /install page ---------- */
 .install-banner {
   position: fixed;

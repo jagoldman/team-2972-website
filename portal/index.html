@@ -41,6 +41,11 @@
     <p>Your team apps will appear here as soon as that's done.</p>
   </div>
 
+  <!-- Above the tiles, in the demo's order (release 8.1.5): the guide's "Get started" card (the kit draws it here),
+       then Waiting on you, Today and the student's next task, from /today.json (js/portal-home.js). -->
+  <div data-guide-card></div>
+  <div class="home-cards" id="home-cards"></div>
+
   <!-- Search stays outside #main-apps. That section hides when every visible app is under More,
        and the field (and the / shortcut that focuses it) has to stay usable whenever any app is shown. -->
   <div class="apps-head" id="apps-head" hidden>
@@ -52,12 +57,11 @@
   <section class="portal-section" id="main-apps" aria-labelledby="main-apps-h" hidden>
     <div class="app-grid" id="app-grid"></div>
   </section>
-  <section class="portal-section" id="more-apps" aria-labelledby="more-apps-h" hidden>
-    <h3 id="more-apps-h">More</h3>
-    <ul class="morelinks" id="more-list"></ul>
-  </section>
+  <!-- Tools, Admin apps and More: three closed rows (js/portal-groups.js); a row with nothing in it is not drawn. -->
+  <div class="homegroups" id="home-groups" hidden></div>
   <p class="app-empty" id="app-empty" hidden>No app matches that. Try a different word.</p>
   <p class="app-empty" id="portal-empty" hidden>There are no apps for your groups in this mode yet.</p>
+  <div class="home-cards" id="home-activity"></div>
   <section id="access" hidden>
     <h2>Get access</h2>
     <p class="section-lead">The Team Drive and the team's Onshape CAD are shared by invitation. Ask for access and an admin will add you.</p>
@@ -75,28 +79,8 @@
 <script type="module">
 import { filterByMode, iconPath, parseMode, readCookie } from "/shell/core.js";
 import { bindPortalModeChange, mountPortalShell } from "/js/portal-shell.js";
-const SVG_NS = "http://www.w3.org/2000/svg";
-function svgIcon(d) {
-  const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "1.8");
-  svg.setAttribute("stroke-linecap", "round");
-  svg.setAttribute("stroke-linejoin", "round");
-  svg.setAttribute("aria-hidden", "true");
-  const path = document.createElementNS(SVG_NS, "path");
-  path.setAttribute("d", d); // from the kit's fixed icon set, never from user data
-  svg.append(path);
-  return svg;
-}
-
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text) node.textContent = text;
-  return node;
-}
+import { mountHomeGroups } from "/js/portal-groups.js";
+import { activityCard, displayHome, el, fetchToday, isParentOnly, nextCard, rowsForMode, svgIcon, todayCard, waitingCard } from "/js/portal-home.js";
 
 // t is a resolved kit tile (resolveTiles): href is null for coming-soon tiles. Every app opens in a new tab,
 // so the portal stays open (the demo and the kit's Apps menu do the same).
@@ -122,36 +106,34 @@ function renderTile(t) {
   return card;
 }
 
-function renderMoreLink(t) {
-  const li = el("li");
-  const link = el(t.href ? "a" : "span", t.href ? "" : "coming-soon");
-  link.dataset.q = `${t.name} ${t.description} ${t.audience}`.toLowerCase();
-  if (t.href) {
-    link.href = t.href;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-  }
-  const ico = el("span", "more-ico");
-  ico.append(svgIcon(iconPath(t.icon)));
-  const name = el("b", "", t.name);
-  if (t.external) name.append(el("span", "ext", " ↗"));
-  link.append(ico, name);
-  if (!t.href) link.append(el("span", "status-dot", "Coming soon"));
-  li.append(link);
-  return li;
+// The shop screen (C9): "Pick what this screen shows" and nothing else: no bar, no greeting, no footer.
+function showDisplayHome(site) {
+  document.body.setAttribute("data-display", "");
+  document.getElementById("site-header").hidden = true;
+  document.getElementById("site-footer").hidden = true;
+  const main = document.getElementById("main");
+  main.className = "dsp-main";
+  main.replaceChildren(displayHome(site));
+  document.title = "Pick a screen | Team 2972";
 }
 
 onContent(async () => {
-  initInstallBanner();
+  const site0 = siteBase();
+  // /today.json is asked for at once, alongside the bar; a failure leaves the home as release 8.1 had it.
+  let todayAsked = Date.now();
+  const firstToday = fetchToday(site0);
   document.getElementById("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
-  let me, groups, resolved;
+  let me, groups, resolved, tools, site, display;
   try {
-    ({ me, groups, tiles: resolved } = await mountPortalShell());
+    ({ me, groups, tiles: resolved, tools, site, display } = await mountPortalShell());
   } catch (err) {
     document.getElementById("portal-error").hidden = false;
     return;
   }
+  if (display) { showDisplayHome(site); return; }
+
+  initInstallBanner();
 
   // Names go in with textContent, never as HTML. The greeting is the first name only.
   const full = me.name || me.email || "there";
@@ -170,39 +152,76 @@ onContent(async () => {
   document.getElementById("access-body").innerHTML = renderRequestAccess({ name: me.name, email: me.email });
   document.getElementById("access").hidden = false;
 
-  // This mode's main tiles, then More as a plain list (link-outs, the Handbook, tiles marked more).
-  // Coming-soon tiles go last in each section; the sort is stable, so apps.json order holds otherwise.
+  // ---- Waiting on you, Today, the next task, Recent activity (C4) ----
+  // A row that belongs to one mode shows only in that mode (C12); a mode change redraws the cards.
+  let lastToday = null, cardsMode = null;
+  function paintCards(data, focusNext = false) {
+    if (!data) return;
+    lastToday = data;
+    const mode = cardsMode = parseMode(readCookie(document.cookie, "mode"));
+    const cards = [
+      waitingCard(rowsForMode(data.waiting, mode)),
+      todayCard(rowsForMode(data.today, mode)),
+      groups.includes("student") ? nextCard(data.next, { onDone: () => refreshToday(true) }) : null,
+    ].filter(Boolean);
+    document.getElementById("home-cards").replaceChildren(...cards);
+    const act = isParentOnly(groups) ? null : activityCard(data.activity);
+    document.getElementById("home-activity").replaceChildren(...(act ? [act] : []));
+    if (focusNext) focusAfterDone();
+  }
+  // After Done the card is drawn again: focus goes to the next task's Done, else to the greeting.
+  function focusAfterDone() {
+    const target = document.querySelector("#home-next button:not([disabled])") || document.getElementById("greeting");
+    if (target.id === "greeting") target.tabIndex = -1;
+    target.focus();
+  }
+  async function refreshToday(focusNext) {
+    todayAsked = Date.now();
+    const data = await fetchToday(site);
+    if (data) paintCards(data, focusNext);
+    else if (focusNext) focusAfterDone();
+  }
+  firstToday.then((data) => paintCards(data));
+
+  // ---- the tiles, then Tools, Admin apps and More as three closed rows (C1) ----
+  // Coming-soon tiles go last in each list; the sort is stable, so apps.json order holds otherwise.
+  const homeGroups = mountHomeGroups(document.getElementById("home-groups"), { site });
   const q = document.getElementById("q");
   function applySearch() {
     const text = q.value.trim().toLowerCase();
     let matches = 0;
-    document.querySelectorAll("#app-grid .app-card, #more-list li").forEach((row) => {
-      const key = row.dataset.q || row.querySelector("[data-q]")?.dataset.q || "";
-      row.hidden = !!text && !key.includes(text);
-      if (!row.hidden) matches++;
+    document.querySelectorAll("#app-grid .app-card").forEach((card) => {
+      card.hidden = !!text && !card.dataset.q.includes(text);
+      if (!card.hidden) matches++;
     });
+    matches += homeGroups.filter(text);
     document.getElementById("app-empty").hidden = !text || matches > 0;
   }
   function paintTiles() {
     if (groups.length === 0) return;
+    if (lastToday && cardsMode !== parseMode(readCookie(document.cookie, "mode"))) paintCards(lastToday);
     const mode = parseMode(readCookie(document.cookie, "mode"));
     const shown = filterByMode(resolved, mode).sort((a, b) => !a.href - !b.href);
-    const main = shown.filter((t) => !t.more);
-    const more = shown.filter((t) => t.more);
+    const main = shown.filter((t) => !t.more && !t.adminGroup);
+    const adminApps = shown.filter((t) => t.adminGroup);
+    const more = shown.filter((t) => t.more && !t.adminGroup);
+    const toolRows = filterByMode(tools, mode);
     document.getElementById("app-grid").replaceChildren(...main.map(renderTile));
-    document.getElementById("more-list").replaceChildren(...more.map(renderMoreLink));
+    homeGroups.update({ tools: toolRows, adminApps, more, allToolsHref: `${site.scheme}://tools.${site.domain}/` });
+    const any = shown.length + toolRows.length;
     document.getElementById("main-apps-h").hidden = main.length === 0;
     document.getElementById("main-apps").hidden = main.length === 0;
-    document.getElementById("more-apps").hidden = more.length === 0;
-    // The search row is not inside #main-apps, so a More-only catalog still shows the field.
-    document.getElementById("apps-head").hidden = shown.length === 0;
-    document.getElementById("search-wrap").hidden = shown.length === 0;
-    document.getElementById("portal-empty").hidden = shown.length > 0;
+    // The search row is not inside #main-apps, so a catalog with only grouped apps still shows the field.
+    document.getElementById("apps-head").hidden = any === 0;
+    document.getElementById("search-wrap").hidden = any === 0;
+    document.getElementById("portal-empty").hidden = any > 0;
     applySearch();
   }
   paintTiles();
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") paintTiles();
+    if (document.visibilityState !== "visible") return;
+    paintTiles();
+    if (Date.now() - todayAsked > 60000) refreshToday(false);
   });
 
   q.addEventListener("input", applySearch);
@@ -212,7 +231,7 @@ onContent(async () => {
     } else if (event.key === "Escape" && document.activeElement === q) {
       q.value = ""; applySearch(); q.blur();
     } else if (event.key === "Enter" && document.activeElement === q) {
-      const first = [...document.querySelectorAll("#app-grid a.app-card, #more-list a")].find((a) => !a.closest("[hidden]"));
+      const first = [...document.querySelectorAll("#app-grid a.app-card, #home-groups .grpbody a")].find((a) => !a.closest("[hidden]"));
       if (first) first.click();
     }
   });
