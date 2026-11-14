@@ -203,8 +203,10 @@ function todayRow(r) {
   const li = el("li", "li todayrow");
   li.dataset.id = r.id;
   const a = el("a", "rowlink");
-  a.append(el("span", "rt", r.title));
-  if (r.detail) a.append(el("span", "rl", r.detail));
+  const words = el("span", "rtext");
+  words.append(el("span", "rt", r.title));
+  if (r.detail) words.append(el("span", "rl", r.detail));
+  a.append(words);
   if (r.count) a.append(el("span", "tcount", String(r.count)));
   if (!r.cta) a.append(el("span", "chev", "›"));
   li.append(linkTo(a, r.href));
@@ -243,7 +245,7 @@ export function nextCard(next, { onDone, post = postTaskDone } = {}) {
   const sec = card("home-next", "", { className: "hero nextup" });
   const h = sec.querySelector("h2");
   h.textContent = next.title;
-  const eyebrow = el("p", "eyebrow", "Your next task");
+  const eyebrow = el("p", "next-eyebrow", "Your next task");
   sec.insertBefore(eyebrow, h);
   const line = [next.project, dueText(next.due)].filter(Boolean).join(" · ");
   if (line) sec.append(el("p", "mute", line));

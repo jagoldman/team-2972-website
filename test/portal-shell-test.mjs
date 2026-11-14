@@ -376,7 +376,7 @@ try {
     const rows = (id) => [...document.querySelectorAll(`#${id} .rt`)].map((e) => e.textContent);
     return { ids, inOrder, today: rows("home-today"), waiting: rows("home-waiting"),
       counts: [...document.querySelectorAll("#home-waiting .tcount")].map((e) => e.textContent),
-      ctas: [...document.querySelectorAll(".todayrow > a.btn")].map((a) => [a.textContent, a.getAttribute("href"), a.target]),
+      ctas: [...document.querySelectorAll(".todayrow > a.btn")].map((a) => [a.firstChild.textContent, a.getAttribute("href"), a.target]),
       guideSlot: !!document.querySelector("main [data-guide-card]"), waitGuide: document.querySelector("#home-waiting")?.dataset.guide || null,
       next: document.querySelector("#home-next h2")?.textContent || null, nextLine: document.querySelector("#home-next .mute")?.textContent || null,
       activity: [...document.querySelectorAll("#home-activity .actlink b")].map((e) => e.textContent),
@@ -441,7 +441,7 @@ try {
     const { page } = await openPortal(context);
     await page.waitForSelector("#home-next");
     await page.click("#home-next .heroacts button");
-    await page.waitForSelector("#home-next .heroacts a.btn");
+    await page.waitForFunction(() => document.querySelector("#home-next .heroacts")?.firstElementChild?.tagName === "A");
     const acts = await page.$$eval("#home-next .heroacts > *", (els) => els.map((e) => [e.tagName, e.textContent.trim(), e.getAttribute("href"), e.classList.contains("btn-outline")]));
     check("an error from task-done: the card offers \"Open task\" (gold) instead of Done", acts.length === 1 && acts[0][0] === "A" && acts[0][1].startsWith("Open task") && acts[0][2] === `${TASKS}/my?task=t-41` && !acts[0][3], acts);
     check("...says so in words, and focus is on Open task", /can't be marked done/.test(await page.textContent("#home-next .home-status")) && await page.evaluate(() => document.activeElement?.textContent.startsWith("Open task")));
@@ -511,6 +511,9 @@ try {
       ["All tools›", "http://tools.landing.test/", "", ""]]), tools);
     const cookie = (await context.cookies(PORTAL)).find((c) => c.name === "shellgroups");
     check(`${width}px: the open rows are remembered site-wide (shellgroups = tools.adminapps)`, cookie && cookie.value === "tools.adminapps" && cookie.domain === ".landing.test", cookie);
+    await page.waitForTimeout(400); // the chevrons finish turning
+    const turned = await page.$$eval("#home-groups .grp", (els) => els.map((e) => [e.dataset.grp, getComputedStyle(e.querySelector(".grpchev")).transform !== "none"]));
+    check(`${width}px: an open row's chevron is turned, a closed one's is not`, JSON.stringify(turned) === JSON.stringify([["tools", true], ["adminapps", true], ["more", false]]), turned);
     await page.$eval("#home-groups", (e) => e.scrollIntoView({ block: "center" }));
     await shot(page, `groups-open-${width}`);
     check(`${width}px: rows open, no sideways scroll`, (await over(page)) <= 0);
