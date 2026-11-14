@@ -284,7 +284,10 @@
   opacity: 0;
   visibility: hidden;
 }
+/* display: block also for a tip that is meant to show but is not an open popover (showPopover() failed): the
+   browser would hide it (display: none); it then draws as a fixed box at z-index 1000 (0.3.2). */
 .shell-tip.on {
+  display: block;
   opacity: 1;
   visibility: visible;
 }

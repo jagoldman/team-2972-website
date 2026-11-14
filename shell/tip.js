@@ -14,8 +14,11 @@
 //     stops), and when its element, or its words, go away;
 //   - sits above the element (below when there is no room), always inside the window, above every other layer,
 //     a native modal <dialog> and a popover included (0.3.1): the tip is a manual popover, shown again each time so
-//     it is the newest thing in the browser's top layer; without the Popover API it is put inside the open modal
-//     dialog or popover that holds its element while it shows, and back at the end of <body> after;
+//     it is the newest thing in the browser's top layer; inside an open modal dialog it is first put in that dialog
+//     (0.3.2), since a modal dialog makes the rest of the page inert and an inert tip is no accessible description;
+//     without the Popover API it is put inside the open modal dialog or popover that holds its element; either way
+//     it goes back to the end of <body> when it hides; if showing it as a popover fails it still draws as a fixed box
+//     (.shell-tip.on in ui.css);
 //   - is one shared role="tooltip" element, announced with aria-describedby on the element while it shows;
 //   - is set as text, never as markup.
 // The text is worked out when the pointer or the focus arrives; nothing is written onto elements that are not being
@@ -132,6 +135,9 @@ function start(doc, win) {
     let el = target && typeof target.closest === "function" ? target.closest(TIP_SELECTOR) : null;
     while (el) {
       if (text(el)) return el;
+      // An empty data-tip="" means "no description here": the lookup stops (0.3.2), for the pointer and the focus.
+      const own = el.getAttribute("data-tip");
+      if (own !== null && !own.trim()) return null;
       const up = el.parentElement;
       el = up ? up.closest(TIP_SELECTOR) : null;
     }
@@ -159,10 +165,11 @@ function start(doc, win) {
       return false; // no Popover API
     }
   };
-  // Without the Popover API: the open modal dialog or popover nearest the element, which is in the top layer.
+  // Where the tip goes while it shows: the open modal dialog nearest the element (outside it the page is inert, so
+  // the tip would be no accessible description there); without the Popover API also an open popover (top layer).
   function layer(a) {
     for (let n = a; n && n !== doc.body; n = n.parentElement) {
-      if (isOpen(n)) return n;
+      if (!popover && isOpen(n)) return n;
       if (n.tagName === "DIALOG" && n.hasAttribute("open")) {
         try {
           if (n.matches(":modal")) return n;
@@ -173,32 +180,35 @@ function start(doc, win) {
     }
     return null;
   }
-  // Puts the shown tip above everything, its element's dialog or popover included.
+  // Puts the shown tip above everything, its element's dialog or popover included: first into the element's modal
+  // dialog (or, without the Popover API, its popover), then, with the API, shown as a popover.
   function lift(t, a) {
-    if (popover) {
+    if (popover && isOpen(t)) {
       try {
-        if (isOpen(t)) t.hidePopover();
-        t.showPopover(); // again each time: the newest top-layer element is drawn on top
+        t.hidePopover(); // before any move: moving an open popover would close it anyway
       } catch {
-        // not shown as a popover (left the page): it still draws as a fixed box
+        // already hidden
       }
-      return;
     }
     const host = layer(a) || doc.body;
     if (t.parentNode !== host) host.appendChild(t);
+    if (!popover) return;
+    try {
+      t.showPopover(); // again each time: the newest top-layer element is drawn on top
+    } catch {
+      // Not shown as a popover: .shell-tip.on (ui.css) still draws it as a fixed box at z-index 1000, inside the
+      // element's modal dialog when there is one, so it is on screen and stays the element's description.
+    }
   }
   function lower(t) {
-    if (popover) {
-      if (isOpen(t)) {
-        try {
-          t.hidePopover();
-        } catch {
-          // already hidden
-        }
+    if (popover && isOpen(t)) {
+      try {
+        t.hidePopover();
+      } catch {
+        // already hidden
       }
-    } else if (t.parentNode && t.parentNode !== doc.body && doc.body) {
-      doc.body.appendChild(t); // back out of the dialog
     }
+    if (t.parentNode && t.parentNode !== doc.body && doc.body) doc.body.appendChild(t); // back out of the dialog
   }
   function place() {
     if (!spot || !tip) return;
@@ -206,8 +216,9 @@ function start(doc, win) {
     const p = placeTip(r, tip.offsetWidth, tip.offsetHeight, doc.documentElement.clientWidth || win.innerWidth, win.innerHeight);
     tip.style.top = `${p.top}px`;
     tip.style.left = `${p.left}px`;
-    if (!popover && tip.parentNode !== doc.body) {
-      // Inside a dialog that makes its own frame for fixed boxes (a transform, a filter): measure and correct.
+    if (tip.parentNode !== doc.body && !isOpen(tip)) {
+      // A fixed box (not in the top layer) inside a dialog that makes its own frame for fixed boxes (a transform, a
+      // filter): measure and correct. An open popover is placed by the window whatever its parent.
       const got = tip.getBoundingClientRect();
       const dy = Math.round(got.top - p.top);
       const dx = Math.round(got.left - p.left);
