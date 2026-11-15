@@ -86,8 +86,9 @@ async function newContext(browser, { groups = "mentor", apps = APPS, width = 128
     }
     if (portal && url.pathname === "/_shell/inbox/read") {
       const rq = route.request();
-      const hs = await rq.allHeaders(); // with the browser's own Fetch Metadata (headers() leaves them out)
-      reads.push({ method: rq.method(), body: rq.postData(), type: hs["content-type"], origin: hs.origin, site: hs["sec-fetch-site"] });
+      // Sec-Fetch-Site is added below Playwright's interception, so it is seldom seen here; Origin is.
+      const hs = await rq.allHeaders();
+      reads.push({ method: rq.method(), url: rq.url(), body: rq.postData(), type: hs["content-type"], origin: hs.origin, site: hs["sec-fetch-site"] });
       return route.fulfill({ status: inboxRead, body: "" });
     }
     if (portal && url.pathname === "/today.json") {
@@ -860,7 +861,7 @@ try {
     await page.click("#shell-bar .shbar-readall");
     await page.waitForFunction(() => !document.querySelector("#shell-bar .shbar-bell .shbar-count") || document.querySelector("#shell-bar .shbar-bell .shbar-count").hidden);
     check(`${width}px: Mark all read posts {"all":true} as same-origin JSON to /_shell/inbox/read, and the 204 clears the count`, reads.length === 1 && reads[0].method === "POST" && reads[0].body === '{"all":true}'
-      && /application\/json/.test(reads[0].type) && reads[0].origin === PORTAL && reads[0].site === "same-origin", reads);
+      && /application\/json/.test(reads[0].type) && reads[0].origin === PORTAL && reads[0].url === `${PORTAL}/_shell/inbox/read` && (reads[0].site === undefined || reads[0].site === "same-origin"), reads);
     await page.keyboard.press("Escape");
     check(`${width}px: Escape closes the bell's panel`, !(await page.isVisible("#shell-bar .shbar-bellpanel")));
     check(`${width}px: the bell has no script error`, errors.length === 0, errors);
