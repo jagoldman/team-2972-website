@@ -61,7 +61,7 @@
   <section class="portal-section" id="main-apps" aria-labelledby="main-apps-h" hidden>
     <div class="app-grid" id="app-grid"></div>
   </section>
-  <!-- Tools, Admin apps and More: three closed rows (js/portal-groups.js); a row with nothing in it is not drawn. -->
+  <!-- Tools, Admin apps and More: three closed rows (the kit's mountHomeGroups); a row with nothing in it is not drawn. -->
   <div class="homegroups" id="home-groups" hidden></div>
   <p class="app-empty" id="app-empty" hidden>No app matches that. Try a different word.</p>
   <p class="app-empty" id="portal-empty" hidden>There are no apps for your groups in this mode yet.</p>
@@ -81,9 +81,9 @@
 <script src="/js/components.js"></script>
 <script src="/js/install.js"></script>
 <script type="module">
-import { filterByMode, iconPath, parseMode, readCookie } from "/shell/core.js";
+import { filterByMode, iconPath, parseMode, readCookie, splitGroups } from "/shell/core.js";
+import { mountHomeGroups, mountHomeGuide } from "/shell/static/shell.js";
 import { bindPortalModeChange, mountPortalShell } from "/js/portal-shell.js";
-import { mountHomeGroups } from "/js/portal-groups.js";
 import { activityCard, blockedAppName, displayHome, el, fetchEventDay, fetchToday, isParentOnly, nextCard, rowsForMode, shiftFirst, svgIcon, todayCard, waitingCard } from "/js/portal-home.js";
 
 // t is a resolved kit tile (resolveTiles): href is null for coming-soon tiles. Every app opens in a new tab,
@@ -126,9 +126,9 @@ onContent(async () => {
   initInstallBanner();
   document.getElementById("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
-  let me, groups, resolved, tools, site, display, apps;
+  let me, user, groups, resolved, tools, site, display, apps;
   try {
-    ({ me, groups, tiles: resolved, tools, site, display, apps } = await mountPortalShell());
+    ({ me, user, groups, tiles: resolved, tools, site, display, apps } = await mountPortalShell());
   } catch (err) {
     document.getElementById("portal-error").hidden = false;
     return;
@@ -197,9 +197,10 @@ onContent(async () => {
     if (!posting) paintCards(data);
   });
 
-  // ---- the tiles, then Tools, Admin apps and More as three closed rows (C1) ----
+  // ---- the tiles, then Tools, Admin apps and More as three closed rows (C1; the kit's mountHomeGroups) ----
   // Coming-soon tiles go last in each list; the sort is stable, so apps.json order holds otherwise.
   const homeGroups = mountHomeGroups(document.getElementById("home-groups"), { site });
+  let guide = null;
   const q = document.getElementById("q");
   function applySearch() {
     const text = q.value.trim().toLowerCase();
@@ -216,12 +217,12 @@ onContent(async () => {
     if (lastToday && !posting && cardsMode !== parseMode(readCookie(document.cookie, "mode"))) paintCards(lastToday);
     const mode = parseMode(readCookie(document.cookie, "mode"));
     const shown = filterByMode(resolved, mode).sort((a, b) => !a.href - !b.href);
-    const main = shown.filter((t) => !t.more && !t.adminGroup);
-    const adminApps = shown.filter((t) => t.adminGroup);
-    const more = shown.filter((t) => t.more && !t.adminGroup);
+    // The kit's split, the same as the bar's Apps menu: the core apps here, Admin apps (group "admin") and More below.
+    const { main } = splitGroups(shown);
     const toolRows = filterByMode(tools, mode);
     document.getElementById("app-grid").replaceChildren(...main.map(renderTile));
-    homeGroups.update({ tools: toolRows, adminApps, more, allToolsHref: `${site.scheme}://tools.${site.domain}/` });
+    homeGroups.update({ tiles: shown, tools, mode });
+    if (guide) guide.update({ mode });
     const any = shown.length + toolRows.length;
     document.getElementById("main-apps-h").hidden = main.length === 0;
     document.getElementById("main-apps").hidden = main.length === 0;
@@ -232,6 +233,12 @@ onContent(async () => {
     applySearch();
   }
   paintTiles();
+  // The guide's "Get started" card (C2), drawn by the kit only while the person's guide is wanted; it also opens a stop
+  // that is open for Home (the admin's Admin link, Waiting on you, "Start the tour again"). After the rows are drawn,
+  // so the admin's stop finds Home's Admin link.
+  guide = mountHomeGuide(document.querySelector("[data-guide-card]"), {
+    user, tiles: resolved, mode: parseMode(readCookie(document.cookie, "mode")), siteScheme: site.scheme, siteDomain: site.domain,
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
     paintTiles();

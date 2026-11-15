@@ -58,7 +58,8 @@ function shellWith(groups, apps = []) {
     fetch: async (url) => ({ ok: true, json: async () => url === "/me.json" ? { name: "Pat", groups } : apps }),
     siteBase: () => ({ scheme: "https", domain: "example.test" }),
     parseGroups: (h) => String(h).split("|").filter((g) => ["admin", "mentor", "student", "parent", "alumni"].includes(g)),
-    resolveTiles: (list) => list.map((t) => ({ id: t.id, name: t.name, more: !!t.more })),
+    // As the kit's resolveTiles (0.4.0): an entry with group "admin" keeps it and is never "more".
+    resolveTiles: (list) => list.map((t) => ({ id: t.id, name: t.name, more: t.group !== "admin" && !!t.more, ...(t.group === "admin" ? { group: "admin" } : {}) })),
     resolveTools: () => [{ id: "tool-gear", name: "Gear and sprocket finder" }],
     isDisplayOnly: (raw) => raw.length > 0 && raw.every((g) => g === "display"),
     mountAppBar: (_root, opts) => calls.push(opts),
@@ -76,14 +77,24 @@ test("portal shows the kit's bell and passes the tools to the bar", async () => 
   assert.equal(r.display, false);
 });
 
-test("an Admin apps entry is marked for Home and stays under More in the 0.3.2 bar", async () => {
-  const { context, calls } = shellWith("admin", [{ id: "admin", name: "Admin", group: "admin", more: true }, { id: "tasks", name: "Tasks" }]);
+test("an Admin apps entry reaches Home and the 0.4.0 bar as the kit resolved it (group admin, not More)", async () => {
+  const { context, calls } = shellWith("admin", [{ id: "admin", name: "Admin", group: "admin" }, { id: "tasks", name: "Tasks" }]);
   const r = await context.mountPortalShell();
   const home = Object.fromEntries(r.tiles.map((t) => [t.id, t]));
-  assert.equal(home.admin.adminGroup, true);
+  assert.equal(home.admin.group, "admin");
   assert.equal(home.admin.more, false);
-  assert.equal(home.tasks.adminGroup, false);
-  assert.equal(calls[0].tiles.find((t) => t.id === "admin").more, true);
+  assert.equal(home.tasks.group, undefined);
+  const bar = calls[0].tiles.find((t) => t.id === "admin");
+  assert.equal(bar.group, "admin");
+  assert.equal(bar.more, false);
+});
+
+test("the portal's bar is the guide's portal page: appId portal, and the user carries the raw groups", async () => {
+  const { context, calls } = shellWith("admin|mentor");
+  const r = await context.mountPortalShell();
+  assert.equal(calls[0].appId, "portal");
+  assert.deepEqual(Array.from(r.user.groups), ["admin", "mentor"]);
+  assert.equal(calls[0].user, r.user);
 });
 
 test("display with an extra, non-site group is still the shop screen (the real isDisplayOnly)", async () => {

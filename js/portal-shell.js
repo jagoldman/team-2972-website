@@ -23,10 +23,11 @@ async function getJson(path) {
 }
 
 /**
- * Resolves to { me, groups, tiles, tools, site, display, apps? }, or rejects when /me.json or /apps.json can't be read.
- * `tiles` carry `adminGroup: true` for apps.json entries marked `"group": "admin"` (C1, release 8.1.5): Home draws
- * them in the Admin apps row. `display` is true for the shop screen (`display` and no site group, C9):
- * no bar is mounted for it; the home draws "Pick what this screen shows" and nothing else.
+ * Resolves to { me, user, groups, tiles, tools, site, display, apps? }, or rejects when /me.json or /apps.json can't be
+ * read. `tiles` are the kit's resolved tiles: an apps.json entry marked `"group": "admin"` keeps `group: "admin"` (C1,
+ * kit 0.4.0), and the bar and Home's rows (the kit's mountHomeGroups) draw it in the Admin apps row. `user` is what the
+ * bar and the guide get ({ name, email, groups: the raw groups }). `display` is true for the shop screen (`display`
+ * and no site group, C9): no bar is mounted for it; the home draws "Pick what this screen shows" and nothing else.
  */
 export async function mountPortalShell({ bell = true } = {}) {
   const [me, apps] = await Promise.all([getJson("/me.json"), getJson("/apps.json")]);
@@ -41,18 +42,17 @@ export async function mountPortalShell({ bell = true } = {}) {
   // audience is landing's own field (search matches it); the kit drops fields it doesn't use.
   const tiles = resolveTiles(source, groups, site).map((t) => {
     const raw = source.find((x) => x && x.id === t.id) || {};
-    const adminGroup = raw.group === "admin";
-    return { ...t, audience: typeof raw.audience === "string" ? raw.audience : "", adminGroup, more: adminGroup ? false : t.more };
+    return { ...t, audience: typeof raw.audience === "string" ? raw.audience : "" };
   });
   const tools = resolveTools(source, groups, site);
-  // Kit 0.3.2's bar knows Tools and More only: until the kit 0.4.0 sync, the Admin apps sit under the bar's More.
-  const barTiles = tiles.map((t) => (t.adminGroup ? { ...t, more: true } : t));
-  // No appId: "portal" is not an app in infra config/apps.json, so no Apps-menu tile is marked current.
-  // The bar names the team, the same words the demo uses on Home. The bell reads same-origin /_shell/inbox, which
-  // infra's Caddy sends to Account on the portal host (C3); with no inbox there the kit draws no bell.
+  const user = { name: me.name, email: me.email, groups: rawGroups };
+  // appId "portal": the guide counts a stop on Home (the admin's Admin link, Waiting on you) as on its page; no tile
+  // has that id, so no Apps-menu tile is marked current. The bar names the team, the same words the demo uses on Home.
+  // The bell reads same-origin /_shell/inbox, which infra's Caddy sends to Account on the portal host (C3); with no
+  // inbox there the kit draws no bell. The event-day banner reads /event.json and /event-status.json (C5, C15).
   mountAppBar(document.getElementById("shell-bar"), {
-    appName: "Gears & Buccaneers", siteScheme: site.scheme, siteDomain: site.domain,
-    tiles: barTiles, tools, user: { name: me.name, email: me.email, groups: rawGroups }, skipToId: "main", showBell: bell,
+    appName: "Gears & Buccaneers", appId: "portal", siteScheme: site.scheme, siteDomain: site.domain,
+    tiles, tools, user, skipToId: "main", showBell: bell,
   });
-  return { me, groups, tiles, tools, site, display: false };
+  return { me, user, groups, tiles, tools, site, display: false };
 }
