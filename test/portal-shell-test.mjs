@@ -60,10 +60,13 @@ const MODE_APPS = JSON.stringify([
 // today: what /today.json answers (an object, or a status number; default 404 = not set up). taskDone: the status
 // POST /today/task-done answers. inbox: what /_shell/inbox answers (default 404). Fakes only, @example.com.
 // event: what /event.json answers (default 404). taskDone "hang": the POST never answers. me: a status for /me.json.
-async function newContext(browser, { groups = "mentor", apps = APPS, width = 1280, height = 900, today = 404, taskDone = 204, inbox = 404, event = 404, me = 200 } = {}) {
+// eventStatus: what /event-status.json answers (C15; default 404). inboxRead: the status POST /_shell/inbox/read answers
+// (default 204); its requests are in `reads`.
+async function newContext(browser, { groups = "mentor", apps = APPS, width = 1280, height = 900, today = 404, taskDone = 204, inbox = 404, event = 404, me = 200, eventStatus = 404, inboxRead = 204 } = {}) {
   const context = await browser.newContext({ viewport: { width, height } });
   const seen = [];
   const posts = [];
+  const reads = [];
   const answers = { today, gets: 0 };
   await context.route("**/*", async (route) => {
     const url = new URL(route.request().url());
@@ -77,6 +80,14 @@ async function newContext(browser, { groups = "mentor", apps = APPS, width = 128
     if (portal && url.pathname === "/apps.json") return route.fulfill({ contentType: "application/json", body: apps });
     if (portal && url.pathname === "/event.json") {
       return typeof event === "number" ? route.fulfill({ status: event, body: "" }) : route.fulfill({ contentType: "application/json", body: JSON.stringify(event) });
+    }
+    if (portal && url.pathname === "/event-status.json") {
+      return typeof eventStatus === "number" ? route.fulfill({ status: eventStatus, body: "" }) : route.fulfill({ contentType: "application/json", body: JSON.stringify(eventStatus) });
+    }
+    if (portal && url.pathname === "/_shell/inbox/read") {
+      const rq = route.request();
+      reads.push({ method: rq.method(), body: rq.postData(), type: rq.headers()["content-type"], origin: rq.headers().origin, site: rq.headers()["sec-fetch-site"] });
+      return route.fulfill({ status: inboxRead, body: "" });
     }
     if (portal && url.pathname === "/today.json") {
       answers.gets++;
@@ -104,7 +115,7 @@ async function newContext(browser, { groups = "mentor", apps = APPS, width = 128
       return route.fulfill({ status: 404, body: "" });
     }
   });
-  return { context, seen, posts, answers };
+  return { context, seen, posts, answers, reads };
 }
 
 async function openPortal(context, path = "/") {
@@ -683,12 +694,15 @@ try {
     await context.close();
   }
 
-  // setOpen re-reads the cookie before it writes (item 7): a row opened in another tab meanwhile stays open.
+  // A row opened in another tab meanwhile stays open (item 7). Kit 0.4.0's mountHomeGroups re-reads the cookie when
+  // the tab comes back (the other tab was in front meanwhile), not on every press.
   {
     const { context } = await newContext(browser, { groups: "admin", apps: GROUPED_APPS });
     const { page } = await openPortal(context);
     await page.click('[data-grp="tools"] .grphead');
     await context.addCookies([site("shellgroups", "more")]); // another tab closed Tools and opened More
+    await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    check("the tab comes back: Home's rows follow the cookie (Tools closed, More open)", JSON.stringify(await page.$$eval("#home-groups .grp", (els) => els.map((e) => e.querySelector(".grphead").getAttribute("aria-expanded")))) === JSON.stringify(["false", "false", "true"]));
     await page.click('[data-grp="adminapps"] .grphead');
     const c = (await context.cookies(PORTAL)).find((x) => x.name === "shellgroups");
     check("opening Admin apps keeps what the cookie says now (adminapps.more), not this page's old list", c && c.value === "adminapps.more", c);
@@ -811,18 +825,210 @@ try {
     await context.close();
   }
 
-  // The bell (C3): the kit's bell, through the portal's own /_shell/inbox; no inbox there, no bell.
+  // The bell (C3, kit 0.4.0): a button that opens the notices panel, through the portal's own /_shell/inbox; "Mark all
+  // read" posts {"all":true} to /_shell/inbox/read as same-origin JSON and counts only a 204. No inbox there, no bell.
+  const INBOX = { v: 1, available: true, unread: 2, items: [
+    { id: "n1", app: "Parts", text: "Your part request was ordered", href: "http://parts.landing.test/requests/7", at: ago(5), read: false },
+    { id: "n2", app: "Skills", text: "A mentor signed off Drill press", href: "http://skills.landing.test/", at: ago(90), read: false },
+    { id: "n3", app: "Calendar", text: "Practice moved to 4:00", href: "http://calendar.landing.test/", at: ago(60 * 30), read: true }] };
+  for (const width of [1280, 390]) {
+    const { context, reads } = await newContext(browser, { groups: "mentor", inbox: INBOX, width });
+    const { page, errors } = await openPortal(context);
+    await page.waitForSelector("#shell-bar .shbar-bell:not([hidden])");
+    const bell = await page.$eval("#shell-bar .shbar-bell", (b) => ({ tag: b.tagName, count: b.querySelector(".shbar-count").textContent, expanded: b.getAttribute("aria-expanded"),
+      w: Math.round(b.getBoundingClientRect().width), h: Math.round(b.getBoundingClientRect().height) }));
+    check(`${width}px: the bell is a button with the unread count, not a link`, bell.tag === "BUTTON" && bell.count === "2" && bell.expanded === "false" && !(await page.$('#shell-bar a[href$="#inbox"].shbar-bell')), bell);
+    if (width === 390) {
+      const acct = await page.$eval("#shell-bar .shbar-acct", (b) => [Math.round(b.getBoundingClientRect().width), Math.round(b.getBoundingClientRect().height)]);
+      check("390px: the bar's bell and account button are 44 px", bell.w >= 44 && bell.h >= 44 && acct[0] >= 44 && acct[1] >= 44, { bell, acct });
+    }
+    await page.focus("#shell-bar .shbar-bell");
+    await page.keyboard.press("Enter");
+    await page.waitForSelector("#shell-bar .shbar-bellpanel:not([hidden])");
+    const panel = await page.$eval("#shell-bar .shbar-bellpanel", (p) => ({ text: p.textContent, rows: p.querySelectorAll(".shbar-notices li").length,
+      links: [...p.querySelectorAll(".shbar-panel-foot a")].map((a) => [a.textContent.trim(), a.getAttribute("href")]), x: !!p.querySelector(".shbar-x") }));
+    check(`${width}px: the panel lists the notices with Mark all read, Notification settings and All notices`, panel.rows === 3 && /Mark all read/.test(panel.text) && panel.x
+      && JSON.stringify(panel.links) === JSON.stringify([["Notification settings", "http://account.landing.test/#notifications"], ["All notices", "http://account.landing.test/#inbox"]]), panel);
+    await shot(page, `bell-open-${width}`);
+    await page.click("#shell-bar .shbar-readall");
+    await page.waitForFunction(() => !document.querySelector("#shell-bar .shbar-bell .shbar-count") || document.querySelector("#shell-bar .shbar-bell .shbar-count").hidden);
+    check(`${width}px: Mark all read posts {"all":true} as same-origin JSON to /_shell/inbox/read, and the 204 clears the count`, reads.length === 1 && reads[0].method === "POST" && reads[0].body === '{"all":true}'
+      && /application\/json/.test(reads[0].type) && reads[0].origin === PORTAL && reads[0].site === "same-origin", reads);
+    await page.keyboard.press("Escape");
+    check(`${width}px: Escape closes the bell's panel`, !(await page.isVisible("#shell-bar .shbar-bellpanel")));
+    check(`${width}px: the bell has no script error`, errors.length === 0, errors);
+    await context.close();
+  }
   {
-    let { context } = await newContext(browser, { groups: "mentor", inbox: { v: 1, available: true, unread: 3, items: [] } });
-    let { page } = await openPortal(context);
-    await page.waitForSelector('#shell-bar a[href$="#inbox"]:not([hidden])');
-    check("the portal home has the bell, with the unread count", (await page.textContent('#shell-bar a[href$="#inbox"] .shbar-count')) === "3");
+    const { context } = await newContext(browser, { groups: "mentor", inbox: INBOX, inboxRead: 500 });
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#shell-bar .shbar-bell:not([hidden])");
+    await page.click("#shell-bar .shbar-bell");
+    await page.click("#shell-bar .shbar-readall");
+    await page.waitForFunction(() => /Couldn't mark them read/.test(document.querySelector("#shell-bar .shbar-bellpanel").textContent));
+    check("Mark all read answered 500: the panel says so and the count stays", (await page.textContent("#shell-bar .shbar-bell .shbar-count")) === "2");
     await context.close();
-    ({ context } = await newContext(browser, { groups: "mentor" }));
-    ({ page } = await openPortal(context));
+  }
+  {
+    const { context } = await newContext(browser, { groups: "mentor" });
+    const { page } = await openPortal(context);
     await settle(page);
-    check("no inbox on the portal host: no bell", !(await page.isVisible('#shell-bar a[href$="#inbox"]')));
+    check("no inbox on the portal host: no bell", !(await page.isVisible("#shell-bar .shbar-bell")));
     await context.close();
+  }
+
+  // The bar's Apps menu (kit 0.4.0, C1, C10): Tools, Admin apps, More in that order; Admin and Website editor under
+  // Admin apps, not More; each menu has its ×; a press on the page while a menu is open hits the scrim.
+  for (const width of [1280, 390]) {
+    const { context } = await newContext(browser, { groups: "admin", apps: GROUPED_APPS, width });
+    const { page, errors } = await openPortal(context);
+    await page.click("#shell-bar .shbar-appsbtn");
+    const rows = await page.$$eval("#shell-bar .shbar-apps .shbar-group:not([hidden]) > .shbar-groupbtn", (bs) => bs.map((b) => b.firstElementChild.textContent));
+    check(`${width}px: the Apps menu's rows read Tools, Admin apps, More`, rows.join() === "Tools,Admin apps,More", rows);
+    await page.click("#shell-bar .shbar-adminappsbtn");
+    const admin = (await names(page, "#shell-bar .shbar-adminapps ul.shbar-grid > li")).join();
+    await page.click("#shell-bar .shbar-morebtn");
+    const more = (await names(page, "#shell-bar .shbar-more ul.shbar-grid > li")).join();
+    check(`${width}px: Admin and Website editor are under Admin apps, not More`, admin === "Admin,Website editor" && more === "GitHub,Team Handbook", { admin, more });
+    await shot(page, `apps-menu-groups-${width}`);
+    // the × follows the switch: after Competition, Tab reaches it
+    await page.focus("#shell-bar .shbar-mode button:last-child");
+    await page.keyboard.press("Tab");
+    check(`${width}px: the Apps menu's × follows the Build / Competition switch`, await page.evaluate(() => document.activeElement?.matches(".shbar-apps .shbar-x")));
+    await page.keyboard.press("Enter");
+    check(`${width}px: the × closes the Apps menu`, !(await page.isVisible("#shell-bar .shbar-apps")));
+    // the scrim: a press on the page closes the menu and does not reach the control beneath
+    const box = await page.$eval('[data-grp="more"] .grphead', (b) => { b.scrollIntoView({ block: "end" }); const r = b.getBoundingClientRect(); return { x: r.right - 12, y: r.top + r.height / 2 }; });
+    await page.click("#shell-bar .shbar-appsbtn");
+    check(`${width}px: the scrim is drawn while the menu is open`, await page.isVisible("#shell-bar .shbar-scrim"));
+    await page.mouse.click(box.x, box.y);
+    check(`${width}px: a press on the page closes the menu, and the row beneath stays closed`, !(await page.isVisible("#shell-bar .shbar-apps")) && (await page.getAttribute('[data-grp="more"] .grphead', "aria-expanded")) === "false");
+    // the account menu's first Tab stop is its ×
+    await page.focus("#shell-bar .shbar-acct");
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Tab");
+    check(`${width}px: the account menu's first Tab stop is its ×`, await page.evaluate(() => document.activeElement?.matches(".shbar-account .shbar-x")));
+    await page.keyboard.press("Escape");
+    check(`${width}px: the Apps menu checks raise no script error`, errors.length === 0, errors);
+    await context.close();
+  }
+
+  // The event-day banner (C5, C15): under the bar, pushing the page down; it never covers the home's own heading.
+  {
+    const d = new Date();
+    const ymd = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 2);
+    const event = { name: "Colorado Regional", start: ymd(d), end: ymd(end), happeningNow: true, tbaUrl: "https://www.thebluealliance.com/event/2026code" };
+    for (const width of [1280, 390]) {
+      const { context } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, width, event, eventStatus: { v: 1, pit: "42", rank: 9, teams: 48 } });
+      const { page, errors } = await openPortal(context);
+      await page.waitForSelector("#shell-bar .shbar-banner:not([hidden])");
+      await page.waitForFunction(() => /Rank 9 of 48/.test(document.querySelector("#shell-bar .shbar-banner").textContent));
+      const b = await page.evaluate(() => {
+        const r = (sel) => document.querySelector(sel).getBoundingClientRect();
+        const bar = r("#shell-bar .shbar"), ban = r("#shell-bar .shbar-banner"), head = r(".homehead");
+        return { text: document.querySelector("#shell-bar .shbar-banner").textContent, barBottom: Math.round(bar.bottom), banTop: Math.round(ban.top), banBottom: Math.round(ban.bottom), headTop: Math.round(head.top),
+          switch: !!document.querySelector("#shell-bar .shbar-bannerbtn:not([hidden])") };
+      });
+      check(`${width}px: the banner names the event, day, pit and rank, with Switch to Competition`, /Colorado Regional/.test(b.text) && /Day 1 of 3/.test(b.text) && /Pit 42/.test(b.text) && b.switch, b);
+      check(`${width}px: the banner sits under the bar and pushes the home down (nothing covered)`, Math.abs(b.banTop - b.barBottom) <= 1 && b.headTop >= b.banBottom, b);
+      check(`${width}px: the banner has no sideways scroll and no script error`, (await over(page)) <= 0 && errors.length === 0, errors);
+      await shot(page, `banner-${width}`);
+      await page.evaluate(() => scrollTo(0, 400));
+      const top = await page.$eval("#shell-bar .shbar", (e) => Math.round(e.getBoundingClientRect().top));
+      check(`${width}px: scrolled, the bar still sticks at the top over the page`, top === 0, top);
+      await context.close();
+    }
+  }
+
+  // The guide (kit 0.4.0, C2): the "Get started" card on Home, and the two stops that live on Home.
+  const guideAt = (role, open) => site("guide", `1:${role}:::${open}@${Math.floor(Date.now() / 1000).toString(36)}`);
+  const guideCookie = async (context) => ((await context.cookies(PORTAL)).find((c) => c.name === "guide") || {}).value || "";
+  const ringAround = (page, sel) => page.evaluate((sel) => {
+    const ring = document.querySelector(".shell-gring");
+    const t = document.querySelector(sel);
+    if (!ring || ring.hidden || !t) return { ring: !!ring && !ring.hidden, target: !!t };
+    const a = ring.getBoundingClientRect(), b = t.getBoundingClientRect();
+    return { ok: a.left <= b.left + 1 && a.top <= b.top + 1 && a.right >= b.right - 1 && a.bottom >= b.bottom - 1, ring: [a.left, a.top, a.right, a.bottom].map(Math.round), target: [b.left, b.top, b.right, b.bottom].map(Math.round) };
+  }, sel);
+  for (const width of [1280, 390]) {
+    const { context, seen } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: TODAY.mentor, width });
+    const { page, errors } = await openPortal(context);
+    await page.waitForSelector("[data-guide-card] .shell-guidecard");
+    const g = await page.$eval("[data-guide-card] .shell-guidecard", (c) => c.textContent);
+    check(`${width}px: a mentor's Home shows the guide's Get started card with its first stop`, /Get started/.test(g) && /Say which days you are coming/.test(g), g);
+    check(`${width}px: the Get started card loads the engine (guide.js) and raises no error`, seen.some((u) => u.endsWith("/shell/guide.js")) && errors.length === 0, errors);
+    await shot(page, `guide-card-${width}`);
+    await context.close();
+  }
+  for (const width of [1280, 390]) {
+    // The admin's "Let new people in": Home's Admin link in the Admin apps row is ringed (the row opened for this stop,
+    // not saved), not the bar's copy; pressing it finishes the stop.
+    const { context } = await newContext(browser, { groups: "admin", apps: GROUPED_APPS, today: TODAY.admin, width });
+    await context.addCookies([guideAt("a", "admin")]);
+    const { page, errors } = await openPortal(context);
+    await page.waitForSelector(".shell-gstop h2");
+    await page.waitForFunction(() => { const r = document.querySelector(".shell-gring"); return r && !r.hidden; });
+    const ring = await ringAround(page, '#admin-list a[data-guide="tile-admin"]');
+    const s = await page.evaluate(() => ({ title: document.querySelector(".shell-gstop h2").textContent, row: document.querySelector('[data-grp="adminapps"] .grphead').getAttribute("aria-expanded"),
+      menu: !document.querySelector("#shell-bar .shbar-apps").hidden }));
+    check(`admin stop ${width}px: "Let new people in" rings Home's Admin link in the Admin apps row`, s.title === "Let new people in" && s.row === "true" && !s.menu && ring.ok, { s, ring });
+    check(`admin stop ${width}px: the row was opened for the stop only (shellgroups not written)`, !(await context.cookies(PORTAL)).some((c) => c.name === "shellgroups"));
+    await shot(page, `guide-admin-stop-${width}`);
+    const popup = context.waitForEvent("page").catch(() => null);
+    await page.click('#admin-list a[data-guide="tile-admin"]');
+    await page.waitForFunction(() => document.querySelector(".shell-gstop h2")?.textContent === "Done.");
+    const cookie = await guideCookie(context);
+    check(`admin stop ${width}px: pressing Admin finishes the stop ("Done." and admin done in the guide cookie)`, /^1:a:admin(\.|:)/.test(cookie), cookie);
+    const p2 = await popup; if (p2) await p2.close();
+    check(`admin stop ${width}px: no script error`, errors.length === 0, errors);
+    await context.close();
+  }
+  for (const width of [1280, 390]) {
+    // The "wait" stop: the Waiting on you card (drawn from /today.json, after the engine is up) is ringed; a press on
+    // one of its rows finishes it.
+    const { context } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: TODAY.mentor, width });
+    await context.addCookies([guideAt("m", "wait")]);
+    const { page, errors } = await openPortal(context);
+    await page.waitForSelector("#home-waiting");
+    await page.waitForFunction(() => { const r = document.querySelector(".shell-gring"); return r && !r.hidden && document.querySelector(".shell-gstop h2"); });
+    const ring = await ringAround(page, '#home-waiting[data-guide="wait"]');
+    const title = await page.textContent(".shell-gstop h2");
+    check(`wait stop ${width}px: "See what is waiting on you" rings the Waiting on you card`, title === "See what is waiting on you" && ring.ok, { title, ring });
+    await shot(page, `guide-wait-stop-${width}`);
+    const popup = context.waitForEvent("page").catch(() => null);
+    await page.click("#home-waiting .todayrow a.rowlink");
+    await page.waitForFunction(() => document.querySelector(".shell-gstop h2")?.textContent === "Done.");
+    const cookie = await guideCookie(context);
+    check(`wait stop ${width}px: pressing a row finishes the stop ("Done." and wait done in the guide cookie)`, /^1:m:(?:[a-z.]*\.)?wait(\.|:)/.test(cookie), cookie);
+    const p2 = await popup; if (p2) await p2.close();
+    check(`wait stop ${width}px: no script error`, errors.length === 0, errors);
+    await context.close();
+  }
+  {
+    // "Start the tour again" (Account writes the start marker): an admin's first stop lives on Home and opens here.
+    const { context } = await newContext(browser, { groups: "admin", apps: GROUPED_APPS });
+    await context.addCookies([guideAt("a", "start")]);
+    const { page } = await openPortal(context);
+    await page.waitForSelector(".shell-gstop h2");
+    check("Start the tour again: Home opens the admin's first stop", (await page.textContent(".shell-gstop h2")) === "Let new people in");
+    await context.close();
+  }
+  {
+    // A finished guide never loads the engine on Home; nor does the shop screen.
+    const { context, seen } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS });
+    await context.addCookies([site("guide", "1:m:days.wait.ok.sign:e:")]);
+    const { page } = await openPortal(context);
+    await settle(page);
+    check("an ended guide: no card and guide.js never requested", !(await page.$(".shell-guidecard")) && !seen.some((u) => u.endsWith("/shell/guide.js")));
+    await context.close();
+    const shop = await newContext(browser, { groups: "display" });
+    const sp = await shop.context.newPage();
+    await sp.goto(PORTAL + "/");
+    await sp.waitForSelector("#display-home");
+    await settle(sp);
+    check("the shop screen: no bar, no guide card, guide.js never requested", !(await sp.$("#shell-bar *")) && !(await sp.$(".shell-guidecard")) && !shop.seen.some((u) => u.endsWith("/shell/guide.js")));
+    await shop.context.close();
   }
 
   // ---------- public hosts: no app bar ----------

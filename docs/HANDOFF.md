@@ -1,5 +1,26 @@
 # landing: handoff
 
+## 2026-11-14: release 8.1.5, shell kit 0.4.0 (branch `r815`)
+
+From `new-apps/briefs/r815/SYNC_040.md`. The static kit is synced from infra `release-8.1.5` `c0e09bb`
+(`scripts/sync-shell.sh static`; `scripts/check-shell.sh static` passes). What the portal does with it:
+
+- **Home's rows** are the kit's `mountHomeGroups` (`/shell/static/shell.js`); landing's own `js/portal-groups.js` is
+  gone. Home passes the resolved tiles (`update({ tiles, tools, mode })`); the kit splits them with `splitGroups` and
+  Home's own grid draws `splitGroups(tiles).main`. Admin apps are the kit's `tile.group === "admin"` in the bar too
+  (the 0.3.2 workaround under More is gone). A row opened in another tab is followed when the tab comes back
+  (`visibilitychange`), as the kit does.
+- **The guide:** `mountHomeGuide` draws the "Get started" card into `[data-guide-card]` after the rows are drawn (the
+  admin's "Let new people in" rings Home's Admin link in the Admin apps row; the mentor's and admin's "wait" rings the
+  Waiting on you card, which appears when `/today.json` answers). The bar gets `appId: "portal"`, so a stop on Home
+  counts as on its page, and the user with the raw groups. The shop screen's home mounts neither the bar nor the
+  guide.
+- **The bell** is the kit's button and panel (`showBell`); "Mark all read" posts `{"all":true}` to the portal's
+  `/_shell/inbox/read`, which infra's Caddy sends to Account (C3). The event-day banner needs nothing from landing.
+- **Tests:** `test/portal-shell-test.mjs` adds the bell panel and Mark all read, the Apps menu's rows and ×, the scrim,
+  44 px icons, the banner (with a fake `/event.json` and `/event-status.json`), the guide's card, both Home stops,
+  "Start the tour again", and no engine for an ended guide or the shop screen.
+
 ## 2026-11-14: release 8.1.5, the portal home as the demo's and the "2972 Team" header (branch `r815`)
 
 Built from `new-apps/briefs/r815/LANDING.md`, its addendum 1 and CONTRACT C1, C2, C3, C4, C8, C9, C12.
@@ -14,7 +35,7 @@ Built from `new-apps/briefs/r815/LANDING.md`, its addendum 1 and CONTRACT C1, C2
   (`parseToday`: version 1, on-site links only, text cut to length, `modes` per row, C12). A part with no data is not
   drawn; a failed, missing or wrong-version answer leaves the home as release 8.1 had it. The service worker never
   stores it (only `/css/`, `/js/` and the like are storable).
-- **The rows** (`js/portal-groups.js`, `mountHomeGroups`): apps.json entries with `"group": "admin"` are Admin apps,
+- **The rows** (since kit 0.4.0 the kit's `mountHomeGroups`; first built as `js/portal-groups.js`): apps.json entries with `"group": "admin"` are Admin apps,
   `tool: true` entries are Tools (same tab, "All tools" last, `tools.<domain>/`), the rest of `more` is More. Open or
   closed is the site-wide `shellgroups` cookie with ids `tools`, `adminapps`, `more`. This one module is landing's
   own code until the kit's static profile has the helper; **the kit 0.4.0 sync replaces it**. Until then the 0.3.2
