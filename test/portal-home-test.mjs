@@ -3,7 +3,7 @@
 // The drawing is covered in the browser by test/portal-shell-test.mjs.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DISPLAY_SCREENS, blockedAppName, displayHref, dueText, fetchToday, isDisplayOnly, isParentOnly, nextLine, parseToday, postTaskDone, rowsForMode,
+import { BLOCKED_APPS, DISPLAY_SCREENS, blockedAppName, displayHref, dueText, fetchToday, isDisplayOnly, isParentOnly, nextLine, parseToday, postTaskDone, rowsForMode,
   safeHref, shiftFirst, taskHeld, whenText } from "../js/portal-home.js";
 
 const site = { scheme: "https", domain: "example.test" };
@@ -136,14 +136,26 @@ test("C14: on an event day Competition's shift rows go first", () => {
   assert.deepEqual(shiftFirst(rows, false).map((r) => r.id), rows.map((r) => r.id));
 });
 
-test("C14: the shop screen's notice names an app from the list, never from the address", () => {
-  const apps = [{ id: "parts", name: "Parts & Inventory" }, { id: "tasks", name: "Tasks" }];
-  assert.equal(blockedAppName("?blocked=parts", apps), "Parts & Inventory");
-  assert.equal(blockedAppName("?blocked=unknown", apps), "");
-  assert.equal(blockedAppName("?blocked=%3Cimg%20src%3Dx%3E", apps), "");
-  assert.equal(blockedAppName("?blocked=Parts", apps), "", "ids are lower case");
-  assert.equal(blockedAppName("", apps), "");
-  assert.equal(blockedAppName("?blocked=parts", null), "");
+// C16: ?blocked= carries the refusing app's host label; the name comes from a fixed table, never from the address.
+const HOST_NAMES = [["tasks", "Tasks"], ["calendar", "Calendar"], ["parts", "Parts & Inventory"], ["skills", "Skills"], ["compete", "Competition"],
+  ["account", "Account"], ["admin", "Admin"], ["editor", "Website editor"], ["tools", "Tools"]];
+for (const [label, name] of HOST_NAMES) {
+  test(`C16: ?blocked=${label} names ${name}`, () => {
+    assert.equal(blockedAppName(`?blocked=${label}`), name);
+    assert.equal(blockedAppName(`?x=1&blocked=${label}`), name);
+  });
+}
+test("C16: the table holds exactly the nine host labels", () => {
+  assert.deepEqual(Object.keys(BLOCKED_APPS).sort(), HOST_NAMES.map(([l]) => l).sort());
+  assert.ok(Object.isFrozen(BLOCKED_APPS));
+});
+test("C16: any other value shows no notice", () => {
+  for (const q of ["?blocked=unknown", "?blocked=schedule", "?blocked=portal", "?blocked=Parts", "?blocked=parts%20", "?blocked=", "", "?blocked=toString",
+    "?blocked=__proto__", "?blocked=constructor"]) assert.equal(blockedAppName(q), "", q);
+});
+test("C16: an HTML-looking value shows no notice", () => {
+  assert.equal(blockedAppName("?blocked=%3Cimg%20src%3Dx%20onerror%3Dalert(1)%3E"), "");
+  assert.equal(blockedAppName("?blocked=%3Cb%3ETasks%3C%2Fb%3E"), "");
 });
 
 test("the shop screen: display with an extra, non-site group still gets the picker", () => {

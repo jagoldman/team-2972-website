@@ -86,7 +86,8 @@ async function newContext(browser, { groups = "mentor", apps = APPS, width = 128
     }
     if (portal && url.pathname === "/_shell/inbox/read") {
       const rq = route.request();
-      reads.push({ method: rq.method(), body: rq.postData(), type: rq.headers()["content-type"], origin: rq.headers().origin, site: rq.headers()["sec-fetch-site"] });
+      const hs = await rq.allHeaders(); // with the browser's own Fetch Metadata (headers() leaves them out)
+      reads.push({ method: rq.method(), body: rq.postData(), type: hs["content-type"], origin: hs.origin, site: hs["sec-fetch-site"] });
       return route.fulfill({ status: inboxRead, body: "" });
     }
     if (portal && url.pathname === "/today.json") {
@@ -273,14 +274,15 @@ try {
     ]);
     const { context } = await newContext(browser, { groups: "student", apps: onlyMore });
     const { page } = await openPortal(context);
-    check("only More: the main section is hidden and More lists every app", !(await page.isVisible("#main-apps")) && (await names(page, "#more-list li")).join() === "Skills,Team Handbook");
+    // Kit 0.4.0 (splitGroups, as the bar's Apps menu): with no core app, the "more" apps are Home's own tiles, no More row.
+    check("only More: those apps are Home's tiles and there is no More row", (await page.isVisible("#main-apps")) && (await names(page, "#app-grid .app-card")).join() === "Skills,Team Handbook" && !(await page.$("#more-apps")));
     check("only More: the search field stays visible", await page.isVisible("#q") && await page.isVisible("#search-wrap") && await page.isVisible("#apps-head"));
     await page.keyboard.press("/");
     check("only More: / focuses the search field", await page.evaluate(() => document.activeElement === document.getElementById("q")));
     await page.fill("#q", "hand");
-    check("only More: search still filters the More list", (await names(page, "#more-list li:not([hidden])")).join() === "Team Handbook");
+    check("only More: search filters those tiles", (await names(page, "#app-grid .app-card:not([hidden])")).join() === "Team Handbook");
     await page.keyboard.press("Escape");
-    check("only More: Escape clears the search and leaves the field", (await page.inputValue("#q")) === "" && (await names(page, "#more-list li:not([hidden])")).join() === "Skills,Team Handbook" && await page.evaluate(() => document.activeElement !== document.getElementById("q")));
+    check("only More: Escape clears the search and leaves the field", (await page.inputValue("#q")) === "" && (await names(page, "#app-grid .app-card:not([hidden])")).join() === "Skills,Team Handbook" && await page.evaluate(() => document.activeElement !== document.getElementById("q")));
     await context.close();
   }
 
@@ -655,8 +657,13 @@ try {
   }
 
   // The shop screen's notice (C14) and an extra Authentik group (item 4).
-  const SHOP_APPS = JSON.stringify([...JSON.parse(GROUPED_APPS), { id: "parts", name: "Parts & Inventory", description: "Parts.", host: "parts", groups: ["admin", "mentor", "student"] }]);
-  for (const [query, want] of [["?blocked=parts", "Parts & Inventory isn't available on a display. Pick one of these instead."], ["?blocked=nope", null], ["?blocked=%3Cimg%20src%3Dx%3E", null], ["?blocked=Parts", null]]) {
+  // C16: ?blocked= is the refusing app's host label, named from the portal's fixed table. The catalog here holds none of
+  // these apps (a shop screen's own list never holds the app that refused it), so the name cannot come from it.
+  const SHOP_APPS = JSON.stringify([{ id: "handbook", name: "Team Handbook", description: "Team rules.", path: "/resources.html", groups: [] }]);
+  const notice = (name) => `${name} isn't available on a display. Pick one of these instead.`;
+  const BLOCKED = [["tasks", "Tasks"], ["calendar", "Calendar"], ["parts", "Parts & Inventory"], ["skills", "Skills"], ["compete", "Competition"],
+    ["account", "Account"], ["admin", "Admin"], ["editor", "Website editor"], ["tools", "Tools"]].map(([l, n]) => [`?blocked=${l}`, notice(n)]);
+  for (const [query, want] of [...BLOCKED, ["?blocked=nope", null], ["?blocked=schedule", null], ["?blocked=%3Cimg%20src%3Dx%20onerror%3Dalert(1)%3E", null], ["?blocked=Parts", null]]) {
     for (const width of query === "?blocked=parts" ? [1280, 390] : [1280]) {
       const { context, seen } = await newContext(browser, { groups: "display|authentik Admins", apps: SHOP_APPS, width });
       const page = await context.newPage();
@@ -664,7 +671,7 @@ try {
       await page.waitForSelector("#display-home");
       await settle(page);
       const note = await page.$eval("#display-home", (d) => d.querySelector(".dnote")?.textContent || null);
-      check(`shop screen ${query} (${width}px): ${want ? "the notice names the app from the list" : "no notice"}`, note === want, note);
+      check(`shop screen ${query} (${width}px): ${want ? "the notice names the app from the host-label table (C16)" : "no notice"}`, note === want, note);
       if (query === "?blocked=parts" && width === 1280) {
         check("display with an extra Authentik group gets the screen picker (item 4)", (await page.$$("#display-home .dcard")).length === 3 && !(await page.$("#shell-bar *")));
         check("a shop-screen login asks for no /today.json or /event.json", !seen.some((u) => /\/(today|event)\.json/.test(u)), seen.filter((u) => /json/.test(u)));
@@ -944,7 +951,16 @@ try {
   // The guide (kit 0.4.0, C2): the "Get started" card on Home, and the two stops that live on Home.
   const guideAt = (role, open) => site("guide", `1:${role}:::${open}@${Math.floor(Date.now() / 1000).toString(36)}`);
   const guideCookie = async (context) => ((await context.cookies(PORTAL)).find((c) => c.name === "guide") || {}).value || "";
-  const ringAround = (page, sel) => page.evaluate((sel) => {
+  const ringAround = async (page, sel) => {
+    await page.waitForFunction((sel) => {
+      const ring = document.querySelector(".shell-gring"), t = document.querySelector(sel);
+      if (!ring || ring.hidden || !t) return false;
+      const a = ring.getBoundingClientRect(), b = t.getBoundingClientRect();
+      return a.left <= b.left + 1 && a.top <= b.top + 1 && a.right >= b.right - 1 && a.bottom >= b.bottom - 1;
+    }, sel, { timeout: 3000 }).catch(() => {});
+    return ringOf(page, sel);
+  };
+  const ringOf = (page, sel) => page.evaluate((sel) => {
     const ring = document.querySelector(".shell-gring");
     const t = document.querySelector(sel);
     if (!ring || ring.hidden || !t) return { ring: !!ring && !ring.hidden, target: !!t };

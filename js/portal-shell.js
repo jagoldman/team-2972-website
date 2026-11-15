@@ -23,7 +23,7 @@ async function getJson(path) {
 }
 
 /**
- * Resolves to { me, user, groups, tiles, tools, site, display, apps? }, or rejects when /me.json or /apps.json can't be
+ * Resolves to { me, user, groups, tiles, tools, site, display }, or rejects when /me.json or /apps.json can't be
  * read. `tiles` are the kit's resolved tiles: an apps.json entry marked `"group": "admin"` keeps `group: "admin"` (C1,
  * kit 0.4.0), and the bar and Home's rows (the kit's mountHomeGroups) draw it in the Admin apps row. `user` is what the
  * bar and the guide get ({ name, email, groups: the raw groups }). `display` is true for the shop screen (`display`
@@ -36,9 +36,9 @@ export async function mountPortalShell({ bell = true } = {}) {
   const groups = parseGroups(rawGroups.join("|"));
   // The Kickoff app has left the suite. Drop it here so a leftover catalog row cannot become a tile.
   const source = (Array.isArray(apps) ? apps : []).filter((x) => x && x.id !== "kickoff" && x.host !== "kickoff");
-  // The shop screen: `display` and no site group (an extra Authentik group does not count). `apps` lets the home
-  // name an app that refused the screen (?blocked=<id>, C14) from the list itself.
-  if (groups.length === 0 && isDisplayOnly(rawGroups)) return { me, groups, tiles: [], tools: [], site, display: true, apps: source };
+  // The shop screen: `display` and no site group (an extra Authentik group does not count). The home names an app
+  // that refused the screen from ?blocked=<host label> with its own table (C16), not from this list.
+  if (groups.length === 0 && isDisplayOnly(rawGroups)) return { me, groups, tiles: [], tools: [], site, display: true };
   // audience is landing's own field (search matches it); the kit drops fields it doesn't use.
   const tiles = resolveTiles(source, groups, site).map((t) => {
     const raw = source.find((x) => x && x.id === t.id) || {};

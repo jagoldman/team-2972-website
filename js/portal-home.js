@@ -189,15 +189,23 @@ export function displayHref(screen, site) {
 }
 
 /**
- * ?blocked=<app id> → the name of that app from apps.json, or "" (C14). The id must be an entry's id; the name shown
- * always comes from the list, never from the address.
+ * The apps that can refuse a shop-screen login, by host label (CONTRACT C16): each refusal page sends its own host label
+ * as ?blocked=. The names are the apps' names in infra's config/apps.json where the host has one entry (tasks,
+ * calendar, parts, skills, admin, editor); compete and tools have several entries and Account none, so their names are
+ * the apps' own.
  */
-export function blockedAppName(search, apps) {
-  let id = "";
-  try { id = new URLSearchParams(search || "").get("blocked") || ""; } catch { return ""; }
-  if (!/^[a-z0-9-]{1,40}$/.test(id)) return "";
-  const entry = (Array.isArray(apps) ? apps : []).find((a) => a && a.id === id);
-  return entry ? text(entry.name, 60) : "";
+export const BLOCKED_APPS = Object.freeze({
+  tasks: "Tasks", calendar: "Calendar", parts: "Parts & Inventory", skills: "Skills", compete: "Competition",
+  account: "Account", admin: "Admin", editor: "Website editor", tools: "Tools",
+});
+/**
+ * ?blocked=<host label> → the name the shop screen's notice shows, or "" (C14, C16). Only a label in BLOCKED_APPS
+ * counts; the name always comes from that table, never from the address.
+ */
+export function blockedAppName(search) {
+  let label = "";
+  try { label = new URLSearchParams(search || "").get("blocked") || ""; } catch { return ""; }
+  return Object.hasOwn(BLOCKED_APPS, label) ? BLOCKED_APPS[label] : "";
 }
 
 // ---------- the network ----------

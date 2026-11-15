@@ -111,14 +111,14 @@ function renderTile(t) {
 }
 
 // The shop screen (C9): "Pick what this screen shows" and nothing else: no bar, no greeting, no footer, no install
-// banner (css). `apps` names an app that refused the screen (?blocked=<id>, C14), from the list, never the address.
-function showDisplayHome(site, apps) {
+// banner (css). An app that refused the screen is named from ?blocked=<its host label> by a fixed table (C14, C16).
+function showDisplayHome(site) {
   document.body.setAttribute("data-display", "");
   document.getElementById("site-header").hidden = true;
   document.getElementById("site-footer").hidden = true;
   const main = document.getElementById("main");
   main.className = "dsp-main";
-  main.replaceChildren(displayHome(site, blockedAppName(location.search, apps)));
+  main.replaceChildren(displayHome(site, blockedAppName(location.search)));
   document.title = "Pick a screen | Team 2972";
 }
 
@@ -126,14 +126,14 @@ onContent(async () => {
   initInstallBanner();
   document.getElementById("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
-  let me, user, groups, resolved, tools, site, display, apps;
+  let me, user, groups, resolved, tools, site, display;
   try {
-    ({ me, user, groups, tiles: resolved, tools, site, display, apps } = await mountPortalShell());
+    ({ me, user, groups, tiles: resolved, tools, site, display } = await mountPortalShell());
   } catch (err) {
     document.getElementById("portal-error").hidden = false;
     return;
   }
-  if (display) { showDisplayHome(site, apps); return; }
+  if (display) { showDisplayHome(site); return; }
 
   // Names go in with textContent, never as HTML. The greeting is the first name only.
   const full = me.name || me.email || "there";

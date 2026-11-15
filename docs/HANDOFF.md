@@ -15,6 +15,9 @@ From `new-apps/briefs/r815/SYNC_040.md`. The static kit is synced from infra `re
   Waiting on you card, which appears when `/today.json` answers). The bar gets `appId: "portal"`, so a stop on Home
   counts as on its page, and the user with the raw groups. The shop screen's home mounts neither the bar nor the
   guide.
+- **The shop screen's notice (C16):** `?blocked=` is the refusing app's host label (`tasks`, `calendar`, `parts`, `skills`,
+  `compete`, `account`, `admin`, `editor`, `tools`); `blockedAppName` names it from the fixed table `BLOCKED_APPS`, never
+  from the address or the shop screen's own app list (which never holds the refusing app). Any other value: no notice.
 - **The bell** is the kit's button and panel (`showBell`); "Mark all read" posts `{"all":true}` to the portal's
   `/_shell/inbox/read`, which infra's Caddy sends to Account (C3). The event-day banner needs nothing from landing.
 - **Tests:** `test/portal-shell-test.mjs` adds the bell panel and Mark all read, the Apps menu's rows and ×, the scrim,
@@ -50,7 +53,7 @@ Built from `new-apps/briefs/r815/LANDING.md`, its addendum 1 and CONTRACT C1, C2
   their links; Done gold only when the task is not held back; Open is the ghost button); empty states once
   `/today.json` answered (staff: "Nothing is waiting on you.", a student: "Nothing assigned to you"); on an event day
   (`/event.json` `happeningNow`) the compact card and Competition's shift rows (`compete:` ids) first; the shop
-  screen's notice from `?blocked=<app id>` (name from apps.json). GET and POST give up after 10 s (`WAIT_MS`): 403/404
+  screen's notice from `?blocked=<host label>` (C16: the refusing app's host label, named from the fixed table `BLOCKED_APPS` in `js/portal-home.js`; anything else, no notice). GET and POST give up after 10 s (`WAIT_MS`): 403/404
   offer "Open task", a 5xx puts Done back, no answer says "We couldn't tell if that worked." and asks again. Done's
   messages are one lasting `role=status` line (`#home-done-status`). `sw.js` v6 names `/today.json` and `/today/`.
 - **Public header (C8):** every page but Home reads "2972 Team" on one line, in a more compact bar on a phone

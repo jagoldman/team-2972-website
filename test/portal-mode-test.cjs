@@ -104,7 +104,6 @@ test("display with an extra, non-site group is still the shop screen (the real i
   const r = await context.mountPortalShell();
   assert.equal(r.display, true);
   assert.equal(calls.length, 0);
-  assert.deepEqual(Array.from(r.apps), []);
 });
 
 test("the shop screen (only display) gets no bar, and display with a site group is a person", async () => {
