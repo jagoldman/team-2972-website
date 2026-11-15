@@ -7,10 +7,12 @@ export const SITE_GROUPS = Object.freeze(["admin", "mentor", "student", "parent"
 export const MODES = Object.freeze(["build", "competition"]);
 export const THEME_COOKIE = "theme";
 export const MODE_COOKIE = "mode";
-/** Which Apps-menu groups the person left open (D149): "more", "tools" or both, joined with ".". */
+/** Which Apps-menu groups the person left open (D149): any of "tools", "adminapps", "more", joined with ".". */
 export const GROUPS_COOKIE = "shellgroups";
-/** The Apps menu's remembered groups, in the order they are drawn. */
-export const MENU_GROUPS = Object.freeze(["tools", "more"]);
+/** The Apps menu's remembered groups, in the order they are drawn (Admin apps since 0.4.0, D161, C1). */
+export const MENU_GROUPS = Object.freeze(["tools", "adminapps", "more"]);
+/** The apps.json `group` value that puts an app in the Admin apps row (C1). */
+export const ADMIN_GROUP = "admin";
 /** 400 days, the longest a browser keeps a cookie (INTEGRATION §9b). */
 export const COOKIE_MAX_AGE = 34560000;
 
@@ -60,6 +62,20 @@ export function portalHref(site) {
   return `${site.scheme}://portal.${site.domain}/`;
 }
 
+/**
+ * The shop screen (C14): a `display` login refused by an app gets one link, "Change screen", to the portal home with
+ * `?blocked=<this app's id>` (the portal names the app from its own list). The refusal page is each app's own; this
+ * gives it the address. `isDisplay(groups)`: the person's raw groups hold `display`.
+ */
+export function changeScreenHref(site, appId) {
+  const id = typeof appId === "string" && /^[a-z0-9-]{1,40}$/.test(appId) ? appId : "";
+  return id ? `${portalHref(site)}?blocked=${id}` : portalHref(site);
+}
+export function isDisplay(groups) {
+  const list = Array.isArray(groups) ? groups : typeof groups === "string" ? groups.split("|").map((g) => g.trim()) : [];
+  return list.includes("display");
+}
+
 /** Account doors share the trusted site configuration with portal and cookies. */
 export function accountHref(site) {
   return `${site.scheme}://account.${site.domain}/`;
@@ -100,12 +116,23 @@ export function resolveTiles(appsJson, groups, site) {
       href,
       external: typeof t.url === "string" || t.ext === true,
       comingSoon: !!t.comingSoon,
-      more: !!t.more || typeof t.url === "string" || t.id === "handbook",
+      more: t.group !== ADMIN_GROUP && (!!t.more || typeof t.url === "string" || t.id === "handbook"),
       icon: typeof t.icon === "string" ? t.icon : t.id,
       modes: tileModes(t),
+      // An app for the people who run the site (Admin, Website editor): drawn in the Admin apps row (0.4.0, C1).
+      ...(t.group === ADMIN_GROUP ? { group: ADMIN_GROUP } : {}),
     });
   }
   return out;
+}
+
+/**
+ * The Admin apps row's tiles (apps.json `group: "admin"`), filtered and resolved like tiles (C1). They are also in
+ * resolveTiles' answer, marked `group: "admin"`, so the guide and anything that counts tiles still sees them;
+ * `/_shell/apps` sends this list as `adminApps` for a caller that wants it on its own.
+ */
+export function resolveAdminApps(appsJson, groups, site) {
+  return resolveTiles(appsJson, groups, site).filter((t) => t.group === ADMIN_GROUP);
 }
 
 /**
@@ -162,6 +189,145 @@ export function splitMore(tiles) {
   const core = list.filter((t) => !t.more);
   const more = list.filter((t) => t.more);
   return core.length ? { main: core, rest: more } : { main: more, rest: [] };
+}
+
+/**
+ * The Apps menu's (and the portal home's) lists, in drawing order: `main` (the core apps), `admin` (the Admin apps
+ * row), `rest` (the More row). With no core app and no admin app, the "more" tiles are the main list and there is no
+ * More row (alumni). Order is kept.
+ */
+export function splitGroups(tiles) {
+  const list = tiles || [];
+  const admin = list.filter((t) => t.group === ADMIN_GROUP);
+  const core = list.filter((t) => !t.more && t.group !== ADMIN_GROUP);
+  const more = list.filter((t) => t.more && t.group !== ADMIN_GROUP);
+  return core.length || admin.length ? { main: core, admin, rest: more } : { main: more, admin: [], rest: [] };
+}
+
+/** The Tools row's last line, "All tools": the tools service's own page (C1, C7). */
+export function toolsHref(site) {
+  return `${site.scheme}://tools.${site.domain}/`;
+}
+
+/**
+ * GET /_shell/inbox's answer → what the bell draws (C3): { available, unread, items } with items newest first and
+ * only well-formed ones: { id, app, text, href (same-site http(s) or null), at, read }. Field names are Account's
+ * /api/shell-inbox ones. Anything else reads as not available.
+ */
+/** The most notices the bell's panel keeps (Account sends at most 30). */
+export const INBOX_MAX = 30;
+export function parseInbox(d, site = null) {
+  if (!d || typeof d !== "object" || d.available !== true) return { available: false, unread: 0, items: [] };
+  const seen = new Set();
+  const items = (Array.isArray(d.items) ? d.items : [])
+    .filter((n) => n && typeof n.id === "string" && n.id && typeof n.text === "string" && typeof n.at === "string" && !Number.isNaN(Date.parse(n.at)))
+    // One row per id (the first one sent wins).
+    .filter((n) => (seen.has(n.id) ? false : (seen.add(n.id), true)))
+    .map((n) => ({
+      id: n.id,
+      app: typeof n.app === "string" ? n.app : "",
+      text: n.text,
+      href: safeHref(n.href, site),
+      at: n.at,
+      read: n.read === true,
+    }))
+    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+    .slice(0, INBOX_MAX);
+  const unread = Number.isSafeInteger(d.unread) && d.unread >= 0 ? d.unread : items.filter((n) => !n.read).length;
+  return { available: true, unread, items };
+}
+
+// A notice's link: only http(s), and with a site known, only this site or its subdomains (never a script URL).
+function safeHref(href, site) {
+  if (typeof href !== "string" || href === "") return null;
+  try {
+    const u = new URL(href, site ? portalHref(site) : "https://x.invalid/");
+    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+    if (site && !onSite(u.href, site)) return null;
+    return u.href;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * "Mark all read" (C15): POST /_shell/inbox/read with this body; only a 204 is success (an adapter answers 200 with
+ * { available: false } when Account fails). It marks every notice of the person, not only those shown.
+ */
+export const INBOX_READ_ALL = Object.freeze({ all: true });
+/** Is "Mark all read" offered? Whenever the server counts an unread notice, or a shown one is unread (as the demo). */
+export function inboxHasUnread(inbox) {
+  return !!inbox && (Number(inbox.unread) > 0 || (Array.isArray(inbox.items) && inbox.items.some((n) => n && !n.read)));
+}
+/** The inbox after a successful "Mark all read": nothing unread. */
+export function inboxAllRead(inbox) {
+  return { ...inbox, unread: 0, items: (inbox.items || []).map((n) => ({ ...n, read: true })) };
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+/** A notice's time as the demo writes it: "Just now", "12 min ago", "3 h ago" (today), "Sun" (this week), "Nov 6". */
+export function noticeWhen(at, now = Date.now()) {
+  const t = Date.parse(at);
+  if (Number.isNaN(t)) return "";
+  const mins = Math.floor((now - t) / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins} min ago`;
+  const d = new Date(t);
+  const n = new Date(now);
+  if (d.toDateString() === n.toDateString()) return `${Math.floor(mins / 60)} h ago`;
+  if (now - t < 6 * 86400000) return DAYS[d.getDay()];
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+}
+
+// "2026-03-12" or "2026-03-12T00:00:00.000Z" → days since 1970 (the date as written; no time zone shift).
+function dayNumber(v) {
+  const m = typeof v === "string" ? /^(\d{4})-(\d{2})-(\d{2})/.exec(v) : null;
+  return m ? Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000) : null;
+}
+/**
+ * Calendar's public current event (`/event.json`, C5) → the event-day banner's words, or null when no event is on
+ * today. today: "YYYY-MM-DD" (default: this device's date). status: Competition's `/event-status.json` answer (C15):
+ * its `pit`, `rank` and `teams` are added when present; links only on https (The Blue Alliance's own site for `tbaUrl`).
+ */
+/**
+ * Competition's `/event-status.json` (C15) → { pit, rank, teams } (each null when absent), or null for no answer.
+ * Only these three facts are read.
+ */
+export function parseEventStatus(d) {
+  if (!d || typeof d !== "object") return null;
+  const pit = typeof d.pit === "string" || Number.isFinite(d.pit) ? String(d.pit).trim().slice(0, 12) || null : null;
+  const rank = Number.isSafeInteger(d.rank) && d.rank > 0 ? d.rank : null;
+  const teams = Number.isSafeInteger(d.teams) && d.teams > 0 ? d.teams : null;
+  return pit || rank ? { pit, rank, teams } : null;
+}
+
+export function eventBanner(d, today = null, status = null) {
+  if (!d || typeof d !== "object" || typeof d.name !== "string" || !d.name.trim()) return null;
+  const now = new Date();
+  const t = dayNumber(today || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`);
+  const a = dayNumber(d.start);
+  const b = dayNumber(d.end) ?? a;
+  if (a === null || t === null || t < a || t > b || d.happeningNow === false) return null;
+  const facts = [`Day ${t - a + 1} of ${b - a + 1}`];
+  // Pit and rank come from Competition's status (C15); an event answer that carries them is read the same way.
+  const st = parseEventStatus(status) || parseEventStatus(d);
+  if (st && st.pit) facts.push(`Pit ${st.pit}`);
+  if (st && st.rank) facts.push(st.teams && st.teams >= st.rank ? `Rank ${st.rank} of ${st.teams}` : `Rank ${st.rank}`);
+  const https = (u, host) => {
+    try {
+      const x = new URL(u);
+      return x.protocol === "https:" && (!host || x.hostname === host) ? x.href : null;
+    } catch {
+      return null;
+    }
+  };
+  return {
+    name: d.name.trim().slice(0, 120),
+    line: facts.join(" · "),
+    tbaUrl: https(d.tbaUrl, "www.thebluealliance.com"),
+    livestreamUrl: https(d.livestreamUrl, null),
+  };
 }
 
 export function parseMode(v) {
@@ -370,6 +536,7 @@ export const ICONS = Object.freeze({
   resources: "M3 6h6l2 2h10v11H3z",
   more: "M5 12h.01M12 12h.01M19 12h.01",
   chevron: "M9 6l6 6-6 6",
+  close: "M6 6l12 12M18 6L6 18",
   trace: "M12 19l7-7 3 3-7 7zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18zM2 2l7.6 7.6M11 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
   gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM10.3 3h3.4l.5 2.4 1.7.7 2-1.4 2.4 2.4-1.4 2 .7 1.7 2.4.5v3.4l-2.4.5-.7 1.7 1.4 2-2.4 2.4-2-1.4-1.7.7-.5 2.4h-3.4l-.5-2.4-1.7-.7-2 1.4-2.4-2.4 1.4-2-.7-1.7L3 13.7v-3.4l2.4-.5.7-1.7-1.4-2 2.4-2.4 2 1.4 1.7-.7z",
   camera: "M3 8h4l2-3h6l2 3h4v11H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",

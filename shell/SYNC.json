@@ -1,10 +1,10 @@
 {
-  "version": "0.3.2",
+  "version": "0.4.0",
   "profile": "static",
   "files": [
     {
       "path": "shell/VERSION",
-      "sha256": "511a100eedfb9ea66441e5d506392dba2d8aa290f98c4c544c70ae75ec3c3396"
+      "sha256": "40b8eb4000a913a7791090535f291d3d369874162a89ef3c9e3d4e887a1b9e79"
     },
     {
       "path": "shell/tokens.css",
@@ -12,19 +12,19 @@
     },
     {
       "path": "shell/app-bar.css",
-      "sha256": "774e7159e8040f1045d0100f34ae258856c7b0bf642b7a69210fcec672631f00"
+      "sha256": "18baf18f235c0a7d3069e29cfc89e930ff59ad957c1a23bc060c1ed0fcdcdf66"
     },
     {
       "path": "shell/ui.css",
-      "sha256": "ca08851d5ce60a876a3fa9d9bcae8c15c24800e485672f54030ac1fecc56bbd8"
+      "sha256": "3f9113eca470198e7f0126639bab72e9a50f23412d46e9b381eb3d0afdce966c"
     },
     {
       "path": "shell/core.js",
-      "sha256": "97812eb6cd54598bb2e5f2491f5054e62e4836b6855752c787bb126a163fdade"
+      "sha256": "843a3803828e0a1e5f47dbe1431e2fc6e173087e373220bee8327fb0409fe91f"
     },
     {
       "path": "shell/core.d.ts",
-      "sha256": "fa2afcce936747f338ef9744603cc897dfb79787ed0b041f9eaa8f6510334d3d"
+      "sha256": "39f80ce55b4f53f6138e0f5f366d03093fefa8d7bd23a9edc1942e37e9fbe66e"
     },
     {
       "path": "shell/tip.js",
@@ -36,15 +36,39 @@
     },
     {
       "path": "shell/tip-text.js",
-      "sha256": "edea845cbb57103d4572b4344e1185744a37a532b53a7b0fd1a1ac525984a7c5"
+      "sha256": "155afae3096310964b4a9a656ef19fc0b85248e22f0c3b03678f2617a0e4ee06"
     },
     {
       "path": "shell/tip-text.d.ts",
-      "sha256": "2c053f451f7ebca95400996821f144f09a56ec8b3d516247d7dc66ad348ee3ec"
+      "sha256": "2495ed7caa7d4ba453fb468f34e3772784e5c768b2eab3a321d5f72f23919ced"
+    },
+    {
+      "path": "shell/guide-state.js",
+      "sha256": "f080e95f0ffefdfdc24845b9a4b9295caebe184cbcddd3d9410f8e63311682c8"
+    },
+    {
+      "path": "shell/guide-state.d.ts",
+      "sha256": "9bc1b9f8449ebcc4bd5f56b4846e377da22a928c8aa6f7bfee6a82f046a65f87"
+    },
+    {
+      "path": "shell/guide-stops.js",
+      "sha256": "27ca4006bcbbeb830c812f19373529f6a88d8093469362bfe5ef529fa7f00028"
+    },
+    {
+      "path": "shell/guide-stops.d.ts",
+      "sha256": "b82a17896b912ac88b75a5244b9839670d95ebb7dbb907c4a495944ba41e462c"
+    },
+    {
+      "path": "shell/guide.js",
+      "sha256": "c687e0236d49f0253866d6b7136e3a5fc77d5ab563b9a692701e131300792266"
+    },
+    {
+      "path": "shell/guide.d.ts",
+      "sha256": "f7b7fbc5e9b8541f8324569acffa624be7ad5e263e34dd8c7210a7622c02eff1"
     },
     {
       "path": "shell/static/shell.js",
-      "sha256": "5d59952f125671e1b7facdcaf5508acc6a5d2063ee90ddea1cccbd8675baafce"
+      "sha256": "5b61334be5a5e8adc02b04364710dd6c258d1b273ebc2d9a6f36ddb58d930bfc"
     }
   ]
 }

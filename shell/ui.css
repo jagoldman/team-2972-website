@@ -9,6 +9,7 @@
  *   .shell-hero                                                      card with a 3 px gold left edge
  *   .shell-count  --warn                                             small rounded number
  *   .shell-tip                                                       the hover description (drawn by tip.js)
+ *   .shell-guidecard .shell-glayer .shell-gring .shell-gstop .shell-gbtn   the guide (drawn by guide.js)
  *
  * Gold is only the main button, the active-tab underline, the 2972 badge and "today" on a calendar. These
  * classes use gold for the tab underline and the hero edge only; everything else here is neutral or the ink.
@@ -326,5 +327,476 @@
 @media (forced-colors: active) {
   .shell-tip {
     border: 1px solid CanvasText;
+  }
+}
+
+/* ---------- The guide (guide.js, D140) ----------
+   The Home card ("Get started"), the Account replay card, and a stop: a ring around one live control and a small card
+   beside it. The guide's own buttons are plain, never gold: the page's gold control stays the only one. Nothing
+   animates for more than 200 ms, and nothing animates with reduced motion. */
+.shell-guidecard {
+  display: grid;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r, 12px);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--body);
+  box-sizing: border-box;
+}
+.shell-guidecard[hidden] {
+  display: none;
+}
+.shell-guidecard h2 {
+  margin: 0;
+  font: 600 1rem/1.3 var(--body);
+}
+.shell-guidecard p {
+  margin: 0;
+}
+.shell-ghead,
+.shell-gnext {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.shell-gnext {
+  gap: 12px;
+}
+.shell-ggrow {
+  flex: 1;
+  min-width: 0;
+}
+.shell-gnext .shell-ggrow {
+  display: grid;
+}
+.shell-gnext b,
+.shell-gitem b {
+  font-weight: 600;
+}
+.shell-gcount,
+.shell-gline,
+.shell-gstop-count {
+  color: var(--mute);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.shell-gprogress {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.shell-gprogress > i {
+  display: block;
+  height: 100%;
+  background: var(--ok);
+}
+.shell-glist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.shell-gitem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 4px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.shell-glist li:first-child .shell-gitem {
+  border-top: 0;
+}
+.shell-gitem:hover {
+  background: var(--surface-2);
+}
+.shell-gtick {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+/* The page's own background colour on the green: at least 4.5:1 in both themes (contrast test). */
+.shell-glist .is-done .shell-gtick {
+  background: var(--ok);
+  color: var(--bg);
+}
+.shell-glist .is-done b {
+  color: var(--mute);
+  font-weight: 500;
+}
+.shell-gchev {
+  color: var(--mute);
+}
+.shell-guide-did {
+  font-weight: 500;
+}
+.shell-guide-quiet {
+  color: var(--mute);
+  font-size: 0.9rem;
+}
+.shell-gsr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+/* The guide's buttons: plain (a link that goes to another page looks the same). */
+.shell-gbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--input-line, var(--line-2));
+  border-radius: var(--r-ctl, 8px);
+  background: var(--surface);
+  color: var(--text);
+  font: 600 0.875rem/1 var(--body);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.shell-gbtn:hover {
+  background: var(--surface-2);
+}
+.shell-gbtn--quiet {
+  border-color: transparent;
+  background: none;
+  color: var(--text-2);
+}
+.shell-gbtn--quiet:hover {
+  color: var(--text);
+}
+.shell-gbtn--sm {
+  min-height: 36px;
+  padding: 0 8px;
+}
+.shell-gbtn:focus-visible,
+.shell-gitem:focus-visible,
+.shell-gx:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+/* The layer that holds the ring and the stop card. It never blocks the page: only the card takes taps. Where the
+   browser has the Popover API it is a manual popover (the top layer, above a native modal dialog); these rules undo
+   the browser's popover styles. */
+.shell-glayer {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  color: var(--text);
+  pointer-events: none;
+}
+.shell-gring {
+  position: fixed;
+  border-radius: 10px;
+  box-shadow: 0 0 0 3px var(--accent-ink), 0 0 0 6px var(--surface);
+  pointer-events: none;
+}
+.shell-gring[hidden] {
+  display: none;
+}
+.shell-glayer.is-dim .shell-gring {
+  box-shadow: 0 0 0 3px var(--accent-ink), 0 0 0 6px var(--surface), 0 0 0 100vmax rgba(7, 9, 15, 0.22);
+}
+.shell-gstop {
+  position: fixed;
+  pointer-events: auto;
+  width: min(340px, calc(100vw - 24px));
+  display: grid;
+  gap: 6px;
+  padding: 12px 16px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r, 12px);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+  font: 400 0.92rem/1.45 var(--body);
+  box-sizing: border-box;
+}
+.shell-gstop:focus {
+  outline: none;
+}
+.shell-gstop:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.shell-gstop h2 {
+  margin: 0;
+  font: 600 1.02rem/1.3 var(--body);
+}
+.shell-gstop p {
+  margin: 0;
+}
+.shell-gstop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: -4px -8px -2px 0;
+}
+.shell-gx {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--r-ctl, 8px);
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.shell-gx:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.shell-gacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.shell-gacts[hidden] {
+  display: none;
+}
+.shell-gstop.is-centred {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+/* Full width above the control (a phone whose control cannot be scrolled clear of the dock); top comes inline. */
+.shell-gstop.is-wide {
+  left: 8px;
+  right: 8px;
+  width: auto;
+  max-width: 560px;
+  margin-inline: auto;
+}
+/* Docked at the bottom (a phone, or no room beside the control); the control is scrolled above it. */
+.shell-gstop.is-docked {
+  left: 8px;
+  right: 8px;
+  top: auto;
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  width: auto;
+  max-width: 560px;
+  margin-inline: auto;
+}
+/* A finger needs 44 px: every button of the two cards and the stop's card, at 640 px and below. */
+@media (max-width: 640px) {
+  .shell-gbtn,
+  .shell-gbtn--sm,
+  .shell-gitem {
+    min-height: 44px;
+  }
+  .shell-gx {
+    width: 44px;
+    height: 44px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .shell-gring {
+    transition: left 0.12s ease, top 0.12s ease, width 0.12s ease, height 0.12s ease;
+  }
+}
+@media (forced-colors: active) {
+  .shell-gring {
+    outline: 3px solid Highlight;
+  }
+  .shell-gstop {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* ---------- The portal home's rows (0.4.0, C1; static mountHomeGroups; the demo's .homegroups) ----------
+   Tools, Admin apps and More under the app tiles: one quiet row each, closed until opened, remembered with the bar's
+   Apps menu (the shellgroups cookie). The markup keeps the demo's (and landing's) class names, scoped here under
+   .shell-homegroups so these rules touch nothing else. */
+.shell-sr,
+.shell-homegroups .vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.shell-homegroups {
+  display: grid;
+  margin-top: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.shell-homegroups[hidden],
+.shell-homegroups [hidden] {
+  display: none !important;
+}
+.shell-homegroups .grp {
+  border-top: 1px solid var(--line);
+}
+.shell-homegroups .grphead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-2);
+  font: 600 0.92rem/1.2 var(--body);
+  text-align: left;
+  cursor: pointer;
+}
+.shell-homegroups .grphead:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.shell-homegroups :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.shell-homegroups .tcount {
+  display: inline-block;
+  min-width: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--tint-2);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
+}
+.shell-homegroups .grpchev {
+  display: inline-grid;
+  margin-left: auto;
+  color: var(--mute);
+}
+.shell-homegroups .grphead[aria-expanded="true"] .grpchev {
+  transform: rotate(90deg);
+}
+.shell-homegroups .grpbody,
+.shell-homegroups .toollist {
+  display: grid;
+  gap: 2px;
+}
+.shell-homegroups .grpbody {
+  padding: 2px 0 10px;
+}
+.shell-homegroups .toolrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 6px 4px;
+  border-radius: 10px;
+  color: var(--text);
+  text-decoration: none;
+}
+.shell-homegroups .toolrow:hover {
+  background: var(--surface-2);
+}
+.shell-homegroups .toolrow .ic {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--tint);
+  color: var(--accent-ink);
+}
+.shell-homegroups .toolrow b {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+.shell-homegroups .toolrow small {
+  display: block;
+  color: var(--mute);
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+.shell-homegroups .toolrow.all {
+  justify-content: space-between;
+  min-height: 44px;
+  color: var(--accent-ink);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+.shell-homegroups .morelinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 22px;
+  margin: 0;
+  padding: 0 4px;
+  list-style: none;
+}
+.shell-homegroups .morelinks a,
+.shell-homegroups .morelinks > li > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  color: var(--text);
+  text-decoration: none;
+}
+.shell-homegroups .morelinks a:hover {
+  color: var(--accent-ink);
+}
+.shell-homegroups .more-ico {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  color: var(--accent-ink);
+}
+.shell-homegroups .ext {
+  color: var(--mute);
+  font-weight: 400;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .shell-homegroups .grpchev {
+    transition: transform 0.15s ease;
   }
 }

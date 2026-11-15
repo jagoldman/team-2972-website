@@ -476,6 +476,179 @@ a.shbar-item:hover {
   color: var(--accent-ink) !important;
 }
 
+/* ---------- 0.4.0: the menus' ×, the scrim, the bell panel, "All tools", the event-day banner ---------- */
+/* The × on each menu (C10, the demo's .xbtn): a quiet square, 44 px on a phone. */
+.shbar .shbar-x {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-ctl, 8px);
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+.shbar .shbar-x:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+/* Behind an open menu, under the bar (the demo's .menu-scrim): a press on it closes the menu. */
+.shbar-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: rgba(0, 0, 0, 0.25);
+}
+.shbar-scrim[hidden],
+.shbar-banner[hidden],
+.shbar-banner [hidden] {
+  display: none !important;
+}
+.shbar-panel-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.shbar-headacts {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.shbar-headacts .shbar-x {
+  margin-left: 0;
+}
+.shbar-readall {
+  min-height: 36px;
+}
+.shbar-readall[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: progress;
+}
+.shbar-account .shbar-panel-head {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+.shbar-account .shbar-identity {
+  min-width: 0;
+}
+/* The bell's panel (C3, the demo's .bellpanel): newest first; an unread notice is bold with a dot and says "Unread". */
+.shbar-bellpanel {
+  right: max(8px, env(safe-area-inset-right, 0px));
+  width: min(400px, calc(100vw - 16px));
+}
+.shbar-notices {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.shbar-notice + .shbar-notice {
+  border-top: 1px solid var(--line);
+}
+.shbar-notice-link {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 8px 8px 22px;
+  border-radius: 8px;
+  color: var(--text) !important;
+}
+a.shbar-notice-link:hover {
+  background: var(--surface-2);
+}
+.shbar-notice-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.shbar-notice-app,
+.shbar-notice-when {
+  color: var(--mute);
+}
+.shbar-notice-when {
+  flex: none;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.shbar-notice.is-unread .shbar-notice-text {
+  font-weight: 600;
+}
+.shbar-notice-dot {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--accent-ink);
+}
+.shbar-panel-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+/* "All tools", the Tools row's last line (the demo's .toolrow.all). */
+.shbar .shbar-alltools {
+  justify-content: space-between;
+  min-height: 44px;
+  color: var(--accent-ink) !important;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+/* The event-day banner under the bar (C5, the demo's .banner). Not sticky: it scrolls with the page. */
+.shbar-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding-block: 8px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line);
+  background: var(--info-bg);
+  color: var(--text);
+  font: 400 0.88rem/1.4 var(--body);
+}
+.shbar-banner b {
+  font-weight: 600;
+}
+.shbar-banner a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-decoration: underline;
+}
+.shbar-banner :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+/* The demo's gold button (btn sm primary): the banner's one action (C15). */
+.shbar-bannerbtn {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--primary);
+  border-radius: var(--r-ctl, 8px);
+  background: var(--primary);
+  color: var(--on-gold);
+  font: 600 0.84rem/1 var(--body);
+  cursor: pointer;
+}
+.shbar-bannerbtn:hover {
+  filter: brightness(0.95);
+}
+
 /* ---------- Narrow screens ---------- */
 @media (min-width: 641px) {
   .shbar-chip-short {
@@ -492,6 +665,35 @@ a.shbar-item:hover {
   .shbar-mode button {
     min-height: 44px;
   }
+  /* The bar's icon buttons (the bell, an app's own icon in the bar) are 44 px on a phone, as the account button; the
+     bar stays 52 px, and at 360 px and below its gaps shrink so a 320 px screen still holds everything. */
+  .shbar-icon {
+    width: 44px;
+    height: 44px;
+  }
+  .shbar .shbar-x,
+  .shbar-readall {
+    width: 44px;
+    height: 44px;
+  }
+  .shbar-readall {
+    width: auto;
+  }
+  .shbar-bannerbtn {
+    min-height: 44px;
+  }
+}
+/* The narrowest phones (320 px): Competition mode with the chip, an app's own icon, the bell and the account button
+   (each 44 px) must still fit: gaps of 4 px, 8 px at the sides, a tighter chip. */
+@media (max-width: 360px) {
+  .shbar {
+    gap: 4px;
+    padding-left: max(8px, env(safe-area-inset-left, 0px));
+    padding-right: max(8px, env(safe-area-inset-right, 0px));
+  }
+  .shbar-chip {
+    padding: 3px 7px;
+  }
 }
 @media (prefers-reduced-motion: no-preference) {
   .shbar-appsbtn,
@@ -504,6 +706,9 @@ a.shbar-item:hover {
   }
   .shbar-groupbtn svg {
     transition: transform 0.15s ease;
+  }
+  .shbar-x {
+    transition: background-color 0.12s;
   }
 }
 @media (forced-colors: active) {

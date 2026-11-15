@@ -18,10 +18,14 @@ export const BAR_TIPS = Object.freeze({
   build: "Show the apps for build season.",
   competition: "Show the event apps: schedule, pit and scouting.",
   tools: "Small helpers that open on this site.",
+  adminapps: "Apps for the people who run the team's accounts and its public website.",
   more: "Other apps and links to team sites.",
   chip: "Competition mode is on; change it in Apps or Account.",
   bell: "What is new for you in every app.",
   account: "Your theme, notices and account settings.",
+  closeapps: "Close the apps menu.",
+  closebell: "Close notifications.",
+  closeaccount: "Close the account menu.",
 });
 
 const freeze = (o) => Object.freeze(Object.fromEntries(Object.entries(o).map(([k, v]) => [k, Object.freeze(v)])));

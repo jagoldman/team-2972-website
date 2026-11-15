@@ -6,10 +6,14 @@ export const BAR_TIPS: Readonly<{
   build: string;
   competition: string;
   tools: string;
+  adminapps: string;
   more: string;
   chip: string;
   bell: string;
   account: string;
+  closeapps: string;
+  closebell: string;
+  closeaccount: string;
 }>;
 /** Tab descriptions by apps.json id, then data-tab id. */
 export const TAB_TIPS: Readonly<Record<string, Readonly<Record<string, string>>>>;
