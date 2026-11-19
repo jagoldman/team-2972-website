@@ -71,24 +71,13 @@ body[data-portal] { font: revert-layer; line-height: revert-layer; }
 .home-g .hsec > h2, .home-g .apps-head h2 { margin: 0 0 8px; font-size: 1.06rem; color: var(--text); }
 .homemain > :first-child, .homeside-lead > .hsec:first-child, .homeside-lead:empty + .appssec { border-top: 0; }
 .gempty { margin: 0 0 6px; }
+/* Below 900 px one column. The page moves the sections into the order a person needs them (portal/index.html
+   arrange()), so the order on screen is the document's order: no CSS `order` here (review item 7). */
 @media (max-width: 899px) {
-  .homecols { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
-  .homemain, .homeside, .homeside-lead { display: contents; }
+  .homecols { display: block; }
   .homeside { padding: 0; border: 0; }
-  .homecols > *, .homemain > *, .homeside > *, .homeside-lead > * { order: 3; border-top: 1px solid var(--line); }
-  #home-now { order: 1; }
-  #home-next { order: 2; }
-  #home-others { order: 3; }
-  #home-week { order: 4; }
-  #apps { order: 5; }
-  .guideslot { order: 6; }
-  #home-activity { order: 7; }
-  .parent #home-week { order: 0; }
-  .parent #home-help { order: 1; }
-  .parent #home-coming { order: 2; }
-  .evday .shiftcard, .evday .homemain > .evline { order: 0; border-top: 0; }
-  .evday #home-matches { order: 2; }
-  .homecols > :first-child { border-top: 0; }
+  .homemain > * { border-top: 1px solid var(--line); }
+  .homemain > :first-child, .evday .homemain > #home-shift, .evday .homemain > #home-evline { border-top: 0; }
 }
 
 /* ---------- Rows: Now, Waiting on others, In the pit, Can you help? ---------- */
@@ -160,6 +149,10 @@ body[data-portal] { font: revert-layer; line-height: revert-layer; }
 .nextstep b { color: var(--text); font-weight: 650; }
 .nextsec .heroacts { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px; }
 .nextsec .heroacts .shell-btn svg { flex: none; }
+.nextsec .nextmoved { margin: 6px 0 4px; color: var(--text); font-weight: 650; }
+.nextsec .nextmoved[hidden], .nextsec .nextmsg[hidden], .nextsec .nextbody[hidden] { display: none; }
+.nextsec .nextmsg { margin: 6px 0 0; }
+.nowrow .nowbtn[aria-disabled="true"], .nextsec .heroacts button[aria-disabled="true"] { opacity: 0.6; cursor: progress; }
 .nextsec.evcompact .nexttitle { font-size: 1.1rem; }
 @media (max-width: 640px) {
   .nexttitle { min-height: 44px; align-items: center; }
@@ -205,8 +198,14 @@ body[data-portal] { font: revert-layer; line-height: revert-layer; }
 
 /* ---------- The status line: a short message at the foot of the screen; Undo while it is offered ---------- */
 .home-g .home-status { position: fixed; left: 50%; bottom: 16px; z-index: 30; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); margin: 0; }
+.home-g .home-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; pointer-events: none; }
 #home-done-status { margin: 0; padding: 10px 16px; border-radius: var(--r-ctl); background: var(--rail); color: var(--rail-text); font-size: 0.92rem; font-weight: 600; }
-#home-done-status:empty { display: none; }
+/* The live region stays in the page when it is empty (a screen reader listens to it from the start), it just shows
+   nothing. */
+#home-done-status:empty { padding: 0; background: none; }
+.home-undo { pointer-events: auto; }
+.home-undo[hidden] { display: none; }
+.home-g .undobtn { min-height: 44px; min-width: 88px; }
 .linkbtn { min-height: 32px; padding: 0 4px; border: 0; background: none; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 
 /* ---------- Deny's small dialog ---------- */

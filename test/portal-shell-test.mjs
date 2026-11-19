@@ -473,6 +473,9 @@ try {
           const order = await page.evaluate(() => [...document.querySelectorAll("#home-main > *, #home-side-lead > *, #apps")].filter((e) => e.getClientRects().length).sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top).map((e) => e.id));
           const wantOrder = role === "parent" ? ["home-week", "home-help", "home-coming", "apps"] : role === "student" ? ["home-now", "home-next", "home-others", "home-week", "apps", "home-activity"] : ["home-now", "home-week", "apps", "home-activity"];
           check(`${tag}: one column in the order ${wantOrder.join(", ")}`, JSON.stringify(order) === JSON.stringify(wantOrder), order);
+          // Review item 7: the document order is the order on screen (no CSS reordering), so the keyboard follows it.
+          const domOrder = await page.evaluate(() => [...document.querySelectorAll("#home-main > *, #home-side-lead > *, #apps")].filter((e) => e.getClientRects().length).map((e) => e.id));
+          check(`${tag}: the document order is the order on screen`, JSON.stringify(domOrder) === JSON.stringify(order), { domOrder, order });
         }
         if (role === "student" && theme === "light") {
           check(`${tag}: the season line counts ${season} practices to kickoff with three milestones`, h.topText.startsWith(`${season} practices to kickoff`) && (await page.$$("#home-top .snms")).length === 3 && (width === 390 || (await page.$$("#home-top .pm")).length === season), h.topText);
@@ -551,7 +554,8 @@ try {
     const gone = await page.$eval('#home-now [data-id="parts:request:12"]', (r) => r.hidden);
     check("Approve: the row goes at once, before the answer", gone);
     check("Approve: two presses send one POST of {app, action, key} as JSON to /today/act", actPosts.length === 1 && actPosts[0].method === "POST" && actPosts[0].body === JSON.stringify({ app: "parts", action: "approve", key: "12" }) && /application\/json/.test(actPosts[0].type), actPosts);
-    check("Approve: the status line says so at once", (await page.textContent("#home-done-status")).startsWith("Approved."));
+    // Review item 1: while the answer is on its way the words are a pending state, never the result.
+    check("Approve: the status line says \"Approving…\" at once, never \"Approved.\" before the answer", (await page.textContent("#home-done-status")) === "Approving…");
     check("Approve: focus moves on down the list", await page.evaluate(() => !!document.activeElement.closest("#home-now")));
     check("Approve: no script error", errors.length === 0, errors);
     await context.close();
@@ -627,9 +631,9 @@ try {
     const { page } = await openPortal(context);
     await page.waitForSelector('#home-now [data-id="parts:request:12"]');
     await page.click('#home-now [data-id="parts:request:12"] .nowbtn');
-    await page.waitForSelector("#home-done-status .linkbtn");
+    await page.waitForSelector("#home-undo .undobtn");
     await shot(page, "act-undo-1280");
-    await page.click("#home-done-status .linkbtn");
+    await page.click("#home-undo .undobtn");
     await page.waitForFunction(() => /Put back/.test(document.getElementById("home-done-status").textContent));
     check("Approve answered {undoUntil, approval}: Undo is offered and sends {app, action: \"unapprove\", key, approval}", actPosts.length === 2 && actPosts[1].body === JSON.stringify({ app: "parts", action: "unapprove", key: "12", approval: "ev_42" }), actPosts);
     await context.close();
@@ -639,8 +643,8 @@ try {
     const p409 = (await openPortal(c409.context)).page;
     await p409.waitForSelector('#home-now [data-id="parts:request:12"]');
     await p409.click('#home-now [data-id="parts:request:12"] .nowbtn');
-    await p409.waitForSelector("#home-done-status .linkbtn");
-    await p409.click("#home-done-status .linkbtn");
+    await p409.waitForSelector("#home-undo .undobtn");
+    await p409.click("#home-undo .undobtn");
     await p409.waitForFunction(() => /stays approved/.test(document.getElementById("home-done-status").textContent));
     check("Undo answered 409: \"The request changed since you approved it, so it stays approved.\" and the request stays off Now", (await p409.textContent("#home-done-status")) === "The request changed since you approved it, so it stays approved."
       && !(await p409.isVisible('#home-now [data-id="parts:request:12"]')));
@@ -651,16 +655,208 @@ try {
     await ph.waitForSelector('#home-now [data-id="parts:request:12"]');
     await ph.click('#home-now [data-id="parts:request:12"] .nowbtn');
     await ph.waitForTimeout(300);
-    check("Approve answered {undoUntil} without approval: no Undo", !(await ph.$("#home-done-status .linkbtn")));
+    check("Approve answered {undoUntil} without approval: no Undo", !(await ph.$("#home-undo .undobtn")));
     await half.context.close();
     const plain = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor });
     const p2 = (await openPortal(plain.context)).page;
     await p2.waitForSelector('#home-now [data-id="parts:request:12"]');
     await p2.click('#home-now [data-id="parts:request:12"] .nowbtn');
     await p2.waitForTimeout(300);
-    check("Approve answered 204: no Undo", !(await p2.$("#home-done-status .linkbtn")));
+    check("Approve answered 204: no Undo", !(await p2.$("#home-undo .undobtn")));
     await plain.context.close();
   }
+  // ---------- the independent review's fixes (items 1, 2, 3, 7, 8, 9) ----------
+  const holdAct = async (context, actPosts, answerOf) => {
+    // /today/act answers only when released; answerOf(body) gives the answer to fulfil with.
+    const gates = [];
+    await context.route("**/today/act", async (route) => {
+      const body = route.request().postData();
+      actPosts.push({ body });
+      await new Promise((r) => gates.push(r));
+      const a = answerOf(JSON.parse(body));
+      return a === "abort" ? route.abort("connectionreset") : route.fulfill(a);
+    });
+    return { release: () => { while (gates.length) gates.shift()(); }, waiting: () => gates.length };
+  };
+  const status = (page) => page.textContent("#home-done-status");
+  {
+    // Item 1: a redirect or a sign-in page in place of the answer: signed out. The row comes back, no re-read.
+    for (const [label, answer] of [["a redirect to sign-in", { status: 302, headers: { location: "/outpost.goauthentik.io/start" }, body: "" }],
+      ["a 200 sign-in page", { status: 200, contentType: "text/html; charset=utf-8", body: "<!doctype html><title>Sign in</title>" }]]) {
+      const { context, actPosts, answers } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor });
+      await context.route("**/today/act", (route) => { actPosts.push({ body: route.request().postData() }); return route.fulfill(answer); });
+      const { page } = await openPortal(context);
+      await page.waitForSelector('#home-now [data-id="skills:signoff:u-3:omio"]');
+      const gets0 = answers.gets;
+      await page.click('#home-now [data-id="skills:signoff:u-3:omio"] .nowbtn');
+      await page.waitForFunction(() => /signed out/.test(document.getElementById("home-done-status").textContent));
+      await page.waitForTimeout(300);
+      const r = await page.evaluate(() => { const x = document.querySelector('#home-now [data-id="skills:signoff:u-3:omio"]'); return { there: !!x && !x.hidden, msg: x?.querySelector(".nowmsg")?.textContent }; });
+      check(`Sign off answered with ${label}: the row is back, "You are signed out. Reload the page to sign in.", never "Signed off."; no re-read`,
+        r.there && r.msg === "You are signed out. Reload the page to sign in." && (await status(page)) === r.msg && answers.gets === gets0, { r, gets: answers.gets - gets0 });
+      await context.close();
+    }
+    const { context, posts } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: TODAY.student });
+    await context.route("**/today/task-done", (route) => { posts.push(1); return route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><title>Sign in</title>" }); });
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#home-next .heroacts button");
+    await page.click("#home-next .heroacts button");
+    await page.waitForFunction(() => /signed out/.test(document.getElementById("home-done-status").textContent));
+    const c = await page.evaluate(() => ({ title: document.querySelector("#home-next .nexttitle")?.textContent || "", body: !document.querySelector("#home-next .nextbody").hidden, btn: document.querySelector("#home-next .heroacts button")?.textContent.trim() }));
+    check("Mark task done answered with a sign-in page: the card is back as it was and says you are signed out", c.body && c.btn === "Mark task done" && c.title.startsWith("Wire"), c);
+    await context.close();
+  }
+  {
+    // Item 2: after an uncertain answer, "done" only when the re-read proves it. Parts missing from the re-read (an app
+    // down): not confirmed, the row back. The same key is locked while it is checked.
+    const { context, actPosts, answers } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS });
+    const noParts = { ...today83.mentor, waiting: today83.mentor.waiting.filter((r) => !r.id.startsWith("parts:")) };
+    let holdRead = null;
+    answers.today = () => (actPosts.length ? noParts : today83.mentor);
+    const gate = await holdAct(context, actPosts, () => ({ status: 503, body: "" }));
+    const { page } = await openPortal(context);
+    await page.waitForSelector('#home-now [data-id="parts:request:12"]');
+    await context.route("**/today.json", async (route) => { await new Promise((r) => { holdRead = r; }); return route.fulfill({ contentType: "application/json", body: JSON.stringify(answers.today()) }); });
+    await page.click('#home-now [data-id="parts:request:12"] .nowbtn');
+    while (!gate.waiting()) await page.waitForTimeout(20);
+    gate.release();
+    await page.waitForFunction(() => /Checking/.test(document.getElementById("home-done-status").textContent));
+    while (!holdRead) await page.waitForTimeout(20);
+    // During the check the row is back but its buttons do nothing: a press sends nothing.
+    await page.$eval('#home-now [data-id="parts:request:12"] .nowbtn', (b) => b.click());
+    await page.waitForTimeout(150);
+    const lockedPosts = actPosts.length;
+    holdRead();
+    await page.waitForFunction(() => /couldn't confirm/.test(document.getElementById("home-done-status").textContent));
+    await page.waitForTimeout(200);
+    const r = await page.evaluate(() => { const x = document.querySelector('#home-now [data-id="parts:request:12"]'); return { there: !!x && !x.hidden, msg: x?.querySelector(".nowmsg")?.textContent || null }; });
+    check("Approve answered 503, and Parts is missing from the re-read: not confirmed (\"We couldn't confirm that went through. Check in Parts.\"), never \"Approved.\"",
+      (await status(page)) === "We couldn't confirm that went through. Check in Parts." && lockedPosts === 1, { status: await status(page), lockedPosts, r });
+    await context.close();
+  }
+  {
+    // Item 2: two uncertain writes that overlap share one re-read, and both are settled by it.
+    const { context, actPosts, answers } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor });
+    const gate = await holdAct(context, actPosts, () => ({ status: 503, body: "" }));
+    const { page } = await openPortal(context);
+    await page.waitForSelector('#home-now [data-id="skills:signoff:u-4:leads"]');
+    const gets0 = answers.gets;
+    await page.click('#home-now [data-id="skills:signoff:u-3:omio"] .nowbtn');
+    await page.click('#home-now [data-id="skills:signoff:u-4:leads"] .nowbtn');
+    while (gate.waiting() < 2) await page.waitForTimeout(20);
+    gate.release();
+    await page.waitForFunction(() => /didn't go through/.test(document.getElementById("home-done-status").textContent));
+    await page.waitForTimeout(400);
+    const msgs = await page.$$eval("#home-now .nowmsg", (ms) => ms.map((m) => m.textContent));
+    check("two uncertain Sign offs at once: one shared re-read settles both (no \"Checking\" left)", answers.gets - gets0 <= 2 && msgs.length === 2 && msgs.every((m) => m === "That didn't go through. Try again."), { reads: answers.gets - gets0, msgs });
+    await context.close();
+  }
+  {
+    // Item 2: a row hidden by the mode is still in the answer: a snack day in Competition-only rows is not "signed up".
+    const { context, actPosts, answers } = await newContext(browser, { groups: "parent", apps: GROUPED_APPS, act: 503 });
+    const snack = today83.parent.today[0];
+    answers.today = () => (actPosts.length ? { ...today83.parent, today: [{ ...snack, modes: ["competition"] }, ...today83.parent.today.slice(1)] } : today83.parent);
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#home-help .nowbtn");
+    await page.click("#home-help .nowbtn");
+    await page.waitForFunction(() => !/Checking|Signing/.test(document.getElementById("home-done-status").textContent));
+    check("Sign up answered 503, and the snack row is still in the answer (hidden by the mode): not taken as signed up", (await status(page)) === "That didn't go through. Try again.", await status(page));
+    await context.close();
+  }
+  {
+    // Item 2: a step is compared by its id, never its words: the same words with another id is the next step (done).
+    const after = { ...today83.student, next: { ...today83.student.next, steps: { done: 2, total: 3 }, nextStep: { id: "s3", title: "Cut on the router" } } };
+    const { context, actPosts, answers } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, act: 503 });
+    answers.today = () => (actPosts.length ? after : today83.student);
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#home-next .nextstep");
+    await page.click("#home-next .heroacts button");
+    await page.waitForFunction(() => !/Checking|Marking/.test(document.getElementById("home-done-status").textContent));
+    check("Mark step done answered 503; the re-read's next step has the same words but another id: \"Step done.\"", (await status(page)) === "Step done.", await status(page));
+    await context.close();
+  }
+  {
+    // Item 3: Undo is its own control (44 px, outside the live region); another write's words leave it; it is used once;
+    // pressed after its time it sends nothing; an offer with under five seconds left is not shown.
+    const until = () => new Date(Date.now() + 60000).toISOString();
+    const { context, actPosts } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor,
+      act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: until(), approval: "ev_9" } } : 204) });
+    const page = await context.newPage();
+    await page.clock.install();
+    await page.goto(PORTAL + "/");
+    await page.waitForSelector('#home-now [data-id="parts:request:12"]');
+    await page.click('#home-now [data-id="parts:request:12"] .nowbtn');
+    await page.waitForSelector("#home-undo .undobtn");
+    const u = await page.evaluate(() => ({ h: Math.round(document.querySelector("#home-undo .undobtn").getBoundingClientRect().height), inLive: !!document.querySelector("#home-done-status .undobtn, [role=status] .undobtn") }));
+    await page.click('#home-now [data-id="skills:signoff:u-3:omio"] .nowbtn');
+    await page.waitForFunction(() => document.getElementById("home-done-status").textContent === "Signed off.");
+    check("Undo: 44 px, outside the live region, and still offered after another write's words", u.h >= 44 && !u.inLive && await page.isVisible("#home-undo .undobtn"), u);
+    await page.clock.runFor(61000);
+    check("Undo goes when its time runs out", !(await page.isVisible("#home-undo .undobtn")));
+    await context.close();
+    // Pressed after its time (the timer has not run yet): too late, nothing sent; and used once.
+    const c2 = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor,
+      act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: new Date(Date.now() + 8000).toISOString(), approval: "ev_9" } } : 204) });
+    const p2 = (await openPortal(c2.context)).page;
+    await p2.waitForSelector('#home-now [data-id="parts:request:12"]');
+    await p2.click('#home-now [data-id="parts:request:12"] .nowbtn');
+    await p2.waitForSelector("#home-undo .undobtn");
+    await p2.evaluate(() => { const real = Date.now; Date.now = () => real() + 9000; });
+    await p2.click("#home-undo .undobtn");
+    await p2.waitForTimeout(200);
+    check("Undo pressed after its time: \"It's too late to undo that…\", nothing sent, the offer gone", /too late/.test(await status(p2)) && c2.actPosts.length === 1 && !(await p2.$("#home-undo .undobtn")), { posts: c2.actPosts.length, status: await status(p2) });
+    await c2.context.close();
+    const c3 = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor,
+      act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: new Date(Date.now() + 3000).toISOString(), approval: "ev_9" } } : 204) });
+    const p3 = (await openPortal(c3.context)).page;
+    await p3.waitForSelector('#home-now [data-id="parts:request:12"]');
+    await p3.click('#home-now [data-id="parts:request:12"] .nowbtn');
+    await p3.waitForFunction(() => document.getElementById("home-done-status").textContent === "Approved.");
+    check("an Undo with under five seconds left is not offered", !(await p3.$("#home-undo .undobtn")));
+    await c3.context.close();
+  }
+  {
+    // Item 7: the live region is there from the start (shown, empty) and apart from Undo; focus stays put across the
+    // redraw after a write: on the next row's button.
+    const { context, actPosts, answers } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS });
+    answers.today = () => (actPosts.length ? { ...today83.mentor, waiting: today83.mentor.waiting.filter((r) => r.id !== "skills:signoff:u-3:omio") } : today83.mentor);
+    const { page } = await openPortal(context);
+    await page.waitForSelector('#home-now [data-id="skills:signoff:u-3:omio"]');
+    const live = await page.evaluate(() => { const s = document.getElementById("home-done-status"); return { role: s.getAttribute("role"), display: getComputedStyle(s).display, empty: s.textContent === "", undoInside: !!s.querySelector("#home-undo") }; });
+    check("the live region exists from the start (role=status, not display:none, empty), and Undo is not inside it", live.role === "status" && live.display !== "none" && live.empty && !live.undoInside, live);
+    await page.focus('#home-now [data-id="skills:signoff:u-3:omio"] .nowbtn');
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => !document.querySelector('#home-now [data-id="skills:signoff:u-3:omio"]'));
+    await page.waitForTimeout(200);
+    const f = await page.evaluate(() => document.activeElement?.closest("[data-id]")?.dataset.id || document.activeElement?.tagName);
+    check("after Sign off and the redraw, the focus is on the next row (Motor power leads)", f === "skills:signoff:u-4:leads", f);
+    await context.close();
+  }
+  {
+    // Item 8: one filled button across the screen. An event on today (dated /event.json) in Build mode: the kit's banner
+    // fills "Switch to Competition", so Home fills none, not even the shift's button.
+    const ev = { name: "Test Regional", start: F.dayFrom(T0, 0), end: F.dayFrom(T0, 1), happeningNow: true };
+    const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: F.eventToday(T0), event: ev });
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#shell-bar .shbar-banner:not([hidden]) .shbar-bannerbtn");
+    await settle(page);
+    const h = await homeState(page);
+    const bar = await page.$$eval("#site-header .shbar-bannerbtn, #site-header .shell-btn--primary", (bs) => bs.filter((b) => b.getClientRects().length && !b.closest("[hidden]")).map((b) => b.textContent.trim()));
+    check("an event on today in Build mode: the banner's Switch to Competition is the one filled button; Home fills none (not the shift's)", h.filled.length === 0 && bar.join() === "Switch to Competition", { home: h.filled, bar });
+    await shot(page, "review8-banner-1280");
+    await context.close();
+  }
+  {
+    // Item 9: a parent's Home on an event day is the demo's: the season line, Can you help? and Coming up; no This week, no guide.
+    const { context } = await newContext(browser, { groups: "parent", apps: GROUPED_APPS, today: today83.parent, event: { name: "Test Regional", start: F.dayFrom(T0, 0), end: F.dayFrom(T0, 0), happeningNow: true } });
+    await context.addCookies([site("guide", "")]);
+    const { page, errors } = await openPortal(context);
+    await settle(page);
+    const h = await homeState(page);
+    check("a parent on an event day: season line, Can you help?, Coming up; no This week and no guide", h.top === "season simple" && !h.main.includes("home-week") && h.side.includes("home-help") && h.main.includes("home-coming") && h.guideHidden && errors.length === 0, h);
+    await context.close();
+  }
+
   // ---------- Mark step done (CONTRACT T1, T3): the act path, at once, put back on failure ----------
   for (const width of [1280, 390]) {
     // Success: the step counts at once, one POST {tasks, step-done, "<taskId>:<itemId>"}, then the Home is drawn again
@@ -673,8 +869,8 @@ try {
     await page.$eval("#home-next .heroacts button", (b) => { b.click(); b.click(); });
     await page.waitForTimeout(150);
     const mid = await page.evaluate(() => ({ steps: document.querySelector("#home-next .nextsteps").textContent, bar: document.querySelector("#home-next .nextbar i").style.width,
-      step: !!document.querySelector("#home-next .nextstep:not([hidden])"), status: document.getElementById("home-done-status").textContent, disabled: document.querySelector("#home-next .heroacts button").disabled }));
-    check(`${width}px Mark step done: at once the step counts (2 of 2, the bar full), the next-step line goes, "Step done."; before any answer`, mid.steps === "2 of 2 steps done" && mid.bar === "100%" && !mid.step && mid.status === "Step done." && mid.disabled, mid);
+      step: !!document.querySelector("#home-next .nextstep:not([hidden])"), status: document.getElementById("home-done-status").textContent, disabled: document.querySelector("#home-next .heroacts button").getAttribute("aria-disabled") === "true" }));
+    check(`${width}px Mark step done: at once the step counts (2 of 2, the bar full), the next-step line goes, "Marking the step done…" (pending, review item 1); before any answer`, mid.steps === "2 of 2 steps done" && mid.bar === "100%" && !mid.step && mid.status === "Marking the step done…" && mid.disabled, mid);
     check(`${width}px Mark step done: two presses send one POST of {app: "tasks", action: "step-done", key: "<taskId>:<itemId>"} to /today/act; nothing to /today/task-done`,
       actPosts.length === 1 && actPosts[0].body === JSON.stringify({ app: "tasks", action: "step-done", key: "t-7:s2" }) && posts.length === 0, actPosts);
     answers.act = 204;
@@ -844,11 +1040,11 @@ try {
     await page.waitForTimeout(200);
     const getsWhilePending = answers.gets;
     await page.clock.runFor(10500);
-    await page.waitForFunction(() => /couldn't tell if that worked/.test(document.getElementById("home-done-status").textContent));
+    await page.waitForFunction(() => /didn't go through/.test(document.getElementById("home-done-status").textContent));
     await page.waitForTimeout(300);
     check("two quick presses of Mark task done send one POST", posts.length === 1, posts.length);
     check("no /today.json request while the POST is on its way", getsWhilePending === gets0, { gets0, getsWhilePending });
-    check("no answer in 10 s: \"We couldn't tell if that worked.\" and /today.json is asked again", answers.gets === gets0 + 1, { gets0, now: answers.gets });
+    check("no answer in 10 s: /today.json is read once; it still has the task, so \"That didn't go through. Try again.\"", answers.gets === gets0 + 1, { gets0, now: answers.gets });
     check("...and the card never offers Open task then", !(await page.$$eval("#home-next .heroacts a", (as) => as.some((a) => a.firstChild.textContent.trim() === "Open task"))));
     const status1 = await page.evaluate(() => ({ n: document.querySelectorAll("#main [role=status]").length, kept: document.querySelector("#main [role=status]").dataset.mark === "kept" }));
     check("one status line, the same one after the Home was drawn again", status0 === 1 && status1.n === 1 && status1.kept, { status0, status1 });

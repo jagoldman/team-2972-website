@@ -68,8 +68,9 @@
       <div class="guideslot" data-guide-card></div>
     </aside>
   </div>
-  <!-- One lasting status line for the buttons' messages: it stays when the Home is drawn again. -->
-  <div class="home-status" id="home-status"><p id="home-done-status" role="status"></p></div>
+  <!-- The buttons' words: one live region, there from the start and kept when the Home is drawn again; the Undo offer
+       sits beside it, outside the live region. -->
+  <div class="home-status" id="home-status"><p id="home-done-status" role="status" aria-live="polite"></p><div class="home-undo" id="home-undo" hidden></div></div>
   <section id="access" hidden>
     <h2>Get access</h2>
     <p class="section-lead">The Team Drive and the team's Onshape CAD are shared by invitation. Ask for access and an admin will add you.</p>
@@ -85,10 +86,10 @@
 <script src="/js/components.js"></script>
 <script src="/js/install.js"></script>
 <script type="module">
-import { filterByMode, iconPath, parseMode, readCookie, splitGroups } from "/shell/core.js";
+import { eventBanner, filterByMode, iconPath, parseMode, readCookie, splitGroups } from "/shell/core.js";
 import { mountHomeGroups, mountHomeGuide } from "/shell/static/shell.js";
 import { bindPortalModeChange, mountPortalShell } from "/js/portal-shell.js";
-import { blockedAppName, displayHome, el, fetchEventDay, fetchToday, svgIcon } from "/js/portal-home.js";
+import { blockedAppName, displayHome, el, fetchEvent, fetchToday, svgIcon } from "/js/portal-home.js";
 import { drawHome, makeActs, oneFilled } from "/js/portal-ground.js";
 
 // t is a resolved kit tile (resolveTiles): href is null for coming-soon tiles. Every app opens in a new tab, so the
@@ -163,61 +164,132 @@ onContent(async () => {
   // /today.json and /event.json are asked for once the person is known; a failure leaves the apps and nothing else.
   // A row that belongs to one mode shows only in that mode (C12); a mode change draws the Home again.
   const status = document.getElementById("home-done-status");
+  const undoBox = document.getElementById("home-undo");
   let clearTimer = 0;
-  // The status line at the foot of the screen; `undo` ({ until, run }) adds an Undo button while it is offered. A
-  // message goes after 8 seconds, or when its Undo runs out.
-  function say(words, undo) {
+  // The live region (role=status, there from the start, never display:none): the words of the last write. They go after
+  // 8 seconds. The Undo offer lives apart from it (offerUndo), so another write's words never take it away.
+  function say(words) {
     clearTimeout(clearTimer);
-    status.replaceChildren(document.createTextNode(words));
-    let keep = 8000;
-    if (undo) {
-      const b = el("button", "linkbtn", "Undo");
-      b.type = "button";
-      b.addEventListener("click", () => { b.remove(); undo.run(); });
-      status.append(document.createTextNode(" "), b);
-      keep = Math.max(keep, Date.parse(undo.until) - Date.now());
-    }
-    clearTimer = setTimeout(() => status.replaceChildren(), keep);
+    status.textContent = words;
+    clearTimer = setTimeout(() => { status.textContent = ""; }, 8000);
   }
-  let todayAsked = Date.now(), busy = 0, eventDay = false;
+  // Undo (CONTRACT P4, review item 3): one offer at a time, kept on its own; not shown with less than UNDO_MIN_MS left;
+  // its deadline is checked again when it is pressed; it can be used once; it goes when its time runs out.
+  const UNDO_MIN_MS = 5000;
+  let undoTimer = 0;
+  function dropUndo() { clearTimeout(undoTimer); undoBox.replaceChildren(); undoBox.hidden = true; }
+  function offerUndo({ until, run, words }) {
+    const end = Date.parse(until);
+    if (!(end - Date.now() >= UNDO_MIN_MS)) return;
+    dropUndo();
+    const b = el("button", "shell-btn undobtn", "Undo");
+    b.type = "button";
+    b.setAttribute("aria-label", `Undo: ${words}`);
+    b.addEventListener("click", () => {
+      dropUndo();
+      if (Date.now() >= end) { say("It's too late to undo that. Open the request in Parts."); return; }
+      run();
+    }, { once: true });
+    undoBox.append(b);
+    undoBox.hidden = false;
+    undoTimer = setTimeout(dropUndo, end - Date.now());
+  }
+  let todayAsked = Date.now(), busy = 0, eventDay = false, eventJson = null;
   let lastToday = null, cardsMode = null;
-  const acts = makeActs({ say, refresh: () => refreshToday(false), onBusy: (on) => { busy = on ? 1 : 0; } });
-  let doneBusy = false;
-  const posting = () => busy > 0 || doneBusy;
-  function paintCards(data, focusNext = false) {
+  const acts = makeActs({
+    say, offerUndo,
+    reread: async () => { todayAsked = Date.now(); return fetchToday(site); },
+    draw: (data) => paintCards(data),
+    onBusy: (on) => { busy = on ? 1 : 0; },
+  });
+  const posting = () => busy > 0;
+
+  // ---- placing the sections (review item 7): the document order is the order on screen ----
+  // From 900 px two columns: what drawHome gives the main column, then the side column (its lead, Apps, the guide).
+  // Below, one column in the order a person needs it, and the sections are moved into that order (no CSS `order`),
+  // so the keyboard and a screen reader meet them as they are seen.
+  const PHONE = matchMedia("(max-width: 899px)");
+  const mainEl = document.getElementById("home-main");
+  const sideEl = document.getElementById("home-side");
+  const leadEl = document.getElementById("home-side-lead");
+  const appsEl = document.getElementById("apps");
+  const guideEl = document.querySelector("[data-guide-card]");
+  let placed = { main: [], side: [], role: "student", eventDay: false };
+  const PHONE_RANK = {
+    student: ["home-shift", "home-evline", "home-now", "home-next", "home-others", "home-matches", "home-week", "apps", "guide", "home-activity"],
+    staff: ["home-shift", "home-evline", "home-now", "home-next", "home-others", "home-matches", "home-week", "apps", "guide", "home-activity"],
+    parent: ["home-week", "home-help", "home-now", "home-coming", "apps", "guide"],
+  };
+  function arrange() {
+    const keyOf = (n) => (n === guideEl ? "guide" : n.id);
+    if (PHONE.matches) {
+      const rank = PHONE_RANK[placed.role] || PHONE_RANK.student;
+      const all = [...placed.main, ...placed.side, appsEl, guideEl];
+      const at = (n) => { const i = rank.indexOf(keyOf(n)); return i < 0 ? rank.length : i; };
+      const sorted = all.map((n, i) => ({ n, i })).sort((a, b) => at(a.n) - at(b.n) || a.i - b.i).map((x) => x.n);
+      mainEl.replaceChildren(...sorted);
+      leadEl.replaceChildren();
+    } else {
+      mainEl.replaceChildren(...placed.main);
+      leadEl.replaceChildren(...placed.side);
+      sideEl.append(appsEl, guideEl);
+    }
+  }
+  // Focus survives a redraw (review item 7): the same control of the same row, else that row's section heading.
+  function focusKey() {
+    const a = document.activeElement;
+    if (!a || !document.getElementById("home-cols").contains(a) && !document.getElementById("home-top").contains(a)) return null;
+    const row = a.closest("[data-id]");
+    const sec = a.closest("section[id], [id^=home-]");
+    return { id: a.id || "", row: row ? row.dataset.id : "", idx: row ? [...row.querySelectorAll("a, button")].indexOf(a) : -1, sec: sec ? sec.id : "", moved: a.classList.contains("nextmoved") };
+  }
+  function focusBack(k) {
+    if (!k) return;
+    let t = k.id ? document.getElementById(k.id) : null;
+    if (!t && k.row) {
+      const row = [...document.querySelectorAll("[data-id]")].find((x) => x.dataset.id === k.row && !x.hidden);
+      if (row) t = row.querySelectorAll("a, button")[Math.max(0, k.idx)] || null;
+    }
+    if (!t && k.sec) {
+      const sec = document.getElementById(k.sec);
+      t = (k.sec === "home-next" && sec && sec.querySelector(".heroacts button, .heroacts a")) || (sec && sec.querySelector("h2")) || null;
+    }
+    if (!t) t = document.getElementById("greeting");
+    if (t.tagName === "H2" || t.tagName === "H1") t.tabIndex = -1;
+    t.focus();
+  }
+  PHONE.addEventListener("change", () => { const k = focusKey(); arrange(); focusBack(k); });
+  arrange();
+
+  function paintCards(data) {
     if (!data) return;
     lastToday = data;
     const mode = cardsMode = parseMode(readCookie(document.cookie, "mode"));
-    const home = drawHome(data, {
-      groups, mode, site, eventDay, acts, filled: oneFilled(),
-      nextOpts: { say, onBusy: (on) => { doneBusy = on; }, onDone: () => refreshToday(true) },
-    });
+    // One filled button across the whole screen (review item 8): when the kit's event banner shows its filled "Switch
+    // to Competition" (an event on today, Build mode), Home fills none.
+    const bannerFilled = !!eventBanner(eventJson) && mode !== "competition";
+    const home = drawHome(data, { groups, mode, site, eventDay, acts, filled: oneFilled(bannerFilled) });
+    const k = focusKey();
     document.getElementById("home-top").replaceChildren(...(home.top ? [home.top] : []));
-    document.getElementById("home-main").replaceChildren(...home.main);
-    document.getElementById("home-side-lead").replaceChildren(...home.side);
+    placed = { main: home.main, side: home.side, role: home.role, eventDay: home.eventDay };
+    arrange();
     document.getElementById("main").classList.toggle("evday", home.eventDay);
     document.getElementById("main").classList.toggle("parent", home.role === "parent");
     // Kit 0.5.0: the guide's card hides itself at an event (a stop that is open for Home still opens).
     if (guide) guide.update({ eventDay: home.eventDay });
-    if (focusNext) focusAfterDone();
+    focusBack(k);
   }
-  // After Done the Home is drawn again: focus goes to the next task's button, else to the greeting.
-  function focusAfterDone() {
-    const target = document.querySelector("#home-next button:not([disabled])") || document.getElementById("greeting");
-    if (target.id === "greeting") target.tabIndex = -1;
-    target.focus();
-  }
-  // Resolves to true when the Home was drawn again. Never while a button's POST is on its way (its answer redraws).
-  async function refreshToday(focusNext) {
+  // Asks /today.json again and draws it; never while a write is on its way or being checked (its end draws).
+  async function refreshToday() {
     if (posting()) return false;
     todayAsked = Date.now();
     const data = await fetchToday(site);
-    if (data && !posting()) { acts.hidden.clear(); paintCards(data, focusNext); return true; }
-    if (focusNext) focusAfterDone();
+    if (data && !posting()) { acts.hidden.clear(); paintCards(data); return true; }
     return false;
   }
-  Promise.all([fetchToday(site), fetchEventDay()]).then(([data, onToday]) => {
-    eventDay = onToday;
+  Promise.all([fetchToday(site), fetchEvent()]).then(([data, ev]) => {
+    eventJson = ev;
+    eventDay = !!(ev && ev.happeningNow === true);
     if (!posting()) paintCards(data);
   });
 
@@ -265,7 +337,7 @@ onContent(async () => {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
     paintTiles();
-    if (!posting() && Date.now() - todayAsked > 60000) refreshToday(false);
+    if (!posting() && Date.now() - todayAsked > 60000) refreshToday();
   });
 
   q.addEventListener("input", applySearch);

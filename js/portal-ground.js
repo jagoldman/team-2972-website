@@ -184,96 +184,203 @@ export function eventLine(ev, site, { withNow = true } = {}) {
 
 // ---------------------------------------------------------------- Now rows and their acts
 
-const DONE_WORDS = { approve: "Approved.", deny: "Denied. They see your reason.", signoff: "Signed off.", snack: "Signed up.", volunteer: "Signed up.", unapprove: "Put back to wait for an OK." };
+// What is said while a write is on its way: a pending state, never the result (review item 1). The result's words come
+// only from the contract's answer (204, or Approve's 200 with valid JSON), or from a re-read that confirms it.
+export const PENDING_WORDS = { approve: "Approving…", deny: "Denying…", signoff: "Signing off…", snack: "Signing up…", volunteer: "Signing up…", unapprove: "Undoing…", "step-done": "Marking the step done…", "task-done": "Marking it done…" };
+export const DONE_WORDS = { approve: "Approved.", deny: "Denied. They see your reason.", signoff: "Signed off.", snack: "Signed up.", volunteer: "Signed up.", unapprove: "Put back to wait for an OK.", "step-done": "Step done.", "task-done": "Done." };
 const CHANGED_WORDS = {
   approve: "Someone else already approved or denied this.",
   deny: "Someone else already approved or denied this.",
   signoff: "Someone else already signed this off.",
   snack: "That day is full now, or you're already signed up.",
   volunteer: "That event is full now, or you're already signed up.",
+  "step-done": "Someone else already changed this step.",
 };
+const APP_NAMES = { parts: "Parts", skills: "Skills", calendar: "the Calendar", tasks: "the Task App" };
 /** A 5xx, an unknown code, a network failure or no answer: it may have been saved, so the page looks again. */
 export const UNCERTAIN = "That may not have gone through. Checking.";
-/** After that look, when the row is still there: nothing was saved. */
+/** After that look, when the app's part is there and so is the row: nothing was saved. */
 export const AFTER_CHECK = "That didn't go through. Try again.";
+/** A sign-in page or a redirect came back in place of an answer. */
+export const SIGNED_OUT = "You are signed out. Reload the page to sign in.";
+/** Mark task done refused (403, 404): the card offers "Open task" instead (C4). */
+export const TASK_REFUSED = "This task can't be marked done from here. Open it in the Task App.";
+/** After that look, when it cannot be told (the app did not answer, or the row is hidden for another reason). */
+export function notConfirmed(app) {
+  return `We couldn't confirm that went through. Check in ${APP_NAMES[app] || "the app"}.`;
+}
 /** The plain sentence for an act's answer that was not a success; Account's own words for a 409 win when it sends them. */
 export function actMessage(action, result, message = "") {
   if (result === "changed") return message || CHANGED_WORDS[action] || "Someone else already did this.";
-  if (result === "refused") return "You can't do this from Home. Open it to see why.";
-  if (result === "gone") return "This isn't there any more.";
+  if (result === "refused") return action === "task-done" ? TASK_REFUSED : action === "step-done" ? "You can't do this from Home. Open the task to see why." : "You can't do this from Home. Open it to see why.";
+  if (result === "gone") return action === "step-done" ? "This step isn't there any more." : "This isn't there any more.";
   if (result === "reason") return "Say why, then press Deny again.";
+  if (result === "signedout") return SIGNED_OUT;
   return UNCERTAIN;
 }
 
+/** Every row of a checked answer, whatever its mode (a mode only hides a row; it is still there). */
+function allRows(data) {
+  return [...(data.today || []), ...(data.waiting || []), ...(data.others || [])];
+}
 /**
- * The page's acts: one call per key at a time, the row hidden at once and brought back on any answer but success.
- * o: { say(words, undo?) (the lasting status line), refresh() (asks /today.json again), onBusy(bool), post, ask(reason) }.
+ * After an uncertain answer: does the re-read prove the write? "done" only when the app's part is in the answer and
+ * the thing is positively settled; "notdone" when the app's part is there and the thing is still as before; "unknown"
+ * otherwise (the app did not answer, or the answer cannot tell). `present` comes from parseToday.
+ */
+export function confirmAct(a, rowId, data) {
+  if (!data) return "unknown";
+  const has = !!(data.present && data.present[a.app]);
+  if (!has) return "unknown";
+  const there = allRows(data).some((r) => r.id === rowId);
+  return there ? "notdone" : "done";
+}
+/** Mark step done: the same task, and its next step is no longer this one (by id, never by its words). */
+export function confirmStep(taskId, stepId, data) {
+  if (!data || !(data.present && data.present.tasks) || !data.next || data.next.taskId !== taskId) return "unknown";
+  return data.next.nextStep && data.next.nextStep.id === stepId ? "notdone" : "done";
+}
+/** Mark task done: Tasks answered with a next task, and it is another one; the same one means it was not saved. */
+export function confirmTask(taskId, data) {
+  if (!data || !(data.present && data.present.tasks) || !data.next) return "unknown";
+  return data.next.taskId === taskId ? "notdone" : "done";
+}
+
+/**
+ * The page's writes (D187, review items 1, 2, 6). One write per key at a time; the screen changes at once and says a
+ * pending state; the result's words come only from the contract's answer. An uncertain answer keeps the key locked,
+ * puts the screen back with "Checking", and waits for one shared re-read of /today.json (writes that overlap share
+ * it; a write answered after a re-read began waits for the next); the re-read decides what is said. Home is drawn
+ * again only when no write is pending or being checked.
+ * o: { say(words), offerUndo({ until, run, words }), reread() → checked data | null, draw(data), onBusy(bool), post,
+ *      postDone, ask(row) }.
  */
 export function makeActs(o = {}) {
-  const { say = () => {}, refresh = async () => {}, onBusy = () => {}, post = postAct, ask = askReason } = o;
+  const { say = () => {}, offerUndo = () => {}, reread = async () => null, draw = () => {}, onBusy = () => {}, post = postAct, postDone = postTaskDone, ask = askReason } = o;
   const busy = new Set();
   const hidden = new Set(); // row ids settled here and not yet gone from /today.json
   const notes = new Map(); // row id → the sentence of its last failed act, kept when the Home is drawn again
+  let waiters = [], reading = false, needDraw = false;
+  function check() {
+    return new Promise((resolve) => { waiters.push(resolve); if (!reading) loop(); });
+  }
+  async function loop() {
+    reading = true;
+    while (waiters.length) {
+      const batch = waiters;
+      waiters = [];
+      let data = null;
+      try { data = await reread(); } catch { data = null; }
+      for (const r of batch) r(data);
+    }
+    reading = false;
+  }
+  function lock(key) { busy.add(key); onBusy(true); }
+  // `fresh`: the re-read a check just made, drawn as it is (no second request) when nothing else is pending.
+  function release(key, wantDraw, fresh = null) {
+    busy.delete(key);
+    onBusy(busy.size > 0);
+    if (wantDraw) needDraw = true;
+    if (busy.size || !needDraw) return;
+    needDraw = false;
+    if (fresh && !waiters.length) { hidden.clear(); draw(fresh); return; }
+    check().then((data) => { if (data && !busy.size) { hidden.clear(); draw(data); } });
+  }
+  /**
+   * One write. s: { key, act ({app, action}), apply(), revert(words), send() → {result,…}, confirm(data) → verdict,
+   * onOk(answer) }. Resolves to "ok" | "notdone" | "unknown" | the answer's result.
+   */
+  async function perform(s) {
+    if (busy.has(s.key)) return "busy";
+    lock(s.key);
+    s.apply();
+    say(PENDING_WORDS[s.act.action] || "Saving…");
+    let res;
+    try { res = await s.send(); } catch { res = { result: "uncertain" }; }
+    let outcome = res.result, fresh = null;
+    if (res.result === "ok") {
+      say(DONE_WORDS[s.act.action] || "Done.");
+      if (s.onOk) s.onOk(res);
+    } else if (res.result === "uncertain") {
+      s.revert(UNCERTAIN);
+      say(UNCERTAIN);
+      fresh = await check();
+      const verdict = s.confirm(fresh);
+      if (verdict === "done") { s.apply(true); say(DONE_WORDS[s.act.action] || "Done."); outcome = "ok"; }
+      else if (verdict === "notdone") { s.revert(AFTER_CHECK); say(AFTER_CHECK); outcome = "notdone"; }
+      else { const w = notConfirmed(s.act.app); s.revert(w); say(w); outcome = "unknown"; }
+    } else {
+      const w = actMessage(s.act.action, res.result, res.message);
+      s.revert(w);
+      say(w);
+    }
+    release(s.key, res.result !== "reason" && res.result !== "signedout", fresh);
+    return outcome;
+  }
+
+  // A row's button: the row goes at once; it comes back, with its sentence, on anything but a confirmed success.
   async function run(li, r, a) {
-    if (busy.has(a.key)) return; // a second press while the first is on its way sends nothing
+    if (busy.has(a.key)) return; // a second press while the first is on its way, or being checked, sends nothing
     let reason;
     if (a.reason) {
       reason = await ask(r);
       if (reason == null) return;
     }
-    busy.add(a.key);
-    hidden.add(r.id);
-    notes.delete(r.id);
-    onBusy(true);
-    const next = li.nextElementSibling;
-    li.hidden = true;
-    li.querySelector(".nowmsg")?.remove();
-    // Focus goes on down the list, else to the section's heading.
-    const after = (next && !next.hidden && next.querySelector("button, a")) || li.closest("section")?.querySelector("h2");
-    if (after) { if (after.tagName === "H2") after.tabIndex = -1; after.focus(); }
-    say(DONE_WORDS[a.action] || "Done.");
     const body = { app: a.app, action: a.action, key: a.key };
     if (reason) body.reason = reason;
-    const { result, undoUntil, approval, message } = await post(body);
-    busy.delete(a.key);
-    onBusy(busy.size > 0);
-    if (result === "ok") {
-      // Undo only when Parts' answer named the approval it wrote and how long it may be undone (CONTRACT P4).
-      if (undoUntil && approval && a.app === "parts" && a.action === "approve") say(DONE_WORDS.approve, { until: undoUntil, run: () => undo(li, r, a, approval) });
-      if (!busy.size) refresh();
-      return;
-    }
-    hidden.delete(r.id);
-    li.hidden = false;
-    const msg = el("p", "nowmsg", actMessage(a.action, result, message));
-    notes.set(r.id, msg.textContent);
-    li.append(msg);
-    say(msg.textContent);
-    li.querySelector(".nowbtn, button")?.focus();
-    // Every answer but a missing reason may mean the row changed: /today.json is read again, once. After an uncertain
-    // answer that read decides the sentence: the row gone means it was saved; the row still there means it was not.
-    if (result === "reason" || busy.size) return;
-    const drawn = await refresh();
-    if (result !== "uncertain" || !drawn || notes.get(r.id) !== UNCERTAIN) return;
-    const still = [...document.querySelectorAll(".nowrow")].filter((x) => x.dataset.id === r.id && !x.hidden);
-    if (still.length) {
-      notes.set(r.id, AFTER_CHECK);
-      for (const x of still) { const m = x.querySelector(".nowmsg"); if (m) m.textContent = AFTER_CHECK; }
-      say(AFTER_CHECK);
-    } else {
-      notes.delete(r.id);
-      say(DONE_WORDS[a.action] || "Done.");
-    }
+    const btns = () => li.querySelectorAll(".nowbtn");
+    await perform({
+      key: a.key, act: a,
+      apply: () => {
+        hidden.add(r.id);
+        notes.delete(r.id);
+        li.querySelector(".nowmsg")?.remove();
+        const next = li.nextElementSibling;
+        const hadFocus = li.contains(document.activeElement);
+        li.hidden = true;
+        // Focus that was on the row goes on down the list, else to the section's heading.
+        if (hadFocus) {
+          const after = (next && !next.hidden && next.querySelector("button, a")) || li.closest("section")?.querySelector("h2");
+          if (after) { if (after.tagName === "H2") after.tabIndex = -1; after.focus(); }
+        }
+      },
+      revert: (words) => {
+        hidden.delete(r.id);
+        li.hidden = false;
+        let msg = li.querySelector(".nowmsg");
+        if (!msg) { msg = el("p", "nowmsg"); li.append(msg); }
+        msg.textContent = words;
+        notes.set(r.id, words);
+        // While it is being checked the buttons do nothing (the key stays locked); they say so.
+        const checking = words === UNCERTAIN;
+        for (const b of btns()) b.setAttribute("aria-disabled", checking ? "true" : "false");
+        li.querySelector(".nowbtn")?.focus();
+      },
+      send: () => post(body),
+      confirm: (data) => confirmAct(a, r.id, data),
+      onOk: (res) => {
+        // Undo only when Parts' answer named the approval it wrote and how long it may be undone (CONTRACT P4).
+        if (res.undoUntil && res.approval && a.app === "parts" && a.action === "approve") {
+          offerUndo({ until: res.undoUntil, words: r.title, run: () => undo(r, a, res.approval) });
+        }
+      },
+    });
   }
-  // Undo exists only when Parts answered {undoUntil, approval} (CONTRACT P4): the same act path, action "unapprove",
-  // naming that approval. A 409: the request changed since, so it stays approved and the page says so.
-  async function undo(li, r, a, approval) {
-    const { result } = await post({ app: a.app, action: "unapprove", key: a.key, approval });
-    say(result === "ok" ? DONE_WORDS.unapprove : result === "changed" ? "The request changed since you approved it, so it stays approved." : actMessage("unapprove", result));
-    if (result === "ok") hidden.delete(r.id);
-    if (result !== "reason") refresh();
+  // Undo (CONTRACT P4): the same act path, action "unapprove", naming that approval. A 409: the request changed since,
+  // so it stays approved and the page says so.
+  async function undo(r, a, approval) {
+    const key = a.key;
+    if (busy.has(key)) return;
+    lock(key);
+    say(PENDING_WORDS.unapprove);
+    let res;
+    try { res = await post({ app: a.app, action: "unapprove", key, approval }); } catch { res = { result: "uncertain" }; }
+    say(res.result === "ok" ? DONE_WORDS.unapprove : res.result === "changed" ? "The request changed since you approved it, so it stays approved."
+      : res.result === "uncertain" ? "That may not have been undone. Check the request in Parts." : actMessage("unapprove", res.result));
+    if (res.result === "ok") hidden.delete(r.id);
+    release(key, res.result !== "reason" && res.result !== "signedout");
   }
-  return { run, hidden, busy, notes };
+  return { run, perform, check, hidden, busy, notes, postDone };
 }
 
 /** Deny asks why in a small dialog, filled with the words Parts' own Deny uses. Resolves to the reason or null. */
@@ -526,14 +633,15 @@ export function nextForUs(ev, site) {
 
 /**
  * The student's next task, Ground up: the title is the link, then "Due …, N practices left", where it belongs, the
- * steps, the next step, and the buttons. With a step left the button is "Mark step done" (CONTRACT T3: the act path,
- * `{app:"tasks", action:"step-done", key:"<taskId>:<itemId>"}`), which acts at once: the step counts as done, the
- * next-step line goes, and the save runs behind; on any answer but success the card is put back and says why. With no
- * step left it is "Mark task done", the task's Done (C4) with its four answers as in release 8.1.5.
- * o: { empty, compact, season, filled(), say, onBusy, onDone, post, postStep, today }.
+ * steps, the next step, and the buttons. Both buttons act at once through the page's writes (acts.perform, review
+ * items 1, 2, 6): with a step left, "Mark step done" (CONTRACT T3: `{app:"tasks", action:"step-done",
+ * key:"<taskId>:<itemId>"}` on /today/act) counts the step and hides the next-step line; with none, "Mark task done"
+ * (C4: /today/task-done) moves the card on ("Done: …"). Either comes back with one sentence on anything but a
+ * confirmed success; a 403 or 404 on Mark task done offers "Open task" instead.
+ * o: { acts, empty, compact, season, filled(), today }.
  */
 export function nextCard(next, o = {}) {
-  const { empty = false, compact = false, season = null, filled = () => true, say = () => {}, onBusy = () => {}, onDone = async () => true, post = postTaskDone, postStep = postAct, today = todayIso() } = o;
+  const { acts = null, empty = false, compact = false, season = null, filled = () => true, today = todayIso() } = o;
   const cls = `nextsec${compact ? " evcompact" : ""}`;
   if (!next) {
     if (!empty) return null;
@@ -542,6 +650,8 @@ export function nextCard(next, o = {}) {
     return none;
   }
   const sec = section("home-next", "Your next task", cls);
+  sec.dataset.task = next.taskId;
+  const body = el("div", "nextbody");
   const title = el("p", "nexthead");
   const t = el("a", "nexttitle", next.title);
   const chev = el("span", "chev", "›");
@@ -549,18 +659,18 @@ export function nextCard(next, o = {}) {
   t.append(chev);
   t.dataset.tip = "Open this task.";
   title.append(linkTo(t, next.href));
-  sec.append(title);
+  body.append(title);
   const m = typeof next.due === "string" ? /^(\d{4}-\d{2}-\d{2})/.exec(next.due) : null;
   if (m) {
     // Tasks counts the practices left (T1); without its count, the season line's meeting days say it.
     const n = Number.isInteger(next.practicesLeft) ? next.practicesLeft : null;
     const left = n != null ? (n === 0 ? "no practice before then" : `${plural(n, "practice", "practices")} left`) : practicesText(season, m[1], today);
-    sec.append(el("p", "nextdue", `Due ${fmtDay(m[1])}${left ? `, ${left}` : ""}`));
+    body.append(el("p", "nextdue", `Due ${fmtDay(m[1])}${left ? `, ${left}` : ""}`));
   }
   const where = nextLine({ ...next, due: "" }).replace(/ · for /, ", for ");
-  if (where) sec.append(el("p", "mute nextwhere", where));
-  if (next.onHold) sec.append(el("p", "mute nexthold", "This task is on hold."));
-  if (next.blocked) { const b = el("p", "nextblocked"); b.append(mark("Blocked", "bad")); sec.append(b); }
+  if (where) body.append(el("p", "mute nextwhere", where));
+  if (next.onHold) body.append(el("p", "mute nexthold", "This task is on hold."));
+  if (next.blocked) { const b = el("p", "nextblocked"); b.append(mark("Blocked", "bad")); body.append(b); }
   let fill = null, count = null;
   if (next.steps) {
     const r = el("div", "nextsteps");
@@ -570,7 +680,7 @@ export function nextCard(next, o = {}) {
     bar.append(fill);
     count = el("span", "mute");
     r.append(bar, count);
-    sec.append(r);
+    body.append(r);
   }
   const showSteps = (done) => {
     if (!next.steps) return;
@@ -583,91 +693,72 @@ export function nextCard(next, o = {}) {
   if (step) {
     stepLine = el("p", "nextstep", "Next step: ");
     stepLine.append(el("b", "", step.title));
-    sec.append(stepLine);
+    body.append(stepLine);
   }
   if (next.waitingOn) {
     const w = el("p", "nextwaiting");
     w.append(mark("Waiting on", "bad"), document.createTextNode(` ${next.waitingOn.join(", ")}.`));
-    sec.append(w);
+    body.append(w);
   }
-  const acts = el("div", "heroacts");
-  const words = step ? "Mark step done" : "Mark task done";
-  const done = el("button", btnClass(!taskHeld(next) && filled()));
+  const btns = el("div", "heroacts");
+  // C4: once Mark task done was refused, the card keeps offering "Open task" when it is drawn again.
+  const openTask = () => { const a = linkTo(el("a", "shell-btn", "Open task"), next.href); a.dataset.tip = "Finish the task in the Task App."; return a; };
+  const refusedBefore = !step && acts && acts.notes.get(`task:${next.taskId}`) === TASK_REFUSED;
+  const done = el("button", btnClass(!taskHeld(next) && !refusedBefore && filled()));
   done.type = "button";
   done.dataset.tip = step ? "Tick this step and bring up the next one." : "Mark this task done and bring up your next one.";
-  done.append(svgIcon(CHECK, 16), el("span", "", words));
-  acts.append(done);
-  if (next.stuckHref) acts.append(linkTo(el("a", "shell-btn", "I'm stuck"), next.stuckHref));
+  done.append(svgIcon(CHECK, 16), el("span", "", step ? "Mark step done" : "Mark task done"));
+  btns.append(refusedBefore ? openTask() : done);
+  if (next.stuckHref) btns.append(linkTo(el("a", "shell-btn", "I'm stuck"), next.stuckHref));
   if (next.partHref) {
     const part = el("a", "shell-btn");
     part.append(svgIcon(PARTS, 16), el("span", "", "Request a part"));
-    acts.append(linkTo(part, next.partHref));
+    btns.append(linkTo(part, next.partHref));
   }
-  let busy = false;
-  const again = () => { busy = false; done.disabled = false; };
-  done.addEventListener("click", step ? markStep : markTask);
+  body.append(btns);
+  // The card's own sentence after a write that did not go through (kept until the card is drawn again).
+  const note = el("p", "nowmsg nextmsg");
+  note.hidden = true;
+  // "Done: <title>": the card moved on while Mark task done is on its way.
+  const moved = el("p", "nextmoved");
+  moved.hidden = true;
+  moved.tabIndex = -1;
+  sec.append(body, moved, note);
+  const sayNote = (words) => { note.textContent = words; note.hidden = !words; };
+  if (refusedBefore) sayNote(TASK_REFUSED);
+  const busyAttr = (on) => done.setAttribute("aria-disabled", on ? "true" : "false");
 
-  // Mark step done: at once, saved behind (D187).
-  async function markStep() {
-    if (busy) return; // a second press while the first is on its way sends nothing
-    busy = true;
-    done.disabled = true;
-    onBusy(true);
-    showSteps(next.steps ? Math.min(next.steps.total, next.steps.done + 1) : 0);
-    stepLine.hidden = true;
-    say("Step done.");
-    const { result, message } = await postStep({ app: "tasks", action: "step-done", key: `${next.taskId}:${step.id}` });
-    onBusy(false);
-    if (result === "ok") {
-      if (!(await onDone())) again();
+  done.addEventListener("click", () => {
+    if (!acts || done.getAttribute("aria-disabled") === "true") return;
+    if (step) {
+      acts.perform({
+        key: `step:${next.taskId}:${step.id}`, act: { app: "tasks", action: "step-done" },
+        apply: () => { sayNote(""); showSteps(next.steps ? Math.min(next.steps.total, next.steps.done + 1) : 0); stepLine.hidden = true; busyAttr(true); },
+        revert: (words) => { showSteps(next.steps ? next.steps.done : 0); stepLine.hidden = false; sayNote(words); busyAttr(words === UNCERTAIN); done.focus(); },
+        send: () => postAct({ app: "tasks", action: "step-done", key: `${next.taskId}:${step.id}` }),
+        confirm: (data) => confirmStep(next.taskId, step.id, data),
+      });
       return;
     }
-    // Put the card back as the server last had it, and say why in one sentence.
-    showSteps(next.steps ? next.steps.done : 0);
-    stepLine.hidden = false;
-    again();
-    const sentence = result === "changed" ? message || "Someone else already changed this step."
-      : result === "refused" ? "You can't do this from Home. Open the task to see why."
-      : result === "gone" ? "This step isn't there any more."
-      : UNCERTAIN;
-    say(sentence);
-    done.focus();
-    // Whatever the answer, Home looks once more, so the card shows what Tasks really has. After an uncertain answer that
-    // look decides the sentence: the same step still next means it was not saved.
-    const drawn = await onDone();
-    if (result === "uncertain" && drawn) {
-      const same = [...document.querySelectorAll("#home-next .nextstep b")].some((b) => b.textContent === step.title);
-      say(same ? AFTER_CHECK : "Step done.");
-    }
-  }
-
-  async function markTask() {
-    if (busy) return; // a second press while the first is on its way sends nothing
-    busy = true;
-    done.disabled = true;
-    onBusy(true);
-    say("Marking it done…");
-    const result = await post(next.taskId);
-    onBusy(false);
-    if (result === "ok" || result === "timeout") {
-      say(result === "ok" ? "Done." : "We couldn't tell if that worked.");
-      if (!(await onDone())) again();
-      return;
-    }
-    if (result === "failed") {
-      say("That didn't go through. Press Mark task done to try again.");
-      again();
-      done.focus();
-      return;
-    }
-    // "refused": this task can't be marked done from the portal; the card shows "Open task" instead (C4).
-    const openTask = linkTo(el("a", "shell-btn", "Open task"), next.href);
-    openTask.dataset.tip = "Finish the task in the Task App.";
-    done.replaceWith(openTask);
-    say("This task can't be marked done from here. Open it in the Task App.");
-    openTask.focus();
-  }
-  sec.append(acts);
+    acts.perform({
+      key: `task:${next.taskId}`, act: { app: "tasks", action: "task-done" },
+      apply: () => { sayNote(""); moved.textContent = `Done: ${next.title}`; body.hidden = true; moved.hidden = false; moved.focus(); },
+      revert: (words) => {
+        moved.hidden = true; body.hidden = false; sayNote(words); busyAttr(words === UNCERTAIN);
+        if (words === TASK_REFUSED) {
+          // C4: this task can't be marked done from the portal; the card offers "Open task" instead, also when drawn again.
+          acts.notes.set(`task:${next.taskId}`, TASK_REFUSED);
+          const a = openTask();
+          done.replaceWith(a);
+          a.focus();
+          return;
+        }
+        done.focus();
+      },
+      send: () => acts.postDone(next.taskId),
+      confirm: (data) => confirmTask(next.taskId, data),
+    });
+  });
   return sec;
 }
 
@@ -711,7 +802,7 @@ export function homeRole(groups) {
  * Draws the Home from checked data. Returns { top, main: [nodes], side: [nodes], eventDay } for the page to place:
  * `top` under the greeting (the season line or the event line), `main` the main column, `side` what leads the side
  * column (This week, or a parent's Can you help?). o: { groups, mode, site, eventDay (from /event.json), acts,
- * filled, nextOpts, today, now }.
+ * filled, today, now }.
  */
 export function drawHome(data, o) {
   const { groups, mode, site, acts, today = todayIso() } = o;
@@ -726,6 +817,7 @@ export function drawHome(data, o) {
     const shifts = keep(data.today).filter(isShift);
     if (shifts.length) {
       const box = el("div", "shiftcard");
+      box.id = "home-shift";
       box.append(rowList(shifts, { acts, filled }));
       box.querySelector(".nowrow")?.classList.add("nowfirst");
       const first = box.querySelector(".nowrow .nowbtn");
@@ -733,7 +825,7 @@ export function drawHome(data, o) {
       main.push(box);
     }
     const line = eventLine(ev, site, { withNow: !shifts.length });
-    if (shifts.length) { if (line) main.push(line); } else top = line;
+    if (shifts.length) { if (line) { line.id = "home-evline"; main.push(line); } } else top = line;
     if (ev.pit.length) main.push(nowSection(ev.pit.filter((r) => !acts.hidden.has(r.id)), { title: "In the pit", acts, filled }));
     const nm = nextForUs(ev, site);
     if (nm) main.push(nm);
@@ -741,11 +833,13 @@ export function drawHome(data, o) {
   }
   if (role === "parent") {
     top = seasonLine(data, { simple: true, today });
-    const wk = weekSection(data, { parent: true, mode, today });
+    // On an event day a parent's Home is the demo's: the season line, Can you help? and Coming up; no This week and no
+    // guide (index.html?design=c&role=parent&event=1#portal).
+    const wk = o.eventDay ? null : weekSection(data, { parent: true, mode, today });
     const rows = keep([...data.today, ...data.waiting]);
     const help = rows.filter((r) => (r.acts && r.acts.length) || r.cta);
-    // Calendar keeps "Next practice" and "Next event" rows for older portals; This week says the same.
-    const rest = rows.filter((r) => !help.includes(r) && !(wk && /^calendar:(practice|event)$/.test(r.id)));
+    // Calendar keeps "Next practice" and "Next event" rows for older portals; This week (or the season line) says the same.
+    const rest = rows.filter((r) => !help.includes(r) && !((wk || o.eventDay) && Array.isArray(data.week) && /^calendar:(practice|event)$/.test(r.id)));
     if (wk) main.push(wk);
     if (rest.length) main.push(nowSection(rest, { acts, filled }));
     const cm = comingSection(data.coming, today);
@@ -755,7 +849,7 @@ export function drawHome(data, o) {
       sec.append(rowList(help, { acts, filled }));
       side.push(sec);
     }
-    return { top, main, side, eventDay: false, role };
+    return { top, main, side, eventDay: !!o.eventDay, role };
   }
   top = seasonLine(data, { today });
   const staff = role === "staff";
@@ -763,7 +857,7 @@ export function drawHome(data, o) {
   rows = shiftFirst(nowOrder(rows, staff), o.eventDay);
   main.push(nowSection(rows, { acts, filled, guide: staff }));
   if (role === "student") {
-    const card = nextCard(data.next, { ...(o.nextOpts || {}), empty: true, compact: o.eventDay, season: data.season, filled, today });
+    const card = nextCard(data.next, { acts, empty: true, compact: o.eventDay, season: data.season, filled, today });
     if (card) main.push(card);
   }
   const others = keep(data.others);
@@ -781,8 +875,11 @@ export function drawHome(data, o) {
   return { top, main, side, eventDay: !!o.eventDay, role };
 }
 
-/** The page's one filled button: yes once, then no (GROUND_UP §5, "one filled button per screen at most"). */
-export function oneFilled() {
-  let used = false;
+/**
+ * The page's one filled button: yes once, then no (GROUND_UP §5, "one filled button per screen at most"). The screen
+ * includes the bar: when the kit's event banner shows its filled "Switch to Competition", Home fills none (review 8).
+ */
+export function oneFilled(bannerFilled = false) {
+  let used = !!bannerFilled;
   return () => (used ? false : (used = true));
 }
