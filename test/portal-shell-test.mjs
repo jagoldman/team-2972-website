@@ -657,7 +657,9 @@ try {
     // Undo answered 409 with Account's words for an expired window, and 403 (someone else made the approval).
     for (const [label, answer, words] of [["409 expired", { status: 409, body: { error: "changed", message: "The time to undo this has passed." } }, "The time to undo this has passed."],
       ["403", { status: 403, body: { error: "not_allowed" } }, "Someone else made this approval, so the request stays approved."]]) {
-      const c = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor, act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: until, approval: 1234 } } : answer) });
+      const c = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: until, approval: 1234 } } : answer) });
+      // After the approval Account no longer lists the request; a refused Undo leaves it that way.
+      c.answers.today = () => (c.actPosts.length ? { ...today83.mentor, waiting: today83.mentor.waiting.filter((r) => r.id !== "parts:request:12") } : today83.mentor);
       const pc = (await openPortal(c.context)).page;
       await pc.waitForSelector('#home-now [data-id="parts:request:12"]');
       await pc.click('#home-now [data-id="parts:request:12"] .nowbtn');
