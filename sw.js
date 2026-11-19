@@ -10,7 +10,8 @@
 //
 // Change VERSION when this file's rules or the precached list change. Old caches are deleted on activate.
 
-const VERSION = "v6";   // v6: /today.json and /today/ (the portal home's cards, release 8.1.5) are named in NEVER_STORE
+const VERSION = "v7";   // v7: the public site is design 8.2, light only (css/site.css, Big Shoulders and Libre Franklin)
+                       // v6: /today.json and /today/ (the portal home's cards, release 8.1.5) are named in NEVER_STORE
                        // v5: the public site is Midnight & brass, dark only (new stylesheet and scripts; public pages no longer carry the theme script)
                        // v4: offline.html's theme script only reads the choice (never writes the shared cookie)
                        // v3: offline.html has the shell kit's theme script (one site-wide cookie, also on editor.)
@@ -22,6 +23,9 @@ const OFFLINE_URL = "/offline.html";
 const PRECACHE = [
   OFFLINE_URL,
   "/css/style.css",
+  "/css/site.css",
+  "/fonts/big-shoulders-latin.woff2",
+  "/fonts/libre-franklin-latin.woff2",
   "/fonts/inter-latin.woff2",
   "/fonts/bricolage-grotesque-latin.woff2",
   "/pwa-icons/site/icon.svg",

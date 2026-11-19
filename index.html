@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Team 2972 Gears & Buccaneers | Dawson School FRC</title>
 <meta name="description" content="Gears & Buccaneers, FIRST Robotics Competition Team 2972 at Dawson School in Lafayette, Colorado." />
-<meta name="color-scheme" content="dark" />
-<meta name="theme-color" content="#101827" />
+<meta name="color-scheme" content="light" />
+<meta name="theme-color" content="#ffffff" />
 <!-- Link previews. The container's Caddy renders this file as a template (container/Caddyfile, "home_page"), so the addresses
      are full ones built from SITE_SCHEME and SITE_DOMAIN and are in the HTML a link-preview crawler reads (no script).
      og-image.jpg is the hero photo, cut to 1200x630 when the image is built (scripts/drive-photos/fetch.cjs); if that
@@ -30,8 +30,11 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Team 2972" />
-<link rel="preload" href="fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
-<link rel="stylesheet" href="css/style.css" />
+<link rel="preload" href="fonts/big-shoulders-latin.woff2" as="font" type="font/woff2" crossorigin />
+<!-- bumper: the accent colour a visitor picked with Home's bumper, set before the first paint so a red choice never
+     shows blue first. It reads one stored value and sets one attribute; nothing else (test/theme-test.cjs). -->
+<script>try{var a=localStorage.getItem("2972-alliance");if(a==="red"||a==="blue")document.documentElement.setAttribute("data-alliance",a)}catch(e){}</script>
+<link rel="stylesheet" href="css/site.css" />
 </head>
 <body data-home>
 <div id="site-header"></div>
