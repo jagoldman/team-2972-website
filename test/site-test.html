@@ -81,7 +81,7 @@ async function checkPage(p) {
   const { frame, win, doc, errors } = await openPage(p.url);
   try {
     report(win.CONTENT_SOURCE === (MODE === "fixture" ? "published" : "default"), `${label}: content source is ${MODE === "fixture" ? "published" : "built-in"}`, `got ${win.CONTENT_SOURCE}`);
-    report(!!doc.querySelector(".site-header .brand") && !!doc.querySelector(".site-footer"), `${label}: header and footer rendered`);
+    report(!!doc.querySelector(".hdr .brand") && !!doc.querySelector(".ftr"), `${label}: header and footer rendered`);
     report(errors.length === 0, `${label}: no script errors`, errors.join(" | "));
 
     const cks = [...doc.querySelectorAll("[data-ck]")];
@@ -176,31 +176,31 @@ async function checkPage(p) {
     let { doc, win, frame } = await get("index.html");
     report(doc.querySelector(".hero .lead").textContent === "Fixture mission text for tests.", "fixture text is shown (hero lead is the mission)");
     report(doc.querySelector(".hero h1").textContent === "Fixture Award, 2030.", "the hero headline is the newest award and its year", doc.querySelector(".hero h1").textContent);
-    report(doc.getElementById("hero-photo").getAttribute("src") === "/media/00000000000000000002-1600.webp", "media: hero photo resolves to /media/00000000000000000002-1600.webp", doc.getElementById("hero-photo").getAttribute("src"));
-    report(doc.querySelector('.brand-logo').getAttribute("src") === "/media/00000000000000000001-400.webp", "media: header logo (asked for 200) resolves to the 400 width", doc.querySelector('.brand-logo').getAttribute("src"));
-    report(doc.querySelector(".brand-text").textContent.includes("9999") && doc.querySelector(".brand-text").textContent.includes("Fixture Robotics"), "fixture team number and name are in the header");
+    report(doc.getElementById("hero-photo").getAttribute("src") === "/media/00000000000000000002-400.webp" && /00000000000000000002-1600\.webp 1600w/.test(doc.getElementById("hero-photo").getAttribute("srcset")), "media: hero photo resolves to /media/00000000000000000002-<w>.webp (src the 400 copy, srcset up to 1600)", doc.getElementById("hero-photo").getAttribute("src"));
+    report(doc.querySelector('.brand img').getAttribute("src") === "/media/00000000000000000001-400.webp", "media: header logo (asked for 200) resolves to the 400 width", doc.querySelector('.brand img').getAttribute("src"));
+    report(doc.querySelector(".brand").textContent.includes("9999") && doc.querySelector(".brand").textContent.includes("Fixture Robotics"), "fixture team number and name are in the header");
     frame.remove();
 
     ({ doc, win, frame } = await get("robots.html"));
-    const reelImg = doc.querySelector("#robot-archive .card img");
-    report(reelImg && reelImg.getAttribute("src") === "/media/00000000000000000005-800.webp", "media: robot photo on a card is the 800 width", reelImg && reelImg.getAttribute("src"));
+    const reelImg = doc.querySelector("#robot-archive img");
+    report(reelImg && reelImg.getAttribute("src") === "/media/00000000000000000005-400.webp", "media: robot photo in the list is the 400 width (srcset for larger)", reelImg && reelImg.getAttribute("src"));
     report(reelImg && reelImg.getAttribute("srcset") === "/media/00000000000000000005-400.webp 400w, /media/00000000000000000005-800.webp 800w, /media/00000000000000000005-1600.webp 1600w", "media: srcset lists every stored width", reelImg && reelImg.getAttribute("srcset"));
-    report(doc.querySelectorAll("#robot-archive .card img").length === 1, "fixture has one robot with a photo on the robots page");
+    report(doc.querySelectorAll("#robot-archive img").length === 1, "fixture has one robot with a photo on the robots page");
     frame.remove();
 
     ({ doc, win, frame } = await get("about.html"));
     // About shows the team milestones; the competition ones (Para one) are the Robots page's Highlights.
-    const hist = [...doc.querySelectorAll("#history .tl-item p")];
+    const hist = [...doc.querySelectorAll("#history li > div > div > p")];
     const para2 = hist.find((p) => p.textContent.includes("Para two"));
     report(para2 && !para2.querySelector("b") && para2.textContent.includes("<b>html</b>"), "rich text: raw HTML is shown as text, not run");
     report(para2 && !para2.querySelector("a") && para2.textContent.includes("bad link"), "rich text: javascript: link is dropped, its words stay");
-    const tl = doc.querySelector("#history .tl-photo img");
-    report(tl.getAttribute("src") === "/media/00000000000000000004-800.webp", "media: timeline photo resolves to the 800 width", tl.getAttribute("src"));
+    const tl = doc.querySelector("#history img");
+    report(tl.getAttribute("src") === "/media/00000000000000000004-400.webp", "media: timeline photo resolves to the 400 width (srcset for 800)", tl.getAttribute("src"));
     report(tl.getAttribute("alt") === "Pat Example smiling", "media: timeline photo uses the media alt text", tl.getAttribute("alt"));
     frame.remove();
 
     ({ doc, win, frame } = await get("robots.html"));
-    const para1 = [...doc.querySelectorAll(".hl span")].find((p) => p.textContent.includes("Para one"));
+    const para1 = [...doc.querySelectorAll(".dated span")].find((p) => p.textContent.includes("Para one"));
     report(para1 && para1.querySelector("a[href='robot.html?year=2030']") && para1.querySelector("strong"), "rich text: site link and bold in a Highlights line");
     frame.remove();
 
@@ -210,27 +210,27 @@ async function checkPage(p) {
 
     ({ doc, win, frame } = await get("sponsors.html"));
     report(doc.getElementById("packet-link").getAttribute("href") === "https://example.com/packet.pdf", "SPONSOR_PACKET_URL feeds the packet link");
-    report(doc.querySelectorAll(".sponsor-tile img").length === 1 && /Empty Tier/.test(doc.body.textContent), "sponsor tiers: tile shown, empty tier still in the page");
+    report(doc.querySelectorAll(".logo-tile img").length === 1 && /Empty Tier/.test(doc.body.textContent), "sponsor tiers: tile shown, empty tier still in the page");
     report(doc.querySelector('[data-ck="SPONSOR_TIERS[1]"]').hidden === true && doc.querySelector('[data-ck="SPONSOR_TIERS[0]"]').hidden === false, "sponsor tiers: a tier with no sponsors is not shown");
-    report(doc.querySelector('.photo img[data-ck="HISTORY.today.image"]').getAttribute("src") === "/media/00000000000000000003-800.webp", "media: the photo beside the sponsor text resolves to the 800 width");
-    report(!!doc.querySelector('.sponsor-tile a[href="https://example.com/sponsor"][data-ck-href="SPONSOR_TIERS[0].sponsors[0].url"] img'), "sponsor with a url: the logo links to it");
+    report(doc.querySelector('.shot img[data-ck="HISTORY.today.image"]').getAttribute("src") === "/media/00000000000000000003-400.webp", "media: the photo beside the sponsor text resolves to the 400 width (srcset for larger)");
+    report(!!doc.querySelector('.logo-tile a[href="https://example.com/sponsor"][data-ck-href="SPONSOR_TIERS[0].sponsors[0].url"] img'), "sponsor with a url: the logo links to it");
     frame.remove();
 
     ({ doc, win, frame } = await get("media.html"));
-    report(doc.querySelectorAll("#photo-grid img").length === 2 && doc.querySelector("#photo-grid img").getAttribute("src") === "/media/00000000000000000009-800.webp", "media: gallery photos resolve to the 800 width");
+    report(doc.querySelectorAll("#photo-grid img").length === 2 && doc.querySelector("#photo-grid img").getAttribute("src") === "/media/00000000000000000009-400.webp", "media: gallery photos resolve to the 400 width (srcset for 800)");
     report(doc.querySelectorAll("#video-grid a").length === 1 && !doc.querySelector("iframe"), "media: the non-YouTube video is not linked, and no video is embedded (they open on YouTube)");
     frame.remove();
 
     ({ doc, win, frame } = await get("robot.html?year=2030"));
-    const gal = [...doc.querySelectorAll(".gallery-grid a")];
-    report(gal.length === 2 && gal[0].getAttribute("href") === "/media/00000000000000000006-800.webp" && gal[0].querySelector("img").getAttribute("src") === "/media/00000000000000000006-800.webp", "media: only stored widths are used (this image has 400 and 800)", gal[0] && gal[0].getAttribute("href"));
+    const gal = [...doc.querySelectorAll(".pics a")];
+    report(gal.length === 2 && gal[0].getAttribute("href") === "/media/00000000000000000006-800.webp" && gal[0].querySelector("img").getAttribute("src") === "/media/00000000000000000006-400.webp", "media: only stored widths are used (this image has 400 and 800; the full-size link is the 800)", gal[0] && gal[0].getAttribute("href"));
     report(gal[0].querySelector("img").getAttribute("srcset") === "/media/00000000000000000006-400.webp 400w, /media/00000000000000000006-800.webp 800w", "media: srcset lists only the stored widths", gal[0].querySelector("img").getAttribute("srcset"));
     report(gal[0].querySelector("img").getAttribute("alt") === "Fixture gallery photo one", "media: alt text comes from the published media list", gal[0].querySelector("img").getAttribute("alt"));
-    report(doc.getElementById("robot-photo").getAttribute("src") === "/media/00000000000000000005-1600.webp", "media: robot hero photo resolves to the 1600 width");
+    report(doc.getElementById("robot-photo").getAttribute("src") === "/media/00000000000000000005-400.webp" && /00000000000000000005-1600\.webp 1600w/.test(doc.getElementById("robot-photo").getAttribute("srcset")), "media: robot photo resolves to its stored widths (src 400, srcset to 1600)");
     frame.remove();
 
     ({ doc, win, frame } = await get("resources.html"));
-    const groups = [...doc.querySelectorAll(".resource-group")];
+    const groups = [...doc.querySelectorAll(".res-cat")];
     report(groups.length === 1 && groups[0].querySelectorAll("li").length === 1, "resources: unset (#) links and groups are hidden");
     report(groups[0].querySelector("li").getAttribute("data-ck") === "RESOURCE_LINKS[0].items[0]", "resources: keys keep their place in the full list");
     const note = doc.querySelector('.res-note[data-ck="RESOURCE_LINKS[0].items[0].note"]');

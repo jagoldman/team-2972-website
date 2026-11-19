@@ -1,6 +1,7 @@
 // Themes: the logic and the rules that keep it correct. No browser needed.
-//   - the PUBLIC pages are dark only (Midnight & brass, docs/PUBLIC_REDESIGN_PROPOSAL.md §5b): no theme script, no
-//     switch, no storage handlers, and they never touch the shared theme cookie
+//   - the PUBLIC pages are light only (design 8.2, D190, css/site.css): no theme script, no switch, no storage handlers,
+//     and they never touch the shared theme cookie. Their one head script is the bumper's: it reads one stored value
+//     ("2972-alliance") and sets one attribute (data-alliance), nothing else
 //   - the PORTAL, its install page and the offline page keep light / dark / system: every one has the no-flash
 //     snippet in <head>, before the stylesheet
 //   - colours are defined once, as tokens (no stray colour literals in the stylesheet)
@@ -57,18 +58,39 @@ function check(name, cond, detail) {
   check("js/components.js has no theme switch, theme storage or OS-setting code", !/setTheme|applyTheme|storedTheme|renderThemeSwitch|bindThemeSwitch|THEME_KEY|theme-switch|prefers-color-scheme/.test(src.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, "")));
 }
 
-// ---------- which pages are public (dark only) and which follow the theme ----------
+// ---------- which pages are public (light only) and which follow the theme ----------
 const PUBLIC_PAGES = ["about", "contact", "index", "media", "member", "mentor", "outreach", "privacy", "resources", "robot", "robots", "sponsors", "terms"].map((n) => `${n}.html`);
 const allHtml = fs.readdirSync(root).filter((f) => f.endsWith(".html"));
 const pages = allHtml.filter((f) => !PUBLIC_PAGES.includes(f)).concat(["portal/index.html", "portal/install.html"]);   // themed pages
-check("every .html page is either public (dark only) or themed", PUBLIC_PAGES.every((f) => allHtml.includes(f)) && allHtml.length === PUBLIC_PAGES.length + 2, allHtml.join(","));
+check("every .html page is either public (light only) or themed", PUBLIC_PAGES.every((f) => allHtml.includes(f)) && allHtml.length === PUBLIC_PAGES.length + 2, allHtml.join(","));
+// The bumper's head script, the only script a public page's head may hold (release 8.3, D190).
+const BUMPER_SCRIPT = '<script>try{var a=localStorage.getItem("2972-alliance");if(a==="red"||a==="blue")document.documentElement.setAttribute("data-alliance",a)}catch(e){}</script>';
 for (const page of PUBLIC_PAGES) {
   const html = read(page), head = html.slice(0, html.indexOf("</head>"));
-  check(`${page}: dark only from the first paint (data-site="public" on <html>, color-scheme dark, no inline script)`,
-    /<html lang="en" data-site="public">/.test(html) && /<meta name="color-scheme" content="dark" \/>/.test(head) && !/color-scheme" content="[^"]*light/.test(head), head.match(/<meta name="color-scheme"[^>]*>/));
-  check(`${page}: theme-color is the Midnight page colour only`, (head.match(/name="theme-color"/g) || []).length === 1 && /<meta name="theme-color" content="#101827" \/>/.test(head));
-  check(`${page}: no theme script in <head> (nothing reads, writes or follows the saved choice or the OS setting)`, !/theme-init|localStorage|matchMedia|prefers-color-scheme|<script>/.test(head), "head has a script or theme code");
+  check(`${page}: light only from the first paint (data-site="public" on <html>, color-scheme light)`,
+    /<html lang="en" data-site="public">/.test(html) && /<meta name="color-scheme" content="light" \/>/.test(head) && !/color-scheme" content="[^"]*dark/.test(head), head.match(/<meta name="color-scheme"[^>]*>/));
+  check(`${page}: theme-color is white only`, (head.match(/name="theme-color"/g) || []).length === 1 && /<meta name="theme-color" content="#ffffff" \/>/.test(head));
+  const scripts = head.match(/<script[\s\S]*?<\/script>/g) || [];
+  check(`${page}: the head's one script is the bumper's, before the stylesheet; no theme code (saved choice, OS setting, theme-init)`,
+    scripts.length === 1 && scripts[0] === BUMPER_SCRIPT && head.indexOf(BUMPER_SCRIPT) < head.indexOf('<link rel="stylesheet" href="css/site.css" />') && !/theme-init|matchMedia|prefers-color-scheme|getItem\(["']theme|\.cookie/.test(head), scripts.join(" | "));
+  check(`${page}: loads css/site.css, not the portal's css/style.css`, head.includes('<link rel="stylesheet" href="css/site.css" />') && !head.includes("css/style.css"));
   check(`${page}: no theme switch markup`, !/theme-switch|data-theme/.test(html));
+}
+// The bumper's head script in a sandbox: it reads only "2972-alliance", sets only data-alliance to red or blue, writes
+// nothing, and a throwing localStorage changes nothing.
+{
+  const run = (stored, { throws = false } = {}) => {
+    const attrs = {}, reads = [], writes = [];
+    const ctx = { localStorage: { getItem: (k) => { if (throws) throw new Error("blocked"); reads.push(k); return stored; }, setItem: () => writes.push("set"), removeItem: () => writes.push("remove") },
+      document: { documentElement: { setAttribute: (k, v) => { attrs[k] = v; } } } };
+    Object.defineProperty(ctx.document, "cookie", { get: () => "", set: () => writes.push("cookie") });
+    vm.runInNewContext(BUMPER_SCRIPT.replace(/^<script>|<\/script>$/g, ""), ctx);
+    return { attrs, reads, writes };
+  };
+  const red = run("red"), blue = run("blue"), odd = run("purple\"><x"), none = run(null), blocked = run("red", { throws: true });
+  check("bumper head script: a stored red or blue sets data-alliance to it, and reads only 2972-alliance", red.attrs["data-alliance"] === "red" && blue.attrs["data-alliance"] === "blue" && red.reads.join() === "2972-alliance", JSON.stringify(red));
+  check("bumper head script: anything else stored, nothing stored or blocked storage sets nothing", Object.keys(odd.attrs).length === 0 && Object.keys(none.attrs).length === 0 && Object.keys(blocked.attrs).length === 0);
+  check("bumper head script: writes nothing (no storage, no cookie)", [red, blue, odd, none, blocked].every((r) => r.writes.length === 0));
 }
 for (const page of pages) {
   check(`${page}: declares color-scheme light dark`, /<meta name="color-scheme" content="light dark" \/>/.test(read(page)));
@@ -178,10 +200,14 @@ for (const page of pages) {
     const themeCookies = () => [...jar.keys()].filter((k) => k.startsWith("theme|"));
     check("editor /site/ host: a themed page's head script migrates the old key onto the bare site domain", runHead() === "dark" && themeCookies().join() === "theme|example.org", themeCookies());
 
-    // The public pages carry no head script, so on the same host they write no cookie at all: the one theme cookie
-    // stays the portal's.
+    // A public page's only head script is the bumper's, which never touches a cookie: on the same host the one theme
+    // cookie stays the portal's.
     const before = JSON.stringify([...jar]);
-    check("editor /site/ host: a public page has no head script, so it writes and removes no theme cookie", !/<script>/.test(read("index.html").slice(0, read("index.html").indexOf("</head>"))) && JSON.stringify([...jar]) === before);
+    const pubHead = read("index.html").slice(0, read("index.html").indexOf("</head>"));
+    const pubScript = (pubHead.match(/<script>([\s\S]*?)<\/script>/) || [])[1] || "";
+    const document = { documentElement: { setAttribute() {} } }; Object.defineProperty(document, "cookie", cookieProp);
+    vm.runInNewContext(pubScript, { document, localStorage: storage, location: { hostname: host, protocol: "https:" } });
+    check("editor /site/ host: a public page's head script (the bumper's) writes and removes no theme cookie", pubScript.length > 0 && !/cookie/.test(pubScript) && JSON.stringify([...jar]) === before);
   }
   finish();
 })();
@@ -220,6 +246,8 @@ check("every light-dark() token holds two colours (it does not work for other va
 const pubStart = css.indexOf(':root[data-site="public"], :root[data-site="public"][data-theme] {');
 const pubBlock = pubStart < 0 ? "" : css.slice(pubStart, css.indexOf("}", pubStart) + 1);
 const pub = Object.fromEntries([...pubBlock.matchAll(/^\s*(--[\w-]+):\s*(.+?);/gm)].map((m) => [m[1], m[2]]));
+// The old public block stays in css/style.css in release 8.3 (unused by the public pages, which load css/site.css) until
+// the portal's owner agrees to remove it; these checks keep it intact meanwhile.
 check("the public token block exists, after the portal's, and is dark", pubStart > css.indexOf(rootBlock) && /color-scheme: dark;/.test(pubBlock));
 check("the public token block applies even with a stray data-theme (an old saved light choice)", /:root\[data-site="public"\]\[data-theme\]/.test(pubBlock));
 const APPROVED = { "--ink": "#101827", "--ink-2": "#152033", "--ink-3": "#1c293b", "--text": "#f3f5fa", "--text-2": "#c5cfdd", "--mute": "#b4c0d1",
@@ -259,6 +287,50 @@ const RETIRED = /\.marquee|\.tilt|\.magnetic|\.cursor-dot|\.footer-giant|\.kicke
 check("the stylesheet has none of the retired effects (marquee, grain, magnetic, tilt, pointer glow, parallax, reveal, giant footer number)", !RETIRED.test(css), (css.match(RETIRED) || [])[0]);
 check("no page or script keeps a retired effect's hook (data-reveal, magnetic, tilt, marquee, parallax, pointer glow)",
   !allHtml.concat(["js/components.js"]).some((f) => /data-reveal|\bmagnetic\b|\btilt\b|marquee|--py|--mx|splitWords|setupCursor/.test(read(f))));
+
+// ---------- css/site.css: the public pages' only stylesheet (design 8.2, D190) ----------
+{
+  const site = read("css/site.css");
+  const start = site.indexOf(":root, :root[data-theme] {"), block = start < 0 ? "" : site.slice(start, site.indexOf("}", start) + 1);
+  const redStart = site.indexOf(':root[data-alliance="red"] {'), redBlock = redStart < 0 ? "" : site.slice(redStart, site.indexOf("}", redStart) + 1);
+  const tok = Object.fromEntries([...block.matchAll(/^\s*(--[\w-]+):\s*(.+?);/gm)].map((m) => [m[1], m[2]]));
+  const red = Object.fromEntries([...redBlock.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
+  check("site.css: one token block at the top, light only, that a stray data-theme cannot override", start > 0 && start < site.indexOf("/* ---------- base") && /color-scheme: light;/.test(block) && !/light-dark\(|prefers-color-scheme/.test(site));
+  const APPROVED_82 = { "--ink": "#000000", "--paper": "#ffffff", "--floor": "#eceef0", "--rule": "#c5cad0", "--text-2": "#2c3238", "--mute": "#4a5158", "--accent": "#1d43c0", "--accent-press": "#15329a", "--on-accent": "#ffffff", "--bumper-r": "14px" };
+  const off = Object.entries(APPROVED_82).filter(([k, v]) => (tok[k] || "").toLowerCase() !== v);
+  check("site.css: the tokens are design 8.2's values (public-redesign-demo/v8.2)", off.length === 0, off.map(([k, v]) => `${k} ${tok[k]} vs ${v}`).join(", "));
+  check("site.css: the red bumper swaps only the accent (#c3122a, pressed #9a0d20)", red["--accent"] === "#c3122a" && red["--accent-press"] === "#9a0d20" && Object.keys(red).length === 2, JSON.stringify(red));
+  // Outside the two token blocks, no colour literal at all.
+  const rest = site.replace(block, "").replace(redBlock, "");
+  const lits = rest.split("\n").filter((l) => /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/.test(l.replace(/\/\*[\s\S]*?\*\//g, "")) && !/fill="#fff"/.test(l));
+  check("site.css: no colour literal outside the token blocks", lits.length === 0, lits.slice(0, 3).map((l) => l.trim().slice(0, 70)).join(" | "));
+  // WCAG AA for every text pair the design uses, with blue and with red.
+  const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const lum = (h) => { const n = parseInt(h.slice(1), 16); return 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255); };
+  const ratio = (a, b) => { const [hi, lo] = lum(a) >= lum(b) ? [a, b] : [b, a]; return (lum(hi) + 0.05) / (lum(lo) + 0.05); };
+  const weak = [];
+  for (const accent of [tok["--accent"], red["--accent"]]) {
+    const t = { ...tok, "--accent": accent };
+    for (const fg of ["--ink", "--text-2", "--mute", "--accent"]) for (const bg of ["--paper", "--floor"]) if (ratio(t[fg], t[bg]) < 4.5) weak.push(`${fg} on ${bg} (${accent}) ${ratio(t[fg], t[bg]).toFixed(2)}`);
+    if (ratio(t["--on-accent"], accent) < 4.5) weak.push(`--on-accent on ${accent}`);
+  }
+  for (const accent of [tok["--accent-press"], red["--accent-press"]]) if (ratio(tok["--on-accent"], accent) < 4.5) weak.push(`--on-accent on ${accent}`);
+  for (const fg of ["--paper", "--ftr-text"]) if (ratio(tok[fg], tok["--ink"]) < 4.5) weak.push(`${fg} on the black footer`);
+  check("site.css: every text pair passes WCAG AA (4.5:1), with the blue accent and with the red (red on arena grey is the lowest)", weak.length === 0, weak.join(", "));
+  // Nothing moves by itself: the bumper's colour change is the only transition, off under reduced motion; no animation.
+  const transitions = [...site.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{[^}]*\btransition:\s*([^;]+);/g)].map((m) => [m[1].trim().split("\n").pop(), m[2].trim()]);
+  check("site.css: the only transition is the bumper's colour change", transitions.length === 2 && transitions[0][0] === ".bumper" && /^background-color \.25s/.test(transitions[0][1]) && transitions[1][1] === "none", JSON.stringify(transitions));
+  check("site.css: reduced motion turns the bumper's transition off", /@media \(prefers-reduced-motion: reduce\) \{ \.bumper \{ transition: none; \} \}/.test(site));
+  check("site.css: no animation and no keyframes", !/@keyframes|animation\s*:/.test(site));
+  check("site.css: no upper-case labels", !/text-transform:\s*uppercase/.test(site));
+  // The headline face is named only in --display (one line), and its one file in one @font-face, so a switch is one line and one file.
+  const faces = [...site.matchAll(/@font-face \{ font-family: "([^"]+)"; src: url\("\.\.\/fonts\/([^"]+)"\)/g)].map((m) => [m[1], m[2]]);
+  check("site.css: two fonts, self-hosted: Big Shoulders (headlines) and Libre Franklin (text)", JSON.stringify(faces) === JSON.stringify([["Big Shoulders", "big-shoulders-latin.woff2"], ["Libre Franklin", "libre-franklin-latin.woff2"]]), JSON.stringify(faces));
+  check("site.css: the headline face is named once, in --display (outside the @font-face)", (site.replace(/@font-face[^\n]*\n/g, "").match(/Big Shoulders/g) || []).length === 1 && /--display: "Big Shoulders"/.test(block));
+  check("site.css: none of the old faces or the Midnight & brass palette", !/Bricolage|Inter"|#101827|#e6b849/.test(site));
+  check("the font files and their licences are in fonts/", ["big-shoulders-latin.woff2", "libre-franklin-latin.woff2", "OFL-big-shoulders.txt", "OFL-libre-franklin.txt"].every((f) => fs.existsSync(path.join(root, "fonts", f))));
+  check("index.html preloads the headline font", /<link rel="preload" href="fonts\/big-shoulders-latin\.woff2" as="font" type="font\/woff2" crossorigin \/>/.test(read("index.html")));
+}
 
 function finish() {
   console.log(failed === 0 ? `ALL PASSED (${passed})` : `${failed} FAILED, ${passed} passed`);

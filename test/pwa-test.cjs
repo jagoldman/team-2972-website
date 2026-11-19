@@ -101,9 +101,9 @@ for (const [file, want] of Object.entries(MANIFESTS)) {
   check(`${file}: starts at / and covers the whole site`, m.start_url === "/" && m.scope === "/" && m.id === "/");
   check(`${file}: standalone display`, m.display === "standalone");
   // The portal's browser chrome matches the shell kit's app bar (--rail). Its splash is the light page colour.
-  // The public site keeps its dark defaults.
+  // The public site is white (light only, release 8.3).
   if (want.app === "portal") check(`${file}: app-bar chrome (#0b1224) on the light page colour`, m.background_color === "#f7f8fa" && m.theme_color === "#0b1224", `${m.background_color} / ${m.theme_color}`);
-  else check(`${file}: dark default colours`, m.background_color === "#07090f" && m.theme_color === "#07090f");
+  else check(`${file}: white colours (the public site is light only, release 8.3)`, m.background_color === "#ffffff" && m.theme_color === "#ffffff");
   check(`${file}: has a language and a description`, m.lang === "en" && typeof m.description === "string" && m.description.length > 10);
   const icons = m.icons || [];
   const has = (size, purpose) => icons.some((i) => i.sizes === size && i.purpose === purpose && i.type === "image/png");
@@ -133,7 +133,7 @@ for (const page of pages) {
     const [tl, td] = portal ? ["#0b1224", "#0b101d"] : ["#f7f8fa", "#07090f"];
     check(`${page}: theme colours for light and dark`, new RegExp(`name="theme-color" content="${tl}" media="\\(prefers-color-scheme: light\\)"`).test(head) && new RegExp(`name="theme-color" content="${td}" media="\\(prefers-color-scheme: dark\\)"`).test(head));
   } else {        // the public site is dark only (Midnight & brass): one theme colour, the page's --ink
-    check(`${page}: one theme colour, the dark page colour (public pages are dark only)`, /<meta name="theme-color" content="#101827" \/>/.test(head) && (head.match(/name="theme-color"/g) || []).length === 1);
+    check(`${page}: one theme colour, white (public pages are light only)`, /<meta name="theme-color" content="#ffffff" \/>/.test(head) && (head.match(/name="theme-color"/g) || []).length === 1);
   }
 }
 
@@ -194,7 +194,7 @@ const okNetwork = async () => basic("from the network");
   // install and activate
   let w = makeWorker({ fetchImpl: okNetwork });
   await w.dispatch("install");
-  check("install stores the offline page and the shared styles, fonts and icon", ["/offline.html", "/css/style.css", "/fonts/inter-latin.woff2", "/fonts/bricolage-grotesque-latin.woff2", "/pwa-icons/site/icon.svg"].every((p) => w.pathsStored().includes(p)));
+  check("install stores the offline page and the shared styles, fonts and icon", ["/offline.html", "/css/style.css", "/css/site.css", "/fonts/big-shoulders-latin.woff2", "/fonts/libre-franklin-latin.woff2", "/fonts/inter-latin.woff2", "/fonts/bricolage-grotesque-latin.woff2", "/pwa-icons/site/icon.svg"].every((p) => w.pathsStored().includes(p)));
   check("the cache name is versioned", [...w.store.keys()].every((n) => /^2972-static-v\d+$/.test(n)));
   w = makeWorker({ fetchImpl: async (r) => (new URL(r.url).pathname === "/css/style.css" ? basic("x", 404) : okNetwork()) });
   let ok = true; try { await w.dispatch("install"); } catch (e) { ok = false; }
@@ -286,7 +286,7 @@ const okNetwork = async () => basic("from the network");
   check("(before sign-out) extra shared files are stored", c.pathsStored().includes("/js/components.js"));
   await c.dispatch("message", { data: { type: "clear-caches" } });
   check("clear-caches removes everything that was stored", !c.pathsStored().includes("/js/components.js") && !c.pathsStored().includes("/assets/placeholder-robot.svg"));
-  check("clear-caches puts back only the public offline files", c.pathsStored().includes("/offline.html") && c.pathsStored().length <= 5);
+  check("clear-caches puts back only the public offline files", c.pathsStored().includes("/offline.html") && c.pathsStored().length <= 8);   // the 8 PRECACHE entries (release 8.3 added site.css and two fonts)
   const n = c.pathsStored().length;
   await c.dispatch("message", { data: { type: "something-else" } });
   check("other messages do nothing", c.pathsStored().length === n);

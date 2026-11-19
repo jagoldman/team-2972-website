@@ -335,18 +335,18 @@ try {
     check(`320px ${theme}: /install has the app bar and no horizontal scroll`, (await page.isVisible("#shell-bar .shbar-appsbtn")) && (await over(page)) <= 0, `${await over(page)}px`);
     page = await context.newPage();
     await page.goto(PUBLIC + "/");
-    await page.waitForSelector(".site-header");
+    await page.waitForSelector(".hdr");
     check(`320px ${theme}: public home has no horizontal scroll`, (await over(page)) <= 0, `${await over(page)}px`);
-    const toggle = await page.$eval(".nav-toggle", (b) => { const r = b.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), Math.round(r.right)]; });
+    const toggle = await page.$eval(".menu-btn", (b) => { const r = b.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), Math.round(r.right)]; });
     check(`320px ${theme}: the menu button is at least 44px and sits on screen`, toggle[0] >= 44 && toggle[1] >= 44 && toggle[2] <= 320, toggle);
-    check(`320px ${theme}: the public home stays dark (Midnight & brass), whatever the saved theme`, (await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgb(16, 24, 39)");
-    // Home shows the full team name on a phone (approved home page, D154), clear of the Menu button; other pages still hide it.
-    const name = await page.$eval(".brand-text > span", (e) => Math.round(e.getBoundingClientRect().right)).catch(() => null);
-    check(`320px ${theme}: public home shows the team number and the full team name, clear of the Menu button`, (await page.isVisible(".brand-text strong")) && (await page.isVisible(".brand-text > span")) && name !== null && name <= toggle[2] - toggle[0], { name, toggle });
+    check(`320px ${theme}: the public home stays white (design 8.2, light only), whatever the saved theme`, (await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgb(255, 255, 255)");
+    // Release 8.3 (design 8.2): on a phone Home shows the number, clear of the Menu button; the full name shows from 900px.
+    const num = await page.$eval(".brand-n", (e) => Math.round(e.getBoundingClientRect().right)).catch(() => null);
+    check(`320px ${theme}: public home shows the team number, clear of the Menu button (the full name is for wider screens)`, (await page.isVisible(".brand-n")) && !(await page.isVisible(".brand-t")) && num !== null && num <= toggle[2] - toggle[0], { num, toggle });
     await page.goto(PUBLIC + "/about.html");
-    await page.waitForSelector(".site-header");
+    await page.waitForSelector(".hdr");
     // Release 8.1.5 (C8): other pages read "2972 Team" on one line instead of the number alone.
-    check(`320px ${theme}: other public pages: the header reads "2972 Team" and not the full team name`, (await page.isVisible(".brand-text strong")) && (await page.isVisible(".brand-short .brand-team")) && !(await page.isVisible(".brand-text > span")) && ((await page.textContent(".brand-text")) || "").replace(/\s+/g, " ").trim() === "2972 Team");
+    check(`320px ${theme}: other public pages: the header reads "2972 Team" and not the full team name`, (await page.isVisible(".brand-one")) && !(await page.$(".brand-t")) && ((await page.textContent(".brand-one")) || "").replace(/\s+/g, " ").trim() === "2972 Team");
     await context.close();
   }
 
@@ -1055,14 +1055,14 @@ try {
     for (const path of ["/", "/about.html", "/resources.html", "/contact.html"]) {
       const page = await context.newPage();
       await page.goto(PUBLIC + path);
-      await page.waitForSelector(".site-header .nav-login");
+      await page.waitForSelector(".hdr .nav-login");
       await page.waitForTimeout(300);
       const bar = await page.$$("#shell-bar, .shbar-mount, .shbar-appsbtn");
       check(`public ${path}: no app bar and no signed-in controls`, bar.length === 0 && (await page.$$("[data-signout], #sign-out")).length === 0);
-      check(`public ${path}: the public header keeps its nav and the 2972_in "Portal" label`, (await page.textContent(".site-header .nav-login")).trim() === "Portal" && (await page.$$(".site-header .site-nav .nav-link")).length >= 3);
+      check(`public ${path}: the public header keeps its nav and the 2972_in "Portal" label`, (await page.textContent(".hdr .nav-login")).trim() === "Portal" && (await page.$$(".hdr .nav .nav-a")).length >= 3);
       await page.close();
     }
-    // One theme cookie for the portal and the apps (D92). Public pages are dark only: a choice made in the portal bar
+    // One theme cookie for the portal and the apps (D92). Public pages are light only: a choice made in the portal bar
     // does not change them, and they leave the cookie and the old key exactly as they found them.
     const portal = (await openPortal(context)).page;
     await portal.click("#shell-bar .shbar-acct");
@@ -1075,19 +1075,19 @@ try {
     await pub.evaluate(() => localStorage.setItem("theme", "light"));   // the old key lives per origin: seed this one
     for (const path of ["/about.html", "/robots.html", "/privacy.html"]) {
       await pub.goto(PUBLIC + path);
-      await pub.waitForSelector(".site-header .nav-login");
+      await pub.waitForSelector(".hdr .nav-login");
       await pub.waitForTimeout(200);
       const st = await themeState(pub);
-      check(`Light saved (cookie and old key): public ${path} is still dark, sets no data-theme, and leaves the cookie as "light"`, st.bg === "rgb(16, 24, 39)" && st.scheme === "dark" && st.attr === null && st.cookie === "light" && st.key === "light", st);
+      check(`Light saved (cookie and old key): public ${path} is white as always, sets no data-theme, and leaves the cookie as "light"`, st.bg === "rgb(255, 255, 255)" && st.scheme === "light" && st.attr === null && st.cookie === "light" && st.key === "light", st);
       check(`public ${path}: no theme switch`, (await pub.$$(".theme-switch")).length === 0);
     }
     await portal.click("#shell-bar .shbar-acct");
     await portal.click('#shell-bar [aria-label="Theme"] .shbar-choice >> text=Match my device');
     await pub.goto(PUBLIC + "/about.html");
-    await pub.waitForSelector(".site-header .nav-login");
+    await pub.waitForSelector(".hdr .nav-login");
     await pub.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
     await pub.waitForTimeout(150);
-    check('"Match my device" chosen in the portal bar (cookie cleared): public stays dark and does not recreate the cookie', (await themeState(pub)).bg === "rgb(16, 24, 39)" && (await themeState(pub)).cookie === null);
+    check('"Match my device" chosen in the portal bar (cookie cleared): public stays white and does not recreate the cookie', (await themeState(pub)).bg === "rgb(255, 255, 255)" && (await themeState(pub)).cookie === null);
     await portal.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
     check("the portal keeps its own theme handling after public pages were visited", (await themeState(portal)).attr === null);
     await pub.close(); await portal.close();
@@ -1096,11 +1096,11 @@ try {
       const before = seen.length;
       const page = await context.newPage();
       await page.goto(PUBLIC + "/site/about.html");
-      await page.waitForSelector("#site-footer .school-mark-wrap");
+      await page.waitForSelector("#site-footer .wm-link img");
       await page.waitForTimeout(300);
       const probes = seen.slice(before).filter((u) => u.includes("dawson-school-logo.png"));
-      check("under the editor's /site/ prefix the wordmark probe follows the script (/site/brand/...), not the root", probes.length > 0 && probes.every((u) => u === PUBLIC + "/site/brand/dawson-school-logo.png"), probes);
-      check("...and the wordmark stays visible", await page.isVisible("#site-footer .school-mark-wrap"));
+      check("under the editor's /site/ prefix the footer wordmark loads from /site/brand/..., not the root", probes.length > 0 && probes.every((u) => u === PUBLIC + "/site/brand/dawson-school-logo.png"), probes);
+      check("...and the wordmark stays visible", await page.isVisible("#site-footer .wm-link img"));
       await page.close();
     }
     const fetched = seen.filter((u) => u.startsWith(PUBLIC + "/") && (/\/shell\/static\//.test(u) || /\/(me|apps)\.json$/.test(u) || /portal-shell\.js$/.test(u)));

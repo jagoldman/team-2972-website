@@ -249,6 +249,13 @@ if [ -n "$dfile" ]; then
 else
   echo "note no Drive photo was saved in this build (offline?), so only the 404s are checked"
 fi
+# D193 (a face blurred at the owner's request): the hero is served only under its blurred name; the old name is gone.
+hero=1VgoMdevZH3syn0BvQq7QpFz09xrDS_rt
+if printf '%s' "$dm" | grep -q "\"$hero\""; then
+  for w in 400 800 1200 1600; do check 200 "public blurred hero $w" -H "Host: $D" "$URL/img/drive/$hero-b1-$w.webp"; check 404 "public unblurred hero name $w is not served" -H "Host: $D" "$URL/img/drive/$hero-$w.webp"; done
+else
+  echo "FAIL PRIVACY (D193): the hero photo was not saved blurred in this build, so the home page shows no hero photo"; fail=1
+fi
 for p in /img/drive/ /img/drive/manifest.json /img/drive/nope-400.webp /img/drive/1AbCdEfGhIjKlMnOpQrStUvWxYz012345-400.webp; do
   check 404 "public $p is not served" -H "Host: $D" "$URL$p"
 done

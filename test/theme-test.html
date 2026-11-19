@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <title>theme test</title>
-<!-- Loaded by test/theme-test.sh in headless Chrome. mode=contrast: the public pages (dark only, Midnight & brass)
+<!-- Loaded by test/theme-test.sh in headless Chrome. mode=contrast: the public pages (light only, design 8.2, D190)
      and the themed pages (portal, install, offline) in light and dark: WCAG AA text contrast. mode=system-light /
-     system-dark: Chrome is started with that system setting; themed pages must follow it and public pages must stay dark,
+     system-dark: Chrome is started with that system setting; themed pages must follow it and public pages must stay light,
      also with a saved light choice. mode=nogroup: the portal for a user with no group. One line per check goes into #out. -->
 </head>
 <body>
@@ -165,7 +165,7 @@ const SITE_PAGES = ["index.html", "about.html", "mentor.html", "member.html", "r
 (async () => {
   if (MODE === "contrast" || MODE === "nogroup") {
     const pages = MODE === "nogroup" ? ["portal/index.html"] : [...SITE_PAGES, ...THEMED_PAGES, "portal/index.html", "portal/install.html"];
-    const PAGE_BG = "rgb(16, 24, 39)";   // --ink on the public site
+    const PAGE_BG = "rgb(255, 255, 255)";   // --paper on the public site
     for (const url of pages) {
       const { frame, win, doc } = await openPage(url);
       // the install banner sits over the portal home: show it (iPhone steps and the Install/link variants) and check it too
@@ -174,18 +174,18 @@ const SITE_PAGES = ["index.html", "about.html", "mentor.html", "member.html", "r
         report(!!doc.querySelector(".install-banner"), `${url}: install banner can be shown over the page`);
       }
       if (SITE_PAGES.includes(url)) {
-        // Public pages are dark only: whatever is saved or asked for, the page is Midnight & brass.
+        // Public pages are light only: whatever is saved or asked for, the page is white (design 8.2).
         const html = doc.documentElement;
-        report(html.getAttribute("data-site") === "public" && win.getComputedStyle(html).colorScheme === "dark", `${url}: color-scheme is dark from the stylesheet and the page`, win.getComputedStyle(html).colorScheme);
-        for (const [what, force] of [["as loaded", () => {}], ["with data-theme=light forced on <html>", () => { html.dataset.theme = "light"; html.classList.add("light"); html.classList.remove("dark"); }]]) {
+        report(html.getAttribute("data-site") === "public" && win.getComputedStyle(html).colorScheme === "light", `${url}: color-scheme is light from the stylesheet and the page`, win.getComputedStyle(html).colorScheme);
+        for (const [what, force] of [["as loaded", () => {}], ["with data-theme=dark forced on <html>", () => { html.dataset.theme = "dark"; html.classList.add("dark"); html.classList.remove("light"); }], ["with the red bumper colour", () => { html.setAttribute("data-alliance", "red"); }]]) {
           force(); await sleep(120);
           const bg = win.getComputedStyle(doc.body).backgroundColor;
-          report(bg === PAGE_BG, `${url}: ${what}: the page is the dark ink colour`, bg);
+          report(bg === PAGE_BG, `${url}: ${what}: the page is white`, bg);
           const r = contrastOf(win, doc);
           report(r.fails.length === 0, `${url}: ${what}: WCAG AA text contrast (${r.checked} items, lowest ${r.min.toFixed(2)}:1)`, r.fails.slice(0, 6).join(" | "));
         }
         const inputProbe = doc.createElement("input"); doc.body.append(inputProbe);
-        report(win.getComputedStyle(inputProbe).colorScheme === "dark", `${url}: native form controls are dark`, win.getComputedStyle(inputProbe).colorScheme);
+        report(win.getComputedStyle(inputProbe).colorScheme === "light", `${url}: native form controls are light`, win.getComputedStyle(inputProbe).colorScheme);
         inputProbe.remove();
         report(!doc.querySelector(".theme-switch"), `${url}: no theme switch`);
         report(![...doc.querySelectorAll("body *")].some((el) => win.getComputedStyle(el).opacity === "0" && !el.closest("[aria-hidden='true'], [hidden], .vh")), `${url}: nothing is at opacity 0 at rest`);
@@ -223,15 +223,15 @@ const SITE_PAGES = ["index.html", "about.html", "mentor.html", "member.html", "r
       }
       frame.remove();
     }
-    // focus ring (a UI component: 3:1 against every surface it can sit on)
+    // focus ring (a UI component: 3:1 against every surface it can sit on): black on paper and arena grey, white on the
+    // black footer, and the bumper's ring (black) against the page around it
     {
       const { frame, win, doc } = await openPage("index.html");
-      const probe = doc.createElement("i"); probe.style.cssText = "color:var(--accent);background:var(--ink)"; doc.body.append(probe);
-      const accent = parse(win.getComputedStyle(probe).color);
-      for (const surface of ["--ink", "--ink-2", "--ink-3"]) {
-        probe.style.background = `var(${surface})`;
-        const bg = parse(win.getComputedStyle(probe).backgroundColor);
-        report(ratio(accent, bg) >= 3, `public: focus ring (--accent) is at least 3:1 on ${surface}`, `${ratio(accent, bg).toFixed(2)}:1`);
+      const probe = doc.createElement("i"); doc.body.append(probe);
+      for (const [ring, surface] of [["--ink", "--paper"], ["--ink", "--floor"], ["--paper", "--ink"]]) {
+        probe.style.cssText = `color:var(${ring});background:var(${surface})`;
+        const fg = parse(win.getComputedStyle(probe).color), bg = parse(win.getComputedStyle(probe).backgroundColor);
+        report(ratio(fg, bg) >= 3, `public: focus ring (${ring}) is at least 3:1 on ${surface}`, `${ratio(fg, bg).toFixed(2)}:1`);
       }
       probe.remove();
       frame.remove();
@@ -262,23 +262,23 @@ const SITE_PAGES = ["index.html", "about.html", "mentor.html", "member.html", "r
     const dark = MODE === "system-dark";
     const wantBg = dark ? "rgb(7, 9, 15)" : "rgb(247, 248, 250)";
     const clearCookie = () => { document.cookie = "theme=; Path=/; Max-Age=0"; };
-    // 1) public pages: dark, whatever the system says, with nothing saved...
+    // 1) public pages: light, whatever the system says, with nothing saved...
     localStorage.removeItem("theme"); clearCookie();
     let { frame, win, doc } = await openPage("index.html");
     report(win.matchMedia("(prefers-color-scheme: dark)").matches === dark, "Chrome is running with the " + (dark ? "dark" : "light") + " system setting");
     report(doc.documentElement.dataset.theme === undefined, "public page: does not set data-theme");
-    report(win.getComputedStyle(doc.body).backgroundColor === "rgb(16, 24, 39)", `public page: stays dark under the ${dark ? "dark" : "light"} system setting`, win.getComputedStyle(doc.body).backgroundColor);
+    report(win.getComputedStyle(doc.body).backgroundColor === "rgb(255, 255, 255)", `public page: stays light under the ${dark ? "dark" : "light"} system setting`, win.getComputedStyle(doc.body).backgroundColor);
     const r = contrastOf(win, doc);
     report(r.fails.length === 0, `public page: contrast passes under the ${dark ? "dark" : "light"} system setting (${r.checked} items)`, r.fails.slice(0, 4).join(" | "));
     frame.remove();
-    // 2) ...and with a saved light choice (cookie and old key): still dark, and the choice is left exactly as it was
-    document.cookie = "theme=light; Path=/; Max-Age=3600"; localStorage.setItem("theme", "light");
+    // 2) ...and with a saved dark choice (cookie and old key): still light, and the choice is left exactly as it was
+    document.cookie = "theme=dark; Path=/; Max-Age=3600"; localStorage.setItem("theme", "dark");
     for (const url of ["about.html", "robots.html", "contact.html"]) {
       ({ frame, win, doc } = await openPage(url));
-      report(win.getComputedStyle(doc.body).backgroundColor === "rgb(16, 24, 39)" && doc.documentElement.dataset.theme === undefined, `${url}: a saved light choice does not change the public page`, win.getComputedStyle(doc.body).backgroundColor);
+      report(win.getComputedStyle(doc.body).backgroundColor === "rgb(255, 255, 255)" && doc.documentElement.dataset.theme === undefined, `${url}: a saved dark choice does not change the public page`, win.getComputedStyle(doc.body).backgroundColor);
       frame.remove();
     }
-    report(/(?:^|;\s*)theme=light(?:;|$)/.test(document.cookie) && localStorage.getItem("theme") === "light", "public pages did not delete or rewrite the saved theme cookie or the old key", document.cookie);
+    report(/(?:^|;\s*)theme=dark(?:;|$)/.test(document.cookie) && localStorage.getItem("theme") === "dark", "public pages did not delete or rewrite the saved theme cookie or the old key", document.cookie);
     localStorage.removeItem("theme"); clearCookie();
     // 3) themed pages (the portal's install page, which has the shell kit's app bar) still follow the system, and a saved choice beats it
     let bg, loads;
