@@ -22,27 +22,31 @@
 <div id="site-header"></div>
 
 <main>
-  <section class="band"><div class="wrap">
-    <h1 class="h1" tabindex="-1">Join the team</h1>
+  <section class="band band-first"><div class="wrap">
+    <h1 tabindex="-1">Join the team</h1>
     <p class="lead">No robotics background required.</p>
-    <nav class="seg" aria-label="Join as"><a class="segb" href="member.html">Students</a><a class="segb" href="mentor.html" aria-current="page">Mentors</a></nav>
-    <p>Mentors guide the students' process. The students still do the learning, and the work, as far as their skills allow.</p>
-    <div class="roles">
-      <div><h2 class="h4">Teach and coach</h2><p>Help students learn new skills, such as CAD, programming, wiring and machining, and grow as people.</p></div>
-      <div><h2 class="h4">Guide, not do</h2><p>Ask questions and steer how the team solves the season's challenge, without handing over the solution.</p></div>
-      <div><h2 class="h4">Business and outreach</h2><p>Not every mentor builds robots. Mentors also help with logistics, planning, fundraising and community events.</p></div>
-      <div><h2 class="h4">Support at competition</h2><p>Advise students between matches. During a match, the student drive team makes the decisions.</p></div>
+    <div class="join">
+      <nav class="tabs" aria-label="Join as"><a class="tabbtn" href="member.html">Students</a><a class="tabbtn" href="mentor.html" aria-current="page">Mentors</a></nav>
+      <div class="panel prose">
+        <p>Mentors guide the students' process. The students still do the learning, and the work, as far as their skills allow.</p>
+        <div class="roles">
+          <div><h2 class="h3">Teach and coach</h2><p>Help students learn new skills, such as CAD, programming, wiring and machining, and grow as people.</p></div>
+          <div><h2 class="h3">Guide, not do</h2><p>Ask questions and steer how the team solves the season's challenge, without handing over the solution.</p></div>
+          <div><h2 class="h3">Business and outreach</h2><p>Not every mentor builds robots.</p></div>
+          <div><h2 class="h3">Support at competition</h2><p>Advise students between matches.</p></div>
+        </div>
+        <p>We're always looking for engineers, parents, and professionals willing to share their time and expertise with our students.</p>
+        <p id="mentor-addr"></p>
+        <h2 class="h3 first-h">Read more from FIRST</h2>
+        <ul class="links first-links">
+          <li><a href="https://community.firstinspires.org/the-role-of-mentors-in-first-robotics-competition" target="_blank" rel="noopener">The Role of Mentors in FIRST Robotics Competition<span class="vh"> (opens in a new tab)</span></a></li>
+          <li><a href="https://www.firstinspires.org/hubfs/web/program/frc/resources/effective-mentoring.pdf" target="_blank" rel="noopener">Effective Mentoring (PDF)<span class="vh"> (opens in a new tab)</span></a></li>
+          <li><a href="https://www.firstinspires.org/hubfs/web/program/frc/resources/frc-mentor-guide.pdf" target="_blank" rel="noopener">FRC Mentor Guide (PDF)<span class="vh"> (opens in a new tab)</span></a></li>
+        </ul>
+      </div>
     </div>
-    <p>We're always looking for engineers, parents, and professionals willing to share their time and expertise with our students.</p>
-    <p id="mentor-addr"></p>
-    <p class="label spaced-sm">Read more from FIRST</p>
-    <ul class="links narrow">
-      <li><a href="https://community.firstinspires.org/the-role-of-mentors-in-first-robotics-competition" target="_blank" rel="noopener">The Role of Mentors in FIRST Robotics Competition ↗</a></li>
-      <li><a href="https://www.firstinspires.org/hubfs/web/program/frc/resources/effective-mentoring.pdf" target="_blank" rel="noopener">Effective Mentoring (PDF) ↗</a></li>
-      <li><a href="https://www.firstinspires.org/hubfs/web/program/frc/resources/frc-mentor-guide.pdf" target="_blank" rel="noopener">FRC Mentor Guide (PDF) ↗</a></li>
-    </ul>
   </div></section>
-  <section class="band alt" id="year"></section>
+  <section class="band band-floor" id="year"></section>
 </main>
 
 <div id="site-footer"></div>
@@ -53,17 +57,18 @@
 <script src="js/components.js"></script>
 <script>
 
-// "The year at a glance": ANNUAL_EVENTS in order (a real sequence, so it is a numbered timeline), the first sentence of each.
+// "The year at a glance": ANNUAL_EVENTS in order, the first sentence of each, and the Team calendar link.
 function renderYear() {
+  const cal = isSet(contentGet("TEAM_CALENDAR_URL")) ? `<p class="more">${extLink(contentGet("TEAM_CALENDAR_URL"), "Team calendar", ' class="textlink" id="calendar-link" data-ck-href="TEAM_CALENDAR_URL"')}</p>` : "";
   document.getElementById("year").innerHTML = `
-    <div class="wrap"><h2 class="h2">The year at a glance</h2>
-    <ol class="steps"${ck("ANNUAL_EVENTS")}>${ANNUAL_EVENTS.map((e, i) => `<li${ck(`ANNUAL_EVENTS[${i}]`)}>
-      <p class="label gold"${ck(`ANNUAL_EVENTS[${i}].when`)}>${esc(e.when)}</p><h3 class="h3"${ck(`ANNUAL_EVENTS[${i}].name`)}>${esc(e.name)}</h3><p class="step-d"${ck(`ANNUAL_EVENTS[${i}].description`)}>${esc(firstSentence(e.description))}</p></li>`).join("")}</ol>
-    ${isSet(contentGet("TEAM_CALENDAR_URL")) ? `<p class="spaced-sm"><a class="tl-link" id="calendar-link" href="${esc(safeUrl(contentGet("TEAM_CALENDAR_URL")))}" target="_blank" rel="noopener" data-ck-href="TEAM_CALENDAR_URL">Team calendar ↗</a></p>` : ""}</div>`;
+    <div class="wrap"><h2>The year at a glance</h2>
+    <ol class="year"${ck("ANNUAL_EVENTS")}>${ANNUAL_EVENTS.map((e, i) => `<li${ck(`ANNUAL_EVENTS[${i}]`)}>
+      <p class="when"${ck(`ANNUAL_EVENTS[${i}].when`)}>${esc(e.when)}</p><h3${ck(`ANNUAL_EVENTS[${i}].name`)}>${esc(e.name)}</h3><p${ck(`ANNUAL_EVENTS[${i}].description`)}>${esc(firstSentence(e.description))}</p></li>`).join("")}</ol>
+    ${cal}</div>`;
 }
 
 onContent(() => {
-  document.getElementById("mentor-addr").innerHTML = emailAddress();
+  document.getElementById("mentor-addr").innerHTML = siteAddress();
   renderYear();
 });
 </script>
