@@ -103,7 +103,7 @@ function renderHome() {
         <div class="hero-row"><p class="lead"${ck("SITE.mission")}>${esc(SITE.mission)}</p>
           <div class="btns"><a class="btn btn-bumper" href="member.html">Join the team</a><a class="btn" href="sponsors.html">Sponsor a season</a></div></div></div>
       <figure class="hero-shot${photo ? "" : " no-photo"}">${photo}${renderBumper()}
-        <div class="hero-foot">${caption ? `<figcaption class="cap">${caption}</figcaption>` : ""}<span class="school-line">A Dawson School team ${wordmark(96)}</span></div></figure>
+        <figcaption class="hero-foot">${caption ? `<span class="cap">${caption}</span>` : ""}<span class="school-line">A Dawson School team ${wordmark(96)}</span></figcaption></figure>
     </div></section>
     <div id="nextUp">${renderNextUp()}</div>
     <div id="record"></div>

@@ -278,7 +278,7 @@ try {
         h1: document.querySelectorAll("h1").length, headline: txt(document.querySelector("h1")),
         noAlt: [...document.querySelectorAll("img")].filter((i) => !i.hasAttribute("alt") || (vis(i) && !i.alt.trim() && !i.closest(".brand, .ftr-id"))).map((i) => i.src),
         small, btns: [...document.querySelectorAll(".hero .btns a")].map((a) => [txt(a), a.getAttribute("href"), a.classList.contains("btn-bumper")]),
-        caption: txt(document.querySelector(".hero figcaption")), school: !!document.querySelector(".hero .school-line img.wm"),
+        caption: txt(document.querySelector(".hero figcaption .cap")), school: !!document.querySelector(".hero .school-line img.wm"),
         hero: img && { srcset: img.getAttribute("srcset"), pos: img.style.objectPosition, ratio: Math.round(img.getBoundingClientRect().width / img.getBoundingClientRect().height * 100) / 100, priority: img.getAttribute("fetchpriority") },
         hint: txt(document.querySelector("#record .log-hint")), record: txt(document.querySelector("#record .record-line")),
         log: { left: wrap.scrollLeft, max: wrap.scrollWidth - wrap.clientWidth },
