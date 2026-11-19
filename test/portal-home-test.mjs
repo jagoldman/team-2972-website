@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { BLOCKED_APPS, DISPLAY_SCREENS, blockedAppName, clock, daysBetween, displayHref, dueText, fetchToday, fmtDay, isDisplayOnly, isParentOnly, isoDay, nextLine,
-  parseToday, postAct, postTaskDone, practicesLeft, practicesText, rowsForMode, safeHref, shiftFirst, taskHeld, timeSpan, whenText } from "../js/portal-home.js";
+  MAX_BYTES, MAX_ROWS, parseToday, postAct, postTaskDone, practicesLeft, practicesText, rowsForMode, safeHref, shiftFirst, taskHeld, timeSpan, whenText } from "../js/portal-home.js";
 
 const site = { scheme: "https", domain: "example.test" };
 const origin = "https://portal.example.test";
@@ -49,7 +49,9 @@ test("parseToday refuses another version, and a bad next task is no card", () =>
   assert.equal(parseToday("x", site, origin), null);
   const d = parseToday({ v: 1, next: { taskId: "", title: "No id", href: "https://tasks.example.test/" } }, site, origin);
   // 8.3: the optional parts are there, empty, when the answer has none of them (CONTRACT H1).
-  assert.deepEqual(d, { today: [], waiting: [], others: [], next: null, activity: [], season: null, milestones: [], week: null, coming: null, event: null });
+  // `present` says which apps' parts are in the answer (review item 2): a next task, even one that is no card, is Tasks'.
+  assert.deepEqual(d, { today: [], waiting: [], others: [], next: null, activity: [], season: null, milestones: [], week: null, coming: null, event: null,
+    present: { parts: false, skills: false, calendar: false, tasks: true } });
   assert.equal(parseToday({ v: 1, next: { taskId: 5, title: "Off site", href: "https://evil.test/" } }, site, origin).next, null);
   assert.equal(parseToday({ v: 1, next: { taskId: 5, title: "Numeric id", href: "/x" } }, site, origin).next.taskId, "5");
 });
@@ -165,17 +167,39 @@ test("the shop screen: display with an extra, non-site group still gets the pick
   assert.equal(isDisplayOnly("display|parent"), false);
 });
 
-test("Done's answers: ok, refused (403, 404, 4xx), failed (5xx, network), timeout", async () => {
-  const answer = (status) => async () => ({ ok: status >= 200 && status < 300, status });
-  assert.equal(await postTaskDone("t", { fetchImpl: answer(204) }), "ok");
-  for (const st of [403, 404, 409]) assert.equal(await postTaskDone("t", { fetchImpl: answer(st) }), "refused", String(st));
-  for (const st of [500, 502, 503]) assert.equal(await postTaskDone("t", { fetchImpl: answer(st) }), "failed", String(st));
-  assert.equal(await postTaskDone("t", { fetchImpl: async () => { throw new TypeError("network"); } }), "failed");
+// A real Response (status, body, type); `kind` "redirect" is what fetch gives with redirect: "manual".
+const reply = (status, body = null, type = "application/json", kind = "") => async () => {
+  if (kind === "redirect") return { type: "opaqueredirect", status: 0, ok: false, redirected: false, headers: new Headers() };
+  return new Response(status === 204 ? null : typeof body === "string" ? body : body == null ? null : JSON.stringify(body), { status, headers: type ? { "content-type": type } : {} });
+};
+const SIGN_IN = "<!doctype html><title>Sign in</title><form>…</form>";
+
+test("Done's answers (review items 1, 6): ok only on 204; refused (403, 404); signed out (a redirect, a sign-in page); uncertain (the rest)", async () => {
+  assert.deepEqual(await postTaskDone("t", { fetchImpl: reply(204) }), { result: "ok" });
+  for (const st of [403, 404]) assert.deepEqual(await postTaskDone("t", { fetchImpl: reply(st, { error: "x" }) }), { result: "refused" }, String(st));
+  assert.deepEqual(await postTaskDone("t", { fetchImpl: reply(0, null, "", "redirect") }), { result: "signedout" }, "a redirect");
+  assert.deepEqual(await postTaskDone("t", { fetchImpl: reply(302, "", "text/html") }), { result: "signedout" }, "a 3xx");
+  assert.deepEqual(await postTaskDone("t", { fetchImpl: reply(200, SIGN_IN, "text/html; charset=utf-8") }), { result: "signedout" }, "a 200 sign-in page");
+  for (const st of [200, 201, 400, 409, 500, 502, 503]) assert.deepEqual(await postTaskDone("t", { fetchImpl: reply(st, { ok: true }) }), { result: "uncertain" }, String(st));
+  assert.deepEqual(await postTaskDone("t", { fetchImpl: async () => { throw new TypeError("network"); } }), { result: "uncertain" });
   const hang = (_url, init) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
-  assert.equal(await postTaskDone("t", { fetchImpl: hang, timeout: 30 }), "timeout");
+  assert.deepEqual(await postTaskDone("t", { fetchImpl: hang, timeout: 30 }), { result: "uncertain" });
   let sent;
-  await postTaskDone("t-9", { fetchImpl: async (url, init) => { sent = [url, init.method, init.body, !!init.signal]; return { ok: true, status: 204 }; } });
-  assert.deepEqual(sent, ["/today/task-done", "POST", JSON.stringify({ taskId: "t-9" }), true]);
+  await postTaskDone("t-9", { fetchImpl: async (url, init) => { sent = [url, init.method, init.body, !!init.signal, init.redirect]; return new Response(null, { status: 204 }); } });
+  assert.deepEqual(sent, ["/today/task-done", "POST", JSON.stringify({ taskId: "t-9" }), true, "manual"]);
+});
+
+test("/today.json: a redirect, a sign-in page, a non-JSON answer or one over the byte limit is no answer (review items 1, 4)", async () => {
+  assert.equal(await fetchToday(site, origin, { fetchImpl: reply(0, null, "", "redirect") }), null);
+  assert.equal(await fetchToday(site, origin, { fetchImpl: reply(200, SIGN_IN, "text/html") }), null);
+  assert.equal(await fetchToday(site, origin, { fetchImpl: reply(200, JSON.stringify({ v: 1 }), "text/plain") }), null);
+  const huge = JSON.stringify({ v: 1, today: Array.from({ length: 5000 }, (_, i) => ({ id: `x:${i}`, title: "t".repeat(60), href: "/a" })) });
+  assert.ok(huge.length > MAX_BYTES);
+  assert.equal(await fetchToday(site, origin, { fetchImpl: reply(200, huge) }), null, "over the limit");
+  assert.equal((await fetchToday(site, origin, { fetchImpl: reply(200, { v: 1, today: [{ id: "a:1", title: "One", href: "/a" }] }) })).today.length, 1);
+  let init;
+  await fetchToday(site, origin, { fetchImpl: async (_u, i) => { init = i; return new Response("{}", { status: 200, headers: { "content-type": "application/json" } }); } });
+  assert.equal(init.redirect, "manual");
 });
 
 test("/today.json that never answers is given up after the time limit", async () => {
@@ -336,7 +360,7 @@ test("8.3 C17: a cta may be the page's one filled button (primary: true only)", 
 });
 
 test("8.3 H2, P4: the act's answers: ok (204, 200 with undoUntil and approval), changed, refused, gone, reason, uncertain", async () => {
-  const answer = (status, body) => async () => ({ ok: status >= 200 && status < 300, status, json: async () => body });
+  const answer = (status, body) => reply(status, body);
   const act = { app: "parts", action: "approve", key: "12" };
   assert.deepEqual(await postAct(act, { fetchImpl: answer(204) }), { result: "ok" });
   const until = new Date(Date.now() + 120000).toISOString();
@@ -346,7 +370,12 @@ test("8.3 H2, P4: the act's answers: ok (204, 200 with undoUntil and approval), 
   assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { approval: "ev1" }) }), { result: "ok" }, "no time: no Undo");
   for (const bad of ["", "a b", "x".repeat(65), "ev;1", 7]) assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: until, approval: bad }) }), { result: "ok" }, String(bad));
   assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: "2000-01-01T00:00:00Z", approval: "ev1" }) }), { result: "ok" }, "an Undo that ran out is not offered");
-  assert.deepEqual(await postAct(act, { fetchImpl: answer(200, null) }), { result: "ok" });
+  assert.deepEqual(await postAct(act, { fetchImpl: answer(200, {}) }), { result: "ok" }, "Approve's 200 with valid JSON and no Undo");
+  // Review item 1: a 200 that is not valid JSON is not a success; a redirect or a sign-in page means signed out.
+  assert.deepEqual(await postAct(act, { fetchImpl: reply(200, "not json") }), { result: "uncertain" });
+  assert.deepEqual(await postAct(act, { fetchImpl: reply(200, SIGN_IN, "text/html; charset=utf-8") }), { result: "signedout" });
+  assert.deepEqual(await postAct(act, { fetchImpl: reply(0, null, "", "redirect") }), { result: "signedout" });
+  assert.deepEqual(await postAct(act, { fetchImpl: reply(303, "", "text/html") }), { result: "signedout" });
   // Lead, after the reviews: a 5xx, a code the page does not know (400, 201, 418, 504...), a network failure or no
   // answer is "uncertain": it may have been saved.
   for (const [st, r] of [[409, "changed"], [403, "refused"], [404, "gone"], [422, "reason"], [400, "uncertain"], [201, "uncertain"], [418, "uncertain"], [500, "uncertain"], [502, "uncertain"], [503, "uncertain"], [504, "uncertain"]]) {
@@ -411,4 +440,38 @@ test("8.3 T1: a milestone's colour is a plain # and 3, 4, 6 or 8 hex digits (the
   const colour = (c) => parseToday({ v: 1, milestones: [{ name: "M", date: "2026-12-01", href: "/p", color: c }] }, site, origin).milestones[0].color;
   for (const ok of ["#2a6", "#2a6f", "#22aa66", "#22aa66cc"]) assert.equal(colour(ok), ok, ok);
   for (const bad of ["#22aa6", "#22aa66c", "22aa66", "red", "#ggg", "#22aa66; background:url(x)", "rgb(1,2,3)", null]) assert.equal(colour(bad), undefined, String(bad));
+});
+
+test("review item 4: a button is kept only when its app, action and row belong together; Deny always asks why", () => {
+  const acts = (id, list) => parseToday({ v: 1, waiting: [{ id, section: "waiting", title: "T", href: "/a", acts: list }] }, site, origin).waiting[0].acts;
+  assert.equal(acts("parts:request:1", [{ label: "Sign off", app: "parts", action: "signoff", key: "1" }]), undefined, "parts has no signoff: the row stays a link");
+  assert.equal(acts("parts:request:1", [{ label: "Sign off", app: "skills", action: "signoff", key: "u:s" }]), undefined, "another app's button on a Parts row");
+  assert.equal(acts("skills:signoff:u:s", [{ label: "Approve", app: "skills", action: "approve", key: "u:s" }]), undefined);
+  assert.equal(acts("calendar:x", [{ label: "Go", app: "calendar", action: "step-done", key: "1" }]), undefined);
+  for (const [id, app, action] of [["parts:request:1", "parts", "approve"], ["parts:request:1", "parts", "unapprove"], ["skills:signoff:u:s", "skills", "signoff"],
+    ["calendar:snacks:d", "calendar", "snack"], ["calendar:vol:e", "calendar", "volunteer"], ["tasks:x", "tasks", "step-done"]]) {
+    assert.equal(acts(id, [{ label: "Go", app, action, key: "k1" }])[0].action, action, `${app} ${action}`);
+  }
+  assert.equal(acts("parts:request:1", [{ label: "Deny", app: "parts", action: "deny", key: "1" }])[0].reason, true, "Deny without reason:true still asks");
+  assert.equal(acts("parts:request:1", [{ label: "Approve", app: "parts", action: "approve", key: "1", reason: true }])[0].reason, undefined, "only Deny asks");
+});
+
+test("review item 4: every list is cut before it is read, so a huge answer is read quickly", () => {
+  const many = (n, f) => Array.from({ length: n }, (_, i) => f(i));
+  const lines = many(1000, () => "x"), items = many(1000, () => ({ kind: "practice", name: "P" })), names = many(100000, () => "n");
+  const big = { v: 1,
+    today: many(100000, (i) => ({ id: `calendar:${i}`, section: "today", title: `Row ${i}`, href: "/a", lines })),
+    waiting: many(100000, (i) => ({ id: `parts:${i}`, section: "waiting", title: "W", href: "/a" })),
+    others: many(100000, () => ({ id: "skills:w", section: "others", title: "O", href: "/a" })),
+    activity: many(100000, () => ({ title: "A", href: "/a", at: new Date().toISOString() })),
+    season: { target: { name: "k", date: "2099-01-01", kind: "kickoff" }, days: many(100000, (i) => ({ date: "2026-12-01", kind: "practice" })) },
+    week: many(100000, () => ({ date: "2026-12-01", href: "/c", items, snacks: { names, open: 1 } })),
+    coming: many(100000, () => ({ date: "2026-12-01", name: "C", href: "/c" })),
+    milestones: many(100000, () => ({ name: "M", date: "2026-12-01", href: "/m" })),
+    next: { taskId: "t", title: "T", href: "/t", waitingOn: many(100000, () => "w") } };
+  const t0 = Date.now();
+  const d = parseToday(big, site, origin);
+  assert.ok(Date.now() - t0 < 1000, `read in ${Date.now() - t0} ms`);
+  assert.ok(d.today.length <= MAX_ROWS && d.waiting.length <= MAX_ROWS && d.others.length <= MAX_ROWS);
+  assert.ok(d.today[0].lines.length === 2 && d.week.length <= 7 && d.coming.length <= 4 && d.milestones.length <= 12 && d.activity.length <= 5 && d.season.days.length <= 200);
 });

@@ -58,9 +58,11 @@ export function safeHref(href, site, origin) {
   return u.href;
 }
 
+/** At most this many rows are read from each of today, waiting and others (Account sends 8 per app). */
+export const MAX_ROWS = 60;
 function text(v, max = 200) {
   if (typeof v !== "string") return "";
-  const t = v.replace(/\s+/g, " ").trim();
+  const t = v.slice(0, max * 4 + 16).replace(/\s+/g, " ").trim();
   return t.length > max ? `${t.slice(0, max - 1)}…` : t;
 }
 
@@ -85,14 +87,19 @@ export const ACT_APPS = Object.freeze(["parts", "skills", "calendar", "tasks"]);
 const ACT_KEY = /^[A-Za-z0-9_:.-]{1,250}$/;
 const ACT_ACTION = /^[a-z][a-z_.-]{0,39}$/;
 const TONES = ["ok", "warn", "bad"];
-function act(a) {
+/** The actions each app owns on the act path (CONTRACT H2, S3, P3, C3, T3), as Account's ACTIONS. */
+export const ACT_ACTIONS = Object.freeze({ parts: ["approve", "deny", "unapprove"], skills: ["signoff"], calendar: ["snack", "volunteer"], tasks: ["step-done"] });
+function act(a, rowApp) {
   if (!a || typeof a !== "object") return null;
   const label = text(a.label, 40);
   if (!label || !ACT_APPS.includes(a.app) || typeof a.action !== "string" || !ACT_ACTION.test(a.action)) return null;
+  // The app, its action and the row belong together (review item 4): a Parts row with "signoff" keeps no button.
+  if (!ACT_ACTIONS[a.app].includes(a.action) || (rowApp && rowApp !== a.app)) return null;
   if (typeof a.key !== "string" || !ACT_KEY.test(a.key)) return null;
   const out = { label, app: a.app, action: a.action, key: a.key };
   if (a.primary === true) out.primary = true;
-  if (a.reason === true) out.reason = true;
+  // Deny always asks for a reason; nothing else does.
+  if (a.app === "parts" && a.action === "deny") out.reason = true;
   return out;
 }
 
@@ -119,9 +126,10 @@ function row(r, site, origin) {
     const word = text(r.mark.word, 30);
     if (word) out.mark = { word, tone: r.mark.tone };
   }
-  const lines = (Array.isArray(r.lines) ? r.lines : []).map((l) => text(l)).filter(Boolean).slice(0, 2);
+  const lines = (Array.isArray(r.lines) ? r.lines.slice(0, 4) : []).map((l) => text(l)).filter(Boolean).slice(0, 2);
   if (lines.length) out.lines = lines;
-  const acts = (Array.isArray(r.acts) ? r.acts : []).slice(0, 2).map(act).filter(Boolean);
+  const own = /^([a-z]+):/.exec(out.id);
+  const acts = (Array.isArray(r.acts) ? r.acts : []).slice(0, 2).map((a) => act(a, own ? own[1] : "")).filter(Boolean);
   if (acts.length) out.acts = acts;
   return out;
 }
@@ -142,7 +150,7 @@ function nextTask(n, site, origin) {
   if (milestone) out.milestone = milestone;
   const s = n.steps;
   if (s && Number.isInteger(s.total) && Number.isInteger(s.done) && s.total > 0 && s.total <= 999 && s.done >= 0 && s.done <= s.total) out.steps = { done: s.done, total: s.total };
-  const waiting = (Array.isArray(n.waitingOn) ? n.waitingOn : []).map((w) => text(w, 120)).filter(Boolean).slice(0, 3);
+  const waiting = (Array.isArray(n.waitingOn) ? n.waitingOn.slice(0, 6) : []).map((w) => text(w, 120)).filter(Boolean).slice(0, 3);
   if (waiting.length) out.waitingOn = waiting;
   if (n.onHold === true) out.onHold = true;
   if (n.blocked === true) out.blocked = true;
@@ -248,7 +256,7 @@ function week(list, site) {
     if (Number.isInteger(d.mentorsComing) && d.mentorsComing >= 0 && d.mentorsComing < 1000) day.mentorsComing = d.mentorsComing;
     const sn = d.snacks;
     if (sn && typeof sn === "object" && Number.isInteger(sn.open) && sn.open >= 0 && sn.open < 100) {
-      const names = (Array.isArray(sn.names) ? sn.names : []).map((n) => text(n, 60)).filter(Boolean).slice(0, 6);
+      const names = (Array.isArray(sn.names) ? sn.names.slice(0, 12) : []).map((n) => text(n, 60)).filter(Boolean).slice(0, 6);
       const modes = Array.isArray(sn.modes) ? MODES.filter((m) => sn.modes.includes(m)) : [];
       day.snacks = { names, open: sn.open, modes: modes.length ? modes : MODES.slice() };
     }
@@ -281,7 +289,7 @@ function eventPart(ev, site) {
     if (!title || !href) return null;
     const out = { id: `compete:${text(p.id, 160)}`, title, detail: text(p.detail), href, modes: MODES.slice() };
     // Competition sends up to three open issues; Account passes three on (E1).
-    const lines = (Array.isArray(p.lines) ? p.lines : []).map((x) => text(x)).filter(Boolean).slice(0, 3);
+    const lines = (Array.isArray(p.lines) ? p.lines.slice(0, 6) : []).map((x) => text(x)).filter(Boolean).slice(0, 3);
     if (lines.length) out.lines = lines;
     if (p.cta && typeof p.cta === "object") {
       const label = text(p.cta.label, 40), ctaHref = appHref(p.cta.href, site, "compete");
@@ -292,7 +300,7 @@ function eventPart(ev, site) {
   const next = (Array.isArray(ev.next) ? ev.next : []).slice(0, 3).map((m) => {
     if (!m || typeof m !== "object" || !Number.isInteger(m.match) || m.match < 1 || m.match > 999) return null;
     if (m.alliance !== "Red" && m.alliance !== "Blue") return null;
-    const teams = (v) => (Array.isArray(v) ? v.filter(TEAM).slice(0, 3) : []);
+    const teams = (v) => (Array.isArray(v) ? v.slice(0, 6).filter(TEAM).slice(0, 3) : []);
     const at = typeof m.at === "string" && !Number.isNaN(Date.parse(m.at)) ? m.at : "";
     return { match: m.match, at, alliance: m.alliance, with: teams(m.with), against: teams(m.against) };
   }).filter(Boolean);
@@ -316,8 +324,9 @@ export function practicesText(sn, date, today) {
  */
 export function parseToday(json, site, origin) {
   if (!json || typeof json !== "object" || json.v !== 1) return null;
-  const rows = (list) => (Array.isArray(list) ? list : []).map((r) => row(r, site, origin)).filter(Boolean);
-  const activity = (Array.isArray(json.activity) ? json.activity : []).map((a) => {
+  // Every list is cut before it is read (review item 4), so a huge answer cannot hang the page.
+  const rows = (list) => (Array.isArray(list) ? list.slice(0, MAX_ROWS) : []).map((r) => row(r, site, origin)).filter(Boolean);
+  const activity = (Array.isArray(json.activity) ? json.activity.slice(0, 10) : []).map((a) => {
     if (!a || typeof a !== "object") return null;
     const title = text(a.title), href = safeHref(a.href, site, origin);
     if (!title || !href) return null;
@@ -330,7 +339,23 @@ export function parseToday(json, site, origin) {
   return {
     today: mine(all[0]), waiting: mine(all[1]), others: all.flat().filter((r) => r.section === "others"), next: nextTask(json.next, site, origin), activity,
     season: season(json.season), milestones: milestones(json.milestones, site), week: week(json.week, site),
-    coming: coming(json.coming, site), event: eventPart(json.event, site),
+    coming: coming(json.coming, site), event: eventPart(json.event, site), present: present(json),
+  };
+}
+
+/**
+ * Which apps' parts are in this answer (review item 2): only then can a re-read tell whether a write of that app's
+ * went through. Account leaves out an app that did not answer, and sends no field that says so.
+ */
+function present(json) {
+  const ids = [json.today, json.waiting, json.others].flatMap((l) => (Array.isArray(l) ? l.slice(0, MAX_ROWS) : []))
+    .map((r) => (r && typeof r.id === "string" ? r.id : ""));
+  const from = (app) => ids.some((id) => id.startsWith(`${app}:`));
+  return {
+    parts: from("parts"),
+    skills: from("skills"),
+    calendar: from("calendar") || Array.isArray(json.week) || !!(json.season && typeof json.season === "object"),
+    tasks: from("tasks") || !!(json.next && typeof json.next === "object") || Array.isArray(json.milestones),
   };
 }
 
@@ -415,13 +440,63 @@ export function blockedAppName(search) {
 
 // ---------- the network ----------
 
+/** At most this much of an answer is read (bytes); a longer one counts as no answer. */
+export const MAX_BYTES = 262144;
+function header(res, name) {
+  return res && res.headers && typeof res.headers.get === "function" ? res.headers.get(name) || "" : "";
+}
+function isJson(res) {
+  return /^application\/(?:[\w.+-]*\+)?json\b/i.test(header(res, "content-type"));
+}
+/**
+ * A sign-in page or a redirect in place of an answer (review item 1): the requests ask not to follow redirects, so a
+ * redirect comes back as one ("opaqueredirect", or a 3xx); a 200 that is a page and not JSON is the sign-in page.
+ */
+export function isSignedOut(res) {
+  if (!res) return false;
+  if (res.type === "opaqueredirect" || res.redirected === true || (res.status >= 300 && res.status < 400)) return true;
+  return res.status === 200 && /text\/html/i.test(header(res, "content-type"));
+}
+/** The body as text, at most `max` bytes; null when it is longer (or cannot be read). */
+export async function readCapped(res, max = MAX_BYTES) {
+  const len = Number(header(res, "content-length"));
+  if (Number.isFinite(len) && len > max) return null;
+  try {
+    if (res.body && typeof res.body.getReader === "function") {
+      const reader = res.body.getReader();
+      const chunks = [];
+      let n = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        n += value.byteLength;
+        if (n > max) { reader.cancel().catch(() => {}); return null; }
+        chunks.push(value);
+      }
+      const all = new Uint8Array(n);
+      let at = 0;
+      for (const c of chunks) { all.set(c, at); at += c.byteLength; }
+      return new TextDecoder().decode(all);
+    }
+    const t = await res.text();
+    return t.length > max ? null : t;
+  } catch {
+    return null;
+  }
+}
+async function jsonCapped(res, max) {
+  const t = await readCapped(res, max);
+  if (t == null) return undefined;
+  try { return JSON.parse(t); } catch { return undefined; }
+}
+
 async function getJson(path, { timeout = WAIT_MS, fetchImpl = fetch } = {}) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeout);
   try {
-    const res = await fetchImpl(path, { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" }, signal: ctl.signal });
-    if (!res.ok) return undefined;
-    return await res.json();
+    const res = await fetchImpl(path, { credentials: "same-origin", cache: "no-store", redirect: "manual", headers: { Accept: "application/json" }, signal: ctl.signal });
+    if (res.status !== 200 || isSignedOut(res) || !isJson(res)) return undefined;
+    return await jsonCapped(res, MAX_BYTES);
   } catch {
     return undefined;
   } finally {
@@ -435,28 +510,36 @@ export async function fetchToday(site, origin = location.origin, opts) {
   return json === undefined ? null : parseToday(json, site, origin);
 }
 
-/** GET /event.json (Calendar's current event): true when an event is on today (C14). */
-export async function fetchEventDay(opts) {
+/** GET /event.json (Calendar's current event): the answer (for the kit's banner rules), or null. */
+export async function fetchEvent(opts) {
   const json = await getJson("/event.json", opts);
-  return !!(json && typeof json === "object" && json.happeningNow === true);
+  return json && typeof json === "object" ? json : null;
+}
+/** True when /event.json says an event is on today (C14). */
+export async function fetchEventDay(opts) {
+  const json = await fetchEvent(opts);
+  return !!(json && json.happeningNow === true);
 }
 
 /**
- * POST /today/task-done {taskId}. "ok" when Tasks marked it done; "refused" when it may not be done from here (403,
- * 404 or another 4xx); "timeout" when no answer came in time (it may have worked); "failed" on a network error or 5xx.
+ * POST /today/task-done {taskId} (C4). Resolves to { result }: "ok" (204 only); "refused" (403, 404: it may not be
+ * done from here); "signedout" (a redirect or a sign-in page); "uncertain" (any other answer, a network failure or no
+ * answer in time: it may have been saved).
  */
 export async function postTaskDone(taskId, { timeout = WAIT_MS, fetchImpl = fetch } = {}) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeout);
   try {
     const res = await fetchImpl("/today/task-done", {
-      method: "POST", credentials: "same-origin", cache: "no-store", signal: ctl.signal,
+      method: "POST", credentials: "same-origin", cache: "no-store", redirect: "manual", signal: ctl.signal,
       headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ taskId }),
     });
-    if (res.ok) return "ok";
-    return res.status >= 400 && res.status < 500 ? "refused" : "failed";
+    if (isSignedOut(res)) return { result: "signedout" };
+    if (res.status === 204) return { result: "ok" };
+    if (res.status === 403 || res.status === 404) return { result: "refused" };
+    return { result: "uncertain" };
   } catch {
-    return ctl.signal.aborted ? "timeout" : "failed";
+    return { result: "uncertain" };
   } finally {
     clearTimeout(timer);
   }
@@ -467,38 +550,37 @@ const APPROVAL_ID = /^[A-Za-z0-9_-]{1,64}$/;
 /**
  * POST /today/act {app, action, key, reason?, approval?} (CONTRACT H2, P4). Resolves to { result, undoUntil?,
  * approval?, message? }:
- * "ok" (204, or 200; `undoUntil` and `approval` only when the answer carried both, still in time: Undo is offered
- * only then); "changed" (409: someone else already did it; Account may add a plain `message`, which is passed on);
- * "refused" (403); "gone" (404); "reason" (422: a reason is needed); "uncertain" (any 5xx, any other code, a network
- * failure or no answer in time: it may have been saved, so the page must look again before it says anything more).
+ * "ok" (204; or 200 with a JSON body, which is Approve's: `undoUntil` and `approval` only when it carried both, still
+ * in time, and only then is Undo offered); "changed" (409: someone else already did it; Account may add a plain
+ * `message`, which is passed on); "refused" (403); "gone" (404); "reason" (422: a reason is needed); "signedout" (a
+ * redirect or a sign-in page); "uncertain" (any 5xx, any other code, a 200 that is not JSON, a network failure or no
+ * answer in time: it may have been saved, so the page must look again before it says anything more).
  */
 export async function postAct(body, { timeout = WAIT_MS, fetchImpl = fetch } = {}) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeout);
   try {
     const res = await fetchImpl("/today/act", {
-      method: "POST", credentials: "same-origin", cache: "no-store", signal: ctl.signal,
+      method: "POST", credentials: "same-origin", cache: "no-store", redirect: "manual", signal: ctl.signal,
       headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(body),
     });
-    if (res.status === 200 || res.status === 204) {
-      if (res.status === 200) {
-        try {
-          const j = await res.json();
-          if (j && typeof j.undoUntil === "string" && Date.parse(j.undoUntil) > Date.now() && typeof j.approval === "string" && APPROVAL_ID.test(j.approval)) {
-            return { result: "ok", undoUntil: j.undoUntil, approval: j.approval };
-          }
-        } catch { /* no body: nothing to undo */ }
+    if (isSignedOut(res)) return { result: "signedout" };
+    if (res.status === 204) return { result: "ok" };
+    if (res.status === 200) {
+      if (!isJson(res)) return { result: "uncertain" };
+      const j = await jsonCapped(res, 4096);
+      if (!j || typeof j !== "object") return { result: "uncertain" };
+      if (typeof j.undoUntil === "string" && Date.parse(j.undoUntil) > Date.now() && typeof j.approval === "string" && APPROVAL_ID.test(j.approval)) {
+        return { result: "ok", undoUntil: j.undoUntil, approval: j.approval };
       }
       return { result: "ok" };
     }
     const map = { 409: "changed", 403: "refused", 404: "gone", 422: "reason" };
     const result = map[res.status] || "uncertain";
     if (result === "changed") {
-      try {
-        const j = await res.json();
-        const message = j && typeof j.message === "string" ? text(j.message, 200) : "";
-        if (message) return { result, message };
-      } catch { /* no body: the page's own words */ }
+      const j = isJson(res) ? await jsonCapped(res, 4096) : undefined;
+      const message = j && typeof j.message === "string" ? text(j.message, 200) : "";
+      if (message) return { result, message };
     }
     return { result };
   } catch {
