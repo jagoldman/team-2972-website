@@ -8,8 +8,8 @@ build step. Almost all content lives in `js/content.js` (see README).
   Plan: [../MASTER_PLAN.md](../MASTER_PLAN.md) Phase 6 (redesign); Phase 3 is done (its work list, kept for the open
   notes it records: [docs/PHASE3_TASKS.md](docs/PHASE3_TASKS.md))
 - Start a session from [docs/HANDOFF.md](docs/HANDOFF.md). The first-build prompt is in `docs/archive/`.
-- **Public site redesign:** built from `docs/PUBLIC_REDESIGN_PROPOSAL.md` and its approved demo (Midnight & brass, dark only);
-  work packages are separate commits on this branch, not pushed.
+- **Public site (release 8.3, D190):** design 8.2 from `../public-redesign-demo/v8.2/` (white, flag black, bumper blue or
+  red, light only), styled by `css/site.css`. `docs/PUBLIC_REDESIGN_PROPOSAL.md` (Midnight & brass, dark only) is replaced.
 - **Redesign (MASTER_PLAN D101):** this app adopts the `../portal-demo` interface through infra's shell kit
   (`infra/shell/`: tokens and the shared top app bar). UI changes start in the demo; GPT Sol reviews the change (D103).
 
@@ -55,9 +55,13 @@ build step. Almost all content lives in `js/content.js` (see README).
 - Commit `.env`, secrets, or Drive IDs of files that are not shared publicly. Keep the standard
   `.gitignore` block and the gitleaks scan.
 - Treat portal tile filtering as security. Authentik bindings are the real control.
-- Write a colour outside the `--token` blocks at the top of `css/style.css`, or change colours without running
-  `test/theme-test.sh` and `test/public-test.mjs`. The public pages are Midnight & brass, **dark only** (no theme switch, no script,
-  never touch the shared `theme` cookie); they must pass WCAG AA (4.5:1). The portal, install and offline pages keep light, dark and
-  system, and must pass AA in both themes (MASTER_PLAN D56).
+- Write a colour outside the `--token` blocks at the top of `css/site.css` (public pages) or `css/style.css` (portal, install,
+  offline, team-login), or change colours without running `test/theme-test.sh` and `test/public-test.mjs`. The public pages are
+  design 8.2, **light only** (no theme switch, never touch the shared `theme` cookie). Their one head script is the bumper's: it
+  reads `localStorage["2972-alliance"]` and sets `data-alliance` on `<html>`, nothing else; no other script goes in a public
+  page's head. They must pass WCAG AA (4.5:1) with the blue and the red accent. Nothing on them moves except the bumper's
+  colour change. The portal, install and offline pages keep light, dark and system, and must pass AA in both themes (D56).
+- Show a photo with a blurred region (`window.PHOTO_BLUR` in `config.js`, D193) from anywhere but its saved, blurred copy:
+  never from Google, never at its old file name. Change its `v` mark whenever its regions change.
 - Edit `../infra`, `../admin` or `../taskapp` from here. Write down what infra needs and tell the user.
 - Push, or commit without the user's OK.

@@ -1,5 +1,8 @@
 # Public site redesign: proposal and build brief
 
+> **Replaced (D190, release 8.3).** The public site now follows design 8.2 (`../../public-redesign-demo/v8.2/`, light only,
+> `css/site.css`). This file is kept as the record of the Midnight & brass design; do not build from it.
+
 Status: **visual direction approved; built on branch `simple-ui` (local commits, not pushed or deployed)**. Written 2026-11-10; updated
 2026-11-11 after the user chose Midnight & brass and dark mode only. The lead still needs to record the
 production rollout decision before landing application changes. Scope: the public pages only (`index`,

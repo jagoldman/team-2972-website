@@ -1,5 +1,36 @@
 # landing: handoff
 
+## 2026-11-18: release 8.3, the public site in design 8.2 (D190) and the hero blur (D193), branch `r83-site`
+
+The 13 public pages follow `../public-redesign-demo/v8.2/` (`47a6d87`); the brief is `new-apps/briefs/r83/PUBLIC_SITE.md`
+and the work list `new-apps/adoption/r83/GAP_PUBLIC_SITE.md`. `docs/PUBLIC_REDESIGN_PROPOSAL.md` (Midnight & brass) is replaced.
+
+- **Styles:** the public pages load only `css/site.css` (tokens at the top, light only, the red block under them).
+  `css/style.css` is the portal's, install's, offline's and team-login's; its old public block stays, unused, until the
+  portal's owner agrees to remove it. Fonts: Big Shoulders (`--display`) and Libre Franklin; `sw.js` precaches both (v8).
+- **Head:** each public page is `color-scheme light`, `theme-color #ffffff`, and has one head script, the bumper's
+  (reads `localStorage["2972-alliance"]`, sets `data-alliance`). `test/theme-test.cjs` pins its exact text.
+- **`js/components.js`:** new `extLink`, `dash`, `statParts`, `wordmark`, `siteAddress`, `bumperLabel`/`renderBumper`/
+  `swapBumpers`, `robotShot`/`robotMeta`, `siteRequestAccess`, `siteFooter`, `hasPhoto`. Rewritten for the public pages:
+  `renderHeader`, `renderFooter` (its portal branch is unchanged), `renderNextUp` (a table; "Starts tomorrow", "days to go",
+  "The season is over"), `seasonMark`/`seasonLog`/`seasonSummary`/`renderRecord`/`scrollLogToNewest` (banner for a win,
+  22px marks, "No season" years, the record as one sentence), `robotsRow`, `resultRow`/`resultsTable`, `sponsorNames`,
+  `renderTeamTools`, `copyAddress` (keeps its own label), `mountLayout`, `loginLabel` ("Team login"). Removed:
+  `renderCompactFooter`, `seasonStatRow`, `tickerRun`, `initTickers`, `initTimeline`, `timeline*`, `REDUCED_MOTION`.
+  Unchanged for the portal: `renderRequestAccess`, `emailAddress`, `schoolMark`, `siteBase`, `PORTAL_URL`.
+- **Kept sections the demo has no place for**, drawn with the demo's own parts: the robot Photos gallery, awards, photo
+  source; About's How we work; sponsor logos (and links, banners); Join's Team calendar and the three FIRST links;
+  Resources' Code, CAD and the Team Drive with Request access; outreach dates; Media's photo grid and Follow along.
+- **D193, a face blurred at the owner's request in the hero photo:** the one blur table is `window.PHOTO_BLUR` in
+  `config.js` (Drive ID, a version mark `v`, ellipses as fractions of the rotated photo). `scripts/drive-photos/fetch.cjs`
+  reads it (Docker copies `config.js` into the photo stage), blurs the full download before any resize (5x5 blocks, back
+  up, a wide Gaussian, a soft mask fully opaque over the ellipse), and writes `<id>-<v>-<w>.webp`; the link-preview picture
+  is `og-image-b1.jpg`. `imgUrl()` never gives a Google address for a blurred ID; without a saved copy the photo is not
+  shown (`hasPhoto()`), and the build log says `PRIVACY (D193)` loudly. Change `v` whenever the regions change.
+- **Tests:** `test/public-test.mjs` rewritten (see its header); `theme-test`, `season-test`, `legal-test`, `pwa-test`,
+  `install-test`, `site-test.html`, `menu-test.html`, `portal-shell-test.mjs`, `drive-photos-test` and `container-test.sh`
+  updated.
+
 ## 2026-11-14: release 8.1.5, shell kit 0.4.0 (branch `r815`)
 
 From `new-apps/briefs/r815/SYNC_040.md`. The static kit is synced from infra `release-8.1.5` `c0e09bb`
@@ -79,7 +110,7 @@ breaks the head. `og-image-b1.jpg` is made at image build time by `scripts/drive
 `SITE.heroImage` (a Drive photo), framed by `heroPosition`; without it the tag names `pwa-icons/site/icon-512.png`. A hero
 changed only in the editor reaches the preview picture after the content sync and the next image build.
 
-## 2026-11-11: public site redesign built (Midnight & brass, dark only)
+## 2026-11-11: public site redesign built (Midnight & brass, dark only; replaced by design 8.2 in release 8.3, D190)
 
 Built from `docs/PUBLIC_REDESIGN_PROPOSAL.md` and its approved demo (`public-redesign-demo/`) on `simple-ui`, one commit per
 work package, **not pushed or deployed**. Public pages are dark only: `<html data-site="public">` + `<meta name="color-scheme"
@@ -175,11 +206,10 @@ framework. It runs as the `landing` container (static Caddy 2.11.7, port 3001, `
 
 ## 3. Look, themes and accessibility (MASTER_PLAN D56; public redesign 2026-11-11)
 
-- **Public pages: "Midnight & brass", dark only.** Bricolage Grotesque + Inter, self-hosted in `fonts/`. Every colour is a `--token`:
-  the first `:root` block (light-dark, the portal's) and the second `:root[data-site="public"]` block (one fixed dark set). Colours
-  may appear nowhere else. `--gold` fills (with `--on-gold` text); `--accent` is brass as text. Sponsor logos sit on white tiles.
-- Public pages ignore saved light choices and the OS setting by construction (no script). The portal's app bar and the kit own the
-  `theme` cookie; `test/portal-shell-test.mjs` checks that public pages leave it alone.
+- **Public pages: design 8.2, light only (release 8.3, D190).** `css/site.css`: Big Shoulders + Libre Franklin, self-hosted in
+  `fonts/`; every colour is a token at its top (and the red bumper block). The portal keeps `css/style.css` (light-dark tokens).
+- Public pages ignore saved theme choices and the OS setting by construction: their one head script is the bumper colour's. The
+  portal's app bar and the kit own the `theme` cookie; `test/portal-shell-test.mjs` checks that public pages leave it alone.
 - **After touching colours run `test/theme-test.sh` and `LANDING_TEST_NODE_MODULES=... node test/public-test.mjs`.**
 
 ## 4. Installable app (PWA, D61)
