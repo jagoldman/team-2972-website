@@ -10,3 +10,14 @@ window.SITE_ENV = {
   domain: '{{env "SITE_DOMAIN"}}',
   drivePhotos: '{{readFile "img/drive/manifest.json"}}',
 };
+
+// Photos with a region blurred (D193: a face blurred at the owner's request). The one list, read here by
+// js/components.js and at image build time by scripts/drive-photos/fetch.cjs. Keyed by Drive ID:
+//   v         a mark in the saved files' names (<id>-<v>-<w>.webp), so a copy of the photo from before the blur, cached
+//             for a year under the old name, is never asked for again. Change it whenever the regions change.
+//   ellipses  [centre x, centre y, radius x, radius y], fractions of the photo after its EXIF rotation.
+// For these photos the site never falls back to Google: without a saved, blurred copy the photo is not shown at all.
+// (Never two opening braces in a row in this table: Caddy renders this file as a template.)
+window.PHOTO_BLUR = {
+  "1VgoMdevZH3syn0BvQq7QpFz09xrDS_rt": { "v": "b1", "ellipses": [[0.3825, 0.538, 0.0215, 0.034]] }
+};

@@ -13,7 +13,7 @@
 #   Everything else                                  -> the public static site (identity ignored)
 #   /content/content.json, /media/<id>-<w>.webp      -> published content (read-only mounts), any host
 #   /img/drive/<drive id>-<w>.webp                   -> Drive photos saved at image build time (public and direct hosts)
-#   /img/drive/og-image.jpg                          -> the link-preview picture made from the hero photo at build time
+#   /img/drive/og-image-b1.jpg                          -> the link-preview picture made from the hero photo at build time
 #   / and /index.html (public and direct hosts)      -> the home page, rendered as a template so its og: tags carry
 #                                                       full addresses built from SITE_SCHEME and SITE_DOMAIN
 #
@@ -133,7 +133,7 @@
 	}
 	# The link-preview picture keeps its name when the hero photo changes, so it is cached for a day, not a year.
 	@og_image {
-		path /img/drive/og-image.jpg
+		path /img/drive/og-image-b1.jpg
 		file {
 			try_files {http.request.uri.path}
 		}

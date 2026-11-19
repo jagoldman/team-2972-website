@@ -13,6 +13,8 @@ COPY scripts/drive-photos/package.json scripts/drive-photos/package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 COPY scripts/drive-photos/fetch.cjs ./
 COPY js/content.js /build/js/content.js
+# config.js holds the blur table (window.PHOTO_BLUR, D193) the pages read too.
+COPY config.js /build/config.js
 RUN node fetch.cjs /build/js/content.js /out/drive
 
 # Stage 2: the site.

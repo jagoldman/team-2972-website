@@ -48,7 +48,7 @@ onContent(() => {
     : `<p class="empty-note"${ck("MEDIA_PUBLICITY")}>No press coverage listed yet.</p>`;
   // Photos: the team's uploads (MEDIA_PHOTOS) in a grid, each opening the large copy in a new tab.
   const photos = MEDIA_PHOTOS.length
-    ? `<div class="pics" id="photo-grid"${ck("MEDIA_PHOTOS")}>${MEDIA_PHOTOS.map((src, i) => `<a class="shot r43" href="${esc(imgUrl(src, 1600))}" target="_blank" rel="noopener"${ck(`MEDIA_PHOTOS[${i}]`)}><img${imgSized(src, [400, 800], "(min-width: 900px) 220px, 50vw")}${ck(`MEDIA_PHOTOS[${i}]`)} alt="${esc(altFor(src, "Team photo"))}" loading="lazy" width="600" height="450" /><span class="vh"> (opens in a new tab)</span></a>`).join("")}</div>`
+    ? `<div class="pics" id="photo-grid"${ck("MEDIA_PHOTOS")}>${MEDIA_PHOTOS.map((src, i) => ({ src, i })).filter(({ src }) => hasPhoto(src)).map(({ src, i }) => `<a class="shot r43" href="${esc(imgUrl(src, 1600))}" target="_blank" rel="noopener"${ck(`MEDIA_PHOTOS[${i}]`)}><img${imgSized(src, [400, 800], "(min-width: 900px) 220px, 50vw")}${ck(`MEDIA_PHOTOS[${i}]`)} alt="${esc(altFor(src, "Team photo"))}" loading="lazy" width="600" height="450" /><span class="vh"> (opens in a new tab)</span></a>`).join("")}</div>`
     : `<div id="photo-grid"${ck("MEDIA_PHOTOS")}><p class="empty-note">Photo gallery coming soon.</p></div>`;
   const instagram = extLink(SITE.instagram, `Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span>`, ' class="textlink" id="ig-link" data-ck-href="SITE.instagram"');
   document.getElementById("media-page").innerHTML = `

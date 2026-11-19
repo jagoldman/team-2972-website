@@ -36,7 +36,7 @@ onContent(() => {
   const built = [];
   HISTORY.milestones.forEach((m, i) => (m.items || []).forEach((it, j) => { if (it.kind === "team") built.push({ i, j, m, it }); }));
   built.sort((a, b) => Number(b.m.year) - Number(a.m.year));
-  const stands = today.image
+  const stands = hasPhoto(today.image)
     ? `<div class="s6"><span class="shot r32"><img${imgSized(today.image, [400, 800, 1600], "(min-width: 900px) 50vw, 100vw")}${ck("HISTORY.today.image")}${ckAlt("HISTORY.today.imageAlt")} alt="${esc(altFor(today.image, today.imageAlt || today.heading))}" width="1000" height="666"></span></div>` : "";
   const packet = safeUrl(contentGet("SPONSOR_PACKET_URL"));
 
@@ -49,7 +49,7 @@ onContent(() => {
     const floor = show && shown++ % 2 === 1;
     return `<section class="band${floor ? " band-floor" : ""}"${show ? "" : " hidden"}${ck(`SPONSOR_TIERS[${i}]`)}><div class="wrap">
       <h2${ck(`SPONSOR_TIERS[${i}].tier`)}>${esc(tier.tier.replace(/Sponsors/, "sponsors"))}</h2>
-      ${tier.banner ? `<img class="tier-banner"${imgSized(tier.banner, [400, 800, 1600], "(min-width: 1240px) 1200px, 100vw")}${ck(`SPONSOR_TIERS[${i}].banner`)} alt="${esc(altFor(tier.banner, tier.tier + " banner"))}" loading="lazy" />` : ""}
+      ${hasPhoto(tier.banner) ? `<img class="tier-banner"${imgSized(tier.banner, [400, 800, 1600], "(min-width: 1240px) 1200px, 100vw")}${ck(`SPONSOR_TIERS[${i}].banner`)} alt="${esc(altFor(tier.banner, tier.tier + " banner"))}" loading="lazy" />` : ""}
       <div class="tier-names">${sponsorNames(tier, i)}</div></div></section>`;
   }).join("");
 

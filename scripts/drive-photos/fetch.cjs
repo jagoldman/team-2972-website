@@ -8,11 +8,16 @@
 //    https://lh3.googleusercontent.com/d/<ID> URL). Keep DRIVE_ID / DRIVE_URL in step with imgUrl().
 // 2. Downloads each one once from lh3 at the largest width, then writes <out>/<id>-<w>.webp for every width
 //    in WIDTHS (never enlarged; EXIF rotation applied, then all metadata dropped).
+//    A photo in the blur table (window.PHOTO_BLUR in config.js, the one list the pages read too; D193, a face blurred
+//    at the owner's request) has its regions blurred first, on the full downloaded picture before any resize, so every
+//    width and the link-preview picture carry the blur. Its files are named <id>-<v>-<w>.webp (v from the table), so
+//    a copy cached under the old name is never asked for again. If it cannot be saved, the build log says so loudly:
+//    the page then shows no photo there, never the original from Google.
 // 3. Writes <out>/manifest.json: { "<id>": [400, 800, 1200, 1600], ... } for the photos that worked.
 //    Caddy pastes it into /config.js, and imgUrl() uses a local file only when the manifest lists it.
-// 4. Writes <out>/og-image.jpg: SITE.heroImage cut to 1200x630 (the link-preview size), framed by SITE.heroPosition as
+// 4. Writes <out>/og-image-b1.jpg: SITE.heroImage cut to 1200x630 (the link-preview size), framed by SITE.heroPosition as
 //    the page frames it. index.html names it in its og:image tag (Caddy renders that tag with the site's address).
-//    No hero photo, or one that failed: no og-image.jpg, and the page's tag falls back to the site's app icon.
+//    No hero photo, or one that failed: no og-image-b1.jpg, and the page's tag falls back to the site's app icon.
 //
 // A photo that cannot be downloaded or read (not shared publicly, deleted, network down) is left out with a
 // warning, and the page loads it from lh3 as before. Only a bug in this script fails the build.
@@ -28,6 +33,52 @@ const ATTEMPTS = 3;
 const PARALLEL = 4;
 const MAX_BYTES = 40 * 1024 * 1024;
 const BASE_URL = process.env.DRIVE_BASE_URL || "https://lh3.googleusercontent.com/d/";   // tests point this at a local server
+
+// The blur table: window.PHOTO_BLUR in config.js (the site root, or /build in the Docker stage). BLUR_CONFIG overrides
+// the file (tests).
+function blurTable(configFile = process.env.BLUR_CONFIG || path.join(__dirname, "..", "..", "config.js")) {
+  const ctx = { window: {} };
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(configFile, "utf8"), ctx, { timeout: 2000 });
+  const t = ctx.window.PHOTO_BLUR;
+  if (!t || typeof t !== "object") throw new Error(`no PHOTO_BLUR table in ${configFile}`);
+  for (const [id, b] of Object.entries(t)) {
+    const ok = /^[\w-]{20,}$/.test(id) && b && /^[a-z0-9]{1,8}$/.test(b.v) && Array.isArray(b.ellipses) && b.ellipses.length &&
+      b.ellipses.every((e) => Array.isArray(e) && e.length === 4 && e.every((n) => typeof n === "number" && n > 0 && n < 1));
+    if (!ok) throw new Error(`bad PHOTO_BLUR entry for ${id}`);
+  }
+  return JSON.parse(JSON.stringify(t));
+}
+// The name of one saved width: <id>-<w>.webp, or <id>-<v>-<w>.webp for a blurred photo (the same rule as imgUrl()).
+function fileName(id, w, blur = {}) {
+  const b = Object.prototype.hasOwnProperty.call(blur, id) ? blur[id] : null;
+  return b ? `${id}-${b.v}-${w}.webp` : `${id}-${w}.webp`;
+}
+
+// Blurs each ellipse of a picture so it cannot be undone: the region is shrunk to 5x5 blocks, enlarged back, smeared
+// with a wide Gaussian, and laid in through a soft-edged elliptical mask a little larger than the ellipse. Takes and
+// returns an image buffer (the input already rotated); returns PNG (lossless, so the next steps start from it).
+async function blurRegions(sharp, input, ellipses) {
+  let img = await sharp(input).png().toBuffer();
+  const { width: W, height: H } = await sharp(img).metadata();
+  for (const [fx, fy, frx, fry] of ellipses) {
+    const c = { x: Math.round(fx * W), y: Math.round(fy * H), rx: Math.max(2, Math.round(frx * W)), ry: Math.max(2, Math.round(fry * H)) };
+    // The box around the ellipse; the mask is fully opaque over the whole ellipse (its edge sits 2.4 sigma outside it)
+    // and fades out before the box ends, so no part of the face shows through and no hard edge is drawn.
+    const pad = Math.max(3, Math.round(c.rx * 0.8));
+    const left = Math.max(0, c.x - c.rx - pad), top = Math.max(0, c.y - c.ry - pad);
+    const w = Math.min(W, c.x + c.rx + pad) - left, h = Math.min(H, c.y + c.ry + pad) - top;
+    if (w < 4 || h < 4) throw new Error("blur region outside the photo");
+    const region = sharp(img).extract({ left, top, width: w, height: h });
+    const tiny = await region.resize({ width: 5, height: 5, fit: "fill", kernel: "cubic" }).toBuffer();
+    const smear = await sharp(tiny).resize({ width: w, height: h, fit: "fill", kernel: "cubic" }).blur(Math.max(4, c.rx / 3)).png().toBuffer();
+    const mask = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><filter id="f" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="${pad / 6}"/></filter></defs>` +
+      `<ellipse cx="${c.x - left}" cy="${c.y - top}" rx="${c.rx + 0.4 * pad}" ry="${c.ry + 0.4 * pad}" fill="#fff" filter="url(#f)"/></svg>`);
+    const patch = await sharp(smear).ensureAlpha().composite([{ input: mask, blend: "dest-in" }]).png().toBuffer();
+    img = await sharp(img).composite([{ input: patch, left, top }]).png().toBuffer();
+  }
+  return img;
+}
 
 const DRIVE_ID = /^[\w-]{20,}$/;
 const DRIVE_URL = /^https:\/\/lh3\.googleusercontent\.com\/d\/([\w-]+)/;
@@ -62,7 +113,9 @@ function driveIdsIn(sections) {
 }
 
 // The link-preview picture: 1200x630, the size Facebook, LinkedIn and others ask for.
-const OG = { width: 1200, height: 630, file: "og-image.jpg" };
+// Its name changed with the D193 blur ("og-image.jpg" before), so a link-preview service that kept the old picture by
+// its address fetches the blurred one.
+const OG = { width: 1200, height: 630, file: "og-image-b1.jpg" };
 // A CSS object-position ("50% 100%", "center top", "right") as fractions { x, y } from 0 to 1; the middle when unset or
 // not understood. The same values safePosition() in js/components.js accepts.
 function focusOf(position) {
@@ -109,12 +162,15 @@ async function download(id) {
   throw last;
 }
 
-// Writes every width of one photo; returns the widths written. Throws if the photo cannot be used.
-async function convert(sharp, id, buf, outDir) {
+// Writes every width of one photo; returns the widths written. Throws if the photo cannot be used. A photo in the blur
+// table is rotated and blurred once, on the full picture, and every width is made from that.
+async function convert(sharp, id, buf, outDir, blur = {}) {
   const done = [];
+  const b = Object.prototype.hasOwnProperty.call(blur, id) ? blur[id] : null;
+  const source = b ? await blurRegions(sharp, await sharp(buf, { failOn: "error" }).rotate().png().toBuffer(), b.ellipses) : buf;
   for (const w of WIDTHS) {
-    const file = path.join(outDir, `${id}-${w}.webp`);
-    await sharp(buf, { failOn: "error" }).rotate().resize({ width: w, withoutEnlargement: true })
+    const file = path.join(outDir, fileName(id, w, blur));
+    await sharp(source, { failOn: "error" }).rotate().resize({ width: w, withoutEnlargement: true })
       .webp({ quality: QUALITY, effort: 5 }).toFile(`${file}.tmp`);
     fs.renameSync(`${file}.tmp`, file);
     done.push(w);
@@ -122,7 +178,7 @@ async function convert(sharp, id, buf, outDir) {
   return done;
 }
 
-async function run(contentFile, outDir, log = console) {
+async function run(contentFile, outDir, log = console, blur = blurTable()) {
   const sharp = require("sharp");
   sharp.cache(false);
   const sections = contentOf(fs.readFileSync(contentFile, "utf8"));
@@ -134,12 +190,14 @@ async function run(contentFile, outDir, log = console) {
     while (next < ids.length) {
       const id = ids[next++];
       try {
-        manifest[id] = await convert(sharp, id, await download(id), outDir);
-        bytes += manifest[id].reduce((n, w) => n + fs.statSync(path.join(outDir, `${id}-${w}.webp`)).size, 0);
+        manifest[id] = await convert(sharp, id, await download(id), outDir, blur);
+        bytes += manifest[id].reduce((n, w) => n + fs.statSync(path.join(outDir, fileName(id, w, blur))).size, 0);
+        if (blur[id]) log.log(`drive photos: ${id} saved with ${blur[id].ellipses.length} region(s) blurred (D193), as ${fileName(id, "<w>", blur)}`);
       } catch (e) {
         delete manifest[id];
-        for (const w of WIDTHS) fs.rmSync(path.join(outDir, `${id}-${w}.webp`), { force: true });
-        log.warn(`warning: Drive photo ${id} left out, the site will load it from lh3: ${e.message}`);
+        for (const w of WIDTHS) { fs.rmSync(path.join(outDir, `${id}-${w}.webp`), { force: true }); fs.rmSync(path.join(outDir, fileName(id, w, blur)), { force: true }); }
+        if (blur[id]) log.warn(`\n!!!!!!!! PRIVACY (D193): photo ${id} must be shown blurred and could not be saved: ${e.message}\n!!!!!!!! The site will show NO photo in its place (never the original from Google). Fix this and rebuild.\n`);
+        else log.warn(`warning: Drive photo ${id} left out, the site will load it from lh3: ${e.message}`);
       }
     }
   };
@@ -154,7 +212,7 @@ async function run(contentFile, outDir, log = console) {
   fs.rmSync(path.join(outDir, OG.file), { force: true });
   if (hero && sorted[hero]) {
     try {
-      await writeOgImage(sharp, path.join(outDir, `${hero}-${sorted[hero][sorted[hero].length - 1]}.webp`), site.heroPosition, outDir);
+      await writeOgImage(sharp, path.join(outDir, fileName(hero, sorted[hero][sorted[hero].length - 1], blur)), site.heroPosition, outDir);
       log.log(`link-preview picture: ${OG.file} from the hero photo`);
     } catch (e) {
       fs.rmSync(path.join(outDir, `${OG.file}.tmp`), { force: true });
@@ -166,7 +224,7 @@ async function run(contentFile, outDir, log = console) {
   return sorted;
 }
 
-module.exports = { WIDTHS, OG, driveId, extractDriveIds, focusOf, run };
+module.exports = { WIDTHS, OG, driveId, extractDriveIds, focusOf, blurTable, blurRegions, fileName, run };
 
 if (require.main === module) {
   const root = path.join(__dirname, "..", "..");

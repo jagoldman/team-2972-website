@@ -75,7 +75,7 @@ New content keys are listed in `docs/CONTENT_EDITING.md`.
 **Link previews:** Caddy renders `index.html` as a template on the public and direct hosts (`home_page` in
 `container/Caddyfile`, `Cache-Control: no-cache`), so its `og:` tags carry full addresses built from `SITE_SCHEME` and
 `SITE_DOMAIN`. Keep every `{{...}}` inside an attribute value (test/drive-photos-test.cjs checks), or a plain local server
-breaks the head. `og-image.jpg` is made at image build time by `scripts/drive-photos/fetch.cjs` from the built-in
+breaks the head. `og-image-b1.jpg` is made at image build time by `scripts/drive-photos/fetch.cjs` from the built-in
 `SITE.heroImage` (a Drive photo), framed by `heroPosition`; without it the tag names `pwa-icons/site/icon-512.png`. A hero
 changed only in the editor reaches the preview picture after the content sync and the next image build.
 

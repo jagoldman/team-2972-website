@@ -47,9 +47,9 @@ function passes(r, f) {
 function robotItem(r, i) {
   const P = `ROBOTS[${i}]`;
   const meta = robotMeta(r, i, { status: true, line: "stats" });
-  if (r.image) return `<li${ck(P)}><a class="robot-a" href="${robotUrl(r)}">${robotShot(r, i, GALLERY_SIZES)}${meta}</a></li>`;
+  if (hasPhoto(r.image)) return `<li${ck(P)}><a class="robot-a" href="${robotUrl(r)}">${robotShot(r, i, GALLERY_SIZES)}${meta}</a></li>`;
   const wanted = `mailto:${esc(SITE.email)}?subject=${encodeURIComponent(`Photo of the ${r.year} robot`)}`;
-  return `<li${ck(P)}><a class="shot r43" href="${wanted}" aria-label="Photo wanted: send us a photo of the ${esc(r.year)} robot"${ck(`${P}.image`, "image")}><span class="ph"><b data-ck-ignore>${esc(r.year)}</b><span>Photo wanted</span></span></a>` +
+  return `<li${ck(P)}><a class="shot r43" href="${wanted}" aria-label="Photo wanted: send us a photo of the ${esc(r.year)} robot"${ck(`${P}.image`, "image")}><span class="ph"><b data-ck-ignore aria-hidden="true">${esc(r.year)}</b><span>Photo wanted</span></span></a>` +
     `<a class="robot-a" href="${robotUrl(r)}">${meta}</a></li>`;
 }
 

@@ -60,7 +60,7 @@ function renderYear() {
 
 // The photo beside the text (SITE.memberImage). Without one the text keeps the full width.
 onContent(() => {
-  const src = SITE.memberImage;
+  const src = hasPhoto(SITE.memberImage) ? SITE.memberImage : "";
   const pic = document.getElementById("member-pic");
   document.getElementById("member-split").classList.toggle("no-pic", !src);
   pic.hidden = !src;

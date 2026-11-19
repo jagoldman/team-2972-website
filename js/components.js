@@ -181,6 +181,21 @@ const DRIVE_PHOTOS = (() => {
     return {};
   }
 })();
+// Photos with a blurred region (window.PHOTO_BLUR in config.js, the one list the image build reads too; D193, a face
+// blurred at the owner's request). Their saved files are named <id>-<v>-<w>.webp, and they are never loaded from Google:
+// with no saved copy listed in the manifest (a failed download, a local preview) imgUrl() gives "" and the page shows
+// what it shows for a missing photo. hasPhoto() says whether a photo value can be shown.
+const PHOTO_BLUR = (() => {
+  const t = window.PHOTO_BLUR;
+  return t && typeof t === "object" && !Array.isArray(t) ? t : {};
+})();
+function blurOf(id) {
+  const b = Object.prototype.hasOwnProperty.call(PHOTO_BLUR, id) ? PHOTO_BLUR[id] : null;
+  return b && /^[a-z0-9]{1,8}$/.test(String(b.v)) ? b : b ? { v: "" } : null;
+}
+function hasPhoto(src) {
+  return Boolean(String(src || "").trim()) && imgUrl(src, MEDIA_WIDTHS[0]) !== "";
+}
 function imgUrl(src, width) {
   const s = String(src || "").trim();
   const media = s.match(MEDIA_REF);
@@ -193,6 +208,13 @@ function imgUrl(src, width) {
   const id = /^[\w-]{20,}$/.test(s) ? s : (s.match(/^https:\/\/lh3\.googleusercontent\.com\/d\/([\w-]+)/) || [])[1];
   if (!id) return safeUrl(s);
   const saved = Object.prototype.hasOwnProperty.call(DRIVE_PHOTOS, id) && Array.isArray(DRIVE_PHOTOS[id]) ? DRIVE_PHOTOS[id] : [];
+  const blur = blurOf(id);
+  if (blur) {
+    // A blurred photo: the saved copy at the width asked for, or the largest saved (a "full size" link), never Google.
+    const have = saved.filter((x) => Number.isInteger(x) && x > 0);
+    const bw = have.find((x) => x >= width) || have[have.length - 1];
+    return bw && blur.v ? `/img/drive/${id}-${blur.v}-${bw}.webp` : "";
+  }
   const w = saved.find((x) => Number.isInteger(x) && x >= width);
   return w ? `/img/drive/${id}-${w}.webp` : `https://lh3.googleusercontent.com/d/${id}=w${width}`;
 }
@@ -222,7 +244,7 @@ function altFor(src, fallback) {
 //   `<img${imgSized(r.image, [400, 800], "(min-width: 1024px) 300px, 50vw")} alt="…">`
 function imgSized(src, widths, sizes) {
   const media = imgSrcset(src);
-  const urls = [...new Set(widths.map((w) => imgUrl(src, w)))];
+  const urls = [...new Set(widths.map((w) => imgUrl(src, w)).filter(Boolean))];
   const sized = urls.map((u) => [u, Number((u.match(/-(\d+)\.webp$/) || u.match(/=w(\d+)$/) || [])[1])]).filter(([, w]) => w > 0);
   const set = media || (sized.length > 1 ? sized.map(([u, w]) => `${esc(u)} ${w}w`).join(", ") : "");
   return ` src="${esc(imgUrl(src, widths[0]))}"${set ? ` srcset="${set}" sizes="${esc(sizes)}"` : ""}`;
@@ -565,7 +587,7 @@ function scrollLogToNewest(root = document, { unlessMoved = false } = {}) {
 // A robot's photo in its 4:3 frame, or, with no photo, a grey "Photo wanted" tile with the year large.
 function robotShot(r, i, sizes, { lazy = true } = {}) {
   const P = `ROBOTS[${i}]`;
-  if (!r.image) return `<span class="shot r43"${ck(`${P}.image`, "image")}><span class="ph"><b data-ck-ignore>${esc(r.year)}</b><span>Photo wanted</span></span></span>`;
+  if (!hasPhoto(r.image)) return `<span class="shot r43"${ck(`${P}.image`, "image")}><span class="ph"><b data-ck-ignore aria-hidden="true">${esc(r.year)}</b><span>Photo wanted</span></span></span>`;
   return `<span class="shot r43"><img${imgSized(r.image, [400, 800, 1600], sizes)}${imgPos(r)}${ck(`${P}.image`)} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}"${lazy ? ' loading="lazy"' : ""} width="1000" height="750"></span>`;
 }
 // The words under a robot's photo: year and game, name, then one line: the tagline (or, with { line: "stats" } as on the
