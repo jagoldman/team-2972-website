@@ -1009,6 +1009,10 @@ function mountLayout() {
     header.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && header.classList.contains("open")) { setOpen(false); toggle.focus(); }
     });
+    // Focus that moves out of the header (Tab past the last link, or into the page) closes the menu.
+    header.addEventListener("focusout", (e) => {
+      if (header.classList.contains("open") && e.relatedTarget && !header.contains(e.relatedTarget)) setOpen(false);
+    });
   }
 
   // The installable app: register the service worker, and clear what it stored when someone signs out.

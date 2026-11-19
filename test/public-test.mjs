@@ -649,8 +649,11 @@ try {
     const ring = () => page.evaluate(() => { const s = getComputedStyle(document.activeElement); return s.outlineStyle !== "none" && parseFloat(s.outlineWidth) >= 2; });
     await open(page, "/about.html");
     const seen = [];
+    await page.keyboard.press("Tab");
+    const skip = await page.evaluate(() => { const e = document.activeElement; return { cls: e.className, text: e.textContent, href: e.getAttribute("href"), top: e.getBoundingClientRect().top }; });
+    check("keyboard: the first Tab reaches the skip link, shown on screen", skip.cls === "skip" && skip.text === "Skip to the page" && skip.href === "#about-page" && skip.top >= 0, skip);
     for (let i = 0; i < 9; i++) { await page.keyboard.press("Tab"); seen.push(await focused()); if (i < 8) check(`header keyboard: "${seen[i]}" shows a focus ring`, await ring()); }
-    check("header keyboard: skip-free order: Dawson School, the team brand, Robots, About, Sponsors, Join, Resources, Team login", /Dawson School/.test(seen[0]) && /2972/.test(seen[1]) && seen[2].endsWith("Robots") && seen[3].endsWith("About") && seen[4].endsWith("Sponsors") && seen[5].endsWith("Join") && seen[6].endsWith("Resources") && /Team login/.test(seen[7]), seen);
+    check("header keyboard: after the skip link: Dawson School, the team brand, Robots, About, Sponsors, Join, Resources, Team login", /Dawson School/.test(seen[0]) && /2972/.test(seen[1]) && seen[2].endsWith("Robots") && seen[3].endsWith("About") && seen[4].endsWith("Sponsors") && seen[5].endsWith("Join") && seen[6].endsWith("Resources") && /Team login/.test(seen[7]), seen);
     check("header keyboard: the current page is marked (aria-current)", await page.evaluate(() => document.querySelector('.nav a[aria-current="page"]').textContent.trim()) === "About");
     // Robots filters: the count and the list follow
     await open(page, "/robots.html");
@@ -698,6 +701,49 @@ try {
     await page.click(".addr-big [data-copy]");
     check("Contact: Copy address says Copied", /^(Copied|Selected)$/.test(await page.textContent(".addr-big [data-copy]")));
     await page.close(); await context.close();
+  }
+  // The skip link on every page: the first thing Tab reaches, and Enter puts focus on the main landmark.
+  {
+    const { context } = await newContext(browser, { width: 1440 });
+    const page = await context.newPage();
+    const bad = [];
+    for (const [name, path] of PAGES) {
+      await open(page, path);
+      await page.keyboard.press("Tab");
+      const first = await page.evaluate(() => { const e = document.activeElement; return { skip: e.classList.contains("skip"), href: e.getAttribute("href"), firstFocusable: document.querySelector("a[href], button, input, [tabindex]") === e }; });
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(100);
+      const after = await page.evaluate(() => { const e = document.activeElement; return { main: e.tagName === "MAIN", id: e.id }; });
+      if (!first.skip || !first.firstFocusable || !after.main || `#${after.id}` !== first.href) bad.push(`${name}: ${JSON.stringify({ first, after })}`);
+    }
+    check("every page: the skip link is the first focusable element and goes to the main landmark", bad.length === 0, bad.slice(0, 3));
+    await context.close();
+  }
+  // The open phone menu on a short screen scrolls inside the screen; focus leaving the header closes it.
+  {
+    const context = await browser.newContext({ viewport: { width: 390, height: 420 } });
+    await context.route("**/*", async (route) => {
+      const url = new URL(route.request().url());
+      if (url.host !== "landing.test") return route.abort();
+      if (url.pathname === "/config.js") return route.fulfill({ contentType: "text/javascript", body: CONFIG });
+      if (/^\/(content|media|img)\//.test(url.pathname)) return route.fulfill({ status: 404, body: "" });
+      const p = url.pathname === "/" ? "/index.html" : decodeURIComponent(url.pathname);
+      const file = normalize(join(root, p));
+      if (!file.startsWith(root) || !existsSync(file)) return route.fulfill({ status: 404, body: "" });
+      return route.fulfill({ contentType: TYPES[extname(file)] || "application/octet-stream", body: readFileSync(file) });
+    });
+    const page = await context.newPage();
+    await open(page, "/about.html");
+    await page.click("#menuBtn");
+    const m = await page.evaluate(() => { const n = document.querySelector(".nav"), r = n.getBoundingClientRect(); return { bottom: Math.round(r.bottom), vh: innerHeight, scroll: n.scrollHeight > n.clientHeight, over: n.scrollHeight }; });
+    check("phone menu on a 390x420 screen: it ends inside the screen and scrolls within itself", m.bottom <= m.vh && m.scroll, m);
+    await page.focus(".nav-login");
+    const login = await page.evaluate(() => { const r = document.activeElement.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), vh: innerHeight }; });
+    check("phone menu on a short screen: its last item (Team login) can be reached and is shown on screen", login.top >= 0 && login.bottom <= login.vh, login);
+    await page.keyboard.press("Tab");
+    const out = await page.evaluate(() => ({ expanded: document.getElementById("menuBtn").getAttribute("aria-expanded"), open: document.querySelector(".hdr").classList.contains("open"), inHeader: !!document.activeElement.closest(".hdr") }));
+    check("phone menu: Tab past its last item (focus leaves the header) closes it", out.expanded === "false" && !out.open && !out.inHeader, out);
+    await context.close();
   }
   // the phone menu from the keyboard
   {

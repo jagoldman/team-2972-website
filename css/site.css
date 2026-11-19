@@ -56,6 +56,7 @@ button { cursor: pointer; }
 .vh { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .skip { position: absolute; left: 12px; top: -60px; z-index: 100; padding: 10px 14px; background: var(--ink); color: var(--paper); font-weight: 600; }
 .skip:focus { top: 12px; }
+main:focus { outline: none; }
 
 /* ---------- type ---------- */
 .display, h1, h2 { font-family: var(--display); font-weight: 900; letter-spacing: .002em; text-wrap: balance; }
@@ -113,6 +114,8 @@ h1:focus { outline: none; }
   .brand-t { display: none; }
   .nav { display: none; flex-basis: 100%; flex-direction: column; align-items: stretch; gap: 0; padding-bottom: 16px; }
   .hdr.open .nav { display: flex; }
+  /* On a short screen the open menu scrolls inside the screen (the bar is about 63px tall). */
+  .hdr.open .nav { max-height: calc(100vh - 64px); max-height: calc(100dvh - 64px); overflow-y: auto; overscroll-behavior: contain; }
   .nav-a { padding: 13px 2px; border-bottom: 1px solid var(--rule); margin: 0; }
   .nav-a[aria-current="page"] { border-bottom: 3px solid var(--accent); }
   .nav .btn { margin: 16px 0 0; }
