@@ -232,7 +232,9 @@ onContent(async () => {
     } else {
       mainEl.replaceChildren(...placed.main);
       leadEl.replaceChildren(...placed.side);
-      sideEl.append(appsEl, guideEl);
+      // On an event day Apps lead the side column (the demo's .evday .appscard), then a parent's Can you help?.
+      if (placed.eventDay) sideEl.prepend(appsEl); else sideEl.insertBefore(appsEl, guideEl);
+      sideEl.append(guideEl);
     }
   }
   // Focus survives a redraw (review item 7): the same control of the same row, else that row's section heading.

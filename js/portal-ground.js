@@ -824,6 +824,13 @@ export function drawHome(data, o) {
       box.id = "home-shift";
       box.append(rowList(shifts, { acts, filled }));
       box.querySelector(".nowrow")?.classList.add("nowfirst");
+      // The demo's shift card starts with the day and the time now ("Thu, Nov 19, now 9:15 am"), from this device's clock.
+      const firstLink = box.querySelector(".nowrow.nowfirst .rowlink");
+      if (firstLink && /^compete:shift-now:/.test(shifts[0].id)) {
+        const now = o.now ? new Date(o.now) : new Date();
+        const t = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).replace(/\s?([AP])M$/, (_, x) => ` ${x.toLowerCase()}m`);
+        firstLink.prepend(el("span", "shiftwhen", `${fmtDay(todayIso(now))}, now ${t}`));
+      }
       const first = box.querySelector(".nowrow .nowbtn");
       if (first && !first.classList.contains("shell-btn--primary") && filled()) first.classList.add("shell-btn--primary");
       main.push(box);

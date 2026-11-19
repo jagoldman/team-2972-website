@@ -861,6 +861,8 @@ try {
     const h = await homeState(page);
     const bar = await page.$$eval("#site-header .shbar-bannerbtn, #site-header .shell-btn--primary", (bs) => bs.filter((b) => b.getClientRects().length && !b.closest("[hidden]")).map((b) => b.textContent.trim()));
     check("an event on today in Build mode: the banner's Switch to Competition is the one filled button; Home fills none (not the shift's)", h.filled.length === 0 && bar.join() === "Switch to Competition", { home: h.filled, bar });
+    const when = await page.textContent("#home-shift .shiftwhen").catch(() => "");
+    check("my shift starts with the day and the time now, as the demo's shift card", /^\w{3}, \w{3} \d+, now \d+:\d{2} [ap]m$/.test(when), when);
     await shot(page, "review8-banner-1280");
     await context.close();
   }
@@ -871,6 +873,8 @@ try {
     const { page, errors } = await openPortal(context);
     await settle(page);
     const h = await homeState(page);
+    const sideOrder = await page.$$eval("#home-side > *, #home-side-lead > *", (els) => els.filter((e) => e.getClientRects().length && e.id).map((e) => e.id));
+    check("a parent on an event day: Apps lead the side column, then Can you help? (the demo's)", sideOrder.indexOf("apps") > -1 && sideOrder.indexOf("apps") < sideOrder.indexOf("home-help"), sideOrder);
     check("a parent on an event day: season line, Can you help?, Coming up; no This week and no guide", h.top === "season simple" && !h.main.includes("home-week") && h.side.includes("home-help") && h.main.includes("home-coming") && h.guideHidden && errors.length === 0, h);
     await context.close();
   }
