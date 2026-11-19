@@ -37,8 +37,8 @@ onContent(() => {
     const P = `OUTREACH_EVENTS[${i}]`;
     const annual = e.date === "Annual";
     return `<div${ck(P)}>
-      ${hasPhoto(e.image) ? `<span class="shot r32"><img${imgSized(e.image, [400, 800, 1600], "(min-width: 720px) 50vw, 100vw")}${ck(`${P}.image`)}${ckAlt(`${P}.name`)} alt="${esc(altFor(e.image, e.name + ", Team " + SITE.teamNumber + " outreach"))}" loading="lazy" width="800" height="534" /></span>` : ""}
-      ${e.date && !annual ? `<p class="when-line"${ck(`${P}.date`)}>${esc(e.date)}</p>` : ""}
+      ${hasPhoto(e.image) ? `<span class="shot r32"><img${imgSized(e.image, [400, 800, 1600], "(min-width: 720px) 50vw, 100vw")}${ck(`${P}.image`)}${ckAlt(`${P}.name`)} alt="${esc(altFor(e.image, e.name + ", Team " + SITE.teamNumber + " outreach"))}" loading="lazy" width="800" height="534" /></span>` : editorPhotoSpot(`${P}.image`, "Photo not shown: set or replace it", "r32")}
+      ${e.date && !annual ? `<p class="when-line"${ck(`${P}.date`)}>${esc(e.date)}</p>` : !e.date && inEditorPreview() ? `<p class="when-line editor-empty"${ck(`${P}.date`)}>No date set</p>` : ""}
       <h2${ck(`${P}.name`)}>${esc(e.name)}</h2>
       <p><span${ck(`${P}.description`, "rich")}>${rich(e.description)}</span>${annual ? ` <span${ck(`${P}.date`)}>Every year.</span>` : ""}</p>
     </div>`;

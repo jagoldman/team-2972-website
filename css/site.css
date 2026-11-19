@@ -467,3 +467,9 @@ a.tabbtn { text-decoration: none; }
 .ftr-legal a { display: inline-flex; align-items: center; min-height: 44px; }
 /* The header is drawn inside <div id="site-header">: the wrapper is what sticks (a sticky child only sticks within it). */
 #site-header { position: sticky; top: 0; z-index: 50; }
+/* The Website editor's preview only: a spot for a photo field with nothing to show, and an unset date (editorPhotoSpot) */
+.editor-photo { display: grid; place-content: center; width: 100%; aspect-ratio: 4 / 3; padding: 16px; background: var(--floor); color: var(--mute); font-weight: 600; text-align: center; }
+.editor-photo.r11 { aspect-ratio: 1; } .editor-photo.r32 { aspect-ratio: 3 / 2; }
+.editor-photo.editor-hero { aspect-ratio: 5 / 2; }
+.editor-photo.tier-banner { aspect-ratio: 3 / 1; margin-top: 24px; }
+.when-line.editor-empty { font-style: italic; }

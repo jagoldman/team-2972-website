@@ -47,7 +47,7 @@ function grew() {
   return `<ol class="grew" id="history"${ck("HISTORY.milestones")}>${rows.map(({ m, i, items }) => `
     <li${ck(`HISTORY.milestones[${i}]`)}><p class="yr"${ck(`HISTORY.milestones[${i}].year`)}>${esc(m.year)}</p><div>
       <div${ck(`HISTORY.milestones[${i}].items`)}>${items.map(({ it, j }) => `<p${ck(`HISTORY.milestones[${i}].items[${j}].text`, "rich")}>${rich(it.text)}</p>`).join("")}</div>
-      ${hasPhoto(m.image) ? `<span class="shot r43"><img${imgSized(m.image, [400, 800], "(min-width: 720px) 420px, 100vw")}${ck(`HISTORY.milestones[${i}].image`)}${ckAlt(`HISTORY.milestones[${i}].imageAlt`)} alt="${esc(altFor(m.image, m.imageAlt || m.year))}" loading="lazy" width="900" height="675" /></span>` : ""}
+      ${m.image && !hasPhoto(m.image) ? editorPhotoSpot(`HISTORY.milestones[${i}].image`, "Photo not shown: set or replace it", "r43") : ""}${hasPhoto(m.image) ? `<span class="shot r43"><img${imgSized(m.image, [400, 800], "(min-width: 720px) 420px, 100vw")}${ck(`HISTORY.milestones[${i}].image`)}${ckAlt(`HISTORY.milestones[${i}].imageAlt`)} alt="${esc(altFor(m.image, m.imageAlt || m.year))}" loading="lazy" width="900" height="675" /></span>` : ""}
     </div></li>`).join("")}</ol>`;
 }
 

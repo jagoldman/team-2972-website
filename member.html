@@ -63,10 +63,11 @@ onContent(() => {
   const src = hasPhoto(SITE.memberImage) ? SITE.memberImage : "";
   const pic = document.getElementById("member-pic");
   document.getElementById("member-split").classList.toggle("no-pic", !src);
-  pic.hidden = !src;
+  const spot = src ? "" : editorPhotoSpot("SITE.memberImage", "Student photo not shown: set or replace it", "r11");
+  pic.hidden = !src && !spot;
   pic.innerHTML = src
     ? `<span class="shot r11"><img${imgSized(src, [400, 800, 1600], "(min-width: 900px) 40vw, 100vw")}${ck("SITE.memberImage")}${ckAlt("SITE.memberImageAlt")} alt="${esc(altFor(src, SITE.memberImageAlt))}" loading="lazy" width="1000" height="1000" /></span>`
-    : "";
+    : spot;
   document.getElementById("member-addr").innerHTML = siteAddress();
   renderYear();
 });

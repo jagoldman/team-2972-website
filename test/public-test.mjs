@@ -449,6 +449,49 @@ try {
     check("D193 retired: no retired address is ever requested", retired.length === 0, retired);
     await context.close();
   }
+  // Editing targets the Website editor needs (exercised through setContent, as the editor's live preview does): the archive
+  // keeps each tagline beside the stats; an unset outreach date and a photo with nothing to show get a target in the
+  // editor's preview only; visitors see neither.
+  for (const editor of [true, false]) {
+    const { context } = await newContext(browser, { width: 1440 });
+    if (editor) await context.addInitScript(() => { window.__editorOverlay = true; });
+    await context.route("**/config.js", (route) => route.fulfill({ contentType: "text/javascript", body: CONFIG.replace(JSON.stringify({ [HERO]: [400, 800, 1200, 1600] }), "{}") }));
+    const page = await context.newPage();
+    const who = editor ? "editor preview" : "visitor";
+    await open(page, "/robots.html");
+    const rb = await page.evaluate(() => {
+      const robots = JSON.parse(JSON.stringify(ROBOTS));
+      robots[5].tagline = "A tagline added in the editor.";
+      window.setContent({ ROBOTS: robots });
+      return robots.map((r, i) => { const li = document.querySelector(`#robot-archive > li[data-ck="ROBOTS[${i}]"]`); return { tag: !!r.tagline, stats: !!r.stats,
+        hasTag: !!li.querySelector(`[data-ck="ROBOTS[${i}].tagline"]`), hasStats: !!li.querySelector(`[data-ck="ROBOTS[${i}].stats"]`), text: (li.querySelector(`[data-ck="ROBOTS[${i}].tagline"]`) || {}).textContent }; });
+    });
+    check(`${who}: every archive card keeps its tagline (keyed) beside its stats, an added tagline too`, rb.every((x) => x.hasTag === x.tag && x.hasStats === x.stats) && rb[5].text === "A tagline added in the editor." && rb.filter((x) => x.tag && x.stats).length >= 4, rb.filter((x) => x.hasTag !== x.tag || x.hasStats !== x.stats));
+    await open(page, "/outreach.html");
+    const od = await page.evaluate(() => {
+      const events = JSON.parse(JSON.stringify(OUTREACH_EVENTS));
+      events[0].date = "";
+      window.setContent({ OUTREACH_EVENTS: events });
+      return events.map((e, i) => ({ date: e.date, target: !!document.querySelector(`[data-ck="OUTREACH_EVENTS[${i}].date"]`), words: (document.querySelector(`[data-ck="OUTREACH_EVENTS[${i}].date"]`) || {}).textContent }));
+    });
+    const unset = od.filter((x) => !x.date);
+    check(`${who}: an unset outreach date (${unset.length}) ${editor ? "has a target the editor can click" : "shows nothing"}`, unset.length >= 3 && unset.every((x) => x.target === editor && (!editor || x.words === "No date set")), od);
+    await open(page, "/");
+    const hp = await page.evaluate((hero) => {
+      window.setContent({ SITE: { ...SITE, heroImage: hero } });
+      const t = document.querySelector('[data-ck="SITE.heroImage"]');
+      return { img: !!document.getElementById("hero-photo"), target: !!t, type: t && t.getAttribute("data-ck-type"), spots: document.querySelectorAll(".editor-photo").length };
+    }, HERO);
+    check(`${who}: Home with the blurred hero unavailable: ${editor ? "a SITE.heroImage image target to replace it" : "no photo and no target"}`, !hp.img && hp.target === editor && (!editor || hp.type === "image") && (editor || hp.spots === 0), hp);
+    await open(page, "/robot.html?year=2026");
+    const rp = await page.evaluate((hero) => {
+      const robots = JSON.parse(JSON.stringify(ROBOTS)); robots[0].image = hero; robots[0].gallery = [hero];
+      window.setContent({ ROBOTS: robots });
+      return { photo: !!document.getElementById("robot-photo"), target: !!document.querySelector('[data-ck="ROBOTS[0].image"]'), gallery: !!document.querySelector('[data-ck="ROBOTS[0].gallery[0]"]') };
+    }, HERO);
+    check(`${who}: a robot page whose photo and gallery photo cannot be shown ${editor ? "keeps both targets" : "shows neither"}`, !rp.photo && rp.target === editor && rp.gallery === editor, rp);
+    await context.close();
+  }
   // The robots list follows the data (what the editor's live preview does: new content, the page re-renders)
   {
     const { context } = await newContext(browser, { width: 1440 });

@@ -72,12 +72,13 @@ function renderHome() {
   const heroPos = safePosition(SITE.heroPosition);
   const photo = hasPhoto(SITE.heroImage)
     ? `<img${imgSized(SITE.heroImage, [400, 800, 1600], HERO_SIZES)}${ck("SITE.heroImage")}${heroPos ? ` style="object-position: ${esc(heroPos)}"` : ""} id="hero-photo" width="1500" height="1125" fetchpriority="high" alt="${esc(altFor(SITE.heroImage, "Team 2972 students with their robot"))}">`
-    : "";
+    : editorPhotoSpot("SITE.heroImage", "Hero photo not shown: set or replace it", "editor-hero");
 
   // "Find your way in": the student photo and three doors as a list. The text of the doors is written here (page text
   // is not an editor field).
   const studentImg = hasPhoto(SITE.memberImage)
-    ? `<div class="s5"><span class="shot r11"><img${imgSized(SITE.memberImage, [400, 800, 1600], "(min-width: 900px) 40vw, 100vw")}${ck("SITE.memberImage")}${ckAlt("SITE.memberImageAlt")} alt="${esc(altFor(SITE.memberImage, SITE.memberImageAlt))}" loading="lazy" width="1000" height="1000"></span></div>` : "";
+    ? `<div class="s5"><span class="shot r11"><img${imgSized(SITE.memberImage, [400, 800, 1600], "(min-width: 900px) 40vw, 100vw")}${ck("SITE.memberImage")}${ckAlt("SITE.memberImageAlt")} alt="${esc(altFor(SITE.memberImage, SITE.memberImageAlt))}" loading="lazy" width="1000" height="1000"></span></div>`
+    : inEditorPreview() ? `<div class="s5">${editorPhotoSpot("SITE.memberImage", "Student photo not shown: set or replace it", "r11")}</div>` : "";
 
   // "Our workshop": HISTORY.workshop's heading and machines, with the newest milestone photo (the milestones run oldest
   // first: the 2025 shop, not the 2021 room).

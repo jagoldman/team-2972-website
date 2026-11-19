@@ -61,9 +61,11 @@ onContent(() => {
   // Head: year and game, name, tagline, the stats as a list, awards, status; the photo at 7/12. A season with no photo
   // widens its text and shows no tile.
   const parts = statParts(r);
-  const photo = hasPhoto(r.image) ? `
+  const shown = hasPhoto(r.image);
+  const photo = shown || inEditorPreview() ? (shown ? `
     <div class="s7"><figure><span class="shot r43"><img id="robot-photo"${imgSized(r.image, [400, 800, 1600], ROBOT_PHOTO_SIZES)}${imgPos(r)}${ck(P("image"))} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}" width="1000" height="750"></span>
-      ${r.photoSource ? `<figcaption class="cap-src"${ck(P("photoSource"))}>${esc(r.photoSource)}</figcaption>` : ""}</figure></div>` : "";
+      ${r.photoSource ? `<figcaption class="cap-src"${ck(P("photoSource"))}>${esc(r.photoSource)}</figcaption>` : ""}</figure></div>`
+    : `<div class="s7">${editorPhotoSpot(P("image"), "Robot photo not shown: set or replace it", "r43")}</div>`) : "";
   const hero = `
     <section class="band band-first robot-head"><div class="wrap">
       <a class="crumb" href="robots.html">All robots</a>
@@ -84,8 +86,8 @@ onContent(() => {
   const specs = list(r.specs).length ? `<dl class="specs"${ck(P("specs"))}>${r.specs.map((s, i) => `<div${ck(P(`specs[${i}]`))}><dt${ck(P(`specs[${i}].label`))}>${esc(s.label)}</dt><dd${ck(P(`specs[${i}].value`))}>${esc(s.value)}</dd></div>`).join("")}</dl>` : "";
   const mechanisms = list(r.mechanisms).length ? `<div class="mech"${ck(P("mechanisms"))}>${r.mechanisms.map((m, i) => `<div${ck(P(`mechanisms[${i}]`))}><h3${ck(P(`mechanisms[${i}].name`))}>${esc(m.name)}</h3><p${ck(P(`mechanisms[${i}].text`), "rich")}>${rich(m.text)}</p></div>`).join("")}</div>` : "";
   // Photos: the season's gallery, square photos that open the large copy in a new tab.
-  const pics = list(r.gallery).map((src, i) => ({ src, i })).filter(({ src }) => hasPhoto(src));
-  const gallery = pics.length ? `<div class="pics"${ck(P("gallery"))}>${pics.map(({ src, i }) => `<a class="shot r43" href="${esc(imgUrl(src, 2000))}" target="_blank" rel="noopener"><img${imgSized(src, [400, 800], "(min-width: 900px) 220px, 50vw")}${ck(P(`gallery[${i}]`))} alt="${esc(altFor(src, `${robotName(r)} (${r.year})`))}" loading="lazy" width="800" height="600" /><span class="vh"> (opens in a new tab)</span></a>`).join("")}</div>` : "";
+  const pics = list(r.gallery).map((src, i) => ({ src, i })).filter(({ src }) => hasPhoto(src) || inEditorPreview());
+  const gallery = pics.length ? `<div class="pics"${ck(P("gallery"))}>${pics.map(({ src, i }) => !hasPhoto(src) ? editorPhotoSpot(P(`gallery[${i}]`), "Photo not shown: set or replace it", "r43") : `<a class="shot r43" href="${esc(imgUrl(src, 2000))}" target="_blank" rel="noopener"><img${imgSized(src, [400, 800], "(min-width: 900px) 220px, 50vw")}${ck(P(`gallery[${i}]`))} alt="${esc(altFor(src, `${robotName(r)} (${r.year})`))}" loading="lazy" width="800" height="600" /><span class="vh"> (opens in a new tab)</span></a>`).join("")}</div>` : "";
 
   // Videos and links: each list keeps its own key so the editor can add to it. YouTube opens on YouTube (nothing is embedded).
   const group = (base, items, text) => items.length ? `<ul class="links"${ck(P(base))}>${items.map((v, i) => `<li>${text(v, i)}</li>`).join("")}</ul>` : "";

@@ -287,6 +287,13 @@ function sitePathOf(s) {
     return mine ? u.pathname + u.search : s;
   } catch (e) { return s; }
 }
+// In the Website editor's preview only (inEditorPreview): a spot for a photo field that has no photo to show (unset, or a
+// blurred photo with no saved copy), keyed to that field, so the editor can still click it to set or replace the photo.
+// Visitors never get it: the public page shows what it always shows for a missing photo.
+function editorPhotoSpot(path, label, cls = "") {
+  if (!inEditorPreview()) return "";
+  return `<span class="editor-photo${cls ? ` ${cls}` : ""}"${ck(path, "image")} role="img" aria-label="${esc(label)}">${esc(label)}</span>`;
+}
 function hasPhoto(src) {
   return Boolean(String(src || "").trim()) && imgUrl(src, MEDIA_WIDTHS[0]) !== "";
 }
@@ -689,14 +696,14 @@ function robotShot(r, i, sizes, { lazy = true } = {}) {
   if (!hasPhoto(r.image)) return `<span class="shot r43"${ck(`${P}.image`, "image")}><span class="ph"><b data-ck-ignore aria-hidden="true">${esc(r.year)}</b><span>Photo wanted</span></span></span>`;
   return `<span class="shot r43"><img${imgSized(r.image, [400, 800, 1600], sizes)}${imgPos(r)}${ck(`${P}.image`)} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}"${lazy ? ' loading="lazy"' : ""} width="1000" height="750"></span>`;
 }
-// The words under a robot's photo: year and game, name, then one line: the tagline (or, with { line: "stats" } as on the
-// Robots page, the stats joined with commas), whichever the robot has, the chosen one first.
+// The words under a robot's photo: year and game, name, then the tagline (or, with no tagline, the stats joined with
+// commas). With { line: "both" } (the Robots page's archive) the tagline and then the stats, each when the robot has it.
 function robotMeta(r, i, { status = false, line: first = "tagline" } = {}) {
   const P = `ROBOTS[${i}]`;
   const parts = statParts(r);
   const tag = r.tagline ? `<span class="robot-line"${ck(`${P}.tagline`)}>${esc(r.tagline)}</span>` : "";
   const stats = parts.length ? `<span class="robot-line"${ck(`${P}.stats`)}>${esc(parts.join(", "))}</span>` : "";
-  const line = first === "stats" ? stats || tag : tag || stats;
+  const line = first === "both" ? tag + stats : tag || stats;
   return `<span class="robot-meta"><span><span class="robot-yr"${ck(`${P}.year`)}>${esc(r.year)}</span> <span class="mute"${ck(`${P}.game`)}>${esc(r.game)}</span></span>` +
     `<span class="robot-name"${ck(`${P}.name`)}>${esc(robotName(r))}</span>${line}` +
     `${status && r.status === "In service" ? `<span class="status status-on"${ck(`${P}.status`)}>In service</span>` : ""}</span>`;
