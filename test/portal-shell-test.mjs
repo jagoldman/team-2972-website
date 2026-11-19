@@ -238,9 +238,10 @@ try {
     await page.click("#shell-bar .shbar-acct");
     const menu = page.locator("#shell-bar .shbar-account");
     const rows = await menu.locator(':scope > [role="group"], :scope > a').evaluateAll(els => els.map(e => e.getAttribute("aria-label") || e.textContent.trim()));
-    check("account menu rows are in order", JSON.stringify(rows) === JSON.stringify(["Theme", "Notification settings", "All account settings", "Sign out"]), rows);
-    const choices = await menu.locator('[aria-label="Theme"] button').allTextContents();
-    check("theme choices are in order", JSON.stringify(choices.map(x => x.trim())) === JSON.stringify(["Match my device", "Light", "Dark"]), choices);
+    // Kit 0.5.0 (ADOPT_050 §6): the group is "Appearance", in the order Light, Dark, Match my device.
+    check("account menu rows are in order", JSON.stringify(rows) === JSON.stringify(["Appearance", "Notification settings", "All account settings", "Sign out"]), rows);
+    const choices = await menu.locator('[aria-label="Appearance"] button').allTextContents();
+    check("appearance choices are in order", JSON.stringify(choices.map(x => x.trim())) === JSON.stringify(["Light", "Dark", "Match my device"]), choices);
     check("sign-out goes to the portal outpost", (await menu.locator("a[data-signout]").getAttribute("href")) === `${PORTAL}/outpost.goauthentik.io/sign_out`);
     await page.keyboard.press("Escape");
     check("the request-access cards are shown", await page.isVisible("#access") && (await page.$$("#access-body a[href^='mailto:']")).length >= 1);
@@ -248,7 +249,7 @@ try {
 
     await page.press("#q", "Escape").catch(() => {});
     await page.fill("#q", "alumni");
-    check("the bar names the team", (await page.textContent("#shell-bar .shbar-appname")).trim() === "Gears & Buccaneers");
+    check("the bar says Home on the portal (kit 0.5.0, as the demo's)", (await page.textContent("#shell-bar .shbar-appname")).trim() === "Home");
     check("the greeting is the first name", (await page.textContent("#greeting")).replace(/\s+/g, " ").trim() === "Hi Pat.");
     check("search filters across both sections", (await names(page, "#app-grid .approw:not([hidden]), #more-list li:not([hidden])")).join() === "Alumni News");
     await page.fill("#q", "");
@@ -306,12 +307,12 @@ try {
     await context.addCookies([site("theme", "dark")]);
     await context.addInitScript(() => { try { if (!sessionStorage.getItem("seeded")) { localStorage.setItem("theme", "light"); sessionStorage.setItem("seeded", "1"); } } catch (e) {} });
     let { page } = await openPortal(context);
-    const state = () => page.evaluate(() => ({ theme: document.documentElement.dataset.theme, label: document.querySelector("#shell-bar [aria-label=Theme] button[aria-pressed=true]")?.textContent.trim(),
+    const state = () => page.evaluate(() => ({ theme: document.documentElement.dataset.theme, label: document.querySelector("#shell-bar [aria-label=Appearance] button[aria-pressed=true]")?.textContent.trim(),
       bg: getComputedStyle(document.body).backgroundColor, cookie: (document.cookie.match(/(?:^|;\s*)theme=([^;]*)/) || [])[1] || null }));
     let s = await state();
     check("cookie dark + old key light: page and bar both dark", s.theme === "dark" && s.label === "Dark" && s.bg === "rgb(7, 9, 15)", s);
     await page.click("#shell-bar .shbar-acct");
-    await page.click('#shell-bar [aria-label="Theme"] .shbar-choice >> text=Light');
+    await page.click('#shell-bar [aria-label="Appearance"] .shbar-choice >> text=Light');
     s = await state();
     const cookies = await context.cookies(PORTAL);
     const c = cookies.find((x) => x.name === "theme");
@@ -414,9 +415,10 @@ try {
     const ids = (sel) => [...document.querySelectorAll(sel)].filter((s) => s.id && vis(s)).map((s) => s.id);
     const text = (e) => (e ? e.textContent.replace(" (opens in a new tab)", "").replace(/\s+/g, " ").trim() : null);
     const rows = (id) => [...document.querySelectorAll(`#${id} .nowrow`)].filter(vis).map((r) => ({ id: r.dataset.id, title: text(r.querySelector(".rt")),
-      lines: [...r.querySelectorAll(".rl")].map(text), btns: [...r.querySelectorAll(".nowbtn")].map((b) => [text(b), b.tagName, b.classList.contains("btn-outline") ? "plain" : "filled", b.getAttribute("href")]),
-      first: r.classList.contains("nowfirst"), chev: !!r.querySelector(".chev") }));
-    const filled = [...document.querySelectorAll("#main .btn")].filter((b) => vis(b) && !b.closest("#access") && !b.closest("[data-guide-card]") && !b.classList.contains("btn-outline") && !b.classList.contains("btn-ghost")).map(text);
+      lines: [...r.querySelectorAll(".rl")].map(text), btns: [...r.querySelectorAll(".nowbtn")].map((b) => [text(b), b.tagName, b.classList.contains("shell-btn--primary") ? "filled" : "plain", b.getAttribute("href")]),
+      mark: text(r.querySelector(".rmark")), first: r.classList.contains("nowfirst"), chev: !!r.querySelector(".chev") }));
+    // Kit 0.5.0: the filled button is .shell-btn--primary; the old .btn (gold, now blue) counts too unless it is plain.
+    const filled = [...document.querySelectorAll("#main .shell-btn--primary, #main .btn:not(.btn-outline):not(.btn-ghost)")].filter((b) => vis(b) && !b.closest("[data-guide-card]")).map(text);
     return {
       top: document.querySelector("#home-top > *")?.className || null, topText: (document.querySelector("#home-top > *")?.innerText || "").replace(/\s+/g, " ").trim(),
       main: ids("#home-main > *"), side: ids("#home-side-lead > *, #home-side > section, #home-side > .guideslot > section"),
@@ -425,7 +427,7 @@ try {
       week: [...document.querySelectorAll("#home-week .wkrow")].map((a) => [text(a.querySelector(".wkd b")), text(a.querySelector(".grow > b")), [...a.querySelectorAll(".wkfacts > *")].map(text)]),
       coming: [...document.querySelectorAll("#home-coming .wkrow .grow > b")].map(text),
       next: text(document.querySelector("#home-next .nexttitle")), nextDue: text(document.querySelector("#home-next .nextdue")), nextStep: text(document.querySelector("#home-next .nextstep")),
-      nextActs: [...document.querySelectorAll("#home-next .heroacts > *")].map((e) => [text(e), e.classList.contains("btn-outline") ? "plain" : "filled"]),
+      nextActs: [...document.querySelectorAll("#home-next .heroacts > *")].map((e) => [text(e), e.classList.contains("shell-btn--primary") ? "filled" : "plain"]),
       activity: [...document.querySelectorAll("#home-activity .actlink b")].map(text),
       filled, waitGuide: document.querySelector("#home-now")?.dataset.guide || null, guideHidden: document.querySelector("[data-guide-card]").hidden,
       undef: /undefined|null|NaN/.test(document.getElementById("main").innerText),
@@ -472,18 +474,28 @@ try {
           const p = h.now[0];
           check(`${tag}: Now leads with "Practice today", its time, "Not signed in" and the Sign in link (filled), in a block`, p.id === "calendar:practice" && p.title === "Practice today" && p.lines.join("|") === "3:30 pm–6 pm|Not signed in" && p.first
             && JSON.stringify(p.btns) === JSON.stringify([["Sign in", "A", "filled", "http://calendar.landing.test/here/scan"]]), p);
-          check(`${tag}: the next task: the title is the link, the due date counts practices, the next step, its buttons plain while Sign in is waiting`, h.next === "Cut polycarb side plates›" && /^Due \w{3}, \w{3} \d+, \d+ practices? left$/.test(h.nextDue) && h.nextStep === "Next step: Cut on the router"
-            && JSON.stringify(h.nextActs) === JSON.stringify([["Mark task done", "plain"], ["I'm stuck", "plain"], ["Request a part", "plain"]]), h);
-          check(`${tag}: Waiting on others: the part with its state as a dot and a word, the sign-off with who it waits on`, h.others.length === 2 && h.others[0].title === "Bearing 1/2\" hex, flanged Ordered" && h.others[1].lines.join() === "Waiting on a mentor since Monday"
-            && (await page.$eval("#home-others .gmark", (m) => m.classList.contains("ok") && getComputedStyle(m, "::before").content !== "none")), h.others);
+          const left = today83.student.next.practicesLeft;
+          check(`${tag}: the next task: the title is the link, "Due …, ${left} practices left" from Tasks, the next step, Mark step done, its buttons plain while Sign in is waiting`, h.next === "Cut polycarb side plates›" && new RegExp(`^Due \\w{3}, \\w{3} \\d+, ${left} practices? left$`).test(h.nextDue) && h.nextStep === "Next step: Cut on the router"
+            && JSON.stringify(h.nextActs) === JSON.stringify([["Mark step done", "plain"], ["I'm stuck", "plain"], ["Request a part", "plain"]]), h);
+          check(`${tag}: Waiting on others: the part with its state as a dot and a word on its own line, then whose move; the sign-off with who it waits on`, h.others.length === 2 && h.others[0].title === "Bearing 1/2\" hex, flanged" && h.others[0].mark === "Ordered"
+            && h.others[0].lines.join() === `Arrives about ${F.niceFrom(T0, 1)}` && h.others[1].lines.join() === `Waiting on a mentor since ${F.niceFrom(T0, -1)}` && h.others[1].mark === null
+            && (await page.$eval("#home-others .shell-status", (m) => m.classList.contains("shell-status--ok") && getComputedStyle(m, "::before").content !== "none")), h.others);
           check(`${tag}: Recent activity shows three`, h.activity.length === 3, h.activity);
           check(`${tag}: This week: Today first, mentors coming, snacks, and what is due`, h.week[0][0] === "Today" && h.week[0][2].includes("2 mentors coming") && h.week[0][2].includes("Snacks: Test family and Sample family") && h.week.some((d) => d[2].some((f) => /^Due: /.test(f))) && h.week.some((d) => d[2].includes("No mentors yet")), h.week);
         }
         if (role === "mentor" && theme === "light") {
-          check(`${tag}: Now in groups: Needs your OK, Sign-off requests, Stuck, then the doors`, h.groups.join("|") === "Needs your OK|Sign-off requests|Stuck|Other things" && h.waitGuide === "wait", h.groups);
+          check(`${tag}: Now in groups: Needs your OK, Sign-off requests, Stuck, then the doors as "Parts and practice" (the demo's words)`, h.groups.join("|") === "Needs your OK|Sign-off requests|Stuck|Parts and practice" && h.waitGuide === "wait", h.groups);
           const ok = h.now[0];
           check(`${tag}: a request with its mark, two lines, Approve (filled: blocking) and Deny`, ok.title === "Motor, brushless Blocking" && ok.lines.length === 2 && JSON.stringify(ok.btns.map((b) => [b[0], b[2]])) === JSON.stringify([["Approve", "filled"], ["Deny", "plain"]]), ok);
           check(`${tag}: each sign-off has Sign off; the stuck task and the doors have a chevron; the practice row comes last`, h.now.filter((r) => r.btns.some((b) => b[0] === "Sign off")).length === 2 && h.now.filter((r) => r.chev).length === 3 && h.now.at(-1).id === "calendar:practice", h.now);
+          // Stuck (CONTRACT T): drawn as the demo's mentor Home draws a stuck task: the title, "Blocked" as a dot and a
+          // word on a line of its own, who and the project, what it waits on; a chevron, no button.
+          const stuck = h.now.find((r) => r.id === "tasks:stuck-t-9");
+          check(`${tag}: a stuck task: title, Blocked (a dot and a word) on its own line, who and project, Waits on; a chevron, no button`, stuck && stuck.title === "Intake roller shafts" && stuck.mark === "Blocked"
+            && stuck.lines.join("|") === "Casey Fake, Intake|Waits on “Mount the motor” and the part Hex shaft, 8 in" && stuck.chev && stuck.btns.length === 0
+            && (await page.$eval('#home-now [data-id="tasks:stuck-t-9"]', (r) => { const m = r.querySelector(".rmark"), t = r.querySelector(".rt"), l = r.querySelector(".rl");
+              return m.classList.contains("shell-status--bad") && m.getBoundingClientRect().top >= t.getBoundingClientRect().bottom - 1 && l.getBoundingClientRect().top >= m.getBoundingClientRect().bottom - 1; })), stuck);
+          check(`${tag}: Account's lines replace its detail: no line is drawn twice`, h.now.every((r) => new Set(r.lines).size === r.lines.length), h.now.map((r) => r.lines));
           check(`${tag}: no next-task card, no Waiting on others`, h.next === null && h.others.length === 0);
         }
         if (role === "parent" && theme === "light") {
@@ -528,10 +540,10 @@ try {
     // Approve: the row goes at once, one POST for two presses, then /today.json is asked again.
     const { context, actPosts, answers } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor, act: "hang" });
     const { page, errors } = await openPortal(context);
-    await page.waitForSelector('#home-now [data-id="parts:approve:12"]');
-    await page.$eval('#home-now [data-id="parts:approve:12"] .nowbtn', (b) => { b.click(); b.click(); });
+    await page.waitForSelector('#home-now [data-id="parts:request:12"]');
+    await page.$eval('#home-now [data-id="parts:request:12"] .nowbtn', (b) => { b.click(); b.click(); });
     await page.waitForTimeout(200);
-    const gone = await page.$eval('#home-now [data-id="parts:approve:12"]', (r) => r.hidden);
+    const gone = await page.$eval('#home-now [data-id="parts:request:12"]', (r) => r.hidden);
     check("Approve: the row goes at once, before the answer", gone);
     check("Approve: two presses send one POST of {app, action, key} as JSON to /today/act", actPosts.length === 1 && actPosts[0].method === "POST" && actPosts[0].body === JSON.stringify({ app: "parts", action: "approve", key: "12" }) && /application\/json/.test(actPosts[0].type), actPosts);
     check("Approve: the status line says so at once", (await page.textContent("#home-done-status")).startsWith("Approved."));
@@ -557,24 +569,24 @@ try {
     // Deny asks why in a small dialog with Parts' own words; Keep it sends nothing; Deny sends the reason. After the
     // act Account answers without the row, as it will.
     const { context, actPosts, answers } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS });
-    answers.today = () => (actPosts.length ? { ...today83.mentor, waiting: today83.mentor.waiting.filter((r) => r.id !== "parts:approve:12") } : today83.mentor);
+    answers.today = () => (actPosts.length ? { ...today83.mentor, waiting: today83.mentor.waiting.filter((r) => r.id !== "parts:request:12") } : today83.mentor);
     const { page } = await openPortal(context);
-    await page.waitForSelector('#home-now [data-id="parts:approve:12"]');
-    await page.click('#home-now [data-id="parts:approve:12"] .nowdeny');
+    await page.waitForSelector('#home-now [data-id="parts:request:12"]');
+    await page.click('#home-now [data-id="parts:request:12"] .nowdeny');
     await page.waitForSelector("dialog.gdialog[open]");
     const d = await page.evaluate(() => ({ h: document.querySelector("dialog h2").textContent, why: document.querySelector("dialog textarea").value, focus: document.activeElement.id }));
     check("Deny opens a dialog: \"Deny this request?\" with Parts' default reason, the reason box focused", d.h === "Deny this request?" && d.why === "Let's use the ones in stock first." && d.focus === "deny-why", d);
     await shot(page, "act-deny-dialog-1280");
-    await page.click("dialog .btn-outline");
-    check("Keep it: nothing is sent and the row stays", actPosts.length === 0 && await page.isVisible('#home-now [data-id="parts:approve:12"]'));
-    await page.click('#home-now [data-id="parts:approve:12"] .nowdeny');
+    await page.click("dialog .gbtns .shell-btn:not(.shell-btn--danger)");
+    check("Keep it: nothing is sent and the row stays", actPosts.length === 0 && await page.isVisible('#home-now [data-id="parts:request:12"]'));
+    await page.click('#home-now [data-id="parts:request:12"] .nowdeny');
     await page.fill("dialog textarea", "  ");
-    await page.click("dialog .gbtns .btn:not(.btn-outline)");
+    await page.click("dialog .gbtns .shell-btn--danger");
     check("an empty reason is refused in the dialog", actPosts.length === 0 && (await page.textContent("dialog .gerr")) === "Say why, so they know.");
     await page.fill("dialog textarea", "We have two in the cabinet.");
-    await page.click("dialog .gbtns .btn:not(.btn-outline)");
+    await page.click("dialog .gbtns .shell-btn--danger");
     await page.waitForTimeout(300);
-    check("Deny sends the reason; the row goes", actPosts.length === 1 && actPosts[0].body === JSON.stringify({ app: "parts", action: "deny", key: "12", reason: "We have two in the cabinet." }) && !(await page.isVisible('#home-now [data-id="parts:approve:12"]')), actPosts);
+    check("Deny sends the reason; the row goes", actPosts.length === 1 && actPosts[0].body === JSON.stringify({ app: "parts", action: "deny", key: "12", reason: "We have two in the cabinet." }) && !(await page.isVisible('#home-now [data-id="parts:request:12"]')), actPosts);
     await context.close();
   }
   {
@@ -582,8 +594,8 @@ try {
     const until = new Date(Date.now() + 120000).toISOString();
     const { context, actPosts } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor, act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: until } } : 204) });
     const { page } = await openPortal(context);
-    await page.waitForSelector('#home-now [data-id="parts:approve:12"]');
-    await page.click('#home-now [data-id="parts:approve:12"] .nowbtn');
+    await page.waitForSelector('#home-now [data-id="parts:request:12"]');
+    await page.click('#home-now [data-id="parts:request:12"] .nowbtn');
     await page.waitForSelector("#home-done-status .linkbtn");
     await shot(page, "act-undo-1280");
     await page.click("#home-done-status .linkbtn");
@@ -592,12 +604,86 @@ try {
     await context.close();
     const plain = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor });
     const p2 = (await openPortal(plain.context)).page;
-    await p2.waitForSelector('#home-now [data-id="parts:approve:12"]');
-    await p2.click('#home-now [data-id="parts:approve:12"] .nowbtn');
+    await p2.waitForSelector('#home-now [data-id="parts:request:12"]');
+    await p2.click('#home-now [data-id="parts:request:12"] .nowbtn');
     await p2.waitForTimeout(300);
     check("Approve answered 204: no Undo", !(await p2.$("#home-done-status .linkbtn")));
     await plain.context.close();
   }
+  // ---------- Mark step done (CONTRACT T1, T3): the act path, at once, put back on failure ----------
+  for (const width of [1280, 390]) {
+    // Success: the step counts at once, one POST {tasks, step-done, "<taskId>:<itemId>"}, then the Home is drawn again
+    // with Tasks' next step; the focus is on the next task's button.
+    const after = { ...today83.student, next: { ...today83.student.next, steps: { done: 2, total: 2 }, nextStep: null } };
+    const { context, actPosts, answers, posts } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, width, act: "hang" });
+    answers.today = () => (actPosts.length ? after : today83.student);
+    const { page, errors } = await openPortal(context);
+    await page.waitForSelector("#home-next .nextstep");
+    await page.$eval("#home-next .heroacts button", (b) => { b.click(); b.click(); });
+    await page.waitForTimeout(150);
+    const mid = await page.evaluate(() => ({ steps: document.querySelector("#home-next .nextsteps").textContent, bar: document.querySelector("#home-next .nextbar i").style.width,
+      step: !!document.querySelector("#home-next .nextstep:not([hidden])"), status: document.getElementById("home-done-status").textContent, disabled: document.querySelector("#home-next .heroacts button").disabled }));
+    check(`${width}px Mark step done: at once the step counts (2 of 2, the bar full), the next-step line goes, "Step done."; before any answer`, mid.steps === "2 of 2 steps done" && mid.bar === "100%" && !mid.step && mid.status === "Step done." && mid.disabled, mid);
+    check(`${width}px Mark step done: two presses send one POST of {app: "tasks", action: "step-done", key: "<taskId>:<itemId>"} to /today/act; nothing to /today/task-done`,
+      actPosts.length === 1 && actPosts[0].body === JSON.stringify({ app: "tasks", action: "step-done", key: "t-7:s2" }) && posts.length === 0, actPosts);
+    answers.act = 204;
+    await context.close();
+    const ok = await newContext(browser, { groups: "student", apps: GROUPED_APPS, width, act: 204 });
+    ok.answers.today = () => (ok.actPosts.length ? after : today83.student);
+    const p2 = (await openPortal(ok.context)).page;
+    await p2.waitForSelector("#home-next .nextstep");
+    await p2.click("#home-next .heroacts button");
+    await p2.waitForFunction(() => document.querySelector("#home-next .heroacts button")?.textContent.trim() === "Mark task done");
+    const done = await p2.evaluate(() => ({ steps: document.querySelector("#home-next .nextsteps").textContent, focus: document.activeElement === document.querySelector("#home-next .heroacts button") }));
+    check(`${width}px Mark step done answered 204: /today.json is asked again; with no step left the button is "Mark task done", focused`, done.steps === "2 of 2 steps done" && done.focus && errors.length === 0, done);
+    await ok.context.close();
+  }
+  for (const [status, words] of [[503, "Couldn't save, so “Cut on the router” is back as it was."], [{ status: 409, body: { error: "changed", message: "Someone else already ticked this step." } }, "Someone else already ticked this step."],
+    [403, "You can't do this from Home. Open the task to see why."]]) {
+    const { context, actPosts } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: today83.student, act: status });
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#home-next .nextstep");
+    await page.click("#home-next .heroacts button");
+    await page.waitForFunction((w) => document.getElementById("home-done-status").textContent === w, words);
+    await page.waitForTimeout(200);
+    const s = await page.evaluate(() => ({ steps: document.querySelector("#home-next .nextsteps").textContent, step: document.querySelector("#home-next .nextstep")?.textContent || "",
+      btn: document.querySelector("#home-next .heroacts button").textContent.trim(), disabled: document.querySelector("#home-next .heroacts button").disabled, focus: document.activeElement?.closest("#home-next") !== null }));
+    const code = typeof status === "number" ? status : status.status;
+    check(`Mark step done answered ${code}: the card is back as it was (1 of 2, the next step, the button) and says "${words}"`, actPosts.length === 1 && s.steps === "1 of 2 steps done" && s.step === "Next step: Cut on the router" && s.btn === "Mark step done" && !s.disabled && s.focus, s);
+    await context.close();
+  }
+
+  // ---------- Account's own answer (test/fixtures/today-account-83.json, made by Account r83's gatherToday) ----------
+  {
+    const A = JSON.parse(readFileSync(new URL("./fixtures/today-account-83.json", import.meta.url), "utf8"));
+    for (const [who, groups] of [["mentor", "mentor"], ["student", "student"], ["parent", "parent"], ["studentEvent", "student"]]) {
+      const { context } = await newContext(browser, { groups, apps: GROUPED_APPS, today: A[who], event: who === "studentEvent" ? { name: "Test Regional", happeningNow: true } : 404 });
+      const { page, errors } = await openPortal(context);
+      await settle(page);
+      const h = await homeState(page);
+      const rows = [...h.now, ...h.others, ...h.help];
+      check(`Account's answer, ${who}: drawn with no error, no "undefined", no empty heading, no line twice, one filled button at most`, errors.length === 0 && !h.undef && h.emptyHeads.length === 0 && rows.length > 0
+        && rows.every((r) => new Set(r.lines).size === r.lines.length) && h.filled.length <= 1, { errors, undef: h.undef, empty: h.emptyHeads, filled: h.filled, rows: rows.map((r) => [r.id, r.lines]) });
+      if (who === "mentor") check("Account's answer, mentor: its groups and rows in its order; the late request's urgent line", h.groups.join("|") === "Needs your OK|Sign-off requests|Stuck|Parts and practice"
+        && h.now.map((r) => r.id).join() === [...A.mentor.waiting, ...A.mentor.today].map((r) => r.id).join() && await page.$eval('#home-now [data-id="parts:request:r12"] .rl', (l) => l.classList.contains("nowdue") && l.textContent.endsWith("2 days late")), h.now.map((r) => r.id));
+      if (who === "student") check("Account's answer, student: Sign in is the one filled button (Calendar sends no primary yet: known by its words); Mark step done; Waiting on others", h.filled.join() === "Sign in" && h.nextActs[0][0] === "Mark step done"
+        && h.nextDue === `Due Mon, Nov 23, ${A.student.next.practicesLeft} practices left` && h.others.map((r) => r.id).join() === A.student.others.map((r) => r.id).join(), h);
+      if (who === "parent") check("Account's answer, parent: Can you help? with both Sign up buttons (the snack day's filled), Coming up", JSON.stringify(h.help.map((r) => r.btns.map((b) => [b[0], b[2]]))) === JSON.stringify([[["Sign up", "filled"]], [["Sign up", "plain"]]]) && h.coming.length >= 1, h.help);
+      await context.close();
+    }
+  }
+
+  // ---------- kit 0.5.0's font: Archivo from the portal itself, nothing from Google, no Bricolage or Inter ----------
+  {
+    const { context, seen } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: today83.student });
+    const { page } = await openPortal(context);
+    await settle(page);
+    const f = await page.evaluate(async () => { await document.fonts.ready; return { ok: document.fonts.check("700 16px Archivo"), body: getComputedStyle(document.body).fontFamily, h1: getComputedStyle(document.querySelector("#greeting")).fontStretch, size: getComputedStyle(document.body).fontSize }; });
+    check("Archivo: document.fonts.check('700 16px Archivo') is true; the body's family is the kit's; headings are wide; 14px with a mouse", f.ok && /Archivo/.test(f.body) && f.h1 === "112%" && f.size === "14px", f);
+    check("the portal asks for the kit's font file and no other: nothing from Google, no Bricolage, no Inter", seen.some((u) => u.endsWith("/shell/fonts/archivo-latin-var.woff2")) && !seen.some((u) => /fonts\.(googleapis|gstatic)\.com|bricolage|inter-latin/.test(u)), seen.filter((u) => /font|woff/.test(u)));
+    await context.close();
+  }
+
   for (const width of [1280, 390]) {
     // A parent's Sign up: the snack day, by keyboard.
     const { context, actPosts, answers } = await newContext(browser, { groups: "parent", apps: GROUPED_APPS, width });
@@ -618,11 +704,11 @@ try {
       const { page, errors } = await openPortal(context);
       await settle(page);
       const h = await homeState(page);
-      const ev = await page.evaluate(() => ({ line: [...document.querySelectorAll(".evline .evpart")].map((a) => [a.querySelector(".evk").textContent, a.getAttribute("href")]),
+      const ev = await page.evaluate(() => ({ line: [...document.querySelectorAll(".shell-evline .shell-evpart")].map((a) => [a.querySelector(".shell-evk").textContent, a.getAttribute("href")]),
         shift: [...document.querySelectorAll(".shiftcard .nowrow")].map((r) => r.dataset.id), matches: [...document.querySelectorAll("#home-matches .wkrow")].map((a) => a.innerText.replace(/\s+/g, " ").trim()) }));
       const shift = who.startsWith("student");
       check(`event ${who} ${width}px: ${shift ? "my shift first with its button filled, then the line without \"You now\"" : "the line on top with You now"}`,
-        shift ? ev.shift.length === 1 && h.filled.join() === "Open my scouting match" && ev.line.map((l) => l[0]).join() === "Our match now,Robot" : h.top === "evline" && ev.line.map((l) => l[0]).join() === "You now,Our match now,Robot", { ev, h });
+        shift ? ev.shift.length === 1 && h.filled.join() === "Open my scouting match" && ev.line.map((l) => l[0]).join() === "Our match now,Robot" : h.top === "shell-evline evline" && ev.line.map((l) => l[0]).join() === "You now,Our match now,Robot", { ev, h });
       check(`event ${who} ${width}px: the line's parts are doors to Competition`, ev.line.every(([, href]) => href.startsWith("http://compete.landing.test/")), ev.line);
       check(`event ${who} ${width}px: In the pit (two rows, Open the Pit plain) and Next for us (alliance in words); no This week, next task, activity or Get started`,
         h.now.length === 2 && h.now[0].btns[0][0] === "Open the Pit" && h.now[0].btns[0][2] === "plain" && h.now[0].btns[0][3] === "http://compete.landing.test/pit?tab=check" && ev.matches.length === 2 && /Blue alliance With 1001 and 1002 Against 1003, 1004, 1005/.test(ev.matches[0])
@@ -724,7 +810,7 @@ try {
     return { h2: t(c.querySelector("h2")), title: t(c.querySelector(".nexttitle")), where: t(c.querySelector(".nextwhere")), steps: t(c.querySelector(".nextsteps")),
       bar: c.querySelector(".nextbar i")?.style.width || "", waiting: t(c.querySelector(".nextwaiting")), hold: t(c.querySelector(".nexthold")), blocked: t(c.querySelector(".nextblocked")),
       empty: t(c.querySelector("p.mute")),
-      acts: [...c.querySelectorAll(".heroacts > *")].map((e) => [t(e), e.classList.contains("btn-outline") ? "plain" : "filled", e.getAttribute("href")]) };
+      acts: [...c.querySelectorAll(".heroacts > *")].map((e) => [t(e), e.classList.contains("shell-btn--primary") ? "filled" : "plain", e.getAttribute("href")]) };
   });
   for (const width of [1280, 390]) {
     const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: FULL, width });
@@ -768,7 +854,7 @@ try {
     const { context } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor });
     await context.addCookies([site("theme", theme)]);
     const { page } = await openPortal(context);
-    await page.waitForSelector("#home-week .gmark.warn");
+    await page.waitForSelector("#home-week .shell-status--warn");
     const ratios = await page.evaluate(() => {
       const rgba = (c) => (c.match(/[\d.]+/g) || []).map(Number);
       const over = (top, under) => { const a = top[3] === undefined ? 1 : top[3]; return [0, 1, 2].map((i) => top[i] * a + under[i] * (1 - a)); };
@@ -781,7 +867,7 @@ try {
         const [a, b] = [lum(fg), lum(back)].sort((x, y) => y - x);
         return +((a + 0.05) / (b + 0.05)).toFixed(2);
       };
-      return Object.fromEntries([".gmark.warn", ".gmark.bad", ".snmute", ".snms > span", ".snhead b", ".nowrow .rl", ".wkd span", ".nowdeny"].map((s) => [s, ratio(document.querySelector(s))]));
+      return Object.fromEntries([".shell-status--warn", ".shell-status--bad", ".snmute", ".snms > span", ".snhead b", ".nowrow .rl", ".wkd span", ".nowdeny"].map((s) => [s, ratio(document.querySelector(s))]));
     });
     check(`${theme}: the status words, the season line and the muted lines have at least 4.5:1 contrast`, Object.values(ratios).every((r) => r >= 4.5), ratios);
     await context.close();
@@ -793,7 +879,7 @@ try {
     const today = { v: 1,
       today: [{ id: "a", section: "today", title: evil, detail: evil, href: `${CAL}/`, cta: { label: evil, href: `${CAL}/x` } }],
       waiting: [{ id: "b", section: "waiting", title: evil, detail: evil, href: `${PARTS}/`, count: 1, group: evil, mark: { word: evil, tone: "bad" }, lines: [evil], acts: [{ label: evil, app: "parts", action: "approve", key: "1" }] }],
-      next: { taskId: evil, title: evil, project: evil, subteam: evil, milestone: evil, waitingOn: [evil], href: `${TASKS}/my`, stuckHref: `${TASKS}/my?do=stuck`, nextStep: { id: "s", label: evil } },
+      next: { taskId: evil, title: evil, project: evil, subteam: evil, milestone: evil, waitingOn: [evil], href: `${TASKS}/my`, stuckHref: `${TASKS}/my?do=stuck`, nextStep: { id: "s", title: evil } },
       activity: [{ app: evil, title: evil, detail: evil, href: `${PARTS}/`, at: ago(2) }],
       season: { target: { name: evil, date: F.dayFrom(T0, 30), kind: "comp" }, days: [] },
       milestones: [{ name: evil, date: F.dayFrom(T0, 3), project: evil, href: `${TASKS}/p` }],
@@ -905,7 +991,7 @@ try {
     check(`${role}: rows ${want.map((w) => w[0]).join(", ")} with their counts, all closed`, JSON.stringify(g.map((x) => [x[0], x[1]])) === JSON.stringify(want) && g.every((x) => x[2] === "false" && x[3]), g);
     check(`${role}: the tiles are the core apps only`, (await names(page, "#app-grid .approw")).join() === "Task App,Calendar");
     if (role === "admin") {
-      // 8.3 (Ground up): Home calls the third row "Team links" (a kit 0.5.0 stand-in until the kit names it so).
+      // 8.3 (Ground up): the kit's mountHomeGroups calls the third row "Team links" (kit 0.5.0).
       check("admin: the rows read Tools, Admin apps, Team links", g.map((x) => x[4]).join() === "Tools,Admin apps,Team links", g);
       check("admin: Admin apps lists Admin and Website editor, in new tabs", (await names(page, "#admin-list li")).join() === "Admin,Website editor" && (await page.$$eval("#admin-list a", (as) => as.every((a) => a.target === "_blank" && a.rel.includes("noopener")))));
       check("admin: the Admin apps row has its hover description", (await page.getAttribute('[data-grp="adminapps"] .grphead', "data-tip")) === "Apps for the people who run the team's accounts and its public website.");
@@ -1219,7 +1305,7 @@ try {
     // does not change them, and they leave the cookie and the old key exactly as they found them.
     const portal = (await openPortal(context)).page;
     await portal.click("#shell-bar .shbar-acct");
-    await portal.click('#shell-bar [aria-label="Theme"] .shbar-choice >> text=Light');
+    await portal.click('#shell-bar [aria-label="Appearance"] .shbar-choice >> text=Light');
     const themeState = (page) => page.evaluate(() => ({ attr: document.documentElement.dataset.theme || null, cookie: (document.cookie.match(/(?:^|;\s*)theme=([^;]*)/) || [])[1] || null, key: localStorage.getItem("theme"),
       bg: getComputedStyle(document.body).backgroundColor, scheme: getComputedStyle(document.documentElement).colorScheme }));
     check("Light chosen in the portal bar: the portal itself is light", (await themeState(portal)).attr === "light" && (await themeState(portal)).cookie === "light");
@@ -1235,7 +1321,7 @@ try {
       check(`public ${path}: no theme switch`, (await pub.$$(".theme-switch")).length === 0);
     }
     await portal.click("#shell-bar .shbar-acct");
-    await portal.click('#shell-bar [aria-label="Theme"] .shbar-choice >> text=Match my device');
+    await portal.click('#shell-bar [aria-label="Appearance"] .shbar-choice >> text=Match my device');
     await pub.goto(PUBLIC + "/about.html");
     await pub.waitForSelector(".site-header .nav-login");
     await pub.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));

@@ -1,5 +1,27 @@
 # landing: handoff
 
+## 2026-11-19: release 8.3, second pass: kit 0.5.0 and the Ground up look (branch `r83`)
+
+From `new-apps/briefs/r83/ADOPT.md`. The static kit is synced from infra `r83-kit` `22a8b76` (step two;
+`scripts/check-shell.sh static`: hashes match).
+
+- **Kit:** the portal pages load `shell/base.css`, preload `/shell/fonts/archivo-latin-var.woff2` and declare its
+  `@font-face` in `css/portal-home.css` (portal only; the public site has its own type). `--display` and `--font`
+  (landing's names in `css/style.css`) map onto the kit's `--body`, and `revert-layer` hands the body and headings
+  back to `base.css`. `main` is the kit's `.shell-sheet`; buttons are `.shell-btn` (`--primary` for the one filled
+  button, `--danger` for Deny), every state is `.shell-status`, the event line is `.shell-evline`. The bar says
+  "Home"; `mountHomeGroups` says "Team links"; `mountHomeGuide` gets `eventDay`. No stand-ins are left.
+- **Shared files (own commits):** `css/style.css`'s first token block holds the kit 0.5.0 values (theme-test pins
+  it); `sw.js` v7 precaches and stores `/shell/fonts/`.
+- **Mark step done (CONTRACT T1, T3):** `next.nextStep` is `{id, title}`; the button posts `{app:"tasks",
+  action:"step-done", key:"<taskId>:<itemId>"}` to `/today/act`, counts the step at once, and puts the card back
+  with one sentence on any answer but success. `next.practicesLeft` gives "Due …, N practices left".
+- **Account's shape:** `lines` replace `detail` when sent (Account copies the first line into `detail`); a row
+  without buttons starts its lines with its state on a line of its own (Stuck, Waiting on others); `cta.primary`
+  makes the filled button (Calendar does not send it yet: Sign in is still known by its words); a 409's `message`
+  is shown. `test/fixtures/today-account-83.json` is Account r83's own `gatherToday` output on made-up app
+  answers; `test/fixtures/today-83.mjs` matches it field for field.
+
 ## 2026-11-18: release 8.3, the portal Home in Ground up (branch `r83`)
 
 From `new-apps/briefs/r83/HOME.md`, CONTRACT H1, H2, C1, E1 and the portal side of `GAP_HOME_ACCOUNT.md`. The demo is
