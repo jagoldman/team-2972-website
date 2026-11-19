@@ -4,7 +4,9 @@
 //   - a build run against a local fake of lh3 where some photos fail: the rest are saved, the run succeeds
 //   - the Caddy, Dockerfile and service worker pieces
 //   - D193 (a face blurred at the owner's request): the blur changes the region and nothing else, every width and the
-//     link-preview picture are made from the blurred picture, and a blurred photo never comes from Google
+//     link-preview picture are made from the blurred picture, and a blurred photo never comes from Google. Since D206
+//     (the blur removed at the owner's request) the real list is empty: the mechanism is tested with a made-up photo ID
+//     in a list passed to the test (FAKE, FAKE_LIST), and the hero is checked as a plain photo.
 // Run: node test/drive-photos-test.cjs   (part 3 needs `npm ci` in scripts/drive-photos; it is skipped without it)
 "use strict";
 const fs = require("fs");
@@ -24,6 +26,9 @@ const fetchPhotos = require(path.join(root, "scripts", "drive-photos", "fetch.cj
 const HERO = "1VgoMdevZH3syn0BvQq7QpFz09xrDS_rt";   // SITE.heroImage, a public photo already in content.js
 const B = "1AbCdEfGhIjKlMnOpQrStUvWxYz012345";        // made-up IDs
 const C = "1ZyXwVuTsRqPoNmLkJiHgFeDcBa987654";
+// A made-up photo in a made-up blur list: the blur mechanism's tests use it (config.js's list is empty since D206).
+const FAKE = "1FaKeBlUrPhOtOiDxXxXxXxXxXxXx07";
+const FAKE_LIST = { format: 1, photos: { [FAKE]: { v: "b2", ellipses: [[0.3825, 0.538, 0.0215, 0.034]] } } };
 
 // ---------- 1. which values are Drive photos ----------
 const ids = fetchPhotos.extractDriveIds(read("js/content.js"));
@@ -59,7 +64,7 @@ function loadComponents(drivePhotos, { blur, config = true } = {}) {
   return ctx;
 }
 const D = "1DdDdDdDdDdDdDdDdDdDdDdDdDd678";   // made up, two widths saved
-const manifest = JSON.stringify({ [B]: [400, 800, 1200, 1600], [D]: [400, 800], [HERO]: [400, 800, 1200, 1600] });
+const manifest = JSON.stringify({ [B]: [400, 800, 1200, 1600], [D]: [400, 800], [HERO]: [400, 800, 1200, 1600], [FAKE]: [400, 800, 1200, 1600] });
 const site = loadComponents(manifest);
 const lh3 = (id, w) => `https://lh3.googleusercontent.com/d/${id}=w${w}`;
 const cases = [
@@ -86,32 +91,48 @@ for (const [label, value] of [["unfilled (local preview)", '{{readFile "img/driv
 check("imgUrl: an ID that is also an Object property name is not looked up there", loadComponents("{}").imgUrl("propertyIsEnumerable", 400) === lh3("propertyIsEnumerable", 400));
 // ---------- D193: a blurred photo is never loaded from Google ----------
 {
-  const blur = fetchPhotos.blurTable();
-  const ctx = loadComponents(manifest);
-  check("D193: the blur table is in config.js, has the hero photo, and the pages read the same table as the build",
-    blur[HERO] && blur[HERO].v === "b2" && JSON.stringify(blur[HERO].ellipses) === JSON.stringify([[0.3825, 0.538, 0.0215, 0.034]]) && ctx.window.PHOTO_BLUR.format === 1 && JSON.stringify(ctx.window.PHOTO_BLUR.photos) === JSON.stringify(blur), JSON.stringify(blur));
+  // D206: config.js's list is empty; the hero is a plain photo.
+  const real = fetchPhotos.blurTable(), site = loadComponents(manifest);
+  check("D206: the blur list in config.js is valid and empty (the hero's blur removed at the owner's request), and the pages read the same list as the build",
+    JSON.stringify(real) === "{}" && site.window.PHOTO_BLUR.format === 1 && JSON.stringify(site.window.PHOTO_BLUR.photos) === "{}", JSON.stringify(site.window.PHOTO_BLUR));
+  const plainWant = { 400: 400, 600: 800, 800: 800, 1200: 1200, 1600: 1600 };
+  const plainGot = Object.keys(plainWant).map((w) => [w, site.imgUrl(HERO, Number(w))]);
+  check("D206: the hero is served from its plain saved files, <id>-<w>.webp, at every saved width",
+    plainGot.every(([w, u]) => u === `/img/drive/${HERO}-${plainWant[w]}.webp`) && fetchPhotos.fileName(HERO, 800, real) === `${HERO}-800.webp`, JSON.stringify(plainGot));
+  const heroSet = site.imgSized(HERO, [400, 800, 1600], "100vw");
+  check("D206: the hero's srcset names its plain files and no marked (-b2-) file", new RegExp(`srcset="[^"]*${HERO}-400\\.webp 400w, [^"]*${HERO}-800\\.webp 800w, [^"]*${HERO}-1600\\.webp 1600w"`).test(heroSet) && !/-b\d+-/.test(heroSet), heroSet);
+  const nomark = [];
+  for (const f of ["js/components.js", "scripts/drive-photos/fetch.cjs", "container/Caddyfile", "index.html", "config.js"]) if (read(f).includes(HERO) || /og-image-b\d/.test(read(f).replace(/\/\/[^\n]*/g, ""))) nomark.push(f);
+  check("D206: no source names the hero's ID or an old link-preview name outside a comment (only content.js names the hero)", nomark.length === 0, nomark.join(" "));
+}
+{
+  // The mechanism, with a made-up photo in a made-up list.
+  const blur = fetchPhotos.photoRules().photoBlurList(FAKE_LIST);
+  const ctx = loadComponents(manifest, { blur: FAKE_LIST });
+  check("D193: a list with one photo is accepted by the build's and the pages' copies of photoBlurList alike",
+    blur && blur[FAKE] && blur[FAKE].v === "b2" && JSON.stringify(blur[FAKE].ellipses) === JSON.stringify([[0.3825, 0.538, 0.0215, 0.034]]) && ctx.window.PHOTO_BLUR.format === 1, JSON.stringify(blur));
   const want = { 400: 400, 600: 800, 800: 800, 1200: 1200, 1600: 1600, 2000: 1600, 9999: 1600 };
-  const got = Object.keys(want).map((w) => [w, ctx.imgUrl(HERO, Number(w))]);
-  check("D193: the hero is served from its blurred files, named <id>-b2-<w>.webp; the full-size link (2000) is the largest blurred copy",
-    got.every(([w, u]) => u === `/img/drive/${HERO}-b2-${want[w]}.webp`), JSON.stringify(got));
-  check("D193: fetch.cjs names the files the way imgUrl() asks for them", fetchPhotos.fileName(HERO, 800, blur) === `${HERO}-b2-800.webp` && fetchPhotos.fileName(B, 800, blur) === `${B}-800.webp`);
-  check("D193: an lh3 address of the hero in the content is served from the blurred files too", ctx.imgUrl(`https://lh3.googleusercontent.com/d/${HERO}=w800`, 800) === `/img/drive/${HERO}-b2-800.webp`);
-  const srcset = ctx.imgSized(HERO, [400, 800, 1600], "100vw");
-  check("D193: the hero's srcset lists only its blurred files", /srcset="[^"]*-b2-400\.webp 400w, [^"]*-b2-800\.webp 800w, [^"]*-b2-1600\.webp 1600w"/.test(srcset) && !/google/.test(srcset), srcset);
+  const got = Object.keys(want).map((w) => [w, ctx.imgUrl(FAKE, Number(w))]);
+  check("D193: a blurred photo is served from its blurred files, named <id>-b2-<w>.webp; the full-size link (2000) is the largest blurred copy",
+    got.every(([w, u]) => u === `/img/drive/${FAKE}-b2-${want[w]}.webp`), JSON.stringify(got));
+  check("D193: fetch.cjs names the files the way imgUrl() asks for them", fetchPhotos.fileName(FAKE, 800, blur) === `${FAKE}-b2-800.webp` && fetchPhotos.fileName(B, 800, blur) === `${B}-800.webp`);
+  check("D193: an lh3 address of a blurred photo in the content is served from the blurred files too", ctx.imgUrl(`https://lh3.googleusercontent.com/d/${FAKE}=w800`, 800) === `/img/drive/${FAKE}-b2-800.webp`);
+  const srcset = ctx.imgSized(FAKE, [400, 800, 1600], "100vw");
+  check("D193: a blurred photo's srcset lists only its blurred files", /srcset="[^"]*-b2-400\.webp 400w, [^"]*-b2-800\.webp 800w, [^"]*-b2-1600\.webp 1600w"/.test(srcset) && !/google/.test(srcset), srcset);
   // Every way the manifest can be missing or wrong, every width, both forms of the ID: never a Google address.
   const leaks = [];
-  for (const [label, m] of [["filled", manifest], ["without the hero", JSON.stringify({ [B]: [400] })], ["unfilled (local preview)", '{{readFile "img/drive/manifest.json"}}'],
-    ["missing", undefined], ["not JSON", "{oops"], ["a list", "[1,2]"], ["bad widths", JSON.stringify({ [HERO]: ["400", null] })], ["empty widths", JSON.stringify({ [HERO]: [] })]]) {
-    const c = loadComponents(m);
+  for (const [label, m] of [["filled", manifest], ["without the photo", JSON.stringify({ [B]: [400] })], ["unfilled (local preview)", '{{readFile "img/drive/manifest.json"}}'],
+    ["missing", undefined], ["not JSON", "{oops"], ["a list", "[1,2]"], ["bad widths", JSON.stringify({ [FAKE]: ["400", null] })], ["empty widths", JSON.stringify({ [FAKE]: [] })]]) {
+    const c = loadComponents(m, { blur: FAKE_LIST });
     for (const id of Object.keys(blur)) for (const src of [id, ` ${id} `, `https://lh3.googleusercontent.com/d/${id}=w400`]) for (const w of [1, 400, 800, 1200, 1600, 2000, 4000]) {
       const u = c.imgUrl(src, w);
       if (/google/i.test(u) || (u && !u.startsWith(`/img/drive/${id}-${blur[id].v}-`))) leaks.push(`${label} ${src} ${w}: ${u}`);
     }
   }
   check("D193: imgUrl() never gives a Google address (or an unblurred file) for a blurred photo, whatever the manifest says", leaks.length === 0, leaks.slice(0, 4).join(" | "));
-  const none = loadComponents(JSON.stringify({ [B]: [400] }));
-  check("D193: with no saved blurred copy, the photo is not shown at all (imgUrl \"\", hasPhoto false)", none.imgUrl(HERO, 800) === "" && none.imgUrl(HERO, 2000) === "" && !none.hasPhoto(HERO) && none.hasPhoto(B) && ctx.hasPhoto(HERO));
-  check("D193: an entry with a bad version mark fails closed (no photo, never Google)", loadComponents(manifest, { blur: { format: 1, photos: { [HERO]: { v: "../x", ellipses: [[0.5, 0.5, 0.1, 0.1]] } } } }).imgUrl(HERO, 800) === "");
+  const none = loadComponents(JSON.stringify({ [B]: [400] }), { blur: FAKE_LIST });
+  check("D193: with no saved blurred copy, the photo is not shown at all (imgUrl \"\", hasPhoto false)", none.imgUrl(FAKE, 800) === "" && none.imgUrl(FAKE, 2000) === "" && !none.hasPhoto(FAKE) && none.hasPhoto(B) && ctx.hasPhoto(FAKE));
+  check("D193: an entry with a bad version mark fails closed (no photo, never Google)", loadComponents(manifest, { blur: { format: 1, photos: { [FAKE]: { v: "../x", ellipses: [[0.5, 0.5, 0.1, 0.1]] } } } }).imgUrl(FAKE, 800) === "");
   // The pages' full-size links and photo spots go through imgUrl()/hasPhoto(); no page writes a Google address itself.
   const pages = ["index", "robots", "robot", "about", "sponsors", "member", "mentor", "outreach", "media", "resources", "contact"].map((p) => [p, read(`${p}.html`)]);
   check("D193: no public page or script builds a Google photo address of its own", pages.every(([, h]) => !/googleusercontent/.test(h)) && (read("js/components.js").match(/googleusercontent\.com\/d\/\$\{/g) || []).length === 1);
@@ -124,7 +145,7 @@ check("imgUrl: an ID that is also an Object property name is not looked up there
   check("D193: the image build gets config.js (the table) next to content.js", /COPY config\.js \/build\/config\.js/.test(read("Dockerfile")));
   // v9 moved with the b2 mark; the merge of release 8.3's two branches is v10. Any later version keeps the rule.
   check("D193: the service worker's cache version moved with the b2 mark (v9 or later)", +((read("sw.js").match(/const VERSION = "v(\d+)"/) || [])[1] || 0) >= 9);
-  check("D193: the version mark is b2 (the mask is fully opaque over the face; new addresses for the new pixels)", blur[HERO].v === "b2" && fetchPhotos.OG.file === "og-image-b2.jpg");
+  check("D206: the link-preview picture has a new name, og-image-v3.jpg (link-preview services keep the old picture by its old address)", fetchPhotos.OG.file === "og-image-v3.jpg");
 }
 
 // ---------- D193: fail closed when the blur list did not arrive ----------
@@ -133,18 +154,18 @@ check("imgUrl: an ID that is also an Object property name is not looked up there
   const ell = [[0.5, 0.5, 0.1, 0.1]];
   const NOT_ARRIVED = [
     ["no config.js at all", { config: false }], ["PHOTO_BLUR missing (a config.js without it)", { blur: null }],
-    ["an empty object", { blur: {} }], ["the old shape, with no format marker", { blur: { [HERO]: { v: "b2", ellipses: ell } } }],
+    ["an empty object", { blur: {} }], ["the old shape, with no format marker", { blur: { [FAKE]: { v: "b2", ellipses: ell } } }],
     ["format 2", { blur: { format: 2, photos: {} } }], ["format as a string", { blur: { format: "1", photos: {} } }],
     ["photos is a list", { blur: { format: 1, photos: [] } }], ["photos missing", { blur: { format: 1 } }],
-    ["a string", { blur: "format 1" }], ["one bad entry (no ellipses)", { blur: { format: 1, photos: { [HERO]: { v: "b2" } } } }],
-    ["one bad entry (an ellipse outside the photo)", { blur: { format: 1, photos: { [HERO]: { v: "b2", ellipses: [[0.5, 1.2, 0.1, 0.1]] } } } }],
+    ["a string", { blur: "format 1" }], ["one bad entry (no ellipses)", { blur: { format: 1, photos: { [FAKE]: { v: "b2" } } } }],
+    ["one bad entry (an ellipse outside the photo)", { blur: { format: 1, photos: { [FAKE]: { v: "b2", ellipses: [[0.5, 1.2, 0.1, 0.1]] } } } }],
     ["one bad key", { blur: { format: 1, photos: { short: { v: "b2", ellipses: ell } } } }],
   ];
   const google = [`https://lh3.googleusercontent.com/d/${B}=w800`, `https://lh3.googleusercontent.com/d/${HERO}`, "https://drive.google.com/uc?id=" + B,
     "https://www.googleapis.com/drive/v3/files/" + B, "https://lh5.ggpht.com/abc", "https://www.google.com/images/x.png", "https://www.gstatic.com/x.png"];
   for (const [label, opts] of NOT_ARRIVED) {
     const c = loadComponents(manifest, opts);
-    const urls = [B, HERO, D, C, ...google].flatMap((src) => [400, 800, 1600, 2000].map((w) => c.imgUrl(src, w)));
+    const urls = [B, HERO, FAKE, D, C, ...google].flatMap((src) => [400, 800, 1600, 2000].map((w) => c.imgUrl(src, w)));
     const leaks = urls.filter((u) => u !== "");
     check(`D193 fail closed, ${label}: no Drive photo and nothing from Google (every imgUrl is "")`, leaks.length === 0 && !c.hasPhoto(B) && !c.hasPhoto(HERO), leaks.slice(0, 3).join(" | "));
     check(`D193 fail closed, ${label}: uploads, site paths and other hosts still work`, c.imgUrl("media:0123456789abcdef0123", 600) === "/media/0123456789abcdef0123-800.webp" && c.imgUrl("assets/brand/team.svg", 800) === "assets/brand/team.svg" && c.imgUrl("https://example.com/x.jpg", 800) === "https://example.com/x.jpg");
@@ -178,13 +199,14 @@ check("imgUrl: an ID that is also an Object property name is not looked up there
     ["with spaces round it", `  https://drive.google.com/file/d/${id}/view  `], ["upper-case host", `https://DRIVE.GOOGLE.COM/file/d/${id}/view`],
   ];
   const site = loadComponents(manifest), bare = loadComponents("{}");
+  const bSite = loadComponents(manifest, { blur: FAKE_LIST }), bBare = loadComponents("{}", { blur: FAKE_LIST });
   const wrong = [];
-  for (const [label, v] of forms(HERO)) {
-    if (fetchPhotos.driveId(v) !== HERO) wrong.push(`build ${label}`);
-    if (site.imgUrl(v, 800) !== `/img/drive/${HERO}-b2-800.webp` || site.imgUrl(v, 2000) !== `/img/drive/${HERO}-b2-1600.webp`) wrong.push(`page ${label}: ${site.imgUrl(v, 800)}`);
-    if (bare.imgUrl(v, 800) !== "" || bare.hasPhoto(v)) wrong.push(`page, not saved ${label}: ${bare.imgUrl(v, 800)}`);
+  for (const [label, v] of forms(FAKE)) {
+    if (fetchPhotos.driveId(v) !== FAKE) wrong.push(`build ${label}`);
+    if (bSite.imgUrl(v, 800) !== `/img/drive/${FAKE}-b2-800.webp` || bSite.imgUrl(v, 2000) !== `/img/drive/${FAKE}-b2-1600.webp`) wrong.push(`page ${label}: ${bSite.imgUrl(v, 800)}`);
+    if (bBare.imgUrl(v, 800) !== "" || bBare.hasPhoto(v)) wrong.push(`page, not saved ${label}: ${bBare.imgUrl(v, 800)}`);
   }
-  check(`D193: a blurred photo in each of ${forms(HERO).length} link forms is found by the build and shows its blurred copy, or nothing when it is not saved`, wrong.length === 0, wrong.slice(0, 4).join(" | "));
+  check(`D193: a blurred photo in each of ${forms(FAKE).length} link forms is found by the build and shows its blurred copy, or nothing when it is not saved`, wrong.length === 0, wrong.slice(0, 4).join(" | "));
   const ok = [];
   for (const [label, v] of forms(B)) {
     if (fetchPhotos.driveId(v) !== B) ok.push(`build ${label}`);
@@ -192,6 +214,8 @@ check("imgUrl: an ID that is also an Object property name is not looked up there
     if (bare.imgUrl(v, 800) !== lh3(B, 800)) ok.push(`page not saved ${label}: ${bare.imgUrl(v, 800)}`);
   }
   check("D193: an unblurred photo in each form still works: its saved copy, or the one lh3 address for its ID", ok.length === 0, ok.slice(0, 4).join(" | "));
+  const heroOk = forms(HERO).filter(([, v]) => site.imgUrl(v, 800) !== `/img/drive/${HERO}-800.webp`).map(([label]) => label);
+  check("D206: the hero in each link form is served from its plain saved copy", heroOk.length === 0, heroOk.join(" | "));
   const unreducible = ["https://lh3.googleusercontent.com/a/ACg8ocK", "https://lh3.googleusercontent.com/pw/AP1Gcz", `https://lh3.googleusercontent.com/d/short`,
     `https://drive.google.com/drive/folders/${B}`, `https://drive.google.com/open?id=short`, `https://photos.google.com/photo/${B}`, `https://lh3.google.com/u/0/d/${B}`,
     `https://www.googleapis.com/drive/v3/about`, "https://lh4.ggpht.com/x.jpg", "https://www.gstatic.com/images/x.png", "https://images.google.co.uk/x.jpg", "https://drive.google.com./uc"];
@@ -209,21 +233,28 @@ const contentSections = { SITE, ROBOTS };`;
 
 // ---------- D193: a retired address cannot come back ----------
 {
-  const site = loadComponents(manifest), bare = loadComponents("{}");
-  const cur = (w) => `/img/drive/${HERO}-b2-${w}.webp`;
-  const old = [`/img/drive/${HERO}-1600.webp`, `img/drive/${HERO}-400.webp`, `/img/drive/${HERO}-b1-800.webp`, `./img/./drive/${HERO}-b1-1600.webp`,
-    `../img/drive/%31${HERO.slice(1)}-400.webp`, `/img/drive/${HERO}-b2-400.webp`, `http://localhost/img/drive/${HERO}-1600.webp`, `https://www.localhost/img/drive/${HERO}-b1-400.webp`,
-    `/img/drive/${HERO}-1600.webp?v=1`];
+  const blurList = fetchPhotos.photoRules().photoBlurList(FAKE_LIST);
+  const site = loadComponents(manifest, { blur: FAKE_LIST }), bare = loadComponents("{}", { blur: FAKE_LIST });
+  const cur = (w) => `/img/drive/${FAKE}-b2-${w}.webp`;
+  const old = [`/img/drive/${FAKE}-1600.webp`, `img/drive/${FAKE}-400.webp`, `/img/drive/${FAKE}-b1-800.webp`, `./img/./drive/${FAKE}-b1-1600.webp`,
+    `../img/drive/%31${FAKE.slice(1)}-400.webp`, `/img/drive/${FAKE}-b2-400.webp`, `http://localhost/img/drive/${FAKE}-1600.webp`, `https://www.localhost/img/drive/${FAKE}-b1-400.webp`,
+    `/img/drive/${FAKE}-1600.webp?v=1`];
   // (The build cannot know the site's host, so it reads only the path forms; the pages read this site's full address too.)
-  const bad = old.filter((v) => site.imgUrl(v, 800) !== cur(800) || bare.imgUrl(v, 800) !== "" || (!/^https?:/.test(v) && fetchPhotos.driveId(v) !== HERO));
+  const bad = old.filter((v) => site.imgUrl(v, 800) !== cur(800) || bare.imgUrl(v, 800) !== "" || (!/^https?:/.test(v) && fetchPhotos.driveId(v) !== FAKE));
   check("D193: a blurred photo's old address (any old name, mark, spelling, or this site's full address) shows the current blurred copy, or nothing", bad.length === 0, bad.map((v) => `${v} -> ${site.imgUrl(v, 800)}`).slice(0, 3).join(" | "));
-  const never = ["/img/drive/og-image.jpg", "/img/drive/og-image-b1.jpg", "img/drive/og-image-b2.jpg", "https://www.localhost/img/drive/og-image.jpg", "/img/drive/manifest.json",
+  const never = ["/img/drive/og-image.jpg", "/img/drive/og-image-b1.jpg", "img/drive/og-image-b2.jpg", "/img/drive/og-image-v3.jpg", "https://www.localhost/img/drive/og-image.jpg", "/img/drive/manifest.json",
     "/img/drive/", "/img/drive/drive-retired.caddy", "/%69mg/drive/og-image.jpg", "./img/drive/x.webp"];
   check("D193: no other img/drive path is ever named (old link-preview pictures, the manifest, anything unknown)", never.every((v) => site.imgUrl(v, 800) === ""), never.filter((v) => site.imgUrl(v, 800) !== "").join(" | "));
   check("D193: an unblurred photo's saved-copy path reads back to its ID (served from its copy, or lh3)", site.imgUrl(`/img/drive/${B}-1600.webp`, 400) === `/img/drive/${B}-400.webp` && bare.imgUrl(`img/drive/${B}-400.webp`, 800) === lh3(B, 800));
-  const routes = fetchPhotos.retiredRoutes(fetchPhotos.blurTable());
+  const real = loadComponents(manifest);
+  const heroOld = [`/img/drive/${HERO}-b2-800.webp`, `/img/drive/${HERO}-b1-1600.webp`, `/img/drive/${HERO}-1600.webp`];
+  check("D206: an old address of the hero (any mark) reads back to its plain saved copy; nothing asks for a marked file", heroOld.every((v) => real.imgUrl(v, 800) === `/img/drive/${HERO}-800.webp`), heroOld.map((v) => real.imgUrl(v, 800)).join(" | "));
+  const realRoutes = fetchPhotos.retiredRoutes(fetchPhotos.blurTable());
+  check("D206: with the list empty the build's Caddy rule retires only old link-preview names (never a photo's plain name) and serves og-image-v3.jpg",
+    realRoutes.includes("path_regexp drive_retired ^/img/drive/(?:og-image[^/]*\\.jpg)$") && /not path \/img\/drive\/og-image-v3\.jpg\n/.test(realRoutes) && !realRoutes.includes(HERO) && !/\.webp/.test(realRoutes.replace(/^#[^\n]*\n/gm, "")), realRoutes);
+  const routes = fetchPhotos.retiredRoutes(blurList);
   check("D193: the build's Caddy rule names every current file of each blurred photo and the current link-preview picture as the only ones served",
-    routes.includes(`path_regexp drive_retired ^/img/drive/(?:og-image[^/]*\\.jpg|(?:${HERO})-(?:[a-z0-9]+-)?[0-9]+\\.webp)$`) && fetchPhotos.WIDTHS.every((w) => routes.includes(cur(w))) && routes.includes("/img/drive/og-image-b2.jpg") && /handle @drive_retired \{\s*header Cache-Control "no-store"\s*respond 404\s*\}/.test(routes), routes);
+    routes.includes(`path_regexp drive_retired ^/img/drive/(?:og-image[^/]*\\.jpg|(?:${FAKE})-(?:[a-z0-9]+-)?[0-9]+\\.webp)$`) && fetchPhotos.WIDTHS.every((w) => routes.includes(cur(w))) && routes.includes("/img/drive/og-image-v3.jpg") && /handle @drive_retired \{\s*header Cache-Control "no-store"\s*respond 404\s*\}/.test(routes), routes);
   const caddy = read("container/Caddyfile");
   check("D193: Caddy imports that rule first in (drive_photos), before any photo is served", /\(drive_photos\) \{[^@]*import \/etc\/caddy\/drive-retired\.caddy\s*@drive_photo \{/.test(caddy));
   check("D193: the Dockerfile moves the rule from the photo build into /etc/caddy", /mv \/srv\/site\/img\/drive\/drive-retired\.caddy \/etc\/caddy\/drive-retired\.caddy/.test(read("Dockerfile")));
@@ -248,7 +279,7 @@ const caddy = read("container/Caddyfile");
 check("Caddy: /img/drive photos get a one-year immutable cache header", /\(drive_photos\)[\s\S]*?Cache-Control "public, max-age=31536000, immutable"/.test(caddy));
 check("Caddy: only existing files get that header", /@drive_photo \{[\s\S]*?file \{[\s\S]*?try_files/.test(caddy));
 check("Caddy: drive photos are served on the public and direct hosts", (caddy.match(/import drive_photos/g) || []).length === 2);
-check("Caddy: the link-preview picture is served by its own name, only when it exists, cached for a day", /@og_image \{\s*path \/img\/drive\/og-image-b2\.jpg\s*file \{[\s\S]*?try_files[\s\S]*?handle @og_image \{\s*header Cache-Control "public, max-age=86400"/.test(caddy));
+check("Caddy: the link-preview picture is served by its own name, only when it exists, cached for a day", /@og_image \{\s*path \/img\/drive\/og-image-v3\.jpg\s*file \{[\s\S]*?try_files[\s\S]*?handle @og_image \{\s*header Cache-Control "public, max-age=86400"/.test(caddy));
 check("Caddy: the home page is rendered as a template on the public and direct hosts", /\(home_page\) \{\s*@home path \/ \/index\.html\s*handle @home \{[\s\S]*?templates/.test(caddy) && (caddy.match(/import home_page/g) || []).length === 2);
 {
   // Caddy runs the WHOLE of index.html through its template engine, so "{{" anywhere else (the body, a script, a comment)
@@ -269,7 +300,7 @@ check("Caddy: the home page is rendered as a template on the public and direct h
   check("the template rule catches {{ in the body, in a script and loose in the head", templateProblems(sample + "<p>{{oops}}</p></body>").length > 0
     && templateProblems(sample + "<script>const t = `${a}{{b}}`;</script></body>").length > 0 && templateProblems("<html><head>{{if x}}<meta>{{end}}</head><body></body>").length > 0
     && templateProblems(sample + "<p>fine</p></body>").length === 0);
-  check("index.html: og:image is a full address built from SITE_SCHEME and SITE_DOMAIN, og-image-b2.jpg or the app icon", /<meta property="og:image" content="\{\{env "SITE_SCHEME" \| html\}\}:\/\/\{\{env "SITE_DOMAIN" \| html\}\}\{\{if fileExists "\/img\/drive\/og-image-b2\.jpg"\}\}\/img\/drive\/og-image-b2\.jpg\{\{else\}\}\/pwa-icons\/site\/icon-512\.png\{\{end\}\}" \/>/.test(head));
+  check("index.html: og:image is a full address built from SITE_SCHEME and SITE_DOMAIN, og-image-v3.jpg or the app icon", /<meta property="og:image" content="\{\{env "SITE_SCHEME" \| html\}\}:\/\/\{\{env "SITE_DOMAIN" \| html\}\}\{\{if fileExists "\/img\/drive\/og-image-v3\.jpg"\}\}\/img\/drive\/og-image-v3\.jpg\{\{else\}\}\/pwa-icons\/site\/icon-512\.png\{\{end\}\}" \/>/.test(head));
   check("index.html: no address is typed in", !/2972robotics\.com|localhost/.test(head));
 }
 check("config.js: the manifest is filled in from img/drive/manifest.json", /drivePhotos: '\{\{readFile "img\/drive\/manifest\.json"\}\}'/.test(read("config.js")));
@@ -326,12 +357,12 @@ const contentSections = { SITE, ROBOTS };`);
     check("build: nothing is left behind for failed photos (only the manifest, the Caddy rule, the saved photos and the link-preview picture)", fs.readdirSync(out).every((f) => f === "manifest.json" || f === "drive-retired.caddy" || f === fresh.OG.file || f.startsWith(GOOD) || f.startsWith(WIDE)), fs.readdirSync(out).join(" "));
     check("build: the Caddy rule for retired names is written with the photos", fs.readFileSync(path.join(out, "drive-retired.caddy"), "utf8") === fresh.retiredRoutes(fresh.blurTable()));
     const og = await sharp(path.join(out, fresh.OG.file)).metadata();
-    check("build: og-image-b2.jpg is the hero photo cut to 1200x630, JPEG, with no metadata", og.format === "jpeg" && og.width === 1200 && og.height === 630 && !og.exif && !og.icc && !og.xmp, JSON.stringify({ f: og.format, w: og.width, h: og.height }));
-    // A hero that is not a saved photo (it failed here): no og-image-b2.jpg, and a stale one from a run before is removed.
+    check("build: og-image-v3.jpg is the hero photo cut to 1200x630, JPEG, with no metadata", og.format === "jpeg" && og.width === 1200 && og.height === 630 && !og.exif && !og.icc && !og.xmp, JSON.stringify({ f: og.format, w: og.width, h: og.height }));
+    // A hero that is not a saved photo (it failed here): no og-image-v3.jpg, and a stale one from a run before is removed.
     fs.writeFileSync(path.join(tmp, "content2.js"), `const SITE = { heroImage: "${NOTSHARED}" };\nconst contentSections = { SITE };`);
     const warn2 = [];
     await fresh.run(path.join(tmp, "content2.js"), out, { log() {}, warn: (m) => warn2.push(m) });
-    check("build: a hero photo that failed leaves no og-image-b2.jpg (the page names the app icon) and says so", !fs.existsSync(path.join(out, fresh.OG.file)) && warn2.some((w) => /link-preview/.test(w)), warn2.join(" | "));
+    check("build: a hero photo that failed leaves no og-image-v3.jpg (the page names the app icon) and says so", !fs.existsSync(path.join(out, fresh.OG.file)) && warn2.some((w) => /link-preview/.test(w)), warn2.join(" | "));
     const meta = {};
     for (const id of [GOOD, WIDE]) for (const w of fresh.WIDTHS) meta[`${id}-${w}`] = await sharp(path.join(out, `${id}-${w}.webp`)).metadata();
     check("build: every file is WebP", Object.values(meta).every((m) => m.format === "webp"));
@@ -361,7 +392,7 @@ const contentSections = { SITE, ROBOTS };`);
     check("D193 unit: every pixel outside the blurred region is unchanged", outside === 0, `${outside} pixels changed`);
     check("D193 unit: inside the ellipse the detail is gone (black and white stripes become smooth grey: no step between neighbours over 4)", insideStep <= 4, `largest step ${insideStep}`);
 
-    // The mask itself, rasterised at several picture sizes with the hero's ellipse and with a tall and a tiny one: every
+    // The mask itself, rasterised at several picture sizes with a small ellipse (the size D193 used) and with a tall and a tiny one: every
     // pixel whose centre is inside the ellipse is exactly opaque (255), and the box's border is 0 (the feather ends inside it).
     const maskProblems = [];
     let insideCounted = 0;
@@ -410,7 +441,7 @@ const contentSections = { SITE, ROBOTS };`);
       for (const w of f2.WIDTHS) after.push([w, await spread(path.join(out3, `${FACE}-b2-${w}.webp`))]);
       const ogSpread = await spread(path.join(out3, f2.OG.file));
       check("D193 build: every width is made from the blurred picture (the striped region is smooth in each)", before > 10 && after.every(([, sd]) => sd < 2), JSON.stringify({ before, after }));
-      check("D193 build: the link-preview picture is made from the blurred picture too", ogSpread < 2 && f2.OG.file === "og-image-b2.jpg", ogSpread);
+      check("D193 build: the link-preview picture is made from the blurred picture too", ogSpread < 2 && f2.OG.file === "og-image-v3.jpg", ogSpread);
       check("D193 build: a blurred photo that cannot be saved is left out and the log says so loudly (PRIVACY, no photo shown)",
         !fs.readdirSync(out3).some((n) => n.startsWith(NOTSHARED)) && warns.some((m) => m.includes("PRIVACY (D193)") && m.includes(NOTSHARED) && /NO photo/.test(m)), warns.join(" | "));
       check("D193 build: the log names the blurred photo it saved", logs.some((m) => m.includes(FACE) && /blurred/.test(m)), logs.join(" | "));

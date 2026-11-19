@@ -7,8 +7,8 @@
 //    block of js/components.js, which imgUrl() uses too) reduces to a Drive ID, in any form it knows.
 // 2. Downloads each one once from lh3 at the largest width, then writes <out>/<id>-<w>.webp for every width
 //    in WIDTHS (never enlarged; EXIF rotation applied, then all metadata dropped).
-//    A photo in the blur table (window.PHOTO_BLUR in config.js, the one list the pages read too; D193, a face blurred
-//    at the owner's request) has its regions blurred first, on the full downloaded picture before any resize, so every
+//    A photo in the blur table (window.PHOTO_BLUR in config.js, the one list the pages read too; D193; empty since D206,
+//    when the hero's blur was removed at the owner's request) has its regions blurred first, on the full downloaded picture before any resize, so every
 //    width and the link-preview picture carry the blur. Its files are named <id>-<v>-<w>.webp (v from the table), so
 //    a copy cached under the old name is never asked for again. If it cannot be saved, the build log says so loudly:
 //    the page then shows no photo there, never the original from Google.
@@ -17,9 +17,9 @@
 // 3b. Writes <out>/drive-retired.caddy (the Dockerfile moves it to /etc/caddy, and the Caddyfile imports it before the
 //    photo route): every retired name of a blurred photo (<id>-<w>.webp, any other mark) and of the link-preview picture
 //    answers 404, even if a stale file with that name is on disk (D193).
-// 4. Writes <out>/og-image-b2.jpg: SITE.heroImage cut to 1200x630 (the link-preview size), framed by SITE.heroPosition as
+// 4. Writes <out>/og-image-v3.jpg: SITE.heroImage cut to 1200x630 (the link-preview size), framed by SITE.heroPosition as
 //    the page frames it. index.html names it in its og:image tag (Caddy renders that tag with the site's address).
-//    No hero photo, or one that failed: no og-image-b2.jpg, and the page's tag falls back to the site's app icon.
+//    No hero photo, or one that failed: no og-image-v3.jpg, and the page's tag falls back to the site's app icon.
 //
 // A photo that cannot be downloaded or read (not shared publicly, deleted, network down) is left out with a
 // warning, and the page loads it from lh3 as before. Only a bug in this script fails the build.
@@ -158,9 +158,10 @@ function driveIdsIn(sections) {
 }
 
 // The link-preview picture: 1200x630, the size Facebook, LinkedIn and others ask for.
-// Its name changes with the D193 blur ("og-image.jpg", then "og-image-b1.jpg" before the mask was made fully opaque), so a link-preview service that kept the old picture by
-// its address fetches the blurred one.
-const OG = { width: 1200, height: 630, file: "og-image-b2.jpg" };
+// Its name changes whenever its pixels must not be taken from an old copy: link-preview services keep a picture by its
+// address. "og-image.jpg", "og-image-b1.jpg" and "og-image-b2.jpg" were the D193 names; "og-image-v3.jpg" is the hero as
+// it is (D206, the blur removed at the owner's request). Every old name answers 404 (retiredRoutes()).
+const OG = { width: 1200, height: 630, file: "og-image-v3.jpg" };
 // A CSS object-position ("50% 100%", "center top", "right") as fractions { x, y } from 0 to 1; the middle when unset or
 // not understood. The same values safePosition() in js/components.js accepts.
 function focusOf(position) {
