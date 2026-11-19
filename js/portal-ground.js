@@ -196,6 +196,7 @@ export function makeActs(o = {}) {
   const { say = () => {}, refresh = async () => {}, onBusy = () => {}, post = postAct, ask = askReason } = o;
   const busy = new Set();
   const hidden = new Set(); // row ids settled here and not yet gone from /today.json
+  const notes = new Map(); // row id → the sentence of its last failed act, kept when the Home is drawn again
   async function run(li, r, a) {
     if (busy.has(a.key)) return; // a second press while the first is on its way sends nothing
     let reason;
@@ -205,6 +206,7 @@ export function makeActs(o = {}) {
     }
     busy.add(a.key);
     hidden.add(r.id);
+    notes.delete(r.id);
     onBusy(true);
     const next = li.nextElementSibling;
     li.hidden = true;
@@ -226,6 +228,7 @@ export function makeActs(o = {}) {
     hidden.delete(r.id);
     li.hidden = false;
     const msg = el("p", "nowmsg", actMessage(a.action, result));
+    notes.set(r.id, msg.textContent);
     li.append(msg);
     say(msg.textContent);
     li.querySelector(".nowbtn, button")?.focus();
@@ -237,7 +240,7 @@ export function makeActs(o = {}) {
     say(result === "ok" ? DONE_WORDS.unapprove : actMessage("unapprove", result));
     if (result === "ok") { hidden.delete(r.id); refresh(); }
   }
-  return { run, hidden, busy };
+  return { run, hidden, busy, notes };
 }
 
 /** Deny asks why in a small dialog, filled with the words Parts' own Deny uses. Resolves to the reason or null. */
@@ -317,6 +320,8 @@ export function nowRow(r, { acts, filled = () => false, practice = false } = {})
     c.setAttribute("aria-hidden", "true");
     li.append(c);
   }
+  const note = acts && acts.notes && acts.notes.get(r.id);
+  if (note) li.append(el("p", "nowmsg", note));
   return li;
 }
 

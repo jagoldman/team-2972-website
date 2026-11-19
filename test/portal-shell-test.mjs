@@ -539,7 +539,7 @@ try {
     check("Approve: no script error", errors.length === 0, errors);
     await context.close();
   }
-  for (const [status, words, refresh] of [[204, null, true], [409, "Someone else already approved or denied this.", true], [403, "You can't do this from Home. Open it to see why.", true],
+  for (const [status, words, refresh] of [[204, null, true], [409, "Someone else already signed this off.", true], [403, "You can't do this from Home. Open it to see why.", true],
     [404, "This isn't there any more.", true], [503, "That didn't go through. Try again.", false]]) {
     const { context, actPosts, answers } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor, act: status });
     const { page } = await openPortal(context);
@@ -554,8 +554,10 @@ try {
     await context.close();
   }
   {
-    // Deny asks why in a small dialog with Parts' own words; Keep it sends nothing; Deny sends the reason.
-    const { context, actPosts } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor });
+    // Deny asks why in a small dialog with Parts' own words; Keep it sends nothing; Deny sends the reason. After the
+    // act Account answers without the row, as it will.
+    const { context, actPosts, answers } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS });
+    answers.today = () => (actPosts.length ? { ...today83.mentor, waiting: today83.mentor.waiting.filter((r) => r.id !== "parts:approve:12") } : today83.mentor);
     const { page } = await openPortal(context);
     await page.waitForSelector('#home-now [data-id="parts:approve:12"]');
     await page.click('#home-now [data-id="parts:approve:12"] .nowdeny');
@@ -598,7 +600,8 @@ try {
   }
   for (const width of [1280, 390]) {
     // A parent's Sign up: the snack day, by keyboard.
-    const { context, actPosts } = await newContext(browser, { groups: "parent", apps: GROUPED_APPS, today: today83.parent, width });
+    const { context, actPosts, answers } = await newContext(browser, { groups: "parent", apps: GROUPED_APPS, width });
+    answers.today = () => (actPosts.length ? { ...today83.parent, today: today83.parent.today.slice(1) } : today83.parent);
     const { page } = await openPortal(context);
     await page.waitForSelector("#home-help .nowbtn");
     await page.focus("#home-help .nowbtn");
@@ -616,7 +619,7 @@ try {
       await settle(page);
       const h = await homeState(page);
       const ev = await page.evaluate(() => ({ line: [...document.querySelectorAll(".evline .evpart")].map((a) => [a.querySelector(".evk").textContent, a.getAttribute("href")]),
-        shift: [...document.querySelectorAll(".shiftcard .nowrow")].map((r) => r.dataset.id), matches: [...document.querySelectorAll("#home-matches .wkrow")].map((a) => a.textContent.replace(/\s+/g, " ").trim()) }));
+        shift: [...document.querySelectorAll(".shiftcard .nowrow")].map((r) => r.dataset.id), matches: [...document.querySelectorAll("#home-matches .wkrow")].map((a) => a.innerText.replace(/\s+/g, " ").trim()) }));
       const shift = who.startsWith("student");
       check(`event ${who} ${width}px: ${shift ? "my shift first with its button filled, then the line without \"You now\"" : "the line on top with You now"}`,
         shift ? ev.shift.length === 1 && h.filled.join() === "Open my scouting match" && ev.line.map((l) => l[0]).join() === "Our match now,Robot" : h.top === "evline" && ev.line.map((l) => l[0]).join() === "You now,Our match now,Robot", { ev, h });
@@ -1037,7 +1040,8 @@ try {
   // The bar's Apps menu (kit 0.4.0, C1, C10): Tools, Admin apps, More in that order; Admin and Website editor under
   // Admin apps, not More; each menu has its ×; a press on the page while a menu is open hits the scrim.
   for (const width of [1280, 390]) {
-    const { context } = await newContext(browser, { groups: "admin", apps: GROUPED_APPS, width });
+    // 8.3: with the Ground up Home the page needs its /today.json to be long enough for the row to sit under the scrim.
+    const { context } = await newContext(browser, { groups: "admin", apps: GROUPED_APPS, width, today: today83.admin });
     const { page, errors } = await openPortal(context);
     await page.click("#shell-bar .shbar-appsbtn");
     const rows = await page.$$eval("#shell-bar .shbar-apps .shbar-group:not([hidden]) > .shbar-groupbtn", (bs) => bs.map((b) => b.firstElementChild.textContent));
