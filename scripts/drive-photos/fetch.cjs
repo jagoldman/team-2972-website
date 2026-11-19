@@ -14,9 +14,9 @@
 //    the page then shows no photo there, never the original from Google.
 // 3. Writes <out>/manifest.json: { "<id>": [400, 800, 1200, 1600], ... } for the photos that worked.
 //    Caddy pastes it into /config.js, and imgUrl() uses a local file only when the manifest lists it.
-// 4. Writes <out>/og-image-b1.jpg: SITE.heroImage cut to 1200x630 (the link-preview size), framed by SITE.heroPosition as
+// 4. Writes <out>/og-image-b2.jpg: SITE.heroImage cut to 1200x630 (the link-preview size), framed by SITE.heroPosition as
 //    the page frames it. index.html names it in its og:image tag (Caddy renders that tag with the site's address).
-//    No hero photo, or one that failed: no og-image-b1.jpg, and the page's tag falls back to the site's app icon.
+//    No hero photo, or one that failed: no og-image-b2.jpg, and the page's tag falls back to the site's app icon.
 //
 // A photo that cannot be downloaded or read (not shared publicly, deleted, network down) is left out with a
 // warning, and the page loads it from lh3 as before. Only a bug in this script fails the build.
@@ -61,27 +61,64 @@ function fileName(id, w, blur = {}) {
   return b ? `${id}-${b.v}-${w}.webp` : `${id}-${w}.webp`;
 }
 
-// Blurs each ellipse of a picture so it cannot be undone: the region is shrunk to 5x5 blocks, enlarged back, smeared
-// with a wide Gaussian, and laid in through a soft-edged elliptical mask a little larger than the ellipse. Takes and
-// returns an image buffer (the input already rotated); returns PNG (lossless, so the next steps start from it).
+// The box round one ellipse of a W x H picture: the ellipse in pixels (c: centre and radii), the padding round it, and
+// the box (left, top, w, h), clipped to the picture.
+function blurGeometry(W, H, [fx, fy, frx, fry]) {
+  const c = { x: Math.round(fx * W), y: Math.round(fy * H), rx: Math.max(2, Math.round(frx * W)), ry: Math.max(2, Math.round(fry * H)) };
+  const pad = Math.max(4, Math.round(c.rx * 0.8));
+  const left = Math.max(0, c.x - c.rx - pad), top = Math.max(0, c.y - c.ry - pad);
+  const w = Math.min(W, c.x + c.rx + pad) - left, h = Math.min(H, c.y + c.ry + pad) - top;
+  if (w < 4 || h < 4) throw new Error("blur region outside the photo");
+  return { c, pad, left, top, w, h };
+}
+// True when the centre of pixel (x, y) of the picture is inside the protected ellipse.
+function insideEllipse(c, x, y) {
+  return ((x + 0.5 - c.x) / c.rx) ** 2 + ((y + 0.5 - c.y) / c.ry) ** 2 <= 1;
+}
+// The mask laid over the box (one byte a pixel, 255 = the blur only). Every pixel whose centre is inside the ellipse,
+// and a 1px margin round it, is exactly 255; the feather (a smooth fall to 0) lies wholly outside, along each ray from
+// the centre, and is 0 before the edge of the box, so no part of the protected region keeps a trace of the original
+// and no hard edge is drawn.
+function blurMask(g) {
+  const { c, pad, left, top, w, h } = g, MARGIN = 1, feather = Math.max(1, pad - MARGIN - 1);
+  const m = Buffer.alloc(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const dx = left + x + 0.5 - c.x, dy = top + y + 0.5 - c.y, r = Math.sqrt((dx / c.rx) ** 2 + (dy / c.ry) ** 2);
+    let a = 255;
+    if (r > 1) {
+      const e = Math.hypot(dx, dy) * (1 - 1 / r);   // how far outside the ellipse, along the ray from its centre
+      if (e > MARGIN) { const t = Math.min(1, (e - MARGIN) / feather); a = Math.round(255 * (1 - t * t * (3 - 2 * t))); }
+    }
+    m[y * w + x] = a;
+  }
+  return m;
+}
+// Blurs each ellipse of a picture so it cannot be undone: the box round it is reduced to 5x5 blocks, each block the
+// average of its pixels that are NOT under the solid part of the mask (so the protected region's own pixels never reach
+// the output; a block with none takes the average of the whole ring), enlarged back, smeared with a wide Gaussian, and
+// laid in through blurMask(). Inside the ellipse the result depends only on the pixels round it. Takes and returns an
+// image buffer (the input already rotated); returns PNG (lossless, so the next steps start from it).
 async function blurRegions(sharp, input, ellipses) {
   let img = await sharp(input).png().toBuffer();
   const { width: W, height: H } = await sharp(img).metadata();
-  for (const [fx, fy, frx, fry] of ellipses) {
-    const c = { x: Math.round(fx * W), y: Math.round(fy * H), rx: Math.max(2, Math.round(frx * W)), ry: Math.max(2, Math.round(fry * H)) };
-    // The box around the ellipse; the mask is fully opaque over the whole ellipse (its edge sits 2.4 sigma outside it)
-    // and fades out before the box ends, so no part of the face shows through and no hard edge is drawn.
-    const pad = Math.max(3, Math.round(c.rx * 0.8));
-    const left = Math.max(0, c.x - c.rx - pad), top = Math.max(0, c.y - c.ry - pad);
-    const w = Math.min(W, c.x + c.rx + pad) - left, h = Math.min(H, c.y + c.ry + pad) - top;
-    if (w < 4 || h < 4) throw new Error("blur region outside the photo");
-    const region = sharp(img).extract({ left, top, width: w, height: h });
-    const tiny = await region.resize({ width: 5, height: 5, fit: "fill", kernel: "cubic" }).toBuffer();
-    const smear = await sharp(tiny).resize({ width: w, height: h, fit: "fill", kernel: "cubic" }).blur(Math.max(4, c.rx / 3)).png().toBuffer();
-    const mask = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs><filter id="f" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="${pad / 6}"/></filter></defs>` +
-      `<ellipse cx="${c.x - left}" cy="${c.y - top}" rx="${c.rx + 0.4 * pad}" ry="${c.ry + 0.4 * pad}" fill="#fff" filter="url(#f)"/></svg>`);
-    const patch = await sharp(smear).ensureAlpha().composite([{ input: mask, blend: "dest-in" }]).png().toBuffer();
-    img = await sharp(img).composite([{ input: patch, left, top }]).png().toBuffer();
+  for (const e of ellipses) {
+    const g = blurGeometry(W, H, e), { c, left, top, w, h } = g;
+    const mask = blurMask(g);
+    const region = await sharp(img).extract({ left, top, width: w, height: h }).removeAlpha().raw().toBuffer();
+    const sums = Array.from({ length: 25 }, () => [0, 0, 0, 0]), ring = [0, 0, 0, 0];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (mask[y * w + x] === 255) continue;
+      const b = sums[Math.min(4, Math.floor(y * 5 / h)) * 5 + Math.min(4, Math.floor(x * 5 / w))], i = (y * w + x) * 3;
+      for (const acc of [b, ring]) { acc[0] += region[i]; acc[1] += region[i + 1]; acc[2] += region[i + 2]; acc[3]++; }
+    }
+    if (!ring[3]) throw new Error("blur region has no pixels round the ellipse");
+    const tiny = Buffer.alloc(75);
+    sums.forEach((b, k) => { const src = b[3] ? b : ring; for (let ch = 0; ch < 3; ch++) tiny[k * 3 + ch] = Math.round(src[ch] / src[3]); });
+    const smear = await sharp(tiny, { raw: { width: 5, height: 5, channels: 3 } }).resize({ width: w, height: h, fit: "fill", kernel: "cubic" })
+      .blur(Math.max(4, c.rx / 3)).removeAlpha().raw().toBuffer();
+    const patch = Buffer.alloc(w * h * 4);
+    for (let k = 0; k < w * h; k++) { patch[k * 4] = smear[k * 3]; patch[k * 4 + 1] = smear[k * 3 + 1]; patch[k * 4 + 2] = smear[k * 3 + 2]; patch[k * 4 + 3] = mask[k]; }
+    img = await sharp(img).composite([{ input: patch, raw: { width: w, height: h, channels: 4 }, left, top }]).png().toBuffer();
   }
   return img;
 }
@@ -118,9 +155,9 @@ function driveIdsIn(sections) {
 }
 
 // The link-preview picture: 1200x630, the size Facebook, LinkedIn and others ask for.
-// Its name changed with the D193 blur ("og-image.jpg" before), so a link-preview service that kept the old picture by
+// Its name changes with the D193 blur ("og-image.jpg", then "og-image-b1.jpg" before the mask was made fully opaque), so a link-preview service that kept the old picture by
 // its address fetches the blurred one.
-const OG = { width: 1200, height: 630, file: "og-image-b1.jpg" };
+const OG = { width: 1200, height: 630, file: "og-image-b2.jpg" };
 // A CSS object-position ("50% 100%", "center top", "right") as fractions { x, y } from 0 to 1; the middle when unset or
 // not understood. The same values safePosition() in js/components.js accepts.
 function focusOf(position) {
@@ -229,7 +266,7 @@ async function run(contentFile, outDir, log = console, blur = blurTable()) {
   return sorted;
 }
 
-module.exports = { WIDTHS, OG, driveId, extractDriveIds, focusOf, photoRules, blurTable, blurRegions, fileName, run };
+module.exports = { WIDTHS, OG, driveId, extractDriveIds, focusOf, photoRules, blurTable, blurGeometry, insideEllipse, blurMask, blurRegions, fileName, run };
 
 if (require.main === module) {
   const root = path.join(__dirname, "..", "..");

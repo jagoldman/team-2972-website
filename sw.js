@@ -10,7 +10,8 @@
 //
 // Change VERSION when this file's rules or the precached list change. Old caches are deleted on activate.
 
-const VERSION = "v8";   // v8: a face blurred at the owner's request in the hero photo (D193): new photo file names; no stored file may outlive it
+const VERSION = "v9";   // v9: the hero blur's mask is fully opaque over the face (D193): photo files renamed b1 -> b2
+                       // v8: a face blurred at the owner's request in the hero photo (D193): new photo file names; no stored file may outlive it
                        // v7: the public site is design 8.2, light only (css/site.css, Big Shoulders and Libre Franklin)
                        // v6: /today.json and /today/ (the portal home's cards, release 8.1.5) are named in NEVER_STORE
                        // v5: the public site is Midnight & brass, dark only (new stylesheet and scripts; public pages no longer carry the theme script)

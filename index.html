@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#ffffff" />
 <!-- Link previews. The container's Caddy renders this file as a template (container/Caddyfile, "home_page"), so the addresses
      are full ones built from SITE_SCHEME and SITE_DOMAIN and are in the HTML a link-preview crawler reads (no script).
-     og-image-b1.jpg is the hero photo, cut to 1200x630 when the image is built (scripts/drive-photos/fetch.cjs); if that
+     og-image-b2.jpg is the hero photo, cut to 1200x630 when the image is built (scripts/drive-photos/fetch.cjs); if that
      failed, the site's app icon stands in. Every template action sits inside an attribute value, so a plain local server
      (no Caddy) still serves a well-formed head; the actions then stay as typed. -->
 <meta property="og:type" content="website" />
@@ -17,12 +17,12 @@
 <meta property="og:title" content="Team 2972 Gears &amp; Buccaneers | Dawson School FRC" />
 <meta property="og:description" content="Gears &amp; Buccaneers, FIRST Robotics Competition Team 2972 at Dawson School in Lafayette, Colorado." />
 <meta property="og:url" content="{{env "SITE_SCHEME" | html}}://{{env "SITE_DOMAIN" | html}}/" />
-<meta property="og:image" content="{{env "SITE_SCHEME" | html}}://{{env "SITE_DOMAIN" | html}}{{if fileExists "/img/drive/og-image-b1.jpg"}}/img/drive/og-image-b1.jpg{{else}}/pwa-icons/site/icon-512.png{{end}}" />
-<meta property="og:image:type" content="{{if fileExists "/img/drive/og-image-b1.jpg"}}image/jpeg{{else}}image/png{{end}}" />
-<meta property="og:image:width" content="{{if fileExists "/img/drive/og-image-b1.jpg"}}1200{{else}}512{{end}}" />
-<meta property="og:image:height" content="{{if fileExists "/img/drive/og-image-b1.jpg"}}630{{else}}512{{end}}" />
-<meta property="og:image:alt" content="{{if fileExists "/img/drive/og-image-b1.jpg"}}Team 2972 students with their robot{{else}}The Team 2972 logo{{end}}" />
-<meta name="twitter:card" content="{{if fileExists "/img/drive/og-image-b1.jpg"}}summary_large_image{{else}}summary{{end}}" />
+<meta property="og:image" content="{{env "SITE_SCHEME" | html}}://{{env "SITE_DOMAIN" | html}}{{if fileExists "/img/drive/og-image-b2.jpg"}}/img/drive/og-image-b2.jpg{{else}}/pwa-icons/site/icon-512.png{{end}}" />
+<meta property="og:image:type" content="{{if fileExists "/img/drive/og-image-b2.jpg"}}image/jpeg{{else}}image/png{{end}}" />
+<meta property="og:image:width" content="{{if fileExists "/img/drive/og-image-b2.jpg"}}1200{{else}}512{{end}}" />
+<meta property="og:image:height" content="{{if fileExists "/img/drive/og-image-b2.jpg"}}630{{else}}512{{end}}" />
+<meta property="og:image:alt" content="{{if fileExists "/img/drive/og-image-b2.jpg"}}Team 2972 students with their robot{{else}}The Team 2972 logo{{end}}" />
+<meta name="twitter:card" content="{{if fileExists "/img/drive/og-image-b2.jpg"}}summary_large_image{{else}}summary{{end}}" />
 <link rel="manifest" href="/manifest.webmanifest" />
 <link rel="icon" href="/pwa-icons/site/icon.svg" type="image/svg+xml" />
 <link rel="icon" href="/pwa-icons/site/icon-192.png" sizes="192x192" type="image/png" />

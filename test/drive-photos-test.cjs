@@ -89,15 +89,15 @@ check("imgUrl: an ID that is also an Object property name is not looked up there
   const blur = fetchPhotos.blurTable();
   const ctx = loadComponents(manifest);
   check("D193: the blur table is in config.js, has the hero photo, and the pages read the same table as the build",
-    blur[HERO] && blur[HERO].v === "b1" && JSON.stringify(blur[HERO].ellipses) === JSON.stringify([[0.3825, 0.538, 0.0215, 0.034]]) && ctx.window.PHOTO_BLUR.format === 1 && JSON.stringify(ctx.window.PHOTO_BLUR.photos) === JSON.stringify(blur), JSON.stringify(blur));
+    blur[HERO] && blur[HERO].v === "b2" && JSON.stringify(blur[HERO].ellipses) === JSON.stringify([[0.3825, 0.538, 0.0215, 0.034]]) && ctx.window.PHOTO_BLUR.format === 1 && JSON.stringify(ctx.window.PHOTO_BLUR.photos) === JSON.stringify(blur), JSON.stringify(blur));
   const want = { 400: 400, 600: 800, 800: 800, 1200: 1200, 1600: 1600, 2000: 1600, 9999: 1600 };
   const got = Object.keys(want).map((w) => [w, ctx.imgUrl(HERO, Number(w))]);
-  check("D193: the hero is served from its blurred files, named <id>-b1-<w>.webp; the full-size link (2000) is the largest blurred copy",
-    got.every(([w, u]) => u === `/img/drive/${HERO}-b1-${want[w]}.webp`), JSON.stringify(got));
-  check("D193: fetch.cjs names the files the way imgUrl() asks for them", fetchPhotos.fileName(HERO, 800, blur) === `${HERO}-b1-800.webp` && fetchPhotos.fileName(B, 800, blur) === `${B}-800.webp`);
-  check("D193: an lh3 address of the hero in the content is served from the blurred files too", ctx.imgUrl(`https://lh3.googleusercontent.com/d/${HERO}=w800`, 800) === `/img/drive/${HERO}-b1-800.webp`);
+  check("D193: the hero is served from its blurred files, named <id>-b2-<w>.webp; the full-size link (2000) is the largest blurred copy",
+    got.every(([w, u]) => u === `/img/drive/${HERO}-b2-${want[w]}.webp`), JSON.stringify(got));
+  check("D193: fetch.cjs names the files the way imgUrl() asks for them", fetchPhotos.fileName(HERO, 800, blur) === `${HERO}-b2-800.webp` && fetchPhotos.fileName(B, 800, blur) === `${B}-800.webp`);
+  check("D193: an lh3 address of the hero in the content is served from the blurred files too", ctx.imgUrl(`https://lh3.googleusercontent.com/d/${HERO}=w800`, 800) === `/img/drive/${HERO}-b2-800.webp`);
   const srcset = ctx.imgSized(HERO, [400, 800, 1600], "100vw");
-  check("D193: the hero's srcset lists only its blurred files", /srcset="[^"]*-b1-400\.webp 400w, [^"]*-b1-800\.webp 800w, [^"]*-b1-1600\.webp 1600w"/.test(srcset) && !/google/.test(srcset), srcset);
+  check("D193: the hero's srcset lists only its blurred files", /srcset="[^"]*-b2-400\.webp 400w, [^"]*-b2-800\.webp 800w, [^"]*-b2-1600\.webp 1600w"/.test(srcset) && !/google/.test(srcset), srcset);
   // Every way the manifest can be missing or wrong, every width, both forms of the ID: never a Google address.
   const leaks = [];
   for (const [label, m] of [["filled", manifest], ["without the hero", JSON.stringify({ [B]: [400] })], ["unfilled (local preview)", '{{readFile "img/drive/manifest.json"}}'],
@@ -121,7 +121,8 @@ check("imgUrl: an ID that is also an Object property name is not looked up there
   const cfg = read("config.js");
   check("D193: the table in config.js never holds a Caddy template opening (two braces)", !cfg.slice(cfg.indexOf("window.PHOTO_BLUR")).includes("{{"));
   check("D193: the image build gets config.js (the table) next to content.js", /COPY config\.js \/build\/config\.js/.test(read("Dockerfile")));
-  check("D193: the service worker's cache version moved past the live v6 (v8)", /const VERSION = "v8"/.test(read("sw.js")));
+  check("D193: the service worker's cache version moved with the b2 mark (v9)", /const VERSION = "v9"/.test(read("sw.js")));
+  check("D193: the version mark is b2 (the mask is fully opaque over the face; new addresses for the new pixels)", blur[HERO].v === "b2" && fetchPhotos.OG.file === "og-image-b2.jpg");
 }
 
 // ---------- D193: fail closed when the blur list did not arrive ----------
@@ -130,12 +131,12 @@ check("imgUrl: an ID that is also an Object property name is not looked up there
   const ell = [[0.5, 0.5, 0.1, 0.1]];
   const NOT_ARRIVED = [
     ["no config.js at all", { config: false }], ["PHOTO_BLUR missing (a config.js without it)", { blur: null }],
-    ["an empty object", { blur: {} }], ["the old shape, with no format marker", { blur: { [HERO]: { v: "b1", ellipses: ell } } }],
+    ["an empty object", { blur: {} }], ["the old shape, with no format marker", { blur: { [HERO]: { v: "b2", ellipses: ell } } }],
     ["format 2", { blur: { format: 2, photos: {} } }], ["format as a string", { blur: { format: "1", photos: {} } }],
     ["photos is a list", { blur: { format: 1, photos: [] } }], ["photos missing", { blur: { format: 1 } }],
-    ["a string", { blur: "format 1" }], ["one bad entry (no ellipses)", { blur: { format: 1, photos: { [HERO]: { v: "b1" } } } }],
-    ["one bad entry (an ellipse outside the photo)", { blur: { format: 1, photos: { [HERO]: { v: "b1", ellipses: [[0.5, 1.2, 0.1, 0.1]] } } } }],
-    ["one bad key", { blur: { format: 1, photos: { short: { v: "b1", ellipses: ell } } } }],
+    ["a string", { blur: "format 1" }], ["one bad entry (no ellipses)", { blur: { format: 1, photos: { [HERO]: { v: "b2" } } } }],
+    ["one bad entry (an ellipse outside the photo)", { blur: { format: 1, photos: { [HERO]: { v: "b2", ellipses: [[0.5, 1.2, 0.1, 0.1]] } } } }],
+    ["one bad key", { blur: { format: 1, photos: { short: { v: "b2", ellipses: ell } } } }],
   ];
   const google = [`https://lh3.googleusercontent.com/d/${B}=w800`, `https://lh3.googleusercontent.com/d/${HERO}`, "https://drive.google.com/uc?id=" + B,
     "https://www.googleapis.com/drive/v3/files/" + B, "https://lh5.ggpht.com/abc", "https://www.google.com/images/x.png", "https://www.gstatic.com/x.png"];
@@ -178,7 +179,7 @@ check("imgUrl: an ID that is also an Object property name is not looked up there
   const wrong = [];
   for (const [label, v] of forms(HERO)) {
     if (fetchPhotos.driveId(v) !== HERO) wrong.push(`build ${label}`);
-    if (site.imgUrl(v, 800) !== `/img/drive/${HERO}-b1-800.webp` || site.imgUrl(v, 2000) !== `/img/drive/${HERO}-b1-1600.webp`) wrong.push(`page ${label}: ${site.imgUrl(v, 800)}`);
+    if (site.imgUrl(v, 800) !== `/img/drive/${HERO}-b2-800.webp` || site.imgUrl(v, 2000) !== `/img/drive/${HERO}-b2-1600.webp`) wrong.push(`page ${label}: ${site.imgUrl(v, 800)}`);
     if (bare.imgUrl(v, 800) !== "" || bare.hasPhoto(v)) wrong.push(`page, not saved ${label}: ${bare.imgUrl(v, 800)}`);
   }
   check(`D193: a blurred photo in each of ${forms(HERO).length} link forms is found by the build and shows its blurred copy, or nothing when it is not saved`, wrong.length === 0, wrong.slice(0, 4).join(" | "));
@@ -223,7 +224,7 @@ const caddy = read("container/Caddyfile");
 check("Caddy: /img/drive photos get a one-year immutable cache header", /\(drive_photos\)[\s\S]*?Cache-Control "public, max-age=31536000, immutable"/.test(caddy));
 check("Caddy: only existing files get that header", /@drive_photo \{[\s\S]*?file \{[\s\S]*?try_files/.test(caddy));
 check("Caddy: drive photos are served on the public and direct hosts", (caddy.match(/import drive_photos/g) || []).length === 2);
-check("Caddy: the link-preview picture is served by its own name, only when it exists, cached for a day", /@og_image \{\s*path \/img\/drive\/og-image-b1\.jpg\s*file \{[\s\S]*?try_files[\s\S]*?handle @og_image \{\s*header Cache-Control "public, max-age=86400"/.test(caddy));
+check("Caddy: the link-preview picture is served by its own name, only when it exists, cached for a day", /@og_image \{\s*path \/img\/drive\/og-image-b2\.jpg\s*file \{[\s\S]*?try_files[\s\S]*?handle @og_image \{\s*header Cache-Control "public, max-age=86400"/.test(caddy));
 check("Caddy: the home page is rendered as a template on the public and direct hosts", /\(home_page\) \{\s*@home path \/ \/index\.html\s*handle @home \{[\s\S]*?templates/.test(caddy) && (caddy.match(/import home_page/g) || []).length === 2);
 {
   // Caddy runs the WHOLE of index.html through its template engine, so "{{" anywhere else (the body, a script, a comment)
@@ -244,7 +245,7 @@ check("Caddy: the home page is rendered as a template on the public and direct h
   check("the template rule catches {{ in the body, in a script and loose in the head", templateProblems(sample + "<p>{{oops}}</p></body>").length > 0
     && templateProblems(sample + "<script>const t = `${a}{{b}}`;</script></body>").length > 0 && templateProblems("<html><head>{{if x}}<meta>{{end}}</head><body></body>").length > 0
     && templateProblems(sample + "<p>fine</p></body>").length === 0);
-  check("index.html: og:image is a full address built from SITE_SCHEME and SITE_DOMAIN, og-image-b1.jpg or the app icon", /<meta property="og:image" content="\{\{env "SITE_SCHEME" \| html\}\}:\/\/\{\{env "SITE_DOMAIN" \| html\}\}\{\{if fileExists "\/img\/drive\/og-image-b1\.jpg"\}\}\/img\/drive\/og-image-b1\.jpg\{\{else\}\}\/pwa-icons\/site\/icon-512\.png\{\{end\}\}" \/>/.test(head));
+  check("index.html: og:image is a full address built from SITE_SCHEME and SITE_DOMAIN, og-image-b2.jpg or the app icon", /<meta property="og:image" content="\{\{env "SITE_SCHEME" \| html\}\}:\/\/\{\{env "SITE_DOMAIN" \| html\}\}\{\{if fileExists "\/img\/drive\/og-image-b2\.jpg"\}\}\/img\/drive\/og-image-b2\.jpg\{\{else\}\}\/pwa-icons\/site\/icon-512\.png\{\{end\}\}" \/>/.test(head));
   check("index.html: no address is typed in", !/2972robotics\.com|localhost/.test(head));
 }
 check("config.js: the manifest is filled in from img/drive/manifest.json", /drivePhotos: '\{\{readFile "img\/drive\/manifest\.json"\}\}'/.test(read("config.js")));
@@ -300,12 +301,12 @@ const contentSections = { SITE, ROBOTS };`);
     check("build: a 404 is not retried", hits[NOTSHARED] === 1, `${hits[NOTSHARED]} requests`);
     check("build: nothing is left behind for failed photos (only the manifest, the saved photos and the link-preview picture)", fs.readdirSync(out).every((f) => f === "manifest.json" || f === fresh.OG.file || f.startsWith(GOOD) || f.startsWith(WIDE)), fs.readdirSync(out).join(" "));
     const og = await sharp(path.join(out, fresh.OG.file)).metadata();
-    check("build: og-image-b1.jpg is the hero photo cut to 1200x630, JPEG, with no metadata", og.format === "jpeg" && og.width === 1200 && og.height === 630 && !og.exif && !og.icc && !og.xmp, JSON.stringify({ f: og.format, w: og.width, h: og.height }));
-    // A hero that is not a saved photo (it failed here): no og-image-b1.jpg, and a stale one from a run before is removed.
+    check("build: og-image-b2.jpg is the hero photo cut to 1200x630, JPEG, with no metadata", og.format === "jpeg" && og.width === 1200 && og.height === 630 && !og.exif && !og.icc && !og.xmp, JSON.stringify({ f: og.format, w: og.width, h: og.height }));
+    // A hero that is not a saved photo (it failed here): no og-image-b2.jpg, and a stale one from a run before is removed.
     fs.writeFileSync(path.join(tmp, "content2.js"), `const SITE = { heroImage: "${NOTSHARED}" };\nconst contentSections = { SITE };`);
     const warn2 = [];
     await fresh.run(path.join(tmp, "content2.js"), out, { log() {}, warn: (m) => warn2.push(m) });
-    check("build: a hero photo that failed leaves no og-image-b1.jpg (the page names the app icon) and says so", !fs.existsSync(path.join(out, fresh.OG.file)) && warn2.some((w) => /link-preview/.test(w)), warn2.join(" | "));
+    check("build: a hero photo that failed leaves no og-image-b2.jpg (the page names the app icon) and says so", !fs.existsSync(path.join(out, fresh.OG.file)) && warn2.some((w) => /link-preview/.test(w)), warn2.join(" | "));
     const meta = {};
     for (const id of [GOOD, WIDE]) for (const w of fresh.WIDTHS) meta[`${id}-${w}`] = await sharp(path.join(out, `${id}-${w}.webp`)).metadata();
     check("build: every file is WebP", Object.values(meta).every((m) => m.format === "webp"));
@@ -335,6 +336,28 @@ const contentSections = { SITE, ROBOTS };`);
     check("D193 unit: every pixel outside the blurred region is unchanged", outside === 0, `${outside} pixels changed`);
     check("D193 unit: inside the ellipse the detail is gone (black and white stripes become smooth grey: no step between neighbours over 4)", insideStep <= 4, `largest step ${insideStep}`);
 
+    // The mask itself, rasterised at several picture sizes with the hero's ellipse and with a tall and a tiny one: every
+    // pixel whose centre is inside the ellipse is exactly opaque (255), and the box's border is 0 (the feather ends inside it).
+    const maskProblems = [];
+    let insideCounted = 0;
+    for (const [MW, MH, ell] of [[1500, 1125, [0.3825, 0.538, 0.0215, 0.034]], [1600, 1200, [0.3825, 0.538, 0.0215, 0.034]], [400, 300, [0.3825, 0.538, 0.0215, 0.034]],
+      [3000, 2250, [0.3825, 0.538, 0.0215, 0.034]], [1200, 1600, [0.5, 0.4, 0.03, 0.08]], [800, 600, [0.5, 0.5, 0.004, 0.005]]]) {
+      const g = fresh.blurGeometry(MW, MH, ell), m = fresh.blurMask(g);
+      for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+        const a = m[y * g.w + x];
+        if (fresh.insideEllipse(g.c, g.left + x, g.top + y)) { insideCounted++; if (a !== 255) maskProblems.push(`${MW}x${MH} (${g.left + x},${g.top + y}) alpha ${a}`); }
+        if ((x === 0 || y === 0 || x === g.w - 1 || y === g.h - 1) && a !== 0) maskProblems.push(`${MW}x${MH} border (${x},${y}) alpha ${a}`);
+      }
+    }
+    check(`D193 unit: the mask is exactly 255 at every pixel inside the ellipse (${insideCounted} pixels at six sizes) and 0 on the box's border`, insideCounted > 3000 && maskProblems.length === 0, maskProblems.slice(0, 4).join(" | "));
+    // Two pictures that are the same except inside the ellipse give identical output (before any encoding): nothing of
+    // the protected region reaches the result.
+    const noise = (seed) => { const b = Buffer.from(raw); let v = seed; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (fresh.insideEllipse(fresh.blurGeometry(W, H, E).c, x, y)) { v = (v * 1103515245 + 12345) >>> 0; b.fill(v >>> 24, (y * W + x) * 3, (y * W + x) * 3 + 3); } return b; };
+    const outA = await sharp(await fresh.blurRegions(sharp, await sharp(noise(1), { raw: { width: W, height: H, channels: 3 } }).png().toBuffer(), [E])).removeAlpha().raw().toBuffer();
+    const outB = await sharp(await fresh.blurRegions(sharp, await sharp(noise(99), { raw: { width: W, height: H, channels: 3 } }).png().toBuffer(), [E])).removeAlpha().raw().toBuffer();
+    const inA = noise(1), inB = noise(99);
+    check("D193 unit: two inputs that differ only inside the ellipse give identical pixels there (and everywhere)", !inA.equals(inB) && outA.equals(outB), `${[...outA].filter((v, k) => v !== outB[k]).length} bytes differ`);
+
     // Build: a hero that is plain grey except for stripes under its blur ellipse, served by the fake lh3 and blurred by
     // the table passed to run(). Every width and the link-preview picture must be smooth (made from the blurred
     // picture); the same photo unblurred is not.
@@ -349,20 +372,20 @@ const contentSections = { SITE, ROBOTS };`);
       process.env.DRIVE_BASE_URL = `http://127.0.0.1:${server2.address().port}/`;
       delete require.cache[require.resolve(path.join(root, "scripts", "drive-photos", "fetch.cjs"))];
       const f2 = require(path.join(root, "scripts", "drive-photos", "fetch.cjs"));
-      const table = { [FACE]: { v: "b1", ellipses: [[0.4, 0.5, 0.06, 0.08]] }, [NOTSHARED]: { v: "b1", ellipses: [[0.5, 0.5, 0.1, 0.1]] } };
+      const table = { [FACE]: { v: "b2", ellipses: [[0.4, 0.5, 0.06, 0.08]] }, [NOTSHARED]: { v: "b2", ellipses: [[0.5, 0.5, 0.1, 0.1]] } };
       fs.writeFileSync(path.join(tmp, "content3.js"), `const SITE = { heroImage: "${FACE}", heroPosition: "50% 50%" };\nconst ROBOTS = [{ image: "${NOTSHARED}" }];\nconst contentSections = { SITE, ROBOTS };`);
       const out3 = path.join(tmp, "img3"), logs = [], warns = [];
       const res3 = await f2.run(path.join(tmp, "content3.js"), out3, { log: (m) => logs.push(m), warn: (m) => warns.push(m) }, table);
       const files = fs.readdirSync(out3).sort();
       check("D193 build: the blurred photo's files carry the version mark; no file under the old name", JSON.stringify(res3) === JSON.stringify({ [FACE]: f2.WIDTHS })
-        && f2.WIDTHS.every((w) => files.includes(`${FACE}-b1-${w}.webp`)) && !files.some((n) => new RegExp(`^${FACE}-\\d+\\.webp$`).test(n)), files.join(" "));
+        && f2.WIDTHS.every((w) => files.includes(`${FACE}-b2-${w}.webp`)) && !files.some((n) => new RegExp(`^${FACE}-\\d+\\.webp$`).test(n)), files.join(" "));
       const spread = async (file) => { const st = await sharp(file).stats(); return Math.max(...st.channels.slice(0, 3).map((ch) => ch.stdev)); };
       const before = await spread(faceJpeg);
       const after = [];
-      for (const w of f2.WIDTHS) after.push([w, await spread(path.join(out3, `${FACE}-b1-${w}.webp`))]);
+      for (const w of f2.WIDTHS) after.push([w, await spread(path.join(out3, `${FACE}-b2-${w}.webp`))]);
       const ogSpread = await spread(path.join(out3, f2.OG.file));
       check("D193 build: every width is made from the blurred picture (the striped region is smooth in each)", before > 10 && after.every(([, sd]) => sd < 2), JSON.stringify({ before, after }));
-      check("D193 build: the link-preview picture is made from the blurred picture too", ogSpread < 2 && f2.OG.file === "og-image-b1.jpg", ogSpread);
+      check("D193 build: the link-preview picture is made from the blurred picture too", ogSpread < 2 && f2.OG.file === "og-image-b2.jpg", ogSpread);
       check("D193 build: a blurred photo that cannot be saved is left out and the log says so loudly (PRIVACY, no photo shown)",
         !fs.readdirSync(out3).some((n) => n.startsWith(NOTSHARED)) && warns.some((m) => m.includes("PRIVACY (D193)") && m.includes(NOTSHARED) && /NO photo/.test(m)), warns.join(" | "));
       check("D193 build: the log names the blurred photo it saved", logs.some((m) => m.includes(FACE) && /blurred/.test(m)), logs.join(" | "));

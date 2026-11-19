@@ -76,7 +76,7 @@ async function newContext(browser, { width, scheme = "dark", saved = false, redu
     if (url.host !== "landing.test") return route.abort();
     if (url.pathname === "/config.js") return route.fulfill({ contentType: "text/javascript", body: CONFIG });
     // The hero's saved, blurred copies (D193); any other /img/drive file does not exist here.
-    const saved = url.pathname.match(/^\/img\/drive\/([\w-]{20,}?)-b1-(\d+)\.webp$/);
+    const saved = url.pathname.match(/^\/img\/drive\/([\w-]{20,}?)-b2-(\d+)\.webp$/);
     if (saved && saved[1] === HERO) {
       const file = PHOTOS[HERO];
       if (file && existsSync(file)) return route.fulfill({ contentType: file.endsWith(".png") ? "image/png" : "image/jpeg", body: readFileSync(file) });
@@ -308,7 +308,7 @@ try {
     check(`${L}: Join the team (the accent button) and Sponsor a season`, JSON.stringify(h.btns) === JSON.stringify([["Join the team", "member.html", true], ["Sponsor a season", "sponsors.html", false]]), h.btns);
     check(`${L}: the hero caption is live's, with the Dawson line beside it`, h.caption === "Utah Regional winners, 2026. The robot is Theseus." && h.school, h.caption);
     const ratio = width >= 1100 ? 2.5 : width >= 720 ? 2 : 1.33;
-    check(`${L}: the hero photo: blurred copies only (D193) in a srcset of 400/800/1600, the content's crop, ${ratio}:1, fetched first`, h.hero && /-b1-400\.webp 400w, .*-b1-800\.webp 800w, .*-b1-1600\.webp 1600w/.test(h.hero.srcset) && !/google/.test(h.hero.srcset) && h.hero.pos === "50% 100%" && Math.abs(h.hero.ratio - ratio) < 0.03 && h.hero.priority === "high", h.hero);
+    check(`${L}: the hero photo: blurred copies only (D193) in a srcset of 400/800/1600, the content's crop, ${ratio}:1, fetched first`, h.hero && /-b2-400\.webp 400w, .*-b2-800\.webp 800w, .*-b2-1600\.webp 1600w/.test(h.hero.srcset) && !/google/.test(h.hero.srcset) && h.hero.pos === "50% 100%" && Math.abs(h.hero.ratio - ratio) < 0.03 && h.hero.priority === "high", h.hero);
     check(`${L}: the record as one sentence`, /^16 seasons since 2009, 2 event wins and \d+ events in the playoffs\.$/.test(h.record), h.record);
     check(`${L}: the season chart's hint`, h.hint === "Select a year to see that robot.", h.hint);
     const seasons = h.seasons.filter(([, href]) => href), empty = h.seasons.filter(([, href]) => !href);
@@ -355,7 +355,7 @@ try {
     await open(page, "/");
     await page.waitForFunction(() => document.getElementById("hero-photo").complete);
     const src = await page.evaluate(() => document.getElementById("hero-photo").currentSrc);
-    check(`Home ${width}px at ${scale}x: the hero loads the ${scale === 1 ? "400" : "800"} blurred copy (at most 800 on a phone)`, new RegExp(`/img/drive/${HERO}-b1-${scale === 1 ? 400 : 800}\\.webp$`).test(src) && problems.length === 0, { src, problems });
+    check(`Home ${width}px at ${scale}x: the hero loads the ${scale === 1 ? "400" : "800"} blurred copy (at most 800 on a phone)`, new RegExp(`/img/drive/${HERO}-b2-${scale === 1 ? 400 : 800}\\.webp$`).test(src) && problems.length === 0, { src, problems });
     await context.close();
   }
   // D193: with no saved blurred copy (a failed download), the hero shows no photo; Google is never asked.
@@ -414,8 +414,8 @@ try {
     }, { hero: HERO, other });
     await page.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += 600) { scrollTo(0, y); await new Promise((res) => setTimeout(res, 40)); } });
     await page.waitForTimeout(300);
-    check("D193 forms: the hero pasted as a drive.google.com/file/d/ link shows only its blurred copies", r.a && /-b1-400\.webp$/.test(r.a[0]) && !/google/.test(r.a.join(" ")), r.a);
-    check("D193 forms: the hero as a Drive API address shows its blurred copy too", r.d && /-b1-400\.webp$/.test(r.d[0]), r.d);
+    check("D193 forms: the hero pasted as a drive.google.com/file/d/ link shows only its blurred copies", r.a && /-b2-400\.webp$/.test(r.a[0]) && !/google/.test(r.a.join(" ")), r.a);
+    check("D193 forms: the hero as a Drive API address shows its blurred copy too", r.d && /-b2-400\.webp$/.test(r.d[0]), r.d);
     check("D193 forms: an unblurred photo pasted as drive.usercontent ?id= loads by its ID from the one lh3 address", r.b && r.b[0] === `https://lh3.googleusercontent.com/d/${other}=w400`, r.b);
     check("D193 forms: a Google address that is not a Drive photo shows Photo wanted, no image", !r.c.img && r.c.wanted, r.c);
     check("D193 forms: Google is never asked for the hero or for the address it cannot reduce", !google.some((u) => u.includes(HERO) || u.includes("ACg8ocK")) && google.some((u) => u.includes(other)), google.filter((u) => u.includes(HERO) || u.includes("ACg8ocK") || u.includes(other)));

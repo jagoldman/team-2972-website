@@ -25,7 +25,7 @@ and the work list `new-apps/adoption/r83/GAP_PUBLIC_SITE.md`. `docs/PUBLIC_REDES
   `config.js` (Drive ID, a version mark `v`, ellipses as fractions of the rotated photo). `scripts/drive-photos/fetch.cjs`
   reads it (Docker copies `config.js` into the photo stage), blurs the full download before any resize (5x5 blocks, back
   up, a wide Gaussian, a soft mask fully opaque over the ellipse), and writes `<id>-<v>-<w>.webp`; the link-preview picture
-  is `og-image-b1.jpg`. `imgUrl()` never gives a Google address for a blurred ID; without a saved copy the photo is not
+  is `og-image-b2.jpg`. `imgUrl()` never gives a Google address for a blurred ID; without a saved copy the photo is not
   shown (`hasPhoto()`), and the build log says `PRIVACY (D193)` loudly. Change `v` whenever the regions change.
 - **D193 fails closed:** the list is `{ format: 1, photos: { <id>: { v, ellipses } } }`. `photoBlurList()`, in the
   "photo-rules" block of `js/components.js` (the image build runs exactly that block; the Dockerfile copies the file into
@@ -114,7 +114,7 @@ New content keys are listed in `docs/CONTENT_EDITING.md`.
 **Link previews:** Caddy renders `index.html` as a template on the public and direct hosts (`home_page` in
 `container/Caddyfile`, `Cache-Control: no-cache`), so its `og:` tags carry full addresses built from `SITE_SCHEME` and
 `SITE_DOMAIN`. Keep every `{{...}}` inside an attribute value (test/drive-photos-test.cjs checks), or a plain local server
-breaks the head. `og-image-b1.jpg` is made at image build time by `scripts/drive-photos/fetch.cjs` from the built-in
+breaks the head. `og-image-b2.jpg` is made at image build time by `scripts/drive-photos/fetch.cjs` from the built-in
 `SITE.heroImage` (a Drive photo), framed by `heroPosition`; without it the tag names `pwa-icons/site/icon-512.png`. A hero
 changed only in the editor reaches the preview picture after the content sync and the next image build.
 

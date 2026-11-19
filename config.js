@@ -24,6 +24,6 @@ window.SITE_ENV = {
 window.PHOTO_BLUR = {
   "format": 1,
   "photos": {
-    "1VgoMdevZH3syn0BvQq7QpFz09xrDS_rt": { "v": "b1", "ellipses": [[0.3825, 0.538, 0.0215, 0.034]] }
+    "1VgoMdevZH3syn0BvQq7QpFz09xrDS_rt": { "v": "b2", "ellipses": [[0.3825, 0.538, 0.0215, 0.034]] }
   }
 };
