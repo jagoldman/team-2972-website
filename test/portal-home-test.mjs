@@ -298,13 +298,13 @@ test("8.3 E1: the event part is checked; its paths are Competition's", () => {
     name: "Colorado Regional",
     line: { now: "Scouting until 10:00", match: { label: "Our match now", text: "Qual 14, Red, on the field" }, robot: "On the field, battery B1 at 12.9 V" },
     pit: [{ id: "pit-save:1:14", title: "Save the Qual 14 checklist after the match", detail: "Then start Qual 19", href: "/pit?tab=check", cta: { label: "Open the Pit", href: "/pit?tab=check" } },
-      { id: "pit-issues:1", title: "2 open issues in the pit", detail: "Open since 9:02", lines: ["Cracked sprocket", "Squeak", "Third"], href: "/pit?tab=check" }, { id: "3", title: "Third row", href: "/pit" }],
+      { id: "pit-issues:1", title: "2 open issues in the pit", detail: "Open since 9:02", lines: ["Cracked sprocket", "Squeak", "Third", "Fourth"], href: "/pit?tab=check" }, { id: "3", title: "Third row", href: "/pit" }],
     next: [{ match: 19, at: "2026-03-06T20:15:00Z", alliance: "Blue", with: [2945, 9033], against: [2036, 4388, 1410] }, { match: 20, at: null, alliance: "Green", with: [], against: [] }],
   } }, site, origin).event;
   assert.deepEqual(ev.line, { now: "Scouting until 10:00", robot: "On the field, battery B1 at 12.9 V", match: { label: "Our match now", text: "Qual 14, Red, on the field" } });
   assert.deepEqual(ev.pit.map((p) => [p.id, p.href, p.cta && p.cta.href, p.lines]), [
     ["compete:pit-save:1:14", "https://compete.example.test/pit?tab=check", "https://compete.example.test/pit?tab=check", undefined],
-    ["compete:pit-issues:1", "https://compete.example.test/pit?tab=check", undefined, ["Cracked sprocket", "Squeak"]],
+    ["compete:pit-issues:1", "https://compete.example.test/pit?tab=check", undefined, ["Cracked sprocket", "Squeak", "Third"]],
   ]);
   assert.deepEqual(ev.next, [{ match: 19, at: "2026-03-06T20:15:00Z", alliance: "Blue", with: [2945, 9033], against: [2036, 4388, 1410] }]);
   assert.equal(parseToday({ v: 1, event: { name: "x", line: { now: null, match: null, robot: null }, pit: [], next: [] } }, site, origin).event, null, "nothing to draw: no event");
@@ -319,7 +319,8 @@ test("8.3 T1: the next task's next step ({id, title}) and practices left; a step
   assert.equal(take({ nextStep: "loose" }).nextStep, undefined);
   assert.equal(take({ nextStep: { id: "s2", label: "the 8.3 first pass's guess" } }).nextStep, undefined, "the contract's field is title");
   assert.equal(take({ nextStep: { id: "a b", title: "Space in the id" } }).nextStep, undefined);
-  assert.equal(take({ nextStep: { id: "x".repeat(99), title: "Too long a key" } }).nextStep, undefined);
+  assert.equal(take({ nextStep: { id: "x".repeat(249), title: "Too long a key" } }).nextStep, undefined);
+  assert.equal(take({ nextStep: { id: "x".repeat(200), title: "A long id that fits" } }).nextStep.id.length, 200);
   assert.equal(take({ nextStep: null, practicesLeft: null }).nextStep, undefined);
   assert.deepEqual(take({ nextStep: { id: 42, title: "A number id" } }).nextStep, { id: "42", title: "A number id" });
   for (const bad of [-1, 1.5, "3", 10001]) assert.equal(take({ practicesLeft: bad }).practicesLeft, undefined, String(bad));
@@ -388,4 +389,11 @@ test("8.3 H1: Account's own answer, read field for field", async () => {
   assert.deepEqual(e.line, A.studentEvent.event.line);
   assert.deepEqual(e.pit.map((x) => [x.id, x.href, x.lines || null]), A.studentEvent.event.pit.map((x) => ["compete:" + x.id, x.href, x.lines || null]));
   assert.deepEqual(e.next.map((x) => [x.match, x.at, x.alliance]), [[19, "2026-11-19T20:15:00Z", "Blue"], [21, "", "Red"]]);
+});
+
+test("8.3 S3: Sign off's key is \"<Authentik uid>:<skillId>\" (up to 250 characters, as Account's); longer is no act", () => {
+  const key = `${"a1".repeat(32)}:${"lathe-".repeat(6)}`; // a 64-character uid and a 36-character skill id
+  const row = (k) => parseToday({ v: 1, waiting: [{ id: "skills:signoff:x", section: "waiting", title: "Lathe", href: "/s", acts: [{ label: "Sign off", app: "skills", action: "signoff", key: k }] }] }, site, origin).waiting[0];
+  assert.equal(row(key).acts[0].key, key);
+  assert.equal(row("k".repeat(251)).acts, undefined);
 });

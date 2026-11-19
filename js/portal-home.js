@@ -80,7 +80,9 @@ export function shiftFirst(rows, eventDay) {
 // Release 8.3 (CONTRACT H1): the act a row may carry, checked here as Account checks it. Unknown apps and keys that
 // are not plain ids are dropped (the act, not the row).
 export const ACT_APPS = Object.freeze(["parts", "skills", "calendar", "tasks"]);
-const ACT_KEY = /^[A-Za-z0-9_:.-]{1,100}$/;
+// Up to 250 characters, as Account's (today-home.ts ACT_KEY): Skills' key is "<uid>:<skillId>", and an Authentik uid
+// alone is 64 characters.
+const ACT_KEY = /^[A-Za-z0-9_:.-]{1,250}$/;
 const ACT_ACTION = /^[a-z][a-z_.-]{0,39}$/;
 const TONES = ["ok", "warn", "bad"];
 function act(a) {
@@ -277,7 +279,8 @@ function eventPart(ev, site) {
     const title = text(p.title), href = appHref(p.href, site, "compete");
     if (!title || !href) return null;
     const out = { id: `compete:${text(p.id, 160)}`, title, detail: text(p.detail), href, modes: MODES.slice() };
-    const lines = (Array.isArray(p.lines) ? p.lines : []).map((x) => text(x)).filter(Boolean).slice(0, 2);
+    // Competition sends up to three open issues; Account passes three on (E1).
+    const lines = (Array.isArray(p.lines) ? p.lines : []).map((x) => text(x)).filter(Boolean).slice(0, 3);
     if (lines.length) out.lines = lines;
     if (p.cta && typeof p.cta === "object") {
       const label = text(p.cta.label, 40), ctaHref = appHref(p.cta.href, site, "compete");

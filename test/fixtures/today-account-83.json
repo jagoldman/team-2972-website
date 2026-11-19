@@ -1,5 +1,5 @@
 {
- "about": "What Account (account branch r83, src/lib/today.ts gatherToday with today-home.ts) served for made-up app answers shaped as CONTRACT P1, S1, C1, E1, T1, on Thu, Nov 19 2026, site http://landing.test. Made by running Account's own code; not edited by hand. Made-up people only.",
+ "about": "What Account (account branch r83 at 302b3c8, src/lib/today.ts gatherToday with today-home.ts) served for made-up app answers shaped as CONTRACT P1, S1, C1, E1, T1, on Thu, Nov 19 2026, site http://landing.test. Made by running Account's own code; not edited by hand. Made-up people only.",
  "mentor": {
   "v": 1,
   "today": [
@@ -71,7 +71,7 @@
     ]
    },
    {
-    "id": "skills:signoff:u-3:omio",
+    "id": "skills:signoff:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1:omio",
     "section": "waiting",
     "group": "Sign-off requests",
     "title": "Qualified on the CNC router",
@@ -85,7 +85,7 @@
       "label": "Sign off",
       "app": "skills",
       "action": "signoff",
-      "key": "u-3:omio"
+      "key": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1:omio"
      }
     ]
    },
@@ -998,7 +998,8 @@
      "href": "http://compete.landing.test/pit?tab=issues",
      "lines": [
       "Cracked 22T sprocket on the intake",
-      "Left elevator bearing squeaks"
+      "Left elevator bearing squeaks",
+      "Bumper strap torn"
      ]
     }
    ],
