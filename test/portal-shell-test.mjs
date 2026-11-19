@@ -62,12 +62,15 @@ const MODE_APPS = JSON.stringify([
 // event: what /event.json answers (default 404). taskDone "hang": the POST never answers. me: a status for /me.json.
 // eventStatus: what /event-status.json answers (C15; default 404). inboxRead: the status POST /_shell/inbox/read answers
 // (default 204); its requests are in `reads`.
-async function newContext(browser, { groups = "mentor", apps = APPS, width = 1280, height = 900, today = 404, taskDone = 204, inbox = 404, event = 404, me = 200, eventStatus = 404, inboxRead = 204 } = {}) {
+// act: what POST /today/act answers (8.3, H2): a status, { status, body }, "hang", or a function of the request body
+// returning one of those; its requests are in `actPosts`.
+async function newContext(browser, { groups = "mentor", apps = APPS, width = 1280, height = 900, today = 404, taskDone = 204, inbox = 404, event = 404, me = 200, eventStatus = 404, inboxRead = 204, act = 204 } = {}) {
   const context = await browser.newContext({ viewport: { width, height } });
   const seen = [];
   const posts = [];
   const reads = [];
-  const answers = { today, gets: 0 };
+  const actPosts = [];
+  const answers = { today, gets: 0, act };
   await context.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     seen.push(url.href);
@@ -96,6 +99,16 @@ async function newContext(browser, { groups = "mentor", apps = APPS, width = 128
       const t = typeof answers.today === "function" ? answers.today() : answers.today;
       return typeof t === "number" ? route.fulfill({ status: t, body: "" }) : route.fulfill({ contentType: "application/json", body: typeof t === "string" ? t : JSON.stringify(t) });
     }
+    if (portal && url.pathname === "/today/act") {
+      const rq = route.request();
+      const body = rq.postData();
+      actPosts.push({ method: rq.method(), body, type: rq.headers()["content-type"] });
+      let a = answers.act;
+      if (typeof a === "function") a = a(JSON.parse(body || "{}"));
+      if (a === "hang") return new Promise(() => {});
+      if (typeof a === "number") return route.fulfill({ status: a, body: "" });
+      return route.fulfill({ status: a.status, contentType: "application/json", body: JSON.stringify(a.body) });
+    }
     if (portal && url.pathname === "/today/task-done") {
       posts.push({ method: route.request().method(), body: route.request().postData(), type: route.request().headers()["content-type"] });
       if (taskDone === "hang") return new Promise(() => {}); // no answer, ever: the page's own time limit must end it
@@ -117,7 +130,7 @@ async function newContext(browser, { groups = "mentor", apps = APPS, width = 128
       return route.fulfill({ status: 404, body: "" });
     }
   });
-  return { context, seen, posts, answers, reads };
+  return { context, seen, posts, answers, reads, actPosts };
 }
 
 async function openPortal(context, path = "/") {
@@ -126,7 +139,7 @@ async function openPortal(context, path = "/") {
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(PORTAL + path);
   await page.waitForSelector("#shell-bar .shbar-appsbtn");
-  if (path === "/") await page.waitForFunction(() => document.querySelector("#app-grid .app-card, #more-list li") || !document.getElementById("no-group").hidden);
+  if (path === "/") await page.waitForFunction(() => document.querySelector("#app-grid .approw, #more-list li") || !document.getElementById("no-group").hidden);
   return { page, errors };
 }
 // Site-wide cookies, as the shell kit and Account write them (INTEGRATION §9b).
@@ -150,7 +163,7 @@ try {
     const label = groups || "(no group)";
     const { context } = await newContext(browser, { groups });
     const { page, errors } = await openPortal(context);
-    const main = (await names(page, "#app-grid .app-card")).join(",");
+    const main = (await names(page, "#app-grid .approw")).join(",");
     const more = (await names(page, "#more-list li")).join(",");
     const notice = await page.isVisible("#no-group");
     check(`${label}: home tiles [${wantMain}] then More [${wantMore}]`, main === wantMain && more === wantMore, { main, more });
@@ -237,7 +250,7 @@ try {
     await page.fill("#q", "alumni");
     check("the bar names the team", (await page.textContent("#shell-bar .shbar-appname")).trim() === "Gears & Buccaneers");
     check("the greeting is the first name", (await page.textContent("#greeting")).replace(/\s+/g, " ").trim() === "Hi Pat.");
-    check("search filters across both sections", (await names(page, "#app-grid .app-card:not([hidden]), #more-list li:not([hidden])")).join() === "Alumni News");
+    check("search filters across both sections", (await names(page, "#app-grid .approw:not([hidden]), #more-list li:not([hidden])")).join() === "Alumni News");
     await page.fill("#q", "");
     let cleared = [];
     await page.exposeFunction("recordCacheDeletion", (name) => { cleared.push(name); });
@@ -253,17 +266,17 @@ try {
   {
     const { context } = await newContext(browser, { groups: "student", apps: MODE_APPS });
     let { page } = await openPortal(context);
-    check("build mode (no cookie): main tiles and More", (await names(page, "#app-grid .app-card")).join() === "Task App,Parts" && (await names(page, "#more-list li")).join() === "Skills,Team Handbook");
+    check("build mode (no cookie): main tiles and More", (await names(page, "#app-grid .approw")).join() === "Task App,Parts" && (await names(page, "#more-list li")).join() === "Skills,Team Handbook");
     const extTile = page.locator("#more-list a").filter({ hasText: "Team Handbook" });
     check("a same-site path with ext: true renders under More with the link-out arrow and opens in a new tab", (await extTile.count()) === 1 && ((await extTile.locator("span.ext").textContent()) || "").includes("↗") && (await extTile.getAttribute("target")) === "_blank");
     check("build mode: the bar does not show the competition chip", !(await page.isVisible("#shell-bar .shbar-chip")));
     await context.addCookies([site("mode", "competition")]);
     await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
-    check("competition cookie, tab comes back: the grid follows without a reload", (await names(page, "#app-grid .app-card")).join() === "Task App,Pit Checklist");
+    check("competition cookie, tab comes back: the grid follows without a reload", (await names(page, "#app-grid .approw")).join() === "Task App,Pit Checklist");
     check("...and the bar shows Competition mode", await page.isVisible("#shell-bar .shbar-chip") && (await page.textContent("#shell-bar .shbar-chip")).includes("Competition mode"));
     await page.close();
     ({ page } = await openPortal(context));
-    check("competition cookie on load", (await names(page, "#app-grid .app-card")).join() === "Task App,Pit Checklist" && (await names(page, "#more-list li")).join() === "Skills,Team Handbook");
+    check("competition cookie on load", (await names(page, "#app-grid .approw")).join() === "Task App,Pit Checklist" && (await names(page, "#more-list li")).join() === "Skills,Team Handbook");
     await context.close();
   }
 
@@ -276,14 +289,14 @@ try {
     const { context } = await newContext(browser, { groups: "student", apps: onlyMore });
     const { page } = await openPortal(context);
     // Kit 0.4.0 (splitGroups, as the bar's Apps menu): with no core app, the "more" apps are Home's own tiles, no More row.
-    check("only More: those apps are Home's tiles and there is no More row", (await page.isVisible("#main-apps")) && (await names(page, "#app-grid .app-card")).join() === "Skills,Team Handbook" && !(await page.$("#more-apps")));
+    check("only More: those apps are Home's tiles and there is no More row", (await page.isVisible("#app-grid")) && (await names(page, "#app-grid .approw")).join() === "Skills,Team Handbook" && !(await page.$("#more-apps")));
     check("only More: the search field stays visible", await page.isVisible("#q") && await page.isVisible("#search-wrap") && await page.isVisible("#apps-head"));
     await page.keyboard.press("/");
     check("only More: / focuses the search field", await page.evaluate(() => document.activeElement === document.getElementById("q")));
     await page.fill("#q", "hand");
-    check("only More: search filters those tiles", (await names(page, "#app-grid .app-card:not([hidden])")).join() === "Team Handbook");
+    check("only More: search filters those tiles", (await names(page, "#app-grid .approw:not([hidden])")).join() === "Team Handbook");
     await page.keyboard.press("Escape");
-    check("only More: Escape clears the search and leaves the field", (await page.inputValue("#q")) === "" && (await names(page, "#app-grid .app-card:not([hidden])")).join() === "Skills,Team Handbook" && await page.evaluate(() => document.activeElement !== document.getElementById("q")));
+    check("only More: Escape clears the search and leaves the field", (await page.inputValue("#q")) === "" && (await names(page, "#app-grid .approw:not([hidden])")).join() === "Skills,Team Handbook" && await page.evaluate(() => document.activeElement !== document.getElementById("q")));
     await context.close();
   }
 
@@ -321,7 +334,7 @@ try {
     check(`320px ${theme}: the greeting is the first name`, (await page.textContent("#greeting")).replace(/\s+/g, " ").trim() === "Hi Pat.");
     const dateBox = await page.$eval(".homedate", (e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.right)]; });
     check(`320px ${theme}: the date stays on screen`, dateBox[0] > 0 && dateBox[1] <= 320, dateBox);
-    const cols = await page.$$eval("#app-grid .app-card", (els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().left))).size);
+    const cols = await page.$$eval("#app-grid .approw", (els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().left))).size);
     check(`320px ${theme}: tiles sit two to a row`, cols === 2, `${cols} columns`);
     await page.click("#shell-bar .shbar-appsbtn");
     check(`320px ${theme}: Apps menu open has no horizontal scroll`, (await over(page)) <= 0, `${await over(page)}px`);
@@ -350,33 +363,34 @@ try {
     await context.close();
   }
 
-  // ---------- release 8.1.5: the demo's Home above and below the tiles (C1, C2, C4, C9, the bell) ----------
+  // ---------- the Home: release 8.1.5's data (C4, C12, C13, C14) drawn as release 8.3's Ground up (D182) ----------
   const ago = (min) => new Date(Date.now() - min * 60000).toISOString();
   const CAL = "http://calendar.landing.test", PARTS = "http://parts.landing.test", TASKS = "http://tasks.landing.test";
+  // The 8.1.5 shape (no 8.3 part): an older Account must still give a Home that looks right.
   const TODAY = {
     student: { v: 1,
-      today: [{ id: "cal-practice", section: "today", title: "Practice today, 3:30 to 6:00 pm", detail: "You are not signed in", href: `${CAL}/here?tab=today`, cta: { label: "Sign in", href: `${CAL}/here/scan` } }],
+      today: [{ id: "calendar:practice", section: "today", title: "Practice today, 3:30 to 6:00 pm", detail: "You are not signed in", href: `${CAL}/here?tab=today`, cta: { label: "Sign in", href: `${CAL}/here/scan` } }],
       waiting: [],
       next: { taskId: "t-41", title: "Wire the intake sensor", due: "2026-11-18", project: "Intake", href: `${TASKS}/my?task=t-41` },
       activity: [{ app: "Parts", title: "Your part request was ordered", detail: "Hex shaft, 1/2 in.", href: `${PARTS}/requests/7`, at: ago(5) },
         { app: "Skills", title: "A mentor signed off Drill press", href: "http://skills.landing.test/", at: ago(180) }] },
     mentor: { v: 1,
-      today: [{ id: "cal-practice", section: "today", title: "Practice today, 3:30 to 6:00 pm", detail: "12 people are signed in", href: `${CAL}/here?tab=today` }],
-      waiting: [{ id: "parts-ok", section: "waiting", title: "2 part requests need an OK", detail: "", href: `${PARTS}/?tab=toorder`, count: 2 },
-        { id: "skills-sign", section: "waiting", title: "3 sign-off requests", detail: "Lathe, Mill, Band saw", href: "http://skills.landing.test/?tab=signoff", count: 3 },
-        { id: "cal-coming", section: "waiting", title: "Tell us if you're coming this week", detail: "", href: `${CAL}/here?tab=mentors`, count: 1 }],
+      today: [{ id: "calendar:practice", section: "today", title: "Practice today, 3:30 to 6:00 pm", detail: "12 people are signed in", href: `${CAL}/here?tab=today` }],
+      waiting: [{ id: "parts:parts-needsok", section: "waiting", title: "2 part requests need an OK", detail: "", href: `${PARTS}/?tab=toorder`, count: 2 },
+        { id: "skills:skills-signoff", section: "waiting", title: "3 sign-off requests", detail: "Lathe, Mill, Band saw", href: "http://skills.landing.test/?tab=signoff", count: 3 },
+        { id: "calendar:my-days", section: "waiting", title: "Tell us if you're coming this week", detail: "", href: `${CAL}/here?tab=mentors`, count: 1 }],
       next: null,
       activity: [{ title: "Sam Example asked for a sign-off", detail: "Lathe", href: "http://skills.landing.test/?tab=signoff", at: ago(20) }] },
     parent: { v: 1,
-      today: [{ id: "cal-next", section: "today", title: "Next practice: Tue, Nov 17", detail: "3:30 to 6:00 pm", href: `${CAL}/?tab=agenda` },
-        { id: "cal-event", section: "today", title: "Next event: Fall open house", detail: "Sat, Nov 21", href: `${CAL}/?tab=agenda` },
-        { id: "cal-snacks", section: "today", title: "Thu, Nov 19 needs snacks", detail: "2 families needed", href: `${CAL}/snacks`, cta: { label: "Sign up", href: `${CAL}/snacks?day=2026-11-19` } }],
+      today: [{ id: "calendar:practice", section: "today", title: "Next practice: Tue, Nov 17", detail: "3:30 to 6:00 pm", href: `${CAL}/?tab=agenda` },
+        { id: "calendar:event", section: "today", title: "Next event: Fall open house", detail: "Sat, Nov 21", href: `${CAL}/?tab=agenda` },
+        { id: "calendar:snacks:2026-11-19", section: "today", title: "Thu, Nov 19 needs snacks", detail: "2 families needed", href: `${CAL}/snacks`, cta: { label: "Sign up", href: `${CAL}/snacks?day=2026-11-19` } }],
       waiting: [], next: null,
       activity: [{ title: "Parents never see this", href: `${CAL}/`, at: ago(3) }] },
     admin: { v: 1,
-      today: [{ id: "cal-practice", section: "today", title: "Practice today, 3:30 to 6:00 pm", detail: "12 people are signed in", href: `${CAL}/here?tab=today` }],
-      waiting: [{ id: "admin-req", section: "waiting", title: "2 account requests", detail: "", href: "http://admin.landing.test/requests", count: 2 },
-        { id: "cal-silent", section: "waiting", title: "2 mentors haven't answered for this week", detail: "Mentor A, Mentor B", href: `${CAL}/here?tab=mentors`, count: 2 },
+      today: [{ id: "calendar:practice", section: "today", title: "Practice today, 3:30 to 6:00 pm", detail: "12 people are signed in", href: `${CAL}/here?tab=today` }],
+      waiting: [{ id: "admin:requests", section: "waiting", title: "2 account requests", detail: "", href: "http://admin.landing.test/requests", count: 2 },
+        { id: "calendar:mentors-silent", section: "waiting", title: "2 mentors haven't answered for this week", detail: "Mentor A, Mentor B", href: `${CAL}/here?tab=mentors`, count: 2 },
         { id: "evil", section: "waiting", title: "An off-site row is dropped", href: "https://evil.example.com/" }],
       next: null, activity: [] },
   };
@@ -391,64 +405,244 @@ try {
     { id: "tool-gear", name: "Gear and sprocket finder", description: "A photo and one measurement name the part.", tip: "Work out gear pitch, chain size or belt profile, then find it in Parts.", host: "tools", path: "/gear", tool: true, icon: "gear", groups: ["admin", "mentor", "student"] },
   ]);
   const SHOTS = process.env.PORTAL_TEST_SHOTS || "";
-  const shot = async (page, name) => { if (SHOTS) await page.screenshot({ path: join(SHOTS, `${name}.png`) }); };
+  const shot = async (page, name, full = false) => { if (SHOTS) await page.screenshot({ path: join(SHOTS, `${name}.png`), fullPage: full }); };
   const over = (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   const settle = async (page) => { await page.waitForLoadState("networkidle"); await page.waitForTimeout(150); };
+  // What the Home drew: the top part, the sections of each column, the rows, the filled buttons, every link.
   const homeState = (page) => page.evaluate(() => {
-    const ids = [...document.querySelectorAll("#home-card-list > section, #home-activity > section")].map((s) => s.id);
-    const order = ["[data-guide-card]", "#home-cards", "#apps-head", "#home-groups", "#home-activity", "#access"].map((sel) => document.querySelector(sel));
-    const inOrder = order.every((n, i) => i === 0 || (order[i - 1].compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING));
-    const rows = (id) => [...document.querySelectorAll(`#${id} .rt`)].map((e) => e.textContent);
-    return { ids, inOrder, today: rows("home-today"), waiting: rows("home-waiting"),
-      counts: [...document.querySelectorAll("#home-waiting .tcount")].map((e) => e.textContent),
-      ctas: [...document.querySelectorAll(".todayrow > a.btn")].map((a) => [a.firstChild.textContent, a.getAttribute("href"), a.target]),
-      guideSlot: !!document.querySelector("main [data-guide-card]"), waitGuide: document.querySelector("#home-waiting")?.dataset.guide || null,
-      next: document.querySelector("#home-next h2")?.textContent || null, nextLine: document.querySelector("#home-next .mute")?.textContent || null,
-      activity: [...document.querySelectorAll("#home-activity .actlink b")].map((e) => e.textContent),
-      rowLinks: [...document.querySelectorAll("#home-cards a, #home-activity a")].map((a) => ({ href: a.href, target: a.target, rel: a.rel })) };
+    const vis = (e) => e.getClientRects().length && !e.closest("[hidden]");
+    const ids = (sel) => [...document.querySelectorAll(sel)].filter((s) => s.id && vis(s)).map((s) => s.id);
+    const text = (e) => (e ? e.textContent.replace(" (opens in a new tab)", "").replace(/\s+/g, " ").trim() : null);
+    const rows = (id) => [...document.querySelectorAll(`#${id} .nowrow`)].filter(vis).map((r) => ({ id: r.dataset.id, title: text(r.querySelector(".rt")),
+      lines: [...r.querySelectorAll(".rl")].map(text), btns: [...r.querySelectorAll(".nowbtn")].map((b) => [text(b), b.tagName, b.classList.contains("btn-outline") ? "plain" : "filled", b.getAttribute("href")]),
+      first: r.classList.contains("nowfirst"), chev: !!r.querySelector(".chev") }));
+    const filled = [...document.querySelectorAll("#main .btn")].filter((b) => vis(b) && !b.closest("#access") && !b.closest("[data-guide-card]") && !b.classList.contains("btn-outline") && !b.classList.contains("btn-ghost")).map(text);
+    return {
+      top: document.querySelector("#home-top > *")?.className || null, topText: (document.querySelector("#home-top > *")?.innerText || "").replace(/\s+/g, " ").trim(),
+      main: ids("#home-main > *"), side: ids("#home-side-lead > *, #home-side > section, #home-side > .guideslot > section"),
+      groups: [...document.querySelectorAll("#home-now .nowgroup")].map(text),
+      now: rows("home-now"), others: rows("home-others"), help: rows("home-help"),
+      week: [...document.querySelectorAll("#home-week .wkrow")].map((a) => [text(a.querySelector(".wkd b")), text(a.querySelector(".grow > b")), [...a.querySelectorAll(".wkfacts > *")].map(text)]),
+      coming: [...document.querySelectorAll("#home-coming .wkrow .grow > b")].map(text),
+      next: text(document.querySelector("#home-next .nexttitle")), nextDue: text(document.querySelector("#home-next .nextdue")), nextStep: text(document.querySelector("#home-next .nextstep")),
+      nextActs: [...document.querySelectorAll("#home-next .heroacts > *")].map((e) => [text(e), e.classList.contains("btn-outline") ? "plain" : "filled"]),
+      activity: [...document.querySelectorAll("#home-activity .actlink b")].map(text),
+      filled, waitGuide: document.querySelector("#home-now")?.dataset.guide || null, guideHidden: document.querySelector("[data-guide-card]").hidden,
+      undef: /undefined|null|NaN/.test(document.getElementById("main").innerText),
+      emptyHeads: [...document.querySelectorAll("#main h2, #main h3")].filter((h) => vis(h) && !h.closest("[data-guide-card]") && !h.nextElementSibling).map(text),
+      links: [...document.querySelectorAll("#home-top a, #home-main a, #home-side-lead a")].map((a) => ({ href: a.href, target: a.target, rel: a.rel })),
+    };
   });
-  const DEMO_ORDER = { student: ["home-today", "home-next", "home-activity"], mentor: ["home-waiting", "home-today", "home-activity"],
-    parent: ["home-today"], admin: ["home-waiting", "home-today"] };
-  for (const role of ["student", "mentor", "parent", "admin"]) {
+  const F = await import(new URL("./fixtures/today-83.mjs", import.meta.url));
+  const T0 = new Date();
+  const today83 = { student: F.studentToday(T0), mentor: F.mentorToday(T0), admin: F.mentorToday(T0), parent: F.parentToday(T0) };
+  const season = today83.student.season.days.filter((d) => d.date >= F.dayFrom(T0, 0)).length;
+  const WANT = {
+    student: { main: ["home-now", "home-next", "home-others", "home-activity"], side: ["home-week", "apps"], top: "season", filled: ["Sign in"] },
+    mentor: { main: ["home-now", "home-activity"], side: ["home-week", "apps"], top: "season", filled: ["Approve"] },
+    admin: { main: ["home-now", "home-activity"], side: ["home-week", "apps"], top: "season", filled: ["Approve"] },
+    parent: { main: ["home-week", "home-coming"], side: ["home-help", "apps"], top: "season simple", filled: ["Sign up"] },
+  };
+  for (const role of ["student", "mentor", "admin", "parent"]) {
     for (const width of [1280, 390]) {
-      const { context } = await newContext(browser, { groups: role, apps: GROUPED_APPS, today: TODAY[role], width });
-      const { page, errors } = await openPortal(context);
-      await settle(page);
-      const h = await homeState(page);
-      check(`${role} ${width}px: the cards above the tiles in the demo's order, Recent activity under them`, JSON.stringify(h.ids) === JSON.stringify(DEMO_ORDER[role]) && h.inOrder && h.guideSlot, h);
-      check(`${role} ${width}px: no sideways scroll, no script error`, (await over(page)) <= 0 && errors.length === 0, { over: await over(page), errors });
-      if (width === 390) {
-        const small = await page.$$eval("#home-cards a, #home-cards button, #home-activity a, #home-groups button, #home-groups a", (els) => els.filter((e) => e.getClientRects().length && !e.closest("[hidden]"))
-          .map((e) => [e.textContent.trim().slice(0, 24), Math.round(e.getBoundingClientRect().height)]).filter(([, hh]) => hh < 44));
-        check(`${role} 390px: every control on the cards and the rows is at least 44px tall`, small.length === 0, small);
+      for (const theme of width === 1280 ? ["light", "dark"] : ["light"]) {
+        const { context } = await newContext(browser, { groups: role === "admin" ? "admin|mentor" : role, apps: GROUPED_APPS, today: today83[role], width });
+        await context.addCookies([site("theme", theme)]);
+        const { page, errors } = await openPortal(context);
+        await settle(page);
+        const h = await homeState(page);
+        const w = WANT[role];
+        const tag = `8.3 ${role} ${width}px ${theme}`;
+        check(`${tag}: the top line, then main ${w.main.join(", ")} and side ${w.side.join(", ")}`, h.top === w.top && JSON.stringify(h.main) === JSON.stringify(w.main) && JSON.stringify(h.side.slice(0, 2)) === JSON.stringify(w.side), h);
+        check(`${tag}: one filled button on the page (${w.filled[0]})`, JSON.stringify(h.filled) === JSON.stringify(w.filled), h.filled);
+        check(`${tag}: no sideways scroll, no script error, no "undefined", no empty heading`, (await over(page)) <= 0 && errors.length === 0 && !h.undef && h.emptyHeads.length === 0, { over: await over(page), errors, undef: h.undef, empty: h.emptyHeads });
+        const bad = h.links.filter((l) => !/\.landing\.test$/.test(new URL(l.href).host) || (new URL(l.href).host !== "portal.landing.test" && (l.target !== "_blank" || !l.rel.includes("noopener"))));
+        check(`${tag}: every link goes into an app on this site, in a new tab`, h.links.length > 0 && bad.length === 0, bad);
+        if (width === 390) {
+          const small = await page.$$eval("#home-top a, #home-main a, #home-main button, #home-side a, #home-side button", (els) => els.filter((e) => e.getClientRects().length && !e.closest("[hidden]") && !e.closest(".grpbody") && !e.closest("[data-guide-card]"))
+            .map((e) => [e.textContent.trim().slice(0, 24), Math.round(e.getBoundingClientRect().height)]).filter(([, hh]) => hh < 44));
+          check(`${tag}: every control is at least 44px tall`, small.length === 0, small);
+          // On a phone one column, in the order a person needs it.
+          const order = await page.evaluate(() => [...document.querySelectorAll("#home-main > *, #home-side-lead > *, #apps")].filter((e) => e.getClientRects().length).sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top).map((e) => e.id));
+          const wantOrder = role === "parent" ? ["home-week", "home-help", "home-coming", "apps"] : role === "student" ? ["home-now", "home-next", "home-others", "home-week", "apps", "home-activity"] : ["home-now", "home-week", "apps", "home-activity"];
+          check(`${tag}: one column in the order ${wantOrder.join(", ")}`, JSON.stringify(order) === JSON.stringify(wantOrder), order);
+        }
+        if (role === "student" && theme === "light") {
+          check(`${tag}: the season line counts ${season} practices to kickoff with three milestones`, h.topText.startsWith(`${season} practices to kickoff`) && (await page.$$("#home-top .snms")).length === 3 && (width === 390 || (await page.$$("#home-top .pm")).length === season), h.topText);
+          const p = h.now[0];
+          check(`${tag}: Now leads with "Practice today", its time, "Not signed in" and the Sign in link (filled), in a block`, p.id === "calendar:practice" && p.title === "Practice today" && p.lines.join("|") === "3:30 pm–6 pm|Not signed in" && p.first
+            && JSON.stringify(p.btns) === JSON.stringify([["Sign in", "A", "filled", "http://calendar.landing.test/here/scan"]]), p);
+          check(`${tag}: the next task: the title is the link, the due date counts practices, the next step, its buttons plain while Sign in is waiting`, h.next === "Cut polycarb side plates›" && /^Due \w{3}, \w{3} \d+, \d+ practices? left$/.test(h.nextDue) && h.nextStep === "Next step: Cut on the router"
+            && JSON.stringify(h.nextActs) === JSON.stringify([["Mark task done", "plain"], ["I'm stuck", "plain"], ["Request a part", "plain"]]), h);
+          check(`${tag}: Waiting on others: the part with its state as a dot and a word, the sign-off with who it waits on`, h.others.length === 2 && h.others[0].title === "Bearing 1/2\" hex, flanged Ordered" && h.others[1].lines.join() === "Waiting on a mentor since Monday"
+            && (await page.$eval("#home-others .gmark", (m) => m.classList.contains("ok") && getComputedStyle(m, "::before").content !== "none")), h.others);
+          check(`${tag}: Recent activity shows three`, h.activity.length === 3, h.activity);
+          check(`${tag}: This week: Today first, mentors coming, snacks, and what is due`, h.week[0][0] === "Today" && h.week[0][2].includes("2 mentors coming") && h.week[0][2].includes("Snacks: Test family and Sample family") && h.week.some((d) => d[2].some((f) => /^Due: /.test(f))) && h.week.some((d) => d[2].includes("No mentors yet")), h.week);
+        }
+        if (role === "mentor" && theme === "light") {
+          check(`${tag}: Now in groups: Needs your OK, Sign-off requests, Stuck, then the doors`, h.groups.join("|") === "Needs your OK|Sign-off requests|Stuck|Other things" && h.waitGuide === "wait", h.groups);
+          const ok = h.now[0];
+          check(`${tag}: a request with its mark, two lines, Approve (filled: blocking) and Deny`, ok.title === "Motor, brushless Blocking" && ok.lines.length === 2 && JSON.stringify(ok.btns.map((b) => [b[0], b[2]])) === JSON.stringify([["Approve", "filled"], ["Deny", "plain"]]), ok);
+          check(`${tag}: each sign-off has Sign off; the stuck task and the doors have a chevron; the practice row comes last`, h.now.filter((r) => r.btns.some((b) => b[0] === "Sign off")).length === 2 && h.now.filter((r) => r.chev).length === 3 && h.now.at(-1).id === "calendar:practice", h.now);
+          check(`${tag}: no next-task card, no Waiting on others`, h.next === null && h.others.length === 0);
+        }
+        if (role === "parent" && theme === "light") {
+          check(`${tag}: the parent's line leads with today's practice and the place, then the days and practices to kickoff`, /^Practice today, 3:30 pm–6 pm, Team shop 60 days, \d+ practices to kickoff/.test(h.topText), h.topText);
+          check(`${tag}: This week names the place, no mentor counts; Coming up lists the events`, h.week.every((d) => d[2][0] === "Team shop" && !d[2].some((f) => /mentor/.test(f))) && h.coming.length === 3, { week: h.week, coming: h.coming });
+          check(`${tag}: Can you help?: the snack day (Sign up, filled) and the volunteer event (Sign up, plain); no activity`, h.help.length === 2 && JSON.stringify(h.help.map((r) => r.btns.map((b) => [b[0], b[2]]))) === JSON.stringify([[["Sign up", "filled"]], [["Sign up", "plain"]]]) && h.activity.length === 0, h.help);
+        }
+        await shot(page, `home83-${role}-${width}-${theme}`, true);
+        await context.close();
       }
-      const bad = h.rowLinks.filter((l) => !/\.landing\.test$/.test(new URL(l.href).host) || l.target !== "_blank" || !l.rel.includes("noopener"));
-      check(`${role} ${width}px: every row links into an app on this site, in a new tab`, h.rowLinks.length > 0 && bad.length === 0, bad);
-      if (role === "student") {
-        check("student: Today shows the practice and its Sign in button", h.today.join() === "Practice today, 3:30 to 6:00 pm" && h.ctas.length === 1 && h.ctas[0][0] === "Sign in" && h.ctas[0][1] === `${CAL}/here/scan`, h);
-        check("student: the next-task card with its project and due date", h.next === "Wire the intake sensor" && /^Intake · due \w{3}, Nov 18$/.test(h.nextLine), h);
-        const gold = await page.$eval("#home-next .heroacts", (b) => [...b.children].map((e) => [e.firstChild.textContent.trim() || e.textContent.trim(), e.classList.contains("btn-outline") ? "plain" : e.classList.contains("btn-ghost") ? "ghost" : "gold"]));
-        check("student: Done is the one gold button, Open is the demo's ghost button", JSON.stringify(gold) === JSON.stringify([["Done", "gold"], ["Open", "ghost"]]), gold);
-        check("student: Recent activity has the notices", h.activity.join("|") === "Your part request was ordered|A mentor signed off Drill press", h);
-        check("student: Recent activity names the app first, as the demo (C13)", (await page.$$eval("#home-activity .actlink", (as) => as.map((a) => a.firstElementChild.className + ":" + a.firstElementChild.textContent))).join() === "actapp:Parts,actapp:Skills");
-        check("student: no Waiting on you card", !h.waiting.length);
-      }
-      if (role === "mentor") {
-        check("mentor: Waiting on you rows with counts, and the guide's data-guide=\"wait\"", h.waiting.length === 3 && h.counts.join() === "2,3,1" && h.waitGuide === "wait", h);
-        check("mentor: the counts are the demo's amber chip", await page.$$eval("#home-waiting .tcount", (els) => els.length === 3 && els.every((e) => e.classList.contains("warn"))));
-        check("mentor: no next-task card", h.next === null);
-      }
-      if (role === "parent") {
-        check("parent: Today has the next practice, the next event and snacks with Sign up", h.today.length === 3 && h.ctas.map((c) => c[0]).join() === "Sign up", h);
-        check("parent: no Recent activity, even when the answer has some", h.activity.length === 0 && !(await page.$("#home-activity section")), h);
-      }
-      if (role === "admin") check("admin: an off-site row is dropped", h.waiting.join("|") === "2 account requests|2 mentors haven't answered for this week", h);
-      await shot(page, `home-${role}-${width}`);
-      await context.close();
     }
   }
 
-  // Done: posts the task, then the home is drawn again with the next one; an error offers "Open task" instead.
+  // The 8.1.5 answer (no 8.3 part) still gives a Home that looks right: Now from the rows, no season line, no week.
+  for (const role of ["student", "mentor", "parent", "admin"]) {
+    const { context } = await newContext(browser, { groups: role, apps: GROUPED_APPS, today: TODAY[role] });
+    const { page, errors } = await openPortal(context);
+    await settle(page);
+    const h = await homeState(page);
+    check(`8.1.5 answer, ${role}: no season line, no This week, no "undefined", no empty heading, no error`, h.top === null && !h.main.includes("home-week") && !h.side.includes("home-week") && !h.undef && h.emptyHeads.length === 0 && errors.length === 0, { h, errors });
+    if (role === "student") check("8.1.5 answer, student: Now has the practice with Sign in; the next task without a practice count; Mark task done is plain beside Sign in",
+      h.now[0].btns[0][0] === "Sign in" && h.filled.join() === "Sign in" && /^Due Wed, Nov 18$/.test(h.nextDue) && h.nextActs[0][1] === "plain", h);
+    if (role === "mentor") check("8.1.5 answer, mentor: the count rows are rows with chevrons, no count chips; the practice row last", h.now.map((r) => r.id).join() === "parts:parts-needsok,skills:skills-signoff,calendar:my-days,calendar:practice" && !(await page.$("#home-now .tcount")) && h.now.every((r) => r.chev), h.now);
+    if (role === "parent") check("8.1.5 answer, parent: the next practice and event as rows, the snack day under Can you help? with its Sign up link", h.now.map((r) => r.id).join() === "calendar:practice,calendar:event" && h.help.length === 1 && h.help[0].btns[0][1] === "A" && h.activity.length === 0, h);
+    if (role === "admin") check("8.1.5 answer, admin: the off-site row is dropped", h.now.map((r) => r.title).join("|") === "2 account requests|2 mentors haven't answered for this week|Practice today", h.now);
+    await context.close();
+  }
+  // Each 8.3 part on its own: a page with only one of them still looks right.
+  for (const part of ["season", "week", "milestones", "coming", "others"]) {
+    const full = F.studentToday(T0);
+    const today = { v: 1, today: full.today, waiting: [], next: full.next, activity: [], [part]: full[part] || F.parentToday(T0)[part] };
+    const { context } = await newContext(browser, { groups: part === "coming" ? "parent" : "student", apps: GROUPED_APPS, today });
+    const { page, errors } = await openPortal(context);
+    await settle(page);
+    const h = await homeState(page);
+    check(`only "${part}": no "undefined", no empty heading, no error`, !h.undef && h.emptyHeads.length === 0 && errors.length === 0, { h, errors });
+    await context.close();
+  }
+
+  // ---------- the buttons on the rows act at once (D187, CONTRACT H2) ----------
+  {
+    // Approve: the row goes at once, one POST for two presses, then /today.json is asked again.
+    const { context, actPosts, answers } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor, act: "hang" });
+    const { page, errors } = await openPortal(context);
+    await page.waitForSelector('#home-now [data-id="parts:approve:12"]');
+    await page.$eval('#home-now [data-id="parts:approve:12"] .nowbtn', (b) => { b.click(); b.click(); });
+    await page.waitForTimeout(200);
+    const gone = await page.$eval('#home-now [data-id="parts:approve:12"]', (r) => r.hidden);
+    check("Approve: the row goes at once, before the answer", gone);
+    check("Approve: two presses send one POST of {app, action, key} as JSON to /today/act", actPosts.length === 1 && actPosts[0].method === "POST" && actPosts[0].body === JSON.stringify({ app: "parts", action: "approve", key: "12" }) && /application\/json/.test(actPosts[0].type), actPosts);
+    check("Approve: the status line says so at once", (await page.textContent("#home-done-status")).startsWith("Approved."));
+    check("Approve: focus moves on down the list", await page.evaluate(() => !!document.activeElement.closest("#home-now")));
+    check("Approve: no script error", errors.length === 0, errors);
+    await context.close();
+  }
+  for (const [status, words, refresh] of [[204, null, true], [409, "Someone else already approved or denied this.", true], [403, "You can't do this from Home. Open it to see why.", true],
+    [404, "This isn't there any more.", true], [503, "That didn't go through. Try again.", false]]) {
+    const { context, actPosts, answers } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor, act: status });
+    const { page } = await openPortal(context);
+    await page.waitForSelector('#home-now [data-id="skills:signoff:u-3:omio"]');
+    const gets0 = answers.gets;
+    await page.click('#home-now [data-id="skills:signoff:u-3:omio"] .nowbtn');
+    await page.waitForTimeout(400);
+    const s = await page.evaluate(() => { const r = document.querySelector('#home-now [data-id="skills:signoff:u-3:omio"]'); return { there: !!r && !r.hidden, msg: r?.querySelector(".nowmsg")?.textContent || null, status: document.getElementById("home-done-status").textContent }; });
+    check(`Sign off answered ${status}: ${words ? `the row comes back and says "${words}"` : "the row stays gone"}${refresh ? ", /today.json is asked again" : ""}`,
+      actPosts[0]?.body === JSON.stringify({ app: "skills", action: "signoff", key: "u-3:omio" }) && (words ? s.there && s.msg === words && s.status === words : s.status === "Signed off.") && (answers.gets > gets0) === refresh, { s, gets: answers.gets - gets0 });
+    if (status === 409) await shot(page, "act-409-1280");
+    await context.close();
+  }
+  {
+    // Deny asks why in a small dialog with Parts' own words; Keep it sends nothing; Deny sends the reason.
+    const { context, actPosts } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor });
+    const { page } = await openPortal(context);
+    await page.waitForSelector('#home-now [data-id="parts:approve:12"]');
+    await page.click('#home-now [data-id="parts:approve:12"] .nowdeny');
+    await page.waitForSelector("dialog.gdialog[open]");
+    const d = await page.evaluate(() => ({ h: document.querySelector("dialog h2").textContent, why: document.querySelector("dialog textarea").value, focus: document.activeElement.id }));
+    check("Deny opens a dialog: \"Deny this request?\" with Parts' default reason, the reason box focused", d.h === "Deny this request?" && d.why === "Let's use the ones in stock first." && d.focus === "deny-why", d);
+    await shot(page, "act-deny-dialog-1280");
+    await page.click("dialog .btn-outline");
+    check("Keep it: nothing is sent and the row stays", actPosts.length === 0 && await page.isVisible('#home-now [data-id="parts:approve:12"]'));
+    await page.click('#home-now [data-id="parts:approve:12"] .nowdeny');
+    await page.fill("dialog textarea", "  ");
+    await page.click("dialog .gbtns .btn:not(.btn-outline)");
+    check("an empty reason is refused in the dialog", actPosts.length === 0 && (await page.textContent("dialog .gerr")) === "Say why, so they know.");
+    await page.fill("dialog textarea", "We have two in the cabinet.");
+    await page.click("dialog .gbtns .btn:not(.btn-outline)");
+    await page.waitForTimeout(300);
+    check("Deny sends the reason; the row goes", actPosts.length === 1 && actPosts[0].body === JSON.stringify({ app: "parts", action: "deny", key: "12", reason: "We have two in the cabinet." }) && !(await page.isVisible('#home-now [data-id="parts:approve:12"]')), actPosts);
+    await context.close();
+  }
+  {
+    // Undo is offered only when Parts answered {undoUntil}; it sends "unapprove" on the same path.
+    const until = new Date(Date.now() + 120000).toISOString();
+    const { context, actPosts } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor, act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: until } } : 204) });
+    const { page } = await openPortal(context);
+    await page.waitForSelector('#home-now [data-id="parts:approve:12"]');
+    await page.click('#home-now [data-id="parts:approve:12"] .nowbtn');
+    await page.waitForSelector("#home-done-status .linkbtn");
+    await shot(page, "act-undo-1280");
+    await page.click("#home-done-status .linkbtn");
+    await page.waitForFunction(() => /Put back/.test(document.getElementById("home-done-status").textContent));
+    check("Approve answered {undoUntil}: Undo is offered and sends {action: \"unapprove\"}", actPosts.length === 2 && JSON.parse(actPosts[1].body).action === "unapprove" && JSON.parse(actPosts[1].body).key === "12", actPosts);
+    await context.close();
+    const plain = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor });
+    const p2 = (await openPortal(plain.context)).page;
+    await p2.waitForSelector('#home-now [data-id="parts:approve:12"]');
+    await p2.click('#home-now [data-id="parts:approve:12"] .nowbtn');
+    await p2.waitForTimeout(300);
+    check("Approve answered 204: no Undo", !(await p2.$("#home-done-status .linkbtn")));
+    await plain.context.close();
+  }
+  for (const width of [1280, 390]) {
+    // A parent's Sign up: the snack day, by keyboard.
+    const { context, actPosts } = await newContext(browser, { groups: "parent", apps: GROUPED_APPS, today: today83.parent, width });
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#home-help .nowbtn");
+    await page.focus("#home-help .nowbtn");
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(300);
+    check(`${width}px: Sign up (keyboard) sends {calendar, snack, <date>} and the row goes`, actPosts.length === 1 && actPosts[0].body === JSON.stringify({ app: "calendar", action: "snack", key: F.dayFrom(T0, 2) }) && (await page.$$eval("#home-help .nowrow:not([hidden])", (r) => r.length)) === 1, actPosts);
+    await context.close();
+  }
+
+  // ---------- an event day (CONTRACT E1): the line, my shift, In the pit, Next for us; nothing else ----------
+  for (const width of [1280, 390]) {
+    for (const [who, groups, today] of [["student with a shift", "student", F.eventToday(T0)], ["mentor", "mentor", F.eventToday(T0, { shift: false })]]) {
+      const { context } = await newContext(browser, { groups, apps: GROUPED_APPS, today, width, event: { name: "Test Regional", happeningNow: true } });
+      const { page, errors } = await openPortal(context);
+      await settle(page);
+      const h = await homeState(page);
+      const ev = await page.evaluate(() => ({ line: [...document.querySelectorAll(".evline .evpart")].map((a) => [a.querySelector(".evk").textContent, a.getAttribute("href")]),
+        shift: [...document.querySelectorAll(".shiftcard .nowrow")].map((r) => r.dataset.id), matches: [...document.querySelectorAll("#home-matches .wkrow")].map((a) => a.textContent.replace(/\s+/g, " ").trim()) }));
+      const shift = who.startsWith("student");
+      check(`event ${who} ${width}px: ${shift ? "my shift first with its button filled, then the line without \"You now\"" : "the line on top with You now"}`,
+        shift ? ev.shift.length === 1 && h.filled.join() === "Open my scouting match" && ev.line.map((l) => l[0]).join() === "Our match now,Robot" : h.top === "evline" && ev.line.map((l) => l[0]).join() === "You now,Our match now,Robot", { ev, h });
+      check(`event ${who} ${width}px: the line's parts are doors to Competition`, ev.line.every(([, href]) => href.startsWith("http://compete.landing.test/")), ev.line);
+      check(`event ${who} ${width}px: In the pit (two rows, Open the Pit plain) and Next for us (alliance in words); no This week, next task, activity or Get started`,
+        h.now.length === 2 && h.now[0].btns[0][0] === "Open the Pit" && h.now[0].btns[0][2] === "plain" && h.now[0].btns[0][3] === "http://compete.landing.test/pit?tab=check" && ev.matches.length === 2 && /Blue alliance With 1001 and 1002 Against 1003, 1004, 1005/.test(ev.matches[0])
+        && !h.main.includes("home-week") && !h.side.includes("home-week") && h.next === null && !h.main.includes("home-activity") && h.guideHidden, { h, ev });
+      check(`event ${who} ${width}px: no sideways scroll, no error`, (await over(page)) <= 0 && errors.length === 0, errors);
+      await shot(page, `home83-event-${shift ? "student" : "mentor"}-${width}`, true);
+      await context.close();
+    }
+  }
+  for (const width of [1280, 390]) {
+    // No `event` part, but /event.json says an event is on (an older Competition): the shift row first and the compact card (C14).
+    const shift = { id: "compete:shift-now:e1:2026-11-14:18", section: "today", title: "Pit crew until 11:00", detail: "Then Scouting at 11:00.", href: "http://compete.landing.test/schedule" };
+    const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: { ...TODAY.student, today: [...TODAY.student.today, shift] }, width, event: { name: "Colorado Regional", happeningNow: true } });
+    const { page } = await openPortal(context);
+    await page.waitForSelector("#home-next");
+    await settle(page);
+    const s = await page.evaluate(() => ({ rows: [...document.querySelectorAll("#home-now .nowrow")].map((r) => r.dataset.id), compact: document.getElementById("home-next").classList.contains("evcompact"),
+      size: parseFloat(getComputedStyle(document.querySelector("#home-next .nexttitle")).fontSize) }));
+    check(`${width}px event day without the event part: the shift row first and the compact next-task card (C14)`, s.rows[0] === shift.id && s.rows.length === 2 && s.compact && s.size <= 18, s);
+    await context.close();
+  }
+
+  // Done (C4): posts the task, then the Home is drawn again with the next one; an error offers "Open task" instead.
   {
     let n = 0;
     const second = { ...TODAY.student, next: { taskId: "t-42", title: "Mount the camera", due: "", project: "Vision", href: `${TASKS}/my?task=t-42` } };
@@ -458,23 +652,22 @@ try {
     await page.waitForSelector("#home-next");
     await page.focus("#home-next .heroacts button");
     await page.keyboard.press("Enter");
-    await page.waitForFunction(() => document.querySelector("#home-next h2")?.textContent === "Mount the camera");
-    check("Done posts {taskId} as JSON to /today/task-done", posts.length === 1 && posts[0].method === "POST" && posts[0].body === JSON.stringify({ taskId: "t-41" }) && /application\/json/.test(posts[0].type), posts);
-    check("after Done the next task takes its place and has the focus", await page.evaluate(() => document.activeElement === document.querySelector("#home-next .heroacts button")));
+    await page.waitForFunction(() => document.querySelector("#home-next .nexttitle")?.firstChild.textContent === "Mount the camera");
+    check("Mark task done posts {taskId} as JSON to /today/task-done", posts.length === 1 && posts[0].method === "POST" && posts[0].body === JSON.stringify({ taskId: "t-41" }) && /application\/json/.test(posts[0].type), posts);
+    check("after Mark task done the next task takes its place and has the focus", await page.evaluate(() => document.activeElement === document.querySelector("#home-next .heroacts button")));
     await context.close();
   }
-  // Done's answers (item 5): 403 and 404 offer "Open task"; a 5xx puts Done back; no answer in 10 s says so and asks
-  // for /today.json again (and never offers "Open task"). The Done messages live in one lasting status line.
+  // Done's answers: 403 and 404 offer "Open task"; a 5xx puts the button back; no answer in 10 s says so and asks for
+  // /today.json again (and never offers "Open task"). The messages live in one lasting status line.
   for (const st of [403, 404]) {
     const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: TODAY.student, taskDone: st });
     const { page } = await openPortal(context);
     await page.waitForSelector("#home-next");
     await page.click("#home-next .heroacts button");
     await page.waitForFunction(() => document.querySelector("#home-next .heroacts")?.firstElementChild?.tagName === "A");
-    const acts = await page.$$eval("#home-next .heroacts > *", (els) => els.map((e) => [e.tagName, e.firstChild.textContent.trim(), e.getAttribute("href"), e.classList.contains("btn-outline") || e.classList.contains("btn-ghost")]));
-    check(`task-done ${st}: the card offers "Open task" (gold) instead of Done`, acts.length === 1 && acts[0][0] === "A" && acts[0][1] === "Open task" && acts[0][2] === `${TASKS}/my?task=t-41` && !acts[0][3], acts);
-    check(`task-done ${st}: says so in the status line, and focus is on Open task`, /can't be marked done/.test(await page.textContent("#home-cards [role=status]")) && await page.evaluate(() => document.activeElement?.textContent.startsWith("Open task")));
-    if (st === 403) await shot(page, "home-student-done-refused-1280");
+    const acts = await page.$$eval("#home-next .heroacts > *", (els) => els.map((e) => [e.tagName, e.firstChild.textContent.trim(), e.getAttribute("href")]));
+    check(`task-done ${st}: the card offers "Open task" in place of Mark task done`, acts.length === 1 && acts[0][0] === "A" && acts[0][1] === "Open task" && acts[0][2] === `${TASKS}/my?task=t-41`, acts);
+    check(`task-done ${st}: says so in the status line, and focus is on Open task`, /can't be marked done/.test(await page.textContent("#home-status [role=status]")) && await page.evaluate(() => document.activeElement?.textContent.startsWith("Open task")));
     await context.close();
   }
   {
@@ -484,10 +677,10 @@ try {
     await page.click("#home-next .heroacts button");
     await page.waitForFunction(() => /try again/.test(document.getElementById("home-done-status").textContent));
     const s = await page.$eval("#home-next .heroacts button", (b) => ({ text: b.textContent.trim(), disabled: b.disabled, focused: b === document.activeElement }));
-    check("task-done 503: Done is back, focused, with a short message; no Open task", s.text === "Done" && !s.disabled && s.focused && !(await page.$("#home-next a[href$='t-41']:not(.btn-ghost)")), s);
+    check("task-done 503: the button is back, focused, with a short message; no Open task", s.text === "Mark task done" && !s.disabled && s.focused && !(await page.$("#home-next .heroacts a[href$='t-41']")), s);
     await page.click("#home-next .heroacts button");
     await page.waitForFunction(() => /try again/.test(document.getElementById("home-done-status").textContent) && !document.querySelector("#home-next .heroacts button").disabled);
-    check("task-done 503: Done can be pressed again", posts.length === 2, posts.length);
+    check("task-done 503: it can be pressed again", posts.length === 2, posts.length);
     await context.close();
   }
   {
@@ -498,12 +691,10 @@ try {
     await page.clock.install();
     await page.goto(PORTAL + "/");
     await page.waitForSelector("#home-next");
-    const status0 = await page.evaluate(() => { const s = document.querySelectorAll("#home-cards [role=status]"); s[0].dataset.mark = "kept"; return s.length; });
+    const status0 = await page.evaluate(() => { const s = document.querySelectorAll("#main [role=status]"); s[0].dataset.mark = "kept"; return s.length; });
     const gets0 = answers.gets;
-    // two quick presses send one POST (item 6)
     await page.$eval("#home-next .heroacts button", (b) => { b.click(); b.click(); });
     await page.waitForFunction(() => /Marking it done/.test(document.getElementById("home-done-status").textContent));
-    // no refresh while the POST is on its way, even when the tab comes back after a long time (item 7)
     await page.clock.setSystemTime(Date.now() + 5 * 60000);
     await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
     await page.waitForTimeout(200);
@@ -511,50 +702,36 @@ try {
     await page.clock.runFor(10500);
     await page.waitForFunction(() => /couldn't tell if that worked/.test(document.getElementById("home-done-status").textContent));
     await page.waitForTimeout(300);
-    check("two quick presses of Done send one POST", posts.length === 1, posts.length);
+    check("two quick presses of Mark task done send one POST", posts.length === 1, posts.length);
     check("no /today.json request while the POST is on its way", getsWhilePending === gets0, { gets0, getsWhilePending });
     check("no answer in 10 s: \"We couldn't tell if that worked.\" and /today.json is asked again", answers.gets === gets0 + 1, { gets0, now: answers.gets });
     check("...and the card never offers Open task then", !(await page.$$eval("#home-next .heroacts a", (as) => as.some((a) => a.firstChild.textContent.trim() === "Open task"))));
-    const status1 = await page.evaluate(() => ({ n: document.querySelectorAll("#home-cards [role=status]").length, kept: document.querySelector("#home-cards [role=status]").dataset.mark === "kept" }));
-    check("one status line in #home-cards, the same one after the cards were drawn again", status0 === 1 && status1.n === 1 && status1.kept, { status0, status1 });
+    const status1 = await page.evaluate(() => ({ n: document.querySelectorAll("#main [role=status]").length, kept: document.querySelector("#main [role=status]").dataset.mark === "kept" }));
+    check("one status line, the same one after the Home was drawn again", status0 === 1 && status1.n === 1 && status1.kept, { status0, status1 });
     check("timeout: no script error", errors.length === 0, errors);
     await context.close();
   }
 
-  // C13 and C14: the next-task card in full, a held-back task, the empty states, the event day.
-  const FULL = { ...TODAY.student, next: { taskId: "t-41", title: "Wire the intake sensor", due: "2026-11-18", project: "Intake", subteam: "Electrical", milestone: "Robot drives",
+  // C13 and C14: the next-task card in full, a held-back task, the empty states.
+  const FULL = { ...TODAY.student, today: [], next: { taskId: "t-41", title: "Wire the intake sensor", due: "2026-11-18", project: "Intake", subteam: "Electrical", milestone: "Robot drives",
     steps: { done: 2, total: 5 }, href: `${TASKS}/my?task=t-41`, stuckHref: `${TASKS}/my?task=t-41&do=stuck`, partHref: `${TASKS}/my?task=t-41&do=part` } };
   const card = (page) => page.evaluate(() => {
     const c = document.getElementById("home-next");
-    return { cls: c.className, h2: c.querySelector("h2").textContent, line: c.querySelector(".next-line")?.textContent || "", steps: c.querySelector(".next-steps")?.textContent || "",
-      bar: c.querySelector(".next-bar i")?.style.width || "", waiting: c.querySelector(".next-waiting")?.textContent || "", hold: c.querySelector(".next-hold")?.textContent || "",
-      blocked: c.querySelector(".next-blocked")?.textContent || "", empty: c.querySelector("p.mute")?.textContent || "",
-      acts: [...c.querySelectorAll(".heroacts > *")].map((e) => [e.firstChild.nodeType === 3 ? e.firstChild.textContent.trim() : e.textContent.replace(" (opens in a new tab)", "").trim(),
-        e.classList.contains("btn-outline") ? "plain" : e.classList.contains("btn-ghost") ? "ghost" : "gold", e.getAttribute("href")]) };
+    const t = (e) => (e ? e.textContent.replace(" (opens in a new tab)", "").trim() : "");
+    return { h2: t(c.querySelector("h2")), title: t(c.querySelector(".nexttitle")), where: t(c.querySelector(".nextwhere")), steps: t(c.querySelector(".nextsteps")),
+      bar: c.querySelector(".nextbar i")?.style.width || "", waiting: t(c.querySelector(".nextwaiting")), hold: t(c.querySelector(".nexthold")), blocked: t(c.querySelector(".nextblocked")),
+      empty: t(c.querySelector("p.mute")),
+      acts: [...c.querySelectorAll(".heroacts > *")].map((e) => [t(e), e.classList.contains("btn-outline") ? "plain" : "filled", e.getAttribute("href")]) };
   });
   for (const width of [1280, 390]) {
     const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: FULL, width });
     const { page } = await openPortal(context);
-    await page.waitForSelector("#home-next .next-steps");
+    await page.waitForSelector("#home-next .nextsteps");
     const c = await card(page);
-    check(`${width}px: the full next-task card: project › subteam, milestone, due date, steps`, c.line === "Intake › Electrical · for “Robot drives” · due Wed, Nov 18" && c.steps === "2 of 5 steps" && c.bar === "40%", c);
-    check(`${width}px: Done (gold), I'm stuck, Request a part, Open (ghost), with their links`, JSON.stringify(c.acts) === JSON.stringify([["Done", "gold", null], ["I'm stuck", "plain", `${TASKS}/my?task=t-41&do=stuck`],
-      ["Request a part", "plain", `${TASKS}/my?task=t-41&do=part`], ["Open", "ghost", `${TASKS}/my?task=t-41`]]), c.acts);
+    check(`${width}px: the full next-task card: the title as the link, project › subteam, milestone, steps`, c.h2 === "Your next task" && c.title === "Wire the intake sensor›" && c.where === "Intake › Electrical, for “Robot drives”" && c.steps === "2 of 5 steps done" && c.bar === "40%", c);
+    check(`${width}px: Mark task done (filled: no Sign in on the page), I'm stuck, Request a part, with their links; no Open button`, JSON.stringify(c.acts) === JSON.stringify([["Mark task done", "filled", null], ["I'm stuck", "plain", `${TASKS}/my?task=t-41&do=stuck`],
+      ["Request a part", "plain", `${TASKS}/my?task=t-41&do=part`]]), c.acts);
     check(`${width}px: the full card has no sideways scroll`, (await over(page)) <= 0);
-    if (width === 390) {
-      const w = await page.$eval("#home-next .heroacts", (b) => [...b.children].map((e) => Math.round(e.getBoundingClientRect().width / b.getBoundingClientRect().width * 100)));
-      check("390px: as the demo's phone card, gold Done and the ghost Open take the whole row, the other two share one", w[0] === 100 && w[3] === 100 && w[1] < 55 && w[2] < 55, w);
-    }
-    await page.$eval("#home-next", (e) => e.scrollIntoView({ block: "center" }));
-    await shot(page, `next-full-${width}`);
-    await context.close();
-  }
-  {
-    const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: { ...TODAY.student, next: { taskId: "t-41", title: "Mount the camera", project: "Vision", href: `${TASKS}/my?task=t-41` } } });
-    const { page } = await openPortal(context);
-    await page.waitForSelector("#home-next");
-    const c = await card(page);
-    check("no stuckHref or partHref: only Done and Open (C13)", c.acts.map((a) => a[0]).join() === "Done,Open", c.acts);
     await context.close();
   }
   for (const [label, extra, word] of [["waiting on another task", { waitingOn: ["Cut the plate", "Order the sensor"] }, "waiting"], ["on hold", { onHold: true }, "hold"], ["blocked", { blocked: true }, "blocked"]]) {
@@ -563,17 +740,15 @@ try {
     await page.waitForSelector("#home-next");
     const c = await card(page);
     const said = { waiting: c.waiting === "Waiting on Cut the plate, Order the sensor.", hold: c.hold === "This task is on hold.", blocked: c.blocked === "Blocked" }[word];
-    check(`a task ${label}: Done is a plain button and the card says so in words`, c.acts[0][0] === "Done" && c.acts[0][1] === "plain" && said, c);
-    if (word === "waiting") { await page.$eval("#home-next", (e) => e.scrollIntoView({ block: "center" })); await shot(page, "next-waiting-plain-done-1280"); }
+    check(`a task ${label}: Mark task done is a plain button and the card says so in words`, c.acts[0][0] === "Mark task done" && c.acts[0][1] === "plain" && said, c);
     await context.close();
   }
   {
-    const { context } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: { ...TODAY.mentor, waiting: [] } });
+    const { context } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: { ...TODAY.mentor, today: [], waiting: [] } });
     const { page } = await openPortal(context);
-    await page.waitForSelector("#home-waiting");
-    check("an activity row without an app has no empty first column", !(await page.$("#home-activity .actapp")));
-    check("staff with nothing waiting: the card says \"Nothing is waiting on you.\" (C13)", (await page.textContent("#home-waiting p")) === "Nothing is waiting on you." && (await page.getAttribute("#home-waiting", "data-guide")) === "wait");
-    await shot(page, "empty-waiting-1280");
+    await page.waitForSelector("#home-now");
+    check("an activity row without an app has no empty app line", !(await page.$("#home-activity .actapp")));
+    check("staff with nothing waiting: Now says \"Nothing needs you right now.\" and keeps the guide's mark", (await page.textContent("#home-now p")) === "Nothing needs you right now." && (await page.getAttribute("#home-now", "data-guide")) === "wait");
     await context.close();
   }
   {
@@ -582,78 +757,51 @@ try {
     await page.waitForSelector("#home-next");
     const c = await card(page);
     check("a student with no next task: \"Nothing assigned to you\" (C13)", c.h2 === "Nothing assigned to you" && c.empty === "Take something nobody has yet." && c.acts.length === 0, c);
-    await shot(page, "empty-next-1280");
-    await context.close();
-  }
-  for (const today of [404, { ...TODAY.mentor, waiting: [] }]) {
-    // a student who is not staff never gets an empty Waiting card; no answer at all draws no empty card for anyone
-    const { context } = await newContext(browser, { groups: today === 404 ? "mentor|student" : "student", apps: GROUPED_APPS, today });
-    const { page } = await openPortal(context);
-    await settle(page);
-    const ids = await page.$$eval("#home-card-list > section", (els) => els.map((e) => e.id));
-    check(`empty states only with an answer, and Waiting only for staff (${today === 404 ? "no answer" : "student"})`, today === 404 ? ids.length === 0 : !ids.includes("home-waiting") && ids.includes("home-next"), ids);
-    await context.close();
-  }
-  for (const width of [1280, 390]) {
-    const shift = { id: "compete:shift-now:e1:2026-11-14:18", section: "today", title: "Pit crew until 11:00", detail: "Then Scouting at 11:00.", href: "http://compete.landing.test/schedule" };
-    const today = { ...FULL, today: [...FULL.today, shift] };
-    const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today, width, event: { name: "Colorado Regional", happeningNow: true } });
-    const { page } = await openPortal(context);
-    await page.waitForSelector("#home-next");
-    await settle(page);
-    const s = await page.evaluate(() => ({ rows: [...document.querySelectorAll("#home-today .todayrow")].map((r) => r.dataset.id), compact: document.getElementById("home-next").classList.contains("evcompact"),
-      h2: parseFloat(getComputedStyle(document.querySelector("#home-next h2")).fontSize) }));
-    check(`${width}px event day: Competition's shift row first and the compact next-task card (C14)`, s.rows[0] === shift.id && s.rows.length === 2 && s.compact && s.h2 <= 18, s);
-    await shot(page, `home-event-day-${width}`);
-    await context.close();
-  }
-  {
-    const shift = { id: "compete:shift-now:x", section: "today", title: "Pit crew until 11:00", href: "http://compete.landing.test/schedule" };
-    const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: { ...FULL, today: [...FULL.today, shift] }, event: { name: "Colorado Regional", happeningNow: false } });
-    const { page } = await openPortal(context);
-    await page.waitForSelector("#home-next");
-    await settle(page);
-    const s = await page.evaluate(() => ({ first: document.querySelector("#home-today .todayrow").dataset.id, compact: document.getElementById("home-next").classList.contains("evcompact") }));
-    check("not an event day (happeningNow false): the order is the answer's and the card is the full one", s.first !== shift.id && !s.compact, s);
     await context.close();
   }
 
-  // The amber chip and the status words keep 4.5:1 in both themes.
+  // The status words (a dot and a word) and the season line keep 4.5:1 in both themes.
   for (const theme of ["light", "dark"]) {
-    const { context } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: TODAY.mentor });
+    const { context } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor });
     await context.addCookies([site("theme", theme)]);
     const { page } = await openPortal(context);
-    await page.waitForSelector("#home-waiting .tcount");
-    const ratio = await page.$eval("#home-waiting .tcount.warn", (e) => {
+    await page.waitForSelector("#home-week .gmark.warn");
+    const ratios = await page.evaluate(() => {
       const rgba = (c) => (c.match(/[\d.]+/g) || []).map(Number);
       const over = (top, under) => { const a = top[3] === undefined ? 1 : top[3]; return [0, 1, 2].map((i) => top[i] * a + under[i] * (1 - a)); };
-      let bg = rgba(getComputedStyle(e).backgroundColor), n = e.parentElement, under = null;
-      while (n && !under) { const c = rgba(getComputedStyle(n).backgroundColor); if (c.length && (c[3] === undefined || c[3] > 0.99)) under = c; n = n.parentElement; }
-      const back = over(bg, under || [255, 255, 255]);
       const lum = (c) => { const [r, g, b] = c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
-      const fg = over(rgba(getComputedStyle(e).color), back);
-      const [a, b] = [lum(fg), lum(back)].sort((x, y) => y - x);
-      return (a + 0.05) / (b + 0.05);
+      const ratio = (e) => {
+        let n = e, under = null;
+        while (n && !under) { const c = rgba(getComputedStyle(n).backgroundColor); if (c.length && (c[3] === undefined || c[3] > 0.99)) under = c; n = n.parentElement; }
+        const back = under || [255, 255, 255];
+        const fg = over(rgba(getComputedStyle(e).color), back);
+        const [a, b] = [lum(fg), lum(back)].sort((x, y) => y - x);
+        return +((a + 0.05) / (b + 0.05)).toFixed(2);
+      };
+      return Object.fromEntries([".gmark.warn", ".gmark.bad", ".snmute", ".snms > span", ".snhead b", ".nowrow .rl", ".wkd span", ".nowdeny"].map((s) => [s, ratio(document.querySelector(s))]));
     });
-    check(`${theme}: the amber count chip has at least 4.5:1 contrast`, ratio >= 4.5, ratio.toFixed(2));
+    check(`${theme}: the status words, the season line and the muted lines have at least 4.5:1 contrast`, Object.values(ratios).every((r) => r >= 4.5), ratios);
     await context.close();
   }
 
-  // Hostile text everywhere the answer has words (item 6): it is shown as text; no element is made from it.
+  // Hostile text everywhere the answer has words: it is shown as text; no element is made from it.
   {
     const evil = "<img src=x onerror=\"window.__xss=1\">";
     const today = { v: 1,
       today: [{ id: "a", section: "today", title: evil, detail: evil, href: `${CAL}/`, cta: { label: evil, href: `${CAL}/x` } }],
-      waiting: [{ id: "b", section: "waiting", title: evil, detail: evil, href: `${PARTS}/`, count: 1 }],
-      next: { taskId: evil, title: evil, project: evil, subteam: evil, milestone: evil, waitingOn: [evil], href: `${TASKS}/my`, stuckHref: `${TASKS}/my?do=stuck` },
-      activity: [{ app: evil, title: evil, detail: evil, href: `${PARTS}/`, at: ago(2) }] };
+      waiting: [{ id: "b", section: "waiting", title: evil, detail: evil, href: `${PARTS}/`, count: 1, group: evil, mark: { word: evil, tone: "bad" }, lines: [evil], acts: [{ label: evil, app: "parts", action: "approve", key: "1" }] }],
+      next: { taskId: evil, title: evil, project: evil, subteam: evil, milestone: evil, waitingOn: [evil], href: `${TASKS}/my`, stuckHref: `${TASKS}/my?do=stuck`, nextStep: { id: "s", label: evil } },
+      activity: [{ app: evil, title: evil, detail: evil, href: `${PARTS}/`, at: ago(2) }],
+      season: { target: { name: evil, date: F.dayFrom(T0, 30), kind: "comp" }, days: [] },
+      milestones: [{ name: evil, date: F.dayFrom(T0, 3), project: evil, href: `${TASKS}/p` }],
+      week: [{ date: F.dayFrom(T0, 1), href: `${CAL}/`, items: [{ kind: "meeting", name: evil }], snacks: { names: [evil], open: 0 } }] };
     const { context } = await newContext(browser, { groups: "mentor|student", apps: GROUPED_APPS, today });
     const { page, errors } = await openPortal(context);
-    await page.waitForSelector("#home-activity section");
+    await page.waitForSelector("#home-activity");
     await page.waitForTimeout(300);
     const s = await page.evaluate(() => ({ imgs: document.querySelectorAll("main img").length, xss: window.__xss === 1,
-      shown: document.querySelector("#home-today .rt").textContent, app: document.querySelector("#home-activity .actapp").textContent }));
-    check("hostile words: no img element is created, nothing runs, the words show as text", s.imgs === 0 && !s.xss && s.shown.startsWith("<img") && s.app.startsWith("<img") && errors.length === 0, { s, errors });
+      shown: document.querySelector("#home-now .rt").textContent, app: document.querySelector("#home-activity .actapp").textContent, top: document.querySelector("#home-top").textContent }));
+    check("hostile words: no img element is created, nothing runs, the words show as text", s.imgs === 0 && !s.xss && s.shown.startsWith("<img") && s.app.startsWith("<img") && s.top.includes("<img") && errors.length === 0, { s, errors });
     await context.close();
   }
 
@@ -725,8 +873,8 @@ try {
       { id: "shift", section: "today", title: "Your shift: pit crew, 9:00 to 11:00", href: "http://compete.landing.test/schedule", modes: ["competition"] }] };
     const { context } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today });
     const { page } = await openPortal(context);
-    await page.waitForSelector("#home-today");
-    const rows = () => page.$$eval("#home-today .todayrow", (els) => els.map((e) => e.dataset.id).join());
+    await page.waitForSelector("#home-now");
+    const rows = () => page.$$eval("#home-now .nowrow", (els) => els.map((e) => e.dataset.id).join());
     check("C12: Build mode (no cookie) shows the rows for both modes and for Build", (await rows()) === "both,practice", await rows());
     await context.addCookies([site("mode", "competition")]);
     await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
@@ -739,8 +887,8 @@ try {
     const { context } = await newContext(browser, { groups: "mentor", today });
     const { page, errors } = await openPortal(context);
     await settle(page);
-    const s = await page.evaluate(() => ({ cards: document.querySelectorAll("#home-card-list > *, #home-activity > *").length, tiles: document.querySelectorAll("#app-grid .app-card").length, access: !document.getElementById("access").hidden }));
-    check(`/today.json ${label}: no card is drawn and the tiles and Get access are as before`, s.cards === 0 && s.tiles === 3 && s.access && errors.length === 0, { s, errors });
+    const s = await page.evaluate(() => ({ cards: document.querySelectorAll("#home-top > *, #home-main > *, #home-side-lead > *").length, tiles: document.querySelectorAll("#app-grid .approw").length, access: !document.getElementById("access").hidden }));
+    check(`/today.json ${label}: nothing from it is drawn, and the apps and Get access are as before`, s.cards === 0 && s.tiles === 3 && s.access && errors.length === 0, { s, errors });
     if (label === "404") { await shot(page, "home-no-today-1280"); }
     await context.close();
   }
@@ -752,9 +900,10 @@ try {
     const { page } = await openPortal(context);
     const g = await page.$$eval("#home-groups .grp", (els) => els.map((e) => [e.dataset.grp, +e.querySelector(".tcount").textContent, e.querySelector(".grphead").getAttribute("aria-expanded"), e.querySelector(".grpbody").hidden, e.querySelector(".grpname").textContent]));
     check(`${role}: rows ${want.map((w) => w[0]).join(", ")} with their counts, all closed`, JSON.stringify(g.map((x) => [x[0], x[1]])) === JSON.stringify(want) && g.every((x) => x[2] === "false" && x[3]), g);
-    check(`${role}: the tiles are the core apps only`, (await names(page, "#app-grid .app-card")).join() === "Task App,Calendar");
+    check(`${role}: the tiles are the core apps only`, (await names(page, "#app-grid .approw")).join() === "Task App,Calendar");
     if (role === "admin") {
-      check("admin: the rows read Tools, Admin apps, More", g.map((x) => x[4]).join() === "Tools,Admin apps,More", g);
+      // 8.3 (Ground up): Home calls the third row "Team links" (a kit 0.5.0 stand-in until the kit names it so).
+      check("admin: the rows read Tools, Admin apps, Team links", g.map((x) => x[4]).join() === "Tools,Admin apps,Team links", g);
       check("admin: Admin apps lists Admin and Website editor, in new tabs", (await names(page, "#admin-list li")).join() === "Admin,Website editor" && (await page.$$eval("#admin-list a", (as) => as.every((a) => a.target === "_blank" && a.rel.includes("noopener")))));
       check("admin: the Admin apps row has its hover description", (await page.getAttribute('[data-grp="adminapps"] .grphead', "data-tip")) === "Apps for the people who run the team's accounts and its public website.");
     }
@@ -1007,14 +1156,14 @@ try {
     const { context } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: TODAY.mentor, width });
     await context.addCookies([guideAt("m", "wait")]);
     const { page, errors } = await openPortal(context);
-    await page.waitForSelector("#home-waiting");
+    await page.waitForSelector("#home-now");
     await page.waitForFunction(() => { const r = document.querySelector(".shell-gring"); return r && !r.hidden && document.querySelector(".shell-gstop h2"); });
-    const ring = await ringAround(page, '#home-waiting[data-guide="wait"]');
+    const ring = await ringAround(page, '#home-now[data-guide="wait"]');
     const title = await page.textContent(".shell-gstop h2");
-    check(`wait stop ${width}px: "See what is waiting on you" rings the Waiting on you card`, title === "See what is waiting on you" && ring.ok, { title, ring });
+    check(`wait stop ${width}px: "See what is waiting on you" rings the Now section (8.3; was the Waiting on you card)`, title === "See what is waiting on you" && ring.ok, { title, ring });
     await shot(page, `guide-wait-stop-${width}`);
     const popup = context.waitForEvent("page").catch(() => null);
-    await page.click("#home-waiting .todayrow a.rowlink");
+    await page.click("#home-now .nowrow a.rowlink");
     await page.waitForFunction(() => document.querySelector(".shell-gstop h2")?.textContent === "Done.");
     const cookie = await guideCookie(context);
     check(`wait stop ${width}px: pressing a row finishes the stop ("Done." and wait done in the guide cookie)`, /^1:m:(?:[a-z.]*\.)?wait(\.|:)/.test(cookie), cookie);

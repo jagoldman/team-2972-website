@@ -110,6 +110,7 @@
   .nowrow:has(.nowbtns, .nowbtn) .rowlink { flex-basis: 100%; }
   .nowbtns { flex: 1 1 100%; display: grid; }
   .nowrow > .nowbtn { flex: 1 1 100%; }
+  .home-g .nowbtn { min-height: 44px; }
 }
 
 /* A state: a dot and a word (never colour alone). */
@@ -228,3 +229,6 @@
 .guideslot > .shell-guidecard { padding: 14px 0 8px; border: 0; border-radius: 0; background: none; }
 .guideslot > .shell-guidecard h2 { font: 700 1.1rem/1.3 var(--body, var(--font)); }
 .home-g .guideslot { margin-top: 0; }
+/* The side column is narrow: a row's words give way before its button drops to a line of its own. */
+.homeside .nowrow .rowlink { flex-basis: 8rem; }
+@media (max-width: 760px) { .snms { display: flex; flex-wrap: wrap; align-content: center; gap: 0 7px; min-height: 44px; } }
