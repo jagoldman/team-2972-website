@@ -154,7 +154,7 @@ async function openPage(url, theme) {
   for (let i = 0; i < 200 && !ready(); i++) await sleep(50);
   const w = f.contentWindow;
   if (url === "portal/index.html") for (let i = 0; i < 100 && !(w.document.querySelector("#app-grid .approw") || (w.document.getElementById("no-group") && !w.document.getElementById("no-group").hidden)); i++) await sleep(50);
-  if (url.startsWith("portal/")) for (let i = 0; i < 100 && !w.document.querySelector("#shell-bar [aria-label=Theme]"); i++) await sleep(50);
+  if (url.startsWith("portal/")) for (let i = 0; i < 100 && !w.document.querySelector("#shell-bar [aria-label=Appearance]"); i++) await sleep(50);
   await sleep(300);
   return { frame: f, win: w, doc: w.document };
 }
@@ -198,16 +198,17 @@ const SITE_PAGES = ["index.html", "about.html", "mentor.html", "member.html", "r
         html.style.colorScheme = theme;
         await sleep(120);
         const bg = win.getComputedStyle(doc.body).backgroundColor;
-        report(theme === "light" ? bg === "rgb(247, 248, 250)" : bg === "rgb(7, 9, 15)", `${url}: ${theme} theme paints the ${theme} page colour`, bg);
+        report(theme === "light" ? bg === "rgb(236, 238, 240)" : bg === "rgb(0, 0, 0)", `${url}: ${theme} theme paints the ${theme} page colour`, bg);
         const r = contrastOf(win, doc);
         report(r.fails.length === 0, `${url}: ${theme}: WCAG AA text contrast (${r.checked} items, lowest ${r.min.toFixed(2)}:1)`, r.fails.slice(0, 6).join(" | "));
       }
       }
       // the portal's switch is the shared app bar's (D101): a cookie for every subdomain (D92), plus the old key
       if (url === "portal/index.html") {
-        const [system, light, dark] = [...doc.querySelectorAll("#shell-bar [aria-label=Theme] .shbar-choice")];
+        // Kit 0.5.0: the group is "Appearance", in the order Light, Dark, Match my device; the page is #eceef0 / black.
+        const [light, dark, system] = [...doc.querySelectorAll("#shell-bar [aria-label=Appearance] .shbar-choice")];
         const cookie = () => (doc.cookie.match(/(?:^|;\s*)theme=([^;]*)/) || [])[1] || null;
-        report(!!light && !!dark && !!system && doc.querySelector("#shell-bar [aria-label=Theme]").closest("[hidden]") !== null, `${url}: the app bar has the Light / Dark / Match my device choices, closed by default`);
+        report(!!light && !!dark && !!system && doc.querySelector("#shell-bar [aria-label=Appearance]").closest("[hidden]") !== null, `${url}: the app bar has the Light / Dark / Match my device choices, closed by default`);
         const cookieIs = (v) => cookie() === v;
         if (light && dark && system) {
           doc.querySelector("#shell-bar .shbar-acct").click();
@@ -244,7 +245,7 @@ const SITE_PAGES = ["index.html", "about.html", "mentor.html", "member.html", "r
         html.dataset.theme = theme; html.classList.toggle("dark", theme === "dark"); html.classList.toggle("light", theme === "light");
         html.style.colorScheme = theme; await sleep(80);
         const pageBg = win.getComputedStyle(doc.body).backgroundColor;
-        report(pageBg === (theme === "light" ? "rgb(247, 248, 250)" : "rgb(7, 9, 15)"), `${theme}: portal focus-ring page really is in the ${theme} theme`, pageBg);
+        report(pageBg === (theme === "light" ? "rgb(236, 238, 240)" : "rgb(0, 0, 0)"), `${theme}: portal focus-ring page really is in the ${theme} theme`, pageBg);
         const probe = doc.createElement("i"); probe.style.cssText = "color:var(--accent);background:var(--ink)"; doc.body.append(probe);
         const accent = parse(win.getComputedStyle(probe).color);
         for (const surface of ["--ink", "--ink-2", "--ink-3"]) {
@@ -260,7 +261,7 @@ const SITE_PAGES = ["index.html", "about.html", "mentor.html", "member.html", "r
 
   if (MODE === "system-light" || MODE === "system-dark") {
     const dark = MODE === "system-dark";
-    const wantBg = dark ? "rgb(7, 9, 15)" : "rgb(247, 248, 250)";
+    const wantBg = dark ? "rgb(0, 0, 0)" : "rgb(236, 238, 240)";
     const clearCookie = () => { document.cookie = "theme=; Path=/; Max-Age=0"; };
     // 1) public pages: dark, whatever the system says, with nothing saved...
     localStorage.removeItem("theme"); clearCookie();
@@ -286,7 +287,7 @@ const SITE_PAGES = ["index.html", "about.html", "mentor.html", "member.html", "r
     report(loads === 1 && doc.documentElement.dataset.theme === undefined && bg === wantBg, `portal install page (themed): follows the ${dark ? "dark" : "light"} system setting on the first load`, `${loads} load(s), ${bg} data-theme=${doc.documentElement.dataset.theme}`);
     frame.remove();
     localStorage.setItem("theme", dark ? "light" : "dark");
-    const saved = dark ? "rgb(247, 248, 250)" : "rgb(7, 9, 15)";
+    const saved = dark ? "rgb(236, 238, 240)" : "rgb(0, 0, 0)";
     ({ frame, win, doc, bg, loads } = await openThemed("portal/install.html", saved));
     report(loads === 1 && doc.documentElement.dataset.theme === (dark ? "light" : "dark") && bg === saved, "portal install page (themed): a saved choice overrides the system setting on the first load", `${loads} load(s), ${bg}`);
     frame.remove();

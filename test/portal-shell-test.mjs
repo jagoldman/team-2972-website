@@ -63,7 +63,7 @@ const MODE_APPS = JSON.stringify([
 // eventStatus: what /event-status.json answers (C15; default 404). inboxRead: the status POST /_shell/inbox/read answers
 // (default 204); its requests are in `reads`.
 // act: what POST /today/act answers (8.3, H2): a status, { status, body }, "hang", or a function of the request body
-// returning one of those; its requests are in `actPosts`.
+// returning one of those, or "abort" (a network failure); its requests are in `actPosts`.
 async function newContext(browser, { groups = "mentor", apps = APPS, width = 1280, height = 900, today = 404, taskDone = 204, inbox = 404, event = 404, me = 200, eventStatus = 404, inboxRead = 204, act = 204 } = {}) {
   const context = await browser.newContext({ viewport: { width, height } });
   const seen = [];
@@ -106,6 +106,7 @@ async function newContext(browser, { groups = "mentor", apps = APPS, width = 128
       let a = answers.act;
       if (typeof a === "function") a = a(JSON.parse(body || "{}"));
       if (a === "hang") return new Promise(() => {});
+      if (a === "abort") return route.abort("connectionreset");
       if (typeof a === "number") return route.fulfill({ status: a, body: "" });
       return route.fulfill({ status: a.status, contentType: "application/json", body: JSON.stringify(a.body) });
     }
@@ -555,8 +556,11 @@ try {
     check("Approve: no script error", errors.length === 0, errors);
     await context.close();
   }
+  // An uncertain answer (a 5xx, an unknown code, a network failure): the row comes back with "That may not have gone
+  // through. Checking.", /today.json is read once, and then the row still there says "That didn't go through. Try again."
   for (const [status, words, refresh] of [[204, null, true], [409, "Someone else already signed this off.", true], [403, "You can't do this from Home. Open it to see why.", true],
-    [404, "This isn't there any more.", true], [503, "That didn't go through. Try again.", false]]) {
+    [404, "This isn't there any more.", true], [503, "That didn't go through. Try again.", true], [500, "That didn't go through. Try again.", true], [400, "That didn't go through. Try again.", true],
+    ["abort", "That didn't go through. Try again.", true]]) {
     const { context, actPosts, answers } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor, act: status });
     const { page } = await openPortal(context);
     await page.waitForSelector('#home-now [data-id="skills:signoff:u-3:omio"]');
@@ -567,6 +571,29 @@ try {
     check(`Sign off answered ${status}: ${words ? `the row comes back and says "${words}"` : "the row stays gone"}${refresh ? ", /today.json is asked again" : ""}`,
       actPosts[0]?.body === JSON.stringify({ app: "skills", action: "signoff", key: "u-3:omio" }) && (words ? s.there && s.msg === words && s.status === words : s.status === "Signed off.") && (answers.gets > gets0) === refresh, { s, gets: answers.gets - gets0 });
     if (status === 409) await shot(page, "act-409-1280");
+    await context.close();
+  }
+  {
+    // Uncertain, and it was saved: the first sentence says so at once; the one look at /today.json finds the row gone.
+    const { context, actPosts, answers } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, act: "hang" });
+    let release;
+    answers.today = () => (actPosts.length ? { ...today83.mentor, waiting: today83.mentor.waiting.filter((r) => r.id !== "skills:signoff:u-3:omio") } : today83.mentor);
+    await context.route("**/today/act", async (route) => { actPosts.push({ body: route.request().postData() }); await new Promise((r) => { release = r; }); return route.fulfill({ status: 502, body: "" }); });
+    const { page } = await openPortal(context);
+    await page.waitForSelector('#home-now [data-id="skills:signoff:u-3:omio"]');
+    await page.click('#home-now [data-id="skills:signoff:u-3:omio"] .nowbtn');
+    await page.waitForTimeout(100);
+    // Hold /today.json's answer back for a moment to see the first sentence on the row.
+    let hold;
+    await context.route("**/today.json", async (route) => { await new Promise((r) => { hold = r; }); return route.fulfill({ contentType: "application/json", body: JSON.stringify(answers.today()) }); });
+    release();
+    await page.waitForFunction(() => document.querySelector('#home-now [data-id="skills:signoff:u-3:omio"] .nowmsg'));
+    const first = await page.evaluate(() => ({ row: document.querySelector('#home-now [data-id="skills:signoff:u-3:omio"]').hidden, msg: document.querySelector('#home-now [data-id="skills:signoff:u-3:omio"] .nowmsg').textContent, status: document.getElementById("home-done-status").textContent }));
+    check("Sign off answered 502: the row comes back with \"That may not have gone through. Checking.\"", !first.row && first.msg === "That may not have gone through. Checking." && first.status === first.msg, first);
+    while (!hold) await page.waitForTimeout(20);
+    hold();
+    await page.waitForFunction(() => !document.querySelector('#home-now [data-id="skills:signoff:u-3:omio"]'));
+    check("...and when the one look at /today.json finds it gone (it was saved), the row goes and the status says \"Signed off.\"", (await page.textContent("#home-done-status")) === "Signed off.");
     await context.close();
   }
   {
@@ -594,9 +621,9 @@ try {
     await context.close();
   }
   {
-    // Undo is offered only when Parts answered {undoUntil}; it sends "unapprove" on the same path.
+    // P4: Undo is offered only when Parts answered {undoUntil, approval}; it sends "unapprove" with that approval.
     const until = new Date(Date.now() + 120000).toISOString();
-    const { context, actPosts } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor, act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: until } } : 204) });
+    const { context, actPosts } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor, act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: until, approval: "ev_42" } } : 204) });
     const { page } = await openPortal(context);
     await page.waitForSelector('#home-now [data-id="parts:request:12"]');
     await page.click('#home-now [data-id="parts:request:12"] .nowbtn');
@@ -604,8 +631,28 @@ try {
     await shot(page, "act-undo-1280");
     await page.click("#home-done-status .linkbtn");
     await page.waitForFunction(() => /Put back/.test(document.getElementById("home-done-status").textContent));
-    check("Approve answered {undoUntil}: Undo is offered and sends {action: \"unapprove\"}", actPosts.length === 2 && JSON.parse(actPosts[1].body).action === "unapprove" && JSON.parse(actPosts[1].body).key === "12", actPosts);
+    check("Approve answered {undoUntil, approval}: Undo is offered and sends {app, action: \"unapprove\", key, approval}", actPosts.length === 2 && actPosts[1].body === JSON.stringify({ app: "parts", action: "unapprove", key: "12", approval: "ev_42" }), actPosts);
     await context.close();
+    // Undo refused with 409: the request changed since; it stays approved (the row stays gone) and the page says so.
+    const c409 = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: until, approval: "ev_42" } } : { status: 409, body: { error: "changed" } }) });
+    c409.answers.today = () => (c409.actPosts.length ? { ...today83.mentor, waiting: today83.mentor.waiting.filter((r) => r.id !== "parts:request:12") } : today83.mentor);
+    const p409 = (await openPortal(c409.context)).page;
+    await p409.waitForSelector('#home-now [data-id="parts:request:12"]');
+    await p409.click('#home-now [data-id="parts:request:12"] .nowbtn');
+    await p409.waitForSelector("#home-done-status .linkbtn");
+    await p409.click("#home-done-status .linkbtn");
+    await p409.waitForFunction(() => /stays approved/.test(document.getElementById("home-done-status").textContent));
+    check("Undo answered 409: \"The request changed since you approved it, so it stays approved.\" and the request stays off Now", (await p409.textContent("#home-done-status")) === "The request changed since you approved it, so it stays approved."
+      && !(await p409.isVisible('#home-now [data-id="parts:request:12"]')));
+    await c409.context.close();
+    // An answer with the time but no approval (an older Parts): no Undo.
+    const half = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor, act: { status: 200, body: { undoUntil: until } } });
+    const ph = (await openPortal(half.context)).page;
+    await ph.waitForSelector('#home-now [data-id="parts:request:12"]');
+    await ph.click('#home-now [data-id="parts:request:12"] .nowbtn');
+    await ph.waitForTimeout(300);
+    check("Approve answered {undoUntil} without approval: no Undo", !(await ph.$("#home-done-status .linkbtn")));
+    await half.context.close();
     const plain = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor });
     const p2 = (await openPortal(plain.context)).page;
     await p2.waitForSelector('#home-now [data-id="parts:request:12"]');
@@ -642,7 +689,7 @@ try {
     check(`${width}px Mark step done answered 204: /today.json is asked again; with no step left the button is "Mark task done", focused`, done.steps === "2 of 2 steps done" && done.focus && errors.length === 0, done);
     await ok.context.close();
   }
-  for (const [status, words] of [[503, "Couldn't save, so “Cut on the router” is back as it was."], [{ status: 409, body: { error: "changed", message: "Someone else already ticked this step." } }, "Someone else already ticked this step."],
+  for (const [status, words] of [[503, "That didn't go through. Try again."], ["abort", "That didn't go through. Try again."], [{ status: 409, body: { error: "changed", message: "Someone else already ticked this step." } }, "Someone else already ticked this step."],
     [403, "You can't do this from Home. Open the task to see why."]]) {
     const { context, actPosts } = await newContext(browser, { groups: "student", apps: GROUPED_APPS, today: today83.student, act: status });
     const { page } = await openPortal(context);
@@ -652,7 +699,7 @@ try {
     await page.waitForTimeout(200);
     const s = await page.evaluate(() => ({ steps: document.querySelector("#home-next .nextsteps").textContent, step: document.querySelector("#home-next .nextstep")?.textContent || "",
       btn: document.querySelector("#home-next .heroacts button").textContent.trim(), disabled: document.querySelector("#home-next .heroacts button").disabled, focus: document.activeElement?.closest("#home-next") !== null }));
-    const code = typeof status === "number" ? status : status.status;
+    const code = typeof status === "object" ? status.status : status;
     check(`Mark step done answered ${code}: the card is back as it was (1 of 2, the next step, the button) and says "${words}"`, actPosts.length === 1 && s.steps === "1 of 2 steps done" && s.step === "Next step: Cut on the router" && s.btn === "Mark step done" && !s.disabled && s.focus, s);
     await context.close();
   }

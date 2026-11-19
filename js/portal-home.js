@@ -462,11 +462,15 @@ export async function postTaskDone(taskId, { timeout = WAIT_MS, fetchImpl = fetc
   }
 }
 
+/** Parts' id of the approval an Undo must name (CONTRACT P4): at most 64 of A-Z a-z 0-9 _ -. */
+const APPROVAL_ID = /^[A-Za-z0-9_-]{1,64}$/;
 /**
- * POST /today/act {app, action, key, reason?} (CONTRACT H2). Resolves to { result, undoUntil?, message? }:
- * "ok" (204, or 200 with {undoUntil}); "changed" (409: someone else already did it; Account may add a plain
- * `message`, which is passed on); "refused" (403, 400); "gone" (404);
- * "reason" (422: a reason is needed); "timeout" (no answer in time: it may have worked); "failed" (5xx, network).
+ * POST /today/act {app, action, key, reason?, approval?} (CONTRACT H2, P4). Resolves to { result, undoUntil?,
+ * approval?, message? }:
+ * "ok" (204, or 200; `undoUntil` and `approval` only when the answer carried both, still in time: Undo is offered
+ * only then); "changed" (409: someone else already did it; Account may add a plain `message`, which is passed on);
+ * "refused" (403); "gone" (404); "reason" (422: a reason is needed); "uncertain" (any 5xx, any other code, a network
+ * failure or no answer in time: it may have been saved, so the page must look again before it says anything more).
  */
 export async function postAct(body, { timeout = WAIT_MS, fetchImpl = fetch } = {}) {
   const ctl = new AbortController();
@@ -476,18 +480,19 @@ export async function postAct(body, { timeout = WAIT_MS, fetchImpl = fetch } = {
       method: "POST", credentials: "same-origin", cache: "no-store", signal: ctl.signal,
       headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(body),
     });
-    if (res.ok) {
-      let undoUntil = "";
+    if (res.status === 200 || res.status === 204) {
       if (res.status === 200) {
         try {
           const j = await res.json();
-          if (j && typeof j.undoUntil === "string" && Date.parse(j.undoUntil) > Date.now()) undoUntil = j.undoUntil;
+          if (j && typeof j.undoUntil === "string" && Date.parse(j.undoUntil) > Date.now() && typeof j.approval === "string" && APPROVAL_ID.test(j.approval)) {
+            return { result: "ok", undoUntil: j.undoUntil, approval: j.approval };
+          }
         } catch { /* no body: nothing to undo */ }
       }
-      return undoUntil ? { result: "ok", undoUntil } : { result: "ok" };
+      return { result: "ok" };
     }
     const map = { 409: "changed", 403: "refused", 404: "gone", 422: "reason" };
-    const result = map[res.status] || (res.status >= 400 && res.status < 500 ? "refused" : "failed");
+    const result = map[res.status] || "uncertain";
     if (result === "changed") {
       try {
         const j = await res.json();
@@ -497,7 +502,7 @@ export async function postAct(body, { timeout = WAIT_MS, fetchImpl = fetch } = {
     }
     return { result };
   } catch {
-    return { result: ctl.signal.aborted ? "timeout" : "failed" };
+    return { result: "uncertain" };
   } finally {
     clearTimeout(timer);
   }

@@ -335,15 +335,21 @@ test("8.3 C17: a cta may be the page's one filled button (primary: true only)", 
   assert.deepEqual(rows.map((r) => r.cta), [{ label: "Sign in", href: "https://portal.example.test/p", primary: true }, { label: "Go", href: "https://portal.example.test/o" }]);
 });
 
-test("8.3 H2: the act's answers: ok (204, 200 with undoUntil), changed, refused, gone, reason, failed, timeout", async () => {
+test("8.3 H2, P4: the act's answers: ok (204, 200 with undoUntil and approval), changed, refused, gone, reason, uncertain", async () => {
   const answer = (status, body) => async () => ({ ok: status >= 200 && status < 300, status, json: async () => body });
   const act = { app: "parts", action: "approve", key: "12" };
   assert.deepEqual(await postAct(act, { fetchImpl: answer(204) }), { result: "ok" });
   const until = new Date(Date.now() + 120000).toISOString();
-  assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: until }) }), { result: "ok", undoUntil: until });
-  assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: "2000-01-01T00:00:00Z" }) }), { result: "ok" }, "an Undo that ran out is not offered");
+  // P4: Undo needs both the time and the approval Parts wrote; either alone, or a bad id, is no Undo.
+  assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: until, approval: "ev_7Kx-2" }) }), { result: "ok", undoUntil: until, approval: "ev_7Kx-2" });
+  assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: until }) }), { result: "ok" }, "no approval: no Undo");
+  assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { approval: "ev1" }) }), { result: "ok" }, "no time: no Undo");
+  for (const bad of ["", "a b", "x".repeat(65), "ev;1", 7]) assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: until, approval: bad }) }), { result: "ok" }, String(bad));
+  assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: "2000-01-01T00:00:00Z", approval: "ev1" }) }), { result: "ok" }, "an Undo that ran out is not offered");
   assert.deepEqual(await postAct(act, { fetchImpl: answer(200, null) }), { result: "ok" });
-  for (const [st, r] of [[409, "changed"], [403, "refused"], [404, "gone"], [422, "reason"], [400, "refused"], [500, "failed"], [502, "failed"], [503, "failed"]]) {
+  // Lead, after the reviews: a 5xx, a code the page does not know (400, 201, 418, 504...), a network failure or no
+  // answer is "uncertain": it may have been saved.
+  for (const [st, r] of [[409, "changed"], [403, "refused"], [404, "gone"], [422, "reason"], [400, "uncertain"], [201, "uncertain"], [418, "uncertain"], [500, "uncertain"], [502, "uncertain"], [503, "uncertain"], [504, "uncertain"]]) {
     assert.deepEqual(await postAct(act, { fetchImpl: answer(st) }), { result: r }, String(st));
   }
   // Account's 409 may say what changed in plain words (today-act.ts changedWords); they are passed on, cut to length.
@@ -351,9 +357,9 @@ test("8.3 H2: the act's answers: ok (204, 200 with undoUntil), changed, refused,
     { result: "changed", message: "Someone else already settled this request." });
   assert.deepEqual(await postAct(act, { fetchImpl: answer(409, { error: "changed", message: 7 }) }), { result: "changed" });
   assert.deepEqual(await postAct(act, { fetchImpl: async () => ({ ok: false, status: 409, json: async () => { throw new SyntaxError("no body"); } }) }), { result: "changed" });
-  assert.deepEqual(await postAct(act, { fetchImpl: async () => { throw new TypeError("network"); } }), { result: "failed" });
+  assert.deepEqual(await postAct(act, { fetchImpl: async () => { throw new TypeError("network"); } }), { result: "uncertain" });
   const hang = (_url, init) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
-  assert.deepEqual(await postAct(act, { fetchImpl: hang, timeout: 30 }), { result: "timeout" });
+  assert.deepEqual(await postAct(act, { fetchImpl: hang, timeout: 30 }), { result: "uncertain" });
   let sent;
   await postAct({ ...act, action: "deny", reason: "Use stock" }, { fetchImpl: async (url, init) => { sent = [url, init.method, init.body, init.credentials]; return { ok: true, status: 204 }; } });
   assert.deepEqual(sent, ["/today/act", "POST", JSON.stringify({ app: "parts", action: "deny", key: "12", reason: "Use stock" }), "same-origin"]);

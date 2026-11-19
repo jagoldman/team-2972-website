@@ -192,14 +192,17 @@ const CHANGED_WORDS = {
   snack: "That day is full now, or you're already signed up.",
   volunteer: "That event is full now, or you're already signed up.",
 };
+/** A 5xx, an unknown code, a network failure or no answer: it may have been saved, so the page looks again. */
+export const UNCERTAIN = "That may not have gone through. Checking.";
+/** After that look, when the row is still there: nothing was saved. */
+export const AFTER_CHECK = "That didn't go through. Try again.";
 /** The plain sentence for an act's answer that was not a success; Account's own words for a 409 win when it sends them. */
 export function actMessage(action, result, message = "") {
   if (result === "changed") return message || CHANGED_WORDS[action] || "Someone else already did this.";
   if (result === "refused") return "You can't do this from Home. Open it to see why.";
   if (result === "gone") return "This isn't there any more.";
   if (result === "reason") return "Say why, then press Deny again.";
-  if (result === "timeout") return "We couldn't tell if that worked.";
-  return "That didn't go through. Try again.";
+  return UNCERTAIN;
 }
 
 /**
@@ -231,11 +234,12 @@ export function makeActs(o = {}) {
     say(DONE_WORDS[a.action] || "Done.");
     const body = { app: a.app, action: a.action, key: a.key };
     if (reason) body.reason = reason;
-    const { result, undoUntil, message } = await post(body);
+    const { result, undoUntil, approval, message } = await post(body);
     busy.delete(a.key);
     onBusy(busy.size > 0);
     if (result === "ok") {
-      if (undoUntil && a.app === "parts" && a.action === "approve") say(DONE_WORDS.approve, { until: undoUntil, run: () => undo(li, r, a) });
+      // Undo only when Parts' answer named the approval it wrote and how long it may be undone (CONTRACT P4).
+      if (undoUntil && approval && a.app === "parts" && a.action === "approve") say(DONE_WORDS.approve, { until: undoUntil, run: () => undo(li, r, a, approval) });
       if (!busy.size) refresh();
       return;
     }
@@ -246,13 +250,28 @@ export function makeActs(o = {}) {
     li.append(msg);
     say(msg.textContent);
     li.querySelector(".nowbtn, button")?.focus();
-    if (result !== "failed" && result !== "reason" && !busy.size) refresh();
+    // Every answer but a missing reason may mean the row changed: /today.json is read again, once. After an uncertain
+    // answer that read decides the sentence: the row gone means it was saved; the row still there means it was not.
+    if (result === "reason" || busy.size) return;
+    const drawn = await refresh();
+    if (result !== "uncertain" || !drawn || notes.get(r.id) !== UNCERTAIN) return;
+    const still = [...document.querySelectorAll(".nowrow")].filter((x) => x.dataset.id === r.id && !x.hidden);
+    if (still.length) {
+      notes.set(r.id, AFTER_CHECK);
+      for (const x of still) { const m = x.querySelector(".nowmsg"); if (m) m.textContent = AFTER_CHECK; }
+      say(AFTER_CHECK);
+    } else {
+      notes.delete(r.id);
+      say(DONE_WORDS[a.action] || "Done.");
+    }
   }
-  // Undo exists only when Parts answered {undoUntil} (CONTRACT P): the same act path, action "unapprove".
-  async function undo(li, r, a) {
-    const { result } = await post({ app: a.app, action: "unapprove", key: a.key });
-    say(result === "ok" ? DONE_WORDS.unapprove : actMessage("unapprove", result));
-    if (result === "ok") { hidden.delete(r.id); refresh(); }
+  // Undo exists only when Parts answered {undoUntil, approval} (CONTRACT P4): the same act path, action "unapprove",
+  // naming that approval. A 409: the request changed since, so it stays approved and the page says so.
+  async function undo(li, r, a, approval) {
+    const { result } = await post({ app: a.app, action: "unapprove", key: a.key, approval });
+    say(result === "ok" ? DONE_WORDS.unapprove : result === "changed" ? "The request changed since you approved it, so it stays approved." : actMessage("unapprove", result));
+    if (result === "ok") hidden.delete(r.id);
+    if (result !== "reason") refresh();
   }
   return { run, hidden, busy, notes };
 }
@@ -610,11 +629,16 @@ export function nextCard(next, o = {}) {
     const sentence = result === "changed" ? message || "Someone else already changed this step."
       : result === "refused" ? "You can't do this from Home. Open the task to see why."
       : result === "gone" ? "This step isn't there any more."
-      : result === "timeout" ? "We couldn't tell if that worked."
-      : `Couldn't save, so “${step.title}” is back as it was.`;
+      : UNCERTAIN;
     say(sentence);
     done.focus();
-    if (result !== "failed") await onDone();
+    // Whatever the answer, Home looks once more, so the card shows what Tasks really has. After an uncertain answer that
+    // look decides the sentence: the same step still next means it was not saved.
+    const drawn = await onDone();
+    if (result === "uncertain" && drawn) {
+      const same = [...document.querySelectorAll("#home-next .nextstep b")].some((b) => b.textContent === step.title);
+      say(same ? AFTER_CHECK : "Step done.");
+    }
   }
 
   async function markTask() {

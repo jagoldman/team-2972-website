@@ -23,6 +23,11 @@ From `new-apps/briefs/r83/ADOPT.md`. The static kit is synced from infra `r83-ki
   answers (made again at Account `9c94c71`, which filters every part by the person's current groups: any part may be
   absent for anyone); `test/fixtures/today-83.mjs` matches it field for field. Act keys up to 250 characters (Skills'
   `<uid>:<skillId>`), up to three pit lines, milestone colours of 3, 4, 6 or 8 hex digits, as Account.
+- **Undo (CONTRACT P4)** only when Approve answered both `undoUntil` and `approval`; it sends `{app:"parts",
+  action:"unapprove", key, approval}`; a 409 says the request changed and it stays approved. **An uncertain answer**
+  (any 5xx, a code the page does not know, a network failure, no answer in 10 s): the row (or the step) comes back
+  with "That may not have gone through. Checking.", `/today.json` is read once, and the sentence follows what it
+  shows ("That didn't go through. Try again." when the row is still there).
 - **Left as the demo is not, on purpose:** one filled button per screen (the demo fills Sign up on every snack row and
   Approve on each blocking request); Get access and the footer stay (the real app has them), made quiet.
 
