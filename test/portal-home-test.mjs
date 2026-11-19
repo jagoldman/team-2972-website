@@ -311,10 +311,27 @@ test("8.3 E1: the event part is checked; its paths are Competition's", () => {
   assert.equal(parseToday({ v: 1, event: { name: "x" } }, site, origin).event, null);
 });
 
-test("8.3 T: the next task's next step is words only", () => {
-  const n = parseToday({ v: 1, next: { taskId: "t", title: "Cut plates", href: "/t", nextStep: { id: "s2", label: "Cut on the router" } } }, site, origin).next;
-  assert.equal(n.nextStep, "Cut on the router");
-  assert.equal(parseToday({ v: 1, next: { taskId: "t", title: "x", href: "/t", nextStep: "loose" } }, site, origin).next.nextStep, undefined);
+test("8.3 T1: the next task's next step ({id, title}) and practices left; a step whose act key would not fit is left out", () => {
+  const n = parseToday({ v: 1, next: { taskId: "t", title: "Cut plates", href: "/t", practicesLeft: 3, nextStep: { id: "s2", title: "Cut on the router" } } }, site, origin).next;
+  assert.deepEqual(n.nextStep, { id: "s2", title: "Cut on the router" });
+  assert.equal(n.practicesLeft, 3);
+  const take = (next) => parseToday({ v: 1, next: { taskId: "t", title: "x", href: "/t", ...next } }, site, origin).next;
+  assert.equal(take({ nextStep: "loose" }).nextStep, undefined);
+  assert.equal(take({ nextStep: { id: "s2", label: "the 8.3 first pass's guess" } }).nextStep, undefined, "the contract's field is title");
+  assert.equal(take({ nextStep: { id: "a b", title: "Space in the id" } }).nextStep, undefined);
+  assert.equal(take({ nextStep: { id: "x".repeat(99), title: "Too long a key" } }).nextStep, undefined);
+  assert.equal(take({ nextStep: null, practicesLeft: null }).nextStep, undefined);
+  assert.deepEqual(take({ nextStep: { id: 42, title: "A number id" } }).nextStep, { id: "42", title: "A number id" });
+  for (const bad of [-1, 1.5, "3", 10001]) assert.equal(take({ practicesLeft: bad }).practicesLeft, undefined, String(bad));
+  assert.equal(take({ practicesLeft: 0 }).practicesLeft, 0);
+});
+
+test("8.3 C17: a cta may be the page's one filled button (primary: true only)", () => {
+  const rows = parseToday({ v: 1, today: [
+    { id: "calendar:practice", section: "today", title: "Practice today, 3:30 pm–6 pm", href: "/p", cta: { label: "Sign in", href: "/p", primary: true } },
+    { id: "calendar:other", section: "today", title: "Other", href: "/o", cta: { label: "Go", href: "/o", primary: "yes" } },
+  ] }, site, origin).today;
+  assert.deepEqual(rows.map((r) => r.cta), [{ label: "Sign in", href: "https://portal.example.test/p", primary: true }, { label: "Go", href: "https://portal.example.test/o" }]);
 });
 
 test("8.3 H2: the act's answers: ok (204, 200 with undoUntil), changed, refused, gone, reason, failed, timeout", async () => {
@@ -328,10 +345,47 @@ test("8.3 H2: the act's answers: ok (204, 200 with undoUntil), changed, refused,
   for (const [st, r] of [[409, "changed"], [403, "refused"], [404, "gone"], [422, "reason"], [400, "refused"], [500, "failed"], [502, "failed"], [503, "failed"]]) {
     assert.deepEqual(await postAct(act, { fetchImpl: answer(st) }), { result: r }, String(st));
   }
+  // Account's 409 may say what changed in plain words (today-act.ts changedWords); they are passed on, cut to length.
+  assert.deepEqual(await postAct(act, { fetchImpl: answer(409, { error: "changed", message: "Someone else already settled this request." }) }),
+    { result: "changed", message: "Someone else already settled this request." });
+  assert.deepEqual(await postAct(act, { fetchImpl: answer(409, { error: "changed", message: 7 }) }), { result: "changed" });
+  assert.deepEqual(await postAct(act, { fetchImpl: async () => ({ ok: false, status: 409, json: async () => { throw new SyntaxError("no body"); } }) }), { result: "changed" });
   assert.deepEqual(await postAct(act, { fetchImpl: async () => { throw new TypeError("network"); } }), { result: "failed" });
   const hang = (_url, init) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
   assert.deepEqual(await postAct(act, { fetchImpl: hang, timeout: 30 }), { result: "timeout" });
   let sent;
   await postAct({ ...act, action: "deny", reason: "Use stock" }, { fetchImpl: async (url, init) => { sent = [url, init.method, init.body, init.credentials]; return { ok: true, status: 204 }; } });
   assert.deepEqual(sent, ["/today/act", "POST", JSON.stringify({ app: "parts", action: "deny", key: "12", reason: "Use stock" }), "same-origin"]);
+});
+
+// Account's real answer (test/fixtures/today-account-83.json: Account r83's gatherToday run on made-up app answers).
+// The portal reads every part of it; nothing Account sends is dropped or misread.
+test("8.3 H1: Account's own answer, read field for field", async () => {
+  const { readFileSync } = await import("node:fs");
+  const A = JSON.parse(readFileSync(new URL("./fixtures/today-account-83.json", import.meta.url), "utf8"));
+  const site83 = { scheme: "http", domain: "landing.test" }, origin83 = "http://portal.landing.test";
+  const m = parseToday(A.mentor, site83, origin83);
+  assert.deepEqual(m.waiting.map((r) => [r.id, r.group || null, r.mark ? r.mark.word : null, (r.lines || []).length, (r.acts || []).map((a) => a.label + (a.primary ? "*" : "")).join("/")]), A.mentor.waiting.map((r) =>
+    [r.id, r.group || null, r.mark ? r.mark.word : null, (r.lines || []).length, (r.acts || []).map((a) => a.label + (a.primary ? "*" : "")).join("/")]));
+  assert.ok(m.waiting.some((r) => r.group === "Stuck" && r.mark.tone === "bad" && r.lines[1].startsWith("Waits on ")), "stuck rows come through whole");
+  assert.deepEqual(m.waiting.find((r) => r.id === "parts:request:r12").acts, A.mentor.waiting.find((r) => r.id === "parts:request:r12").acts);
+  assert.equal(m.milestones.length, A.mentor.milestones.length);
+  assert.deepEqual(m.milestones.map((x) => x.color || null), A.mentor.milestones.map((x) => x.color));
+  assert.equal(m.week.length, A.mentor.week.length);
+  assert.equal(m.season.days.length, A.mentor.season.days.length);
+  assert.deepEqual(m.coming, [], "an empty coming list is no Coming up");
+  const s = parseToday(A.student, site83, origin83);
+  assert.deepEqual(s.next.nextStep, A.student.next.nextStep);
+  assert.equal(s.next.practicesLeft, A.student.next.practicesLeft);
+  assert.deepEqual(s.others.map((r) => [r.id, r.lines]), A.student.others.map((r) => [r.id, r.lines]));
+  assert.equal(s.today[0].cta.label, "Sign in");
+  const p = parseToday(A.parent, site83, origin83);
+  assert.deepEqual(p.today.map((r) => [r.id, r.acts[0].action, r.acts[0].key, !!r.acts[0].primary, r.cta.label]),
+    A.parent.today.map((r) => [r.id, r.acts[0].action, r.acts[0].key, !!r.acts[0].primary, r.cta.label]));
+  assert.deepEqual(p.coming.map((c) => [c.name, c.time, c.location]), [["Library robot demo", "6 pm–8 pm", "Public library"], ["Kickoff", "9 am", ""]]);
+  assert.equal(p.week[0].items[0].location, "Team shop");
+  const e = parseToday(A.studentEvent, site83, origin83).event;
+  assert.deepEqual(e.line, A.studentEvent.event.line);
+  assert.deepEqual(e.pit.map((x) => [x.id, x.href, x.lines || null]), A.studentEvent.event.pit.map((x) => ["compete:" + x.id, x.href, x.lines || null]));
+  assert.deepEqual(e.next.map((x) => [x.match, x.at, x.alliance]), [[19, "2026-11-19T20:15:00Z", "Blue"], [21, "", "Red"]]);
 });

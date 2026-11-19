@@ -1,6 +1,10 @@
-// Fake /today.json answers in the release 8.3 shape (CONTRACT H1, C1, E1), one per kind of person, with dates counted
-// from the day the test runs. Made-up people and parts only (CONTRACT top rules; CONVENTIONS §9). Hosts are the
+// Fake /today.json answers in the release 8.3 shape (CONTRACT H1, C1, E1, T1), one per kind of person, with dates
+// counted from the day the test runs. Made-up people and parts only (CONTRACT top rules; CONVENTIONS §9). Hosts are the
 // browser test's fake site (landing.test).
+// Field for field what Account (account r83, src/lib/today.ts and today-home.ts) answers: every row carries `section`;
+// a row Account builds from a typed list has `detail` = its first line (for older portals) and `lines`; ids are
+// "<app>:…" (parts:request:<id>, skills:signoff:<uid>:<skillId>, tasks:stuck-<taskId>, parts:mine:<id>,
+// skills:waiting:<skillId>); optional text Account has none of is null; `others` is always a list.
 const H = (app, path) => `http://${app}.landing.test${path}`;
 
 /** "YYYY-MM-DD", n days from `base`. */
@@ -32,11 +36,11 @@ function seasonFrom(base) {
 }
 
 function weekFrom(base, { parent = false } = {}) {
-  const practice = (i) => ({ kind: "practice", name: "Practice", startTime: "15:30", endTime: "18:00", location: "Team shop" });
+  const practice = () => ({ kind: "practice", name: "Practice", startTime: "15:30", endTime: "18:00", location: "Team shop" });
   const out = [];
   for (let i = 0; i < 7; i++) {
     const kind = meetKind(base, i);
-    if (kind === "practice") out.push({ date: dayFrom(base, i), href: H("calendar", "/?tab=agenda"), items: [practice(i)],
+    if (kind === "practice") out.push({ date: dayFrom(base, i), href: H("calendar", "/?tab=agenda"), items: [practice()],
       ...(parent ? {} : { mentorsComing: i === 0 ? 2 : 0 }), snacks: i === 0 ? { names: ["Test family", "Sample family"], open: 0, modes: ["build"] } : { names: [], open: 2, modes: ["build"] } });
     else if (kind === "build") out.push({ date: dayFrom(base, i), href: H("calendar", "/?tab=agenda"), items: [{ kind: "build", name: "Build day", startTime: "10:00", endTime: "14:00", location: "Team shop" }],
       ...(parent ? {} : { mentorsComing: 1 }), snacks: { names: [], open: 2, modes: ["build"] } });
@@ -45,15 +49,15 @@ function weekFrom(base, { parent = false } = {}) {
 }
 
 // Two milestones fall on meeting days this week, one later.
-const milestones = (base) => { const [a, b] = meetDays(base, 1, 7); return [
-  { name: "Driving on carpet", date: dayFrom(base, a), project: "Drive base", color: "#1f9d55", href: H("tasks", "/projects/1") },
-  { name: "Prototype intaking", date: dayFrom(base, b), project: "Intake", color: "#d4a017", href: H("tasks", "/projects/2") },
-  { name: "Design review", date: dayFrom(base, 9), project: "Shooter", color: "#3b6fd8", href: H("tasks", "/projects/3") },
+const milestones = (base) => { const [a, b] = meetDays(base, 1, 7); const left = (to) => meetDays(base, 0, to + 1).length; return [
+  { id: "m1", name: "Driving on carpet", date: dayFrom(base, a), project: "Drive base", projectId: "1", color: "#1f9d55", practicesLeft: left(a), href: H("tasks", "/projects/1") },
+  { id: "m2", name: "Prototype intaking", date: dayFrom(base, b), project: "Intake", projectId: "2", color: "#d4a017", practicesLeft: left(b), href: H("tasks", "/projects/2") },
+  { id: "m3", name: "Design review", date: dayFrom(base, 9), project: "Shooter", projectId: "3", color: null, practicesLeft: left(9), href: H("tasks", "/projects/3") },
 ]; };
 
 const practiceRow = (signedIn) => ({ id: "calendar:practice", section: "today", title: "Practice today, 3:30 pm–6 pm",
   detail: signedIn ? "You are signed in" : "You are not signed in", href: H("calendar", "/here?tab=today"),
-  ...(signedIn ? {} : { cta: { label: "Sign in", href: H("calendar", "/here/scan") } }) });
+  ...(signedIn ? {} : { cta: { label: "Sign in", href: H("calendar", "/here/scan"), primary: true } }) });
 
 const activity = [
   { app: "Calendar", title: "Avery Test", detail: "signed in at the door", href: H("calendar", "/here"), at: new Date(Date.now() - 20 * 60000).toISOString() },
@@ -68,12 +72,12 @@ export function studentToday(base = new Date(), { signedIn = false } = {}) {
     today: [practiceRow(signedIn)],
     waiting: [],
     others: [
-      { id: "parts:mine:41", section: "others", title: "Bearing 1/2\" hex, flanged", detail: "", href: H("parts", "/?request=41"), mark: { word: "Ordered", tone: "ok" }, lines: ["Arrives about " + niceFrom(base, 1)] },
-      { id: "skills:mine:lathe", section: "others", title: "Sign-off: Lathe", detail: "", href: H("skills", "/"), lines: ["Waiting on a mentor since Monday"] },
+      { id: "parts:mine:41", section: "others", title: "Bearing 1/2\" hex, flanged", detail: "Arrives about " + niceFrom(base, 1), href: H("parts", "/?request=41"), mark: { word: "Ordered", tone: "ok" }, lines: ["Arrives about " + niceFrom(base, 1)] },
+      { id: "skills:waiting:lathe", section: "others", title: "Sign-off: Lathe", detail: "Waiting on a mentor since " + niceFrom(base, -1), href: H("skills", "/"), lines: ["Waiting on a mentor since " + niceFrom(base, -1)] },
     ],
-    next: { taskId: "t-7", title: "Cut polycarb side plates", due: dayFrom(base, 4), project: "Intake", subteam: "Fabrication", milestone: "Prototype intaking",
-      href: H("tasks", "/my?task=t-7"), stuckHref: H("tasks", "/my?task=t-7&do=stuck"), partHref: H("parts", "/?new=1&task=t-7"),
-      steps: { done: 1, total: 2 }, nextStep: { id: "s2", label: "Cut on the router" } },
+    next: { taskId: "t-7", title: "Cut polycarb side plates", due: dayFrom(base, 4), project: "Intake", href: H("tasks", "/my?task=t-7"),
+      stuckHref: H("tasks", "/my?task=t-7&do=stuck"), partHref: H("parts", "/?new=1&task=t-7"), subteam: "Fabrication", milestone: "Prototype intaking",
+      steps: { done: 1, total: 2 }, onHold: false, blocked: false, practicesLeft: meetDays(base, 0, 5).length, nextStep: { id: "s2", title: "Cut on the router" } },
     activity,
     season: seasonFrom(base),
     milestones: milestones(base),
@@ -86,17 +90,19 @@ export function mentorToday(base = new Date()) {
     v: 1,
     today: [{ id: "calendar:practice", section: "today", title: "Practice today, 3:30 pm–6 pm", detail: "5 people are signed in", href: H("calendar", "/here?tab=today") }],
     waiting: [
-      { id: "parts:approve:12", section: "waiting", group: "Needs your OK", title: "Motor, brushless", mark: { word: "Blocking", tone: "bad" }, detail: "",
+      { id: "parts:request:12", section: "waiting", title: "Motor, brushless", detail: "$199.99, asked by Avery Test: “The shooter needs two; we have none spare.”", href: H("parts", "/?request=12"),
+        group: "Needs your OK", mark: { word: "Blocking", tone: "bad" },
         lines: ["$199.99, asked by Avery Test: “The shooter needs two; we have none spare.”", "Mechanisms budget: $1,838.52 left, $1,638.53 after this"],
-        href: H("parts", "/?request=12"),
         acts: [{ label: "Approve", app: "parts", action: "approve", key: "12", primary: true }, { label: "Deny", app: "parts", action: "deny", key: "12", reason: true }] },
       { id: "skills:signoff:u-3:omio", section: "waiting", group: "Sign-off requests", title: "Qualified on the CNC router", detail: "Jordan Sample asks for a sign-off", href: H("skills", "/?tab=signoff"),
-        acts: [{ label: "Sign off", app: "skills", action: "signoff", key: "u-3:omio" }] },
-      { id: "skills:signoff:u-4:leads", section: "waiting", group: "Sign-off requests", title: "Motor power leads", detail: "Riley Example asks for a sign-off", href: H("skills", "/?tab=signoff"),
-        acts: [{ label: "Sign off", app: "skills", action: "signoff", key: "u-4:leads" }] },
-      { id: "tasks:stuck:t-9", section: "waiting", group: "Stuck", title: "Intake roller shafts", mark: { word: "Blocked", tone: "bad" }, detail: "Casey Fake, Intake", lines: ["Waits on the part Hex shaft, 8 in"], href: H("tasks", "/my?task=t-9") },
+        lines: ["Jordan Sample asks for a sign-off"], acts: [{ label: "Sign off", app: "skills", action: "signoff", key: "u-3:omio" }] },
+      { id: "skills:signoff:u-4:leads", section: "waiting", group: "Sign-off requests", title: "Motor power leads", detail: "Riley Example asks for a sign-off: “Crimped and heat-shrunk”", href: H("skills", "/?tab=signoff"),
+        lines: ["Riley Example asks for a sign-off: “Crimped and heat-shrunk”"], acts: [{ label: "Sign off", app: "skills", action: "signoff", key: "u-4:leads" }] },
+      { id: "tasks:stuck-t-9", section: "waiting", title: "Intake roller shafts", detail: "Casey Fake, Intake", href: H("tasks", "/my?task=t-9"),
+        group: "Stuck", mark: { word: "Blocked", tone: "bad" }, lines: ["Casey Fake, Intake", "Waits on “Mount the motor” and the part Hex shaft, 8 in"] },
       { id: "parts:parts-toorder", section: "waiting", title: "5 parts are waiting to be ordered", detail: "The first must be ordered by " + niceFrom(base, 2), href: H("parts", "/?tab=toorder"), count: 5 },
     ],
+    others: [],
     next: null,
     activity,
     season: seasonFrom(base),
@@ -109,12 +115,13 @@ export function parentToday(base = new Date()) {
   return {
     v: 1,
     today: [
-      { id: "calendar:snacks:" + dayFrom(base, 2), section: "today", title: niceFrom(base, 2) + " needs snacks", detail: "2 families needed", href: H("calendar", "/?tab=snacks"),
-        modes: ["build"], acts: [{ label: "Sign up", app: "calendar", action: "snack", key: dayFrom(base, 2), primary: true }] },
-      { id: "calendar:vol:4", section: "today", title: "Set up the library demo", detail: "Thu, 5:30 pm–6:15 pm, 1 more person needed", href: H("calendar", "/volunteer?e=4"),
-        acts: [{ label: "Sign up", app: "calendar", action: "volunteer", key: "4" }] },
+      { id: "calendar:snacks:" + dayFrom(base, 2), section: "today", title: niceFrom(base, 2) + " needs snacks", detail: "2 families needed", href: H("calendar", "/snacks?d=" + dayFrom(base, 2)),
+        modes: ["build"], cta: { label: "Sign up", href: H("calendar", "/snacks?d=" + dayFrom(base, 2)) }, acts: [{ label: "Sign up", app: "calendar", action: "snack", key: dayFrom(base, 2), primary: true }] },
+      { id: "calendar:vol:4", section: "today", title: "Set up the library demo", detail: niceFrom(base, 3) + ", 5:30 pm–6:15 pm, 1 more person needed", href: H("calendar", "/volunteer?e=4"),
+        cta: { label: "Sign up", href: H("calendar", "/volunteer?e=4") }, acts: [{ label: "Sign up", app: "calendar", action: "volunteer", key: "4" }] },
     ],
     waiting: [],
+    others: [],
     next: null,
     activity: [],
     season: seasonFrom(base),
@@ -122,7 +129,7 @@ export function parentToday(base = new Date()) {
     coming: [
       { date: dayFrom(base, 9), name: "Library robot demo", startTime: "18:00", endTime: "20:00", location: "Public library", href: H("calendar", "/?e=4") },
       { date: dayFrom(base, 25), name: "Parent meeting and season preview", startTime: "10:00", endTime: "11:30", location: "School library", href: H("calendar", "/?e=5") },
-      { date: dayFrom(base, 60), name: "Season kickoff", startTime: "09:00", endTime: "13:00", location: "Team shop", href: H("calendar", "/?e=6") },
+      { date: dayFrom(base, 60), name: "Season kickoff", startTime: "09:00", endTime: null, location: null, href: H("calendar", "/?e=6") },
     ],
   };
 }
@@ -133,7 +140,8 @@ export function eventToday(base = new Date(), { shift = true } = {}) {
     today: shift ? [{ id: "compete:shift-now:1:" + dayFrom(base, 0) + ":0915", section: "today", title: "Scouting until 10:00", detail: "Then break until 11:00.", href: H("compete", "/schedule"),
       cta: { label: "Open my scouting match", href: H("compete", "/scouting") } }, practiceRow(false)] : [practiceRow(false)],
     waiting: [],
-    next: { taskId: "t-7", title: "Cut polycarb side plates", href: H("tasks", "/my?task=t-7") },
+    others: [],
+    next: { taskId: "t-7", title: "Cut polycarb side plates", due: null, project: null, href: H("tasks", "/my?task=t-7") },
     activity,
     season: seasonFrom(base),
     week: weekFrom(base),
@@ -141,8 +149,8 @@ export function eventToday(base = new Date(), { shift = true } = {}) {
       name: "Test Regional",
       line: { now: "Scouting until 10:00", match: { label: "Our match now", text: "Qual 14, Red, on the field" }, robot: "On the field, battery B1 at 12.9 V" },
       pit: [
-        { id: "pit-save:1:14", title: "Save the Qual 14 checklist after the match", detail: "Then start the checklist for Qual 19 (match at 1:15)", href: "/pit?tab=check", cta: { label: "Open the Pit", href: "/pit?tab=check" } },
-        { id: "pit-issues:1", title: "2 open issues in the pit", detail: "Open since 9:02", lines: ["Cracked 22T sprocket on the intake", "Left elevator bearing squeaks"], href: "/pit?tab=check" },
+        { id: "pit-save:1:14", title: "Save the Qual 14 checklist after the match", detail: "Then start the checklist for Qual 19 (match at 1:15)", href: H("compete", "/pit?tab=check"), cta: { label: "Open the Pit", href: H("compete", "/pit?tab=check") } },
+        { id: "pit-issues:1", title: "2 open issues in the pit", detail: "Open since 9:02", lines: ["Cracked 22T sprocket on the intake", "Left elevator bearing squeaks"], href: H("compete", "/pit?tab=check") },
       ],
       next: [
         { match: 19, at: new Date(base.getFullYear(), base.getMonth(), base.getDate(), 13, 15).toISOString(), alliance: "Blue", with: [1001, 1002], against: [1003, 1004, 1005] },

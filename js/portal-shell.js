@@ -47,11 +47,11 @@ export async function mountPortalShell({ bell = true } = {}) {
   const tools = resolveTools(source, groups, site);
   const user = { name: me.name, email: me.email, groups: rawGroups };
   // appId "portal": the guide counts a stop on Home (the admin's Admin link, Waiting on you) as on its page; no tile
-  // has that id, so no Apps-menu tile is marked current. The bar names the team, the same words the demo uses on Home.
+  // has that id, so no Apps-menu tile is marked current. Kit 0.5.0: the bar says "Home" on the portal, as the demo's.
   // The bell reads same-origin /_shell/inbox, which infra's Caddy sends to Account on the portal host (C3); with no
   // inbox there the kit draws no bell. The event-day banner reads /event.json and /event-status.json (C5, C15).
   mountAppBar(document.getElementById("shell-bar"), {
-    appName: "Gears & Buccaneers", appId: "portal", siteScheme: site.scheme, siteDomain: site.domain,
+    appName: "Home", appId: "portal", siteScheme: site.scheme, siteDomain: site.domain,
     tiles, tools, user, skipToId: "main", showBell: bell,
   });
   return { me, user, groups, tiles, tools, site, display: false };

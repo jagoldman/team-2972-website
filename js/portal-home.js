@@ -1,9 +1,11 @@
 // The portal home's data (release 8.1.5, CONTRACT C4, C12, C13, C14; release 8.3, H1, C1, E1) and the shop screen's
 // home (C9, C14). The signed-in Home is drawn by js/portal-ground.js from what parseToday gives it.
 // Data: same-origin GET /today.json (Caddy sends it to Account's /api/today with the identity headers):
-//   {v:1, today:[row], waiting:[row], others?:[row], next:{taskId, title, due, project, href, nextStep?, …}|null,
+//   {v:1, today:[row], waiting:[row], others?:[row], next:{taskId, title, due, project, href, practicesLeft?,
+//    nextStep?:{id, title}, …}|null,
 //    activity:[{app?, title, detail?, href, at}], season?, milestones?, week?, coming?, event?}
-//   row = {id, section, title, detail, href, count?, cta?:{label, href}, modes?, group?, mark?, lines?, acts?}
+//   row = {id, section, title, detail, href, count?, cta?:{label, href, primary?}, modes?, group?, mark?, lines?, acts?}
+//   (Account fills `detail` with the first of `lines` for older portals; this one draws `lines` when they are sent.)
 // Writes: POST /today/task-done {taskId} (C4) and POST /today/act {app, action, key, reason?} (H2).
 // A part with no data is not drawn; a failed or missing /today.json leaves the home as it was in release 8.1.
 // Every text goes in with textContent, never as HTML; every link must be on this site (parseToday drops the rest).
@@ -105,6 +107,8 @@ function row(r, site, origin) {
   if (r.cta && typeof r.cta === "object") {
     const label = text(r.cta.label, 40), ctaHref = safeHref(r.cta.href, site, origin);
     if (label && ctaHref) out.cta = { label, href: ctaHref };
+    // C17: the app may make its link the page's one filled button (Calendar's Sign in).
+    if (out.cta && r.cta.primary === true) out.cta.primary = true;
   }
   // H1, all optional: a group label, a state (a dot and a word), up to two more lines, up to two acts.
   const group = text(r.group, 60);
@@ -140,11 +144,15 @@ function nextTask(n, site, origin) {
   if (waiting.length) out.waitingOn = waiting;
   if (n.onHold === true) out.onHold = true;
   if (n.blocked === true) out.blocked = true;
-  // 8.3 (CONTRACT T, still pending at Tasks): the next unticked step, shown as words only. Done stays the task's Done.
+  // 8.3 (CONTRACT T1): the first open step ({id, title}), which "Mark step done" ticks through the act path with the key
+  // "<taskId>:<itemId>" (T3); a step whose key would not be a plain id is left out (Account checks the same). And the
+  // practices left before the task is due, counted by Tasks.
   if (n.nextStep && typeof n.nextStep === "object") {
-    const label = text(n.nextStep.label, 160);
-    if (label) out.nextStep = label;
+    const id = typeof n.nextStep.id === "string" || Number.isInteger(n.nextStep.id) ? String(n.nextStep.id) : "";
+    const title = text(n.nextStep.title, 160);
+    if (id && title && ACT_KEY.test(`${taskId}:${id}`)) out.nextStep = { id, title };
   }
+  if (Number.isInteger(n.practicesLeft) && n.practicesLeft >= 0 && n.practicesLeft <= 10000) out.practicesLeft = n.practicesLeft;
   return out;
 }
 
@@ -451,8 +459,9 @@ export async function postTaskDone(taskId, { timeout = WAIT_MS, fetchImpl = fetc
 }
 
 /**
- * POST /today/act {app, action, key, reason?} (CONTRACT H2). Resolves to { result, undoUntil? }:
- * "ok" (204, or 200 with {undoUntil}); "changed" (409: someone else already did it); "refused" (403); "gone" (404);
+ * POST /today/act {app, action, key, reason?} (CONTRACT H2). Resolves to { result, undoUntil?, message? }:
+ * "ok" (204, or 200 with {undoUntil}); "changed" (409: someone else already did it; Account may add a plain
+ * `message`, which is passed on); "refused" (403, 400); "gone" (404);
  * "reason" (422: a reason is needed); "timeout" (no answer in time: it may have worked); "failed" (5xx, network).
  */
 export async function postAct(body, { timeout = WAIT_MS, fetchImpl = fetch } = {}) {
@@ -474,7 +483,15 @@ export async function postAct(body, { timeout = WAIT_MS, fetchImpl = fetch } = {
       return undoUntil ? { result: "ok", undoUntil } : { result: "ok" };
     }
     const map = { 409: "changed", 403: "refused", 404: "gone", 422: "reason" };
-    return { result: map[res.status] || (res.status >= 400 && res.status < 500 ? "refused" : "failed") };
+    const result = map[res.status] || (res.status >= 400 && res.status < 500 ? "refused" : "failed");
+    if (result === "changed") {
+      try {
+        const j = await res.json();
+        const message = j && typeof j.message === "string" ? text(j.message, 200) : "";
+        if (message) return { result, message };
+      } catch { /* no body: the page's own words */ }
+    }
+    return { result };
   } catch {
     return { result: ctl.signal.aborted ? "timeout" : "failed" };
   } finally {

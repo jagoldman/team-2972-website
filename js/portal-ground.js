@@ -36,9 +36,14 @@ function section(id, title, cls = "") {
   return sec;
 }
 
-/** A state is a dot and a word, never colour alone. */
+/** A state is a dot and a word, never colour alone (the kit's .shell-status). */
 export function mark(word, tone) {
-  return el("span", `gmark${tone ? ` ${tone}` : ""}`, word);
+  return el("span", `shell-status${tone ? ` shell-status--${tone}` : ""}`, word);
+}
+
+/** A button in the kit's classes; `filled` makes it the page's one filled (blue) button. */
+function btnClass(filled, more = "") {
+  return `shell-btn${filled ? " shell-btn--primary" : ""}${more ? ` ${more}` : ""}`;
 }
 
 /** The app a row belongs to, from its id ("parts:…" → "parts"). */
@@ -48,7 +53,16 @@ export function rowApp(r) {
 }
 const isPractice = (r) => r.id === "calendar:practice";
 const isShift = (r) => /^compete:shift-/.test(r.id);
-const isSignIn = (r) => isPractice(r) && r.cta && r.cta.label === "Sign in";
+// Calendar marks its Sign in link `primary` (C17); an older Calendar is known by the words.
+const isSignIn = (r) => isPractice(r) && !!r.cta && (r.cta.primary === true || r.cta.label === "Sign in");
+
+/**
+ * A row's lines under its title: the `lines` Account sends (it copies the first into `detail` for older portals), or
+ * the one `detail`.
+ */
+export function rowLines(r) {
+  return r.lines && r.lines.length ? r.lines.slice() : [r.detail].filter(Boolean);
+}
 
 /**
  * The practice row as the demo words it: "Practice today" on top, then the time, then "Not signed in". Calendar sends
@@ -56,7 +70,7 @@ const isSignIn = (r) => isPractice(r) && r.cta && r.cta.label === "Sign in";
  */
 export function practiceWords(r) {
   const m = /^(Practice today), (.+)$/.exec(r.title);
-  if (!m) return { title: r.title, lines: [r.detail, ...(r.lines || [])].filter(Boolean) };
+  if (!m) return { title: r.title, lines: rowLines(r) };
   const detail = r.detail === "You are not signed in" ? "Not signed in" : r.detail;
   return { title: m[1], lines: [m[2], detail].filter(Boolean) };
 }
@@ -148,7 +162,7 @@ export function nextPractice(week, today = todayIso()) {
   return "";
 }
 
-// ---------------------------------------------------------------- the event line (kit 0.5.0 asks: .evline)
+// ---------------------------------------------------------------- the event line (the kit's .shell-evline)
 
 /** The one line at an event: you now, the next match (or ours on the field), the robot; each a door to Competition. */
 export function eventLine(ev, site, { withNow = true } = {}) {
@@ -158,11 +172,11 @@ export function eventLine(ev, site, { withNow = true } = {}) {
   if (ev.line.match) parts.push([ev.line.match.label, ev.line.match.text, door("/pit?tab=check")]);
   if (ev.line.robot) parts.push(["Robot", ev.line.robot, door("/pit?tab=check")]);
   if (!parts.length) return null;
-  const nav = el("nav", "evline");
+  const nav = el("nav", "shell-evline evline");
   nav.setAttribute("aria-label", "At the event");
   for (const [k, v, href] of parts) {
-    const a = el("a", "evpart");
-    a.append(el("span", "evk", k), el("span", "evv", v));
+    const a = el("a", "shell-evpart");
+    a.append(el("span", "shell-evk", k), el("span", "shell-evv", v));
     nav.append(linkTo(a, href));
   }
   return nav;
@@ -178,9 +192,9 @@ const CHANGED_WORDS = {
   snack: "That day is full now, or you're already signed up.",
   volunteer: "That event is full now, or you're already signed up.",
 };
-/** The plain sentence for an act's answer that was not a success. */
-export function actMessage(action, result) {
-  if (result === "changed") return CHANGED_WORDS[action] || "Someone else already did this.";
+/** The plain sentence for an act's answer that was not a success; Account's own words for a 409 win when it sends them. */
+export function actMessage(action, result, message = "") {
+  if (result === "changed") return message || CHANGED_WORDS[action] || "Someone else already did this.";
   if (result === "refused") return "You can't do this from Home. Open it to see why.";
   if (result === "gone") return "This isn't there any more.";
   if (result === "reason") return "Say why, then press Deny again.";
@@ -217,7 +231,7 @@ export function makeActs(o = {}) {
     say(DONE_WORDS[a.action] || "Done.");
     const body = { app: a.app, action: a.action, key: a.key };
     if (reason) body.reason = reason;
-    const { result, undoUntil } = await post(body);
+    const { result, undoUntil, message } = await post(body);
     busy.delete(a.key);
     onBusy(busy.size > 0);
     if (result === "ok") {
@@ -227,7 +241,7 @@ export function makeActs(o = {}) {
     }
     hidden.delete(r.id);
     li.hidden = false;
-    const msg = el("p", "nowmsg", actMessage(a.action, result));
+    const msg = el("p", "nowmsg", actMessage(a.action, result, message));
     notes.set(r.id, msg.textContent);
     li.append(msg);
     say(msg.textContent);
@@ -261,9 +275,9 @@ export function askReason(r) {
     ta.value = "Let's use the ones in stock first.";
     const err = el("p", "gerr");
     err.setAttribute("role", "alert");
-    const go = el("button", "btn", "Deny");
+    const go = el("button", "shell-btn shell-btn--danger", "Deny");
     go.type = "button";
-    const keep = el("button", "btn btn-outline", "Keep it");
+    const keep = el("button", "shell-btn", "Keep it");
     keep.type = "button";
     const row = el("div", "gbtns");
     row.append(go, keep);
@@ -290,19 +304,24 @@ export function askReason(r) {
 export function nowRow(r, { acts, filled = () => false, practice = false } = {}) {
   const li = el("li", "nowrow");
   li.dataset.id = r.id;
-  const words = practice ? practiceWords(r) : { title: r.title, lines: [r.detail, ...(r.lines || [])].filter(Boolean) };
-  const tall = !!(r.acts && r.acts.length && words.lines.length > 1);
+  const words = practice ? practiceWords(r) : { title: r.title, lines: rowLines(r) };
+  const withActs = !!(r.acts && r.acts.length && acts);
+  const tall = withActs && words.lines.length > 1;
   if (tall) li.classList.add("nowtall");
   const a = el("a", "rowlink");
   const t = el("span", "rt", words.title);
-  if (r.mark) { t.append(document.createTextNode(" ")); t.append(mark(r.mark.word, r.mark.tone)); }
+  // The demo's nowRow: a row with buttons carries its state after the title; any other row (Stuck, Waiting on others)
+  // starts its lines with it, on a line of its own.
+  if (r.mark && withActs) { t.append(document.createTextNode(" ")); t.append(mark(r.mark.word, r.mark.tone)); }
   a.append(t);
-  for (const line of words.lines) a.append(el("span", "rl", line));
+  if (r.mark && !withActs) { const m = mark(r.mark.word, r.mark.tone); m.classList.add("rmark"); a.append(m); }
+  // Parts' "Order by …, N days late" is the urgent line of a request (the demo's .nowdue).
+  for (const line of words.lines) a.append(el("span", /^Order by .+ late$/.test(line) ? "rl nowdue" : "rl", line));
   li.append(linkTo(a, r.href));
-  if (r.acts && r.acts.length && acts) {
+  if (withActs) {
     const btns = el("span", "nowbtns");
     for (const x of r.acts) {
-      const b = el("button", `btn nowbtn${x.primary && filled() ? "" : " btn-outline"}${x.reason ? " nowdeny" : ""}`, x.label);
+      const b = el("button", btnClass(!!x.primary && filled(), `nowbtn${x.reason ? " shell-btn--danger nowdeny" : ""}`), x.label);
       b.type = "button";
       b.dataset.action = x.action;
       b.setAttribute("aria-label", `${x.label}: ${words.title}`);
@@ -312,7 +331,7 @@ export function nowRow(r, { acts, filled = () => false, practice = false } = {})
     li.append(btns);
   } else if (r.cta) {
     const sign = isSignIn(r);
-    const b = linkTo(el("a", `btn nowbtn${sign && filled() ? "" : " btn-outline"}`, r.cta.label), r.cta.href);
+    const b = linkTo(el("a", btnClass(sign && filled(), "nowbtn"), r.cta.label), r.cta.href);
     if (sign) { li.classList.add("nowfirst"); b.dataset.tip = "Sign in with the code at the shop door."; }
     li.append(b);
   } else {
@@ -353,9 +372,13 @@ export function nowSection(rows, { title = "Now", empty = "Nothing needs you rig
   if (guide) sec.dataset.guide = "wait";
   if (!rows.length) { sec.append(el("p", "mute gempty", empty)); return sec; }
   const anyGroup = rows.some((r) => r.group);
+  // The demo labels the doors after the groups "Parts and practice"; when other apps' doors are among them (Admin's
+  // account requests), a plainer label.
+  const rest = rows.filter((r) => !r.group);
+  const restLabel = rest.every((r) => /^(parts|calendar):/.test(r.id)) ? "Parts and practice" : "Other things";
   let ul = null, last;
   for (const r of rows) {
-    const g = r.group || (anyGroup ? "Other things" : "");
+    const g = r.group || (anyGroup ? restLabel : "");
     if (!ul || g !== last) {
       if (g) sec.append(el("h3", "nowgroup", g));
       ul = el("ul", "glist");
@@ -484,11 +507,14 @@ export function nextForUs(ev, site) {
 
 /**
  * The student's next task, Ground up: the title is the link, then "Due …, N practices left", where it belongs, the
- * steps, the next step, and the buttons. Done marks the task done (C4); its four answers are as in release 8.1.5.
- * o: { empty, compact, season, filled(), say, onBusy, onDone, post, today }.
+ * steps, the next step, and the buttons. With a step left the button is "Mark step done" (CONTRACT T3: the act path,
+ * `{app:"tasks", action:"step-done", key:"<taskId>:<itemId>"}`), which acts at once: the step counts as done, the
+ * next-step line goes, and the save runs behind; on any answer but success the card is put back and says why. With no
+ * step left it is "Mark task done", the task's Done (C4) with its four answers as in release 8.1.5.
+ * o: { empty, compact, season, filled(), say, onBusy, onDone, post, postStep, today }.
  */
 export function nextCard(next, o = {}) {
-  const { empty = false, compact = false, season = null, filled = () => true, say = () => {}, onBusy = () => {}, onDone = async () => true, post = postTaskDone, today = todayIso() } = o;
+  const { empty = false, compact = false, season = null, filled = () => true, say = () => {}, onBusy = () => {}, onDone = async () => true, post = postTaskDone, postStep = postAct, today = todayIso() } = o;
   const cls = `nextsec${compact ? " evcompact" : ""}`;
   if (!next) {
     if (!empty) return null;
@@ -507,27 +533,38 @@ export function nextCard(next, o = {}) {
   sec.append(title);
   const m = typeof next.due === "string" ? /^(\d{4}-\d{2}-\d{2})/.exec(next.due) : null;
   if (m) {
-    const left = practicesText(season, m[1], today);
+    // Tasks counts the practices left (T1); without its count, the season line's meeting days say it.
+    const n = Number.isInteger(next.practicesLeft) ? next.practicesLeft : null;
+    const left = n != null ? (n === 0 ? "no practice before then" : `${plural(n, "practice", "practices")} left`) : practicesText(season, m[1], today);
     sec.append(el("p", "nextdue", `Due ${fmtDay(m[1])}${left ? `, ${left}` : ""}`));
   }
   const where = nextLine({ ...next, due: "" }).replace(/ · for /, ", for ");
   if (where) sec.append(el("p", "mute nextwhere", where));
   if (next.onHold) sec.append(el("p", "mute nexthold", "This task is on hold."));
   if (next.blocked) { const b = el("p", "nextblocked"); b.append(mark("Blocked", "bad")); sec.append(b); }
+  let fill = null, count = null;
   if (next.steps) {
     const r = el("div", "nextsteps");
     const bar = el("div", "nextbar");
     bar.setAttribute("aria-hidden", "true");
-    const fill = el("i");
-    fill.style.width = `${Math.round((100 * next.steps.done) / next.steps.total)}%`;
+    fill = el("i");
     bar.append(fill);
-    r.append(bar, el("span", "mute", `${next.steps.done} of ${next.steps.total} steps done`));
+    count = el("span", "mute");
+    r.append(bar, count);
     sec.append(r);
   }
-  if (next.nextStep) {
-    const p = el("p", "nextstep", "Next step: ");
-    p.append(el("b", "", next.nextStep));
-    sec.append(p);
+  const showSteps = (done) => {
+    if (!next.steps) return;
+    fill.style.width = `${Math.round((100 * done) / next.steps.total)}%`;
+    count.textContent = `${done} of ${next.steps.total} steps done`;
+  };
+  showSteps(next.steps ? next.steps.done : 0);
+  const step = next.nextStep || null;
+  let stepLine = null;
+  if (step) {
+    stepLine = el("p", "nextstep", "Next step: ");
+    stepLine.append(el("b", "", step.title));
+    sec.append(stepLine);
   }
   if (next.waitingOn) {
     const w = el("p", "nextwaiting");
@@ -535,20 +572,52 @@ export function nextCard(next, o = {}) {
     sec.append(w);
   }
   const acts = el("div", "heroacts");
-  const done = el("button", !taskHeld(next) && filled() ? "btn" : "btn btn-outline");
+  const words = step ? "Mark step done" : "Mark task done";
+  const done = el("button", btnClass(!taskHeld(next) && filled()));
   done.type = "button";
-  done.dataset.tip = "Mark this task done and bring up your next one.";
-  done.append(svgIcon(CHECK, 16), document.createTextNode("Mark task done"));
+  done.dataset.tip = step ? "Tick this step and bring up the next one." : "Mark this task done and bring up your next one.";
+  done.append(svgIcon(CHECK, 16), el("span", "", words));
   acts.append(done);
-  if (next.stuckHref) acts.append(linkTo(el("a", "btn btn-outline", "I'm stuck"), next.stuckHref));
+  if (next.stuckHref) acts.append(linkTo(el("a", "shell-btn", "I'm stuck"), next.stuckHref));
   if (next.partHref) {
-    const part = el("a", "btn btn-outline");
-    part.append(svgIcon(PARTS, 16), document.createTextNode("Request a part"));
+    const part = el("a", "shell-btn");
+    part.append(svgIcon(PARTS, 16), el("span", "", "Request a part"));
     acts.append(linkTo(part, next.partHref));
   }
   let busy = false;
   const again = () => { busy = false; done.disabled = false; };
-  done.addEventListener("click", async () => {
+  done.addEventListener("click", step ? markStep : markTask);
+
+  // Mark step done: at once, saved behind (D187).
+  async function markStep() {
+    if (busy) return; // a second press while the first is on its way sends nothing
+    busy = true;
+    done.disabled = true;
+    onBusy(true);
+    showSteps(next.steps ? Math.min(next.steps.total, next.steps.done + 1) : 0);
+    stepLine.hidden = true;
+    say("Step done.");
+    const { result, message } = await postStep({ app: "tasks", action: "step-done", key: `${next.taskId}:${step.id}` });
+    onBusy(false);
+    if (result === "ok") {
+      if (!(await onDone())) again();
+      return;
+    }
+    // Put the card back as the server last had it, and say why in one sentence.
+    showSteps(next.steps ? next.steps.done : 0);
+    stepLine.hidden = false;
+    again();
+    const sentence = result === "changed" ? message || "Someone else already changed this step."
+      : result === "refused" ? "You can't do this from Home. Open the task to see why."
+      : result === "gone" ? "This step isn't there any more."
+      : result === "timeout" ? "We couldn't tell if that worked."
+      : `Couldn't save, so “${step.title}” is back as it was.`;
+    say(sentence);
+    done.focus();
+    if (result !== "failed") await onDone();
+  }
+
+  async function markTask() {
     if (busy) return; // a second press while the first is on its way sends nothing
     busy = true;
     done.disabled = true;
@@ -568,12 +637,12 @@ export function nextCard(next, o = {}) {
       return;
     }
     // "refused": this task can't be marked done from the portal; the card shows "Open task" instead (C4).
-    const openTask = linkTo(el("a", "btn", "Open task"), next.href);
+    const openTask = linkTo(el("a", "shell-btn", "Open task"), next.href);
     openTask.dataset.tip = "Finish the task in the Task App.";
     done.replaceWith(openTask);
     say("This task can't be marked done from here. Open it in the Task App.");
     openTask.focus();
-  });
+  }
   sec.append(acts);
   return sec;
 }
@@ -636,7 +705,7 @@ export function drawHome(data, o) {
       box.append(rowList(shifts, { acts, filled }));
       box.querySelector(".nowrow")?.classList.add("nowfirst");
       const first = box.querySelector(".nowrow .nowbtn");
-      if (first && filled()) first.classList.remove("btn-outline");
+      if (first && !first.classList.contains("shell-btn--primary") && filled()) first.classList.add("shell-btn--primary");
       main.push(box);
     }
     const line = eventLine(ev, site, { withNow: !shifts.length });

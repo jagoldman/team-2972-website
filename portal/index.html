@@ -17,8 +17,9 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="2972 Portal" />
-<link rel="preload" href="/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/shell/fonts/archivo-latin-var.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="/shell/tokens.css" />
+<link rel="stylesheet" href="/shell/base.css" />
 <link rel="stylesheet" href="/css/style.css" />
 <link rel="stylesheet" href="/shell/app-bar.css" />
 <link rel="stylesheet" href="/shell/ui.css" />
@@ -30,7 +31,7 @@
 <body data-portal>
 <div id="site-header" class="shbar-mount"><div id="shell-bar"></div></div>
 
-<main class="portal-main home-g" id="main">
+<main class="shell-sheet home-g" id="main">
   <div class="homehead">
     <h1 id="greeting">Hi <span id="name">there</span>.</h1>
     <p class="homedate" id="today"></p>
@@ -89,16 +90,6 @@ import { mountHomeGroups, mountHomeGuide } from "/shell/static/shell.js";
 import { bindPortalModeChange, mountPortalShell } from "/js/portal-shell.js";
 import { blockedAppName, displayHome, el, fetchEventDay, fetchToday, svgIcon } from "/js/portal-home.js";
 import { drawHome, makeActs, oneFilled } from "/js/portal-ground.js";
-
-// ---- Kit 0.5.0 stand-ins (CONTRACT "Kit asks"): until the kit ships them, the portal does these here and only here.
-// 1. mountHomeGroups names its third row "More"; Ground up calls it "Team links".
-function teamLinksWords(root) {
-  const name = root.querySelector('[data-grp="more"] .grpname');
-  if (name) name.textContent = "Team links";
-}
-// 2. mountHomeGuide has no "event day" switch: the side column's slot is hidden at an event instead.
-// (3. .evline, .move and the side column's guide card are styled in css/portal-home.css, "Kit 0.5.0 stand-ins".)
-// ---- end of the stand-ins
 
 // t is a resolved kit tile (resolveTiles): href is null for coming-soon tiles. Every app opens in a new tab, so the
 // portal stays open. Ground up: one line per app (icon, name, what it is for), not a tile.
@@ -206,7 +197,8 @@ onContent(async () => {
     document.getElementById("home-side-lead").replaceChildren(...home.side);
     document.getElementById("main").classList.toggle("evday", home.eventDay);
     document.getElementById("main").classList.toggle("parent", home.role === "parent");
-    document.querySelector("[data-guide-card]").hidden = home.eventDay;
+    // Kit 0.5.0: the guide's card hides itself at an event (a stop that is open for Home still opens).
+    if (guide) guide.update({ eventDay: home.eventDay });
     if (focusNext) focusAfterDone();
   }
   // After Done the Home is drawn again: focus goes to the next task's button, else to the greeting.
@@ -255,7 +247,6 @@ onContent(async () => {
     const toolRows = filterByMode(tools, mode);
     document.getElementById("app-grid").replaceChildren(...main.map(renderAppRow));
     homeGroups.update({ tiles: shown, tools, mode });
-    teamLinksWords(groupsRoot);
     if (guide) guide.update({ mode });
     const any = shown.length + toolRows.length;
     document.getElementById("apps").hidden = false;
@@ -269,6 +260,7 @@ onContent(async () => {
   // under Apps. After the rows are drawn, so the admin's stop finds Home's Admin link.
   guide = mountHomeGuide(document.querySelector("[data-guide-card]"), {
     user, tiles: resolved, mode: parseMode(readCookie(document.cookie, "mode")), siteScheme: site.scheme, siteDomain: site.domain,
+    eventDay: !!(lastToday && lastToday.event) || eventDay,
   });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
