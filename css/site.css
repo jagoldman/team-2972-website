@@ -423,3 +423,14 @@ a.shot:hover .ph span { text-decoration: underline; }
 .names img.logo { width: auto; height: 48px; }
 .hero-shot.no-photo .bumper { margin-top: 0; }
 .band .doors-split, .band .home-names { margin-top: 28px; }
+/* page heads and gaps the demo set inline */
+h1 + .lead, .stack > h1 + .lead { margin-top: 16px; }
+.robots-record { margin-top: 36px; }
+.h2-gap { margin-top: 56px; }
+.band .count { margin-top: 12px; }
+.measure { max-width: 60ch; }
+.robot-head { padding-bottom: 48px; }
+.robot-yr-lg { font-size: 1.75rem; }
+.robot-head h1 { margin-top: 6px; }
+.robot-tail { padding-bottom: clamp(48px, 7vw, 96px); }
+.links + .links li:first-child { border-top: 1px solid var(--rule); }
