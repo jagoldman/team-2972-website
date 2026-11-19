@@ -32,30 +32,32 @@
   color-scheme: light dark;
 
   /* surfaces: grey-white page, white cards (the shell kit's --bg / --surface) */
-  --ink: light-dark(#f7f8fa, #07090f);          /* the page */
-  --ink-2: light-dark(#f1f3f6, #0d1220);        /* alternate sections, card bottoms */
-  --ink-3: light-dark(#ffffff, #121a2b);        /* cards, image placeholders */
+  --ink: light-dark(#eceef0, #000000);          /* the page */
+  --ink-2: light-dark(#f3f4f6, #1c1f22);        /* alternate sections, card bottoms */
+  --ink-3: light-dark(#ffffff, #131517);        /* cards, image placeholders */
 
   /* lines and hover washes */
-  --line: light-dark(rgba(11, 18, 36, 0.1), rgba(255, 255, 255, 0.09));
-  --line-2: light-dark(rgba(11, 18, 36, 0.22), rgba(255, 255, 255, 0.18));
+  --line: light-dark(rgba(0, 0, 0, 0.13), rgba(255, 255, 255, 0.14));
+  --line-2: light-dark(rgba(0, 0, 0, 0.46), rgba(255, 255, 255, 0.4));
   --hover: light-dark(rgba(11, 18, 36, 0.06), rgba(255, 255, 255, 0.06));
   --hover-2: light-dark(rgba(11, 18, 36, 0.1), rgba(255, 255, 255, 0.08));
 
   /* text */
-  --text: light-dark(#0b1224, #e9ecf3);
-  --text-2: light-dark(#343d52, #c2c8d6);
-  --mute: light-dark(#5b6478, #8f98ad);
+  --text: light-dark(#000000, #f5f6f7);
+  --text-2: light-dark(#2c3238, #cdd1d6);
+  --mute: light-dark(#4a5158, #9aa1a9);
   --ph-num: light-dark(#8b93a7, #4a526a);       /* the big year in a "photo wanted" box */
 
   /* gold is a fill: the main button and the brand mark. The ink is for links and focus. */
-  --gold: #e8b931;
-  --gold-2: #f2c94f;                            /* fill on hover */
-  --on-gold: #07090f;                           /* text on a gold fill, in both themes */
-  --accent: light-dark(#2148a8, #a9c1ff);       /* blue ink: links, selected items, focus */
+  --bumper: light-dark(#1d43c0, #2c55d6);       /* kit 0.5.0: the bumper blue is the one fill ("gold" is its alias) */
+  --bumper-2: light-dark(#15329a, #3d66e6);
+  --gold: var(--bumper);
+  --gold-2: var(--bumper-2);                    /* fill on hover */
+  --on-gold: #ffffff;                           /* text on the fill, in both themes */
+  --accent: light-dark(#1d43c0, #9db6ff);       /* blue ink: links, selected items, focus */
   --accent-2: light-dark(#4d6ec4, #d5e2ff);
-  --tint: light-dark(rgba(33, 72, 168, 0.07), rgba(169, 193, 255, 0.1));
-  --tint-2: light-dark(rgba(33, 72, 168, 0.13), rgba(169, 193, 255, 0.18));
+  --tint: light-dark(rgba(29, 67, 192, 0.07), rgba(157, 182, 255, 0.12));
+  --tint-2: light-dark(rgba(29, 67, 192, 0.14), rgba(157, 182, 255, 0.22));
   --tint-line: light-dark(rgba(33, 72, 168, 0.45), rgba(169, 193, 255, 0.35));
   --glow: light-dark(rgba(11, 18, 36, 0.12), rgba(0, 0, 0, 0.45));
   --wash-1: light-dark(rgba(11, 18, 36, 0.04), rgba(255, 255, 255, 0.04));
