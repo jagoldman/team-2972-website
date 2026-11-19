@@ -128,7 +128,8 @@ function rich(text) {
     out += richEmphasis(esc(md.slice(last, m.index)));
     if (richLinkOk(m[2])) {
       const external = /^https:/i.test(m[2]);
-      out += `<a href="${esc(m[2])}"${external ? ' target="_blank" rel="noopener"' : ""}>${richEmphasis(esc(m[1]))}</a>`;
+      // An outside link opens in a new tab and says so to a screen reader, as extLink() does.
+      out += `<a href="${esc(m[2])}"${external ? ' target="_blank" rel="noopener"' : ""}>${richEmphasis(esc(m[1]))}${external ? '<span class="vh"> (opens in a new tab)</span>' : ""}</a>`;
     } else {
       out += richEmphasis(esc(m[0]));
     }

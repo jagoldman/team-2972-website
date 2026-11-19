@@ -492,6 +492,21 @@ try {
     check(`${who}: a robot page whose photo and gallery photo cannot be shown ${editor ? "keeps both targets" : "shows neither"}`, !rp.photo && rp.target === editor && rp.gallery === editor, rp);
     await context.close();
   }
+  // A draft with an outside link in rich text (setContent, as the editor's preview): the link opens in a new tab and says so.
+  {
+    const { context } = await newContext(browser, { width: 1440 });
+    const page = await context.newPage();
+    await open(page, "/about.html");
+    const l = await page.evaluate(() => {
+      const values = JSON.parse(JSON.stringify(VALUES));
+      values[0].text = "Read the [FIRST core values](https://www.firstinspires.org/about/vision-and-mission) and [our robots](robots.html).";
+      window.setContent({ VALUES: values });
+      const [out, here] = document.querySelectorAll('[data-ck="VALUES[0].text"] a');
+      return { out: out && [out.target, out.rel, out.querySelector(".vh") && out.querySelector(".vh").textContent, out.innerText.trim()], here: here && [here.target, !!here.querySelector(".vh")] };
+    });
+    check("rich text in a draft: an outside link opens in a new tab and tells a screen reader; a link on this site does neither", l.out && l.out[0] === "_blank" && l.out[1] === "noopener" && l.out[2] === " (opens in a new tab)" && l.out[3] === "FIRST core values" && l.here && l.here[0] === "" && !l.here[1], l);
+    await context.close();
+  }
   // The robots list follows the data (what the editor's live preview does: new content, the page re-renders)
   {
     const { context } = await newContext(browser, { width: 1440 });
