@@ -245,7 +245,8 @@ No content key is added, renamed or removed, and the editor's schema is unchange
 - Every `data-ck` mark the old templates had is kept on the matching element. Dates show en dashes ("March 24–27") and
   stats show as a list or with commas; the editor edits the source text, as typed.
 - A photo in `window.PHOTO_BLUR` (`config.js`, D193) is never loaded from Google: replacing it in the editor with a new
-  photo is fine; a new Drive photo that needs a blur needs its own entry there.
+  photo is fine; a new Drive photo that needs a blur needs its own entry there. The list is empty since D206 (the hero's
+  blur removed at the owner's request); `docs/HANDOFF.md` (release 8.3.1) says how to add an entry.
 
 ## Home page, second version (2026-11-14, D154)
 

@@ -62,6 +62,7 @@ build step. Almost all content lives in `js/content.js` (see README).
   page's head. They must pass WCAG AA (4.5:1) with the blue and the red accent. Nothing on them moves except the bumper's
   colour change. The portal, install and offline pages keep light, dark and system, and must pass AA in both themes (D56).
 - Show a photo with a blurred region (`window.PHOTO_BLUR` in `config.js`, D193) from anywhere but its saved, blurred copy:
-  never from Google, never at its old file name. Change its `v` mark whenever its regions change.
+  never from Google, never at its old file name. Change its `v` mark whenever its regions change. The list is empty since
+  D206 (the hero's blur removed at the owner's request); `docs/HANDOFF.md` (release 8.3.1) says how to add a photo to it.
 - Edit `../infra`, `../admin` or `../taskapp` from here. Write down what infra needs and tell the user.
 - Push, or commit without the user's OK.

@@ -1,5 +1,24 @@
 # landing: handoff
 
+## 2026-11-19: release 8.3.1, the hero photo shown as it is (D206, branch `r831`)
+
+From `new-apps/briefs/r831/UNBLUR.md`. The hero's blur (D193) was removed at the owner's request.
+
+- **The list is empty:** `window.PHOTO_BLUR = { "format": 1, "photos": {} };` in `config.js`. No photo has a blurred region.
+  The hero is saved and served like every other Drive photo, `/img/drive/<id>-<w>.webp`, made from the photo as it is.
+- **The link-preview picture is `og-image-v3.jpg`** (`OG.file` in `scripts/drive-photos/fetch.cjs`; `index.html`,
+  `container/Caddyfile`). The new name makes link-preview services, which keep a picture by its address, fetch the new
+  one. The old names (`og-image.jpg`, `og-image-b1.jpg`, `og-image-b2.jpg`) and the hero's marked names
+  (`<id>-b1-<w>.webp`, `<id>-b2-<w>.webp`) are not in the image and answer 404; the generated `drive-retired.caddy` now
+  retires only old `og-image*.jpg` names.
+- **The machinery stays:** `photoBlurList()` and its fail-closed rule, `blurRegions()`, the marked file names and the
+  retired routes. Their tests use a made-up Drive ID in a list passed to the test (`FAKE` in `test/drive-photos-test.cjs`
+  and `test/public-test.mjs`).
+- **To blur a region again:** add one entry under `photos`, `"<Drive ID>": { "v": "<mark>", "ellipses": [[x, y, rx, ry]] }`
+  (fractions of the photo after its EXIF rotation), with a mark this photo never had before (not `b1` or `b2` for the
+  hero). If it is the hero, also give `OG.file` a new name (and `index.html`, `container/Caddyfile`, the tests). Rebuild
+  the image and look at the built files. `sw.js` does not store `/img/drive`, so its version does not change for a blur.
+
 ## 2026-11-19: release 8.3, second pass: kit 0.5.0 and the Ground up look (branch `r83`)
 
 From `new-apps/briefs/r83/ADOPT.md`. The static kit is synced from infra `r83-kit` `22a8b76` (step two;
@@ -85,11 +104,11 @@ and the work list `new-apps/adoption/r83/GAP_PUBLIC_SITE.md`. `docs/PUBLIC_REDES
 - **Kept sections the demo has no place for**, drawn with the demo's own parts: the robot Photos gallery, awards, photo
   source; About's How we work; sponsor logos (and links, banners); Join's Team calendar and the three FIRST links;
   Resources' Code, CAD and the Team Drive with Request access; outreach dates; Media's photo grid and Follow along.
-- **D193, a face blurred at the owner's request in the hero photo:** the one blur table is `window.PHOTO_BLUR` in
+- **D193, a region of the hero photo blurred at the owner's request (removed in 8.3.1, D206; see above):** the one blur table is `window.PHOTO_BLUR` in
   `config.js` (Drive ID, a version mark `v`, ellipses as fractions of the rotated photo). `scripts/drive-photos/fetch.cjs`
   reads it (Docker copies `config.js` into the photo stage), blurs the full download before any resize (5x5 blocks, back
   up, a wide Gaussian, a soft mask fully opaque over the ellipse), and writes `<id>-<v>-<w>.webp`; the link-preview picture
-  is `og-image-b2.jpg`. `imgUrl()` never gives a Google address for a blurred ID; without a saved copy the photo is not
+  is `og-image-b2.jpg` (`og-image-v3.jpg` since D206). `imgUrl()` never gives a Google address for a blurred ID; without a saved copy the photo is not
   shown (`hasPhoto()`), and the build log says `PRIVACY (D193)` loudly. Change `v` whenever the regions change.
 - **D193 fails closed:** the list is `{ format: 1, photos: { <id>: { v, ellipses } } }`. `photoBlurList()`, in the
   "photo-rules" block of `js/components.js` (the image build runs exactly that block; the Dockerfile copies the file into
@@ -178,7 +197,7 @@ New content keys are listed in `docs/CONTENT_EDITING.md`.
 **Link previews:** Caddy renders `index.html` as a template on the public and direct hosts (`home_page` in
 `container/Caddyfile`, `Cache-Control: no-cache`), so its `og:` tags carry full addresses built from `SITE_SCHEME` and
 `SITE_DOMAIN`. Keep every `{{...}}` inside an attribute value (test/drive-photos-test.cjs checks), or a plain local server
-breaks the head. `og-image-b2.jpg` is made at image build time by `scripts/drive-photos/fetch.cjs` from the built-in
+breaks the head. `og-image-v3.jpg` (D206) is made at image build time by `scripts/drive-photos/fetch.cjs` from the built-in
 `SITE.heroImage` (a Drive photo), framed by `heroPosition`; without it the tag names `pwa-icons/site/icon-512.png`. A hero
 changed only in the editor reaches the preview picture after the content sync and the next image build.
 
