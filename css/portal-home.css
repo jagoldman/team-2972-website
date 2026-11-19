@@ -108,7 +108,7 @@ body[data-portal] { font: revert-layer; line-height: revert-layer; }
 .nowrow .rt .shell-status { margin-left: 2px; font-size: 0.86rem; font-weight: 600; vertical-align: baseline; }
 .nowrow > .chev { flex: none; color: var(--mute); font-size: 1.25rem; line-height: 1; }
 .nowbtns { display: flex; flex: none; gap: 8px; }
-.home-g .nowbtn { flex: none; }
+.home-g .nowbtn { flex: none; position: relative; }   /* holds its hidden "(opens in a new tab)" */
 .nowmsg { flex: 1 1 100%; margin: 0; color: var(--bad); font-size: 0.9rem; font-weight: 600; }
 /* Signing in is the first job at practice: until it is done its row is a block with a blue edge. */
 .nowrow.nowfirst { margin: 4px 0 6px; padding: 14px; border-left: 4px solid var(--bumper); background: var(--tint); }
@@ -246,6 +246,9 @@ body[data-portal] #site-footer .label { letter-spacing: 0; text-transform: none;
 /* My shift is the hero of an event day: its words, then its one button under them (the demo's shift card). */
 .shiftcard .nowrow.nowfirst { flex-direction: column; align-items: flex-start; gap: 8px; }
 .shiftcard .nowrow.nowfirst .rowlink { flex: none; min-height: 0; width: 100%; }
+.shiftcard .nowrow.nowfirst > .nowbtn { flex: none; }
+/* On a phone the shift's button runs across (the demo's .shiftcard .btn.primary). */
+@media (max-width: 640px) { .shiftcard .nowrow.nowfirst > .nowbtn { align-self: stretch; } }
 
 /* ---------- The guide's card (the kit's quiet .shell-guidecard: a rule above, no box) in the side column ---------- */
 .guideslot:empty, .guideslot[hidden] { display: none; }
