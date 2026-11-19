@@ -502,7 +502,7 @@ try {
       values[0].text = "Read the [FIRST core values](https://www.firstinspires.org/about/vision-and-mission) and [our robots](robots.html).";
       window.setContent({ VALUES: values });
       const [out, here] = document.querySelectorAll('[data-ck="VALUES[0].text"] a');
-      return { out: out && [out.target, out.rel, out.querySelector(".vh") && out.querySelector(".vh").textContent, out.innerText.trim()], here: here && [here.target, !!here.querySelector(".vh")] };
+      return { out: out && [out.target, out.rel, out.querySelector(".vh") && out.querySelector(".vh").textContent, out.firstChild.textContent], here: here && [here.target, !!here.querySelector(".vh")] };
     });
     check("rich text in a draft: an outside link opens in a new tab and tells a screen reader; a link on this site does neither", l.out && l.out[0] === "_blank" && l.out[1] === "noopener" && l.out[2] === " (opens in a new tab)" && l.out[3] === "FIRST core values" && l.here && l.here[0] === "" && !l.here[1], l);
     await context.close();
@@ -736,7 +736,7 @@ try {
   }
   // The open phone menu on a short screen scrolls inside the screen; focus leaving the header closes it.
   {
-    const context = await browser.newContext({ viewport: { width: 390, height: 420 } });
+    const context = await browser.newContext({ viewport: { width: 390, height: 320 } });
     await context.route("**/*", async (route) => {
       const url = new URL(route.request().url());
       if (url.host !== "landing.test") return route.abort();
@@ -751,7 +751,7 @@ try {
     await open(page, "/about.html");
     await page.click("#menuBtn");
     const m = await page.evaluate(() => { const n = document.querySelector(".nav"), r = n.getBoundingClientRect(); return { bottom: Math.round(r.bottom), vh: innerHeight, scroll: n.scrollHeight > n.clientHeight, over: n.scrollHeight }; });
-    check("phone menu on a 390x420 screen: it ends inside the screen and scrolls within itself", m.bottom <= m.vh && m.scroll, m);
+    check("phone menu on a 390x320 screen: it ends inside the screen and scrolls within itself", m.bottom <= m.vh && m.scroll, m);
     await page.focus(".nav-login");
     const login = await page.evaluate(() => { const r = document.activeElement.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), vh: innerHeight }; });
     check("phone menu on a short screen: its last item (Team login) can be reached and is shown on screen", login.top >= 0 && login.bottom <= login.vh, login);

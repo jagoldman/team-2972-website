@@ -265,6 +265,8 @@ if printf '%s' "$dm" | grep -q "\"$hero\""; then
   rh=$(curl -s -D - -o /dev/null -H "Host: $D" "$URL/img/drive/$hero-1600.webp" | tr -d '\r')
   echo "$rh" | grep -qi '^cache-control: no-store' && echo "ok   a retired name is not cached" || { echo "FAIL a retired name's cache header"; fail=1; }
   check 200 "the current b2 file is still served" -H "Host: $D" "$URL/img/drive/$hero-b2-1600.webp"
+  # take the stale files away again (the photo check below looks for any stray picture in the image)
+  docker exec -u 0 "$NAME" sh -c "cd /srv/site/img/drive && rm -f $hero-400.webp $hero-1600.webp $hero-b1-400.webp $hero-b1-1600.webp og-image.jpg og-image-b1.jpg"
 fi
 for p in /img/drive/ /img/drive/manifest.json /img/drive/nope-400.webp /img/drive/1AbCdEfGhIjKlMnOpQrStUvWxYz012345-400.webp; do
   check 404 "public $p is not served" -H "Host: $D" "$URL$p"

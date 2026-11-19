@@ -116,8 +116,9 @@ check("imgUrl: an ID that is also an Object property name is not looked up there
   const pages = ["index", "robots", "robot", "about", "sponsors", "member", "mentor", "outreach", "media", "resources", "contact"].map((p) => [p, read(`${p}.html`)]);
   check("D193: no public page or script builds a Google photo address of its own", pages.every(([, h]) => !/googleusercontent/.test(h)) && (read("js/components.js").match(/googleusercontent\.com\/d\/\$\{/g) || []).length === 1);
   check("D193: the full-size links (robot gallery, Media photos) come from imgUrl() and only for photos that can be shown",
-    /pics\.map\(\(\{ src, i \}\) => `<a class="shot r43" href="\$\{esc\(imgUrl\(src, 2000\)\)\}"/.test(read("robot.html")) && /filter\(\(\{ src \}\) => hasPhoto\(src\)\)/.test(read("robot.html"))
-    && /filter\(\(\{ src \}\) => hasPhoto\(src\)\)\.map\(\(\{ src, i \}\) => `<a class="shot r43" href="\$\{esc\(imgUrl\(src, 1600\)\)\}"/.test(read("media.html")));
+    // (A photo that cannot be shown is an editor-only spot with no link: editorPhotoSpot, release 8.3 review.)
+    /pics\.map\(\(\{ src, i \}\) => !hasPhoto\(src\) \? editorPhotoSpot\([^`]*`<a class="shot r43" href="\$\{esc\(imgUrl\(src, 2000\)\)\}"/.test(read("robot.html"))
+    && /\.map\(\(\{ src, i \}\) => !hasPhoto\(src\) \? editorPhotoSpot\([^`]*`<a class="shot r43" href="\$\{esc\(imgUrl\(src, 1600\)\)\}"/.test(read("media.html")));
   const cfg = read("config.js");
   check("D193: the table in config.js never holds a Caddy template opening (two braces)", !cfg.slice(cfg.indexOf("window.PHOTO_BLUR")).includes("{{"));
   check("D193: the image build gets config.js (the table) next to content.js", /COPY config\.js \/build\/config\.js/.test(read("Dockerfile")));
