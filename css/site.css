@@ -415,3 +415,11 @@ a.shot:hover .ph span { text-decoration: underline; }
 .addr-t, .legal a { overflow-wrap: anywhere; }
 /* the copy button and the menu are touch targets: at least 44px on a phone */
 @media (max-width: 899px) { .copy, .filter, .btn-sm { min-height: 44px; } }
+.next-band { margin-top: clamp(40px, 6vw, 72px); }
+.next-none { margin-top: 12px; max-width: 40em; }
+.more { margin-top: 20px; }
+.access-note { margin-top: 20px; }
+.ftr-legal { display: inline-flex; gap: 20px; }
+.names img.logo { width: auto; height: 48px; }
+.hero-shot.no-photo .bumper { margin-top: 0; }
+.band .doors-split, .band .home-names { margin-top: 28px; }
