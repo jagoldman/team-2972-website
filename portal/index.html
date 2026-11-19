@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="/css/style.css" />
 <link rel="stylesheet" href="/shell/app-bar.css" />
 <link rel="stylesheet" href="/shell/ui.css" />
+<link rel="stylesheet" href="/css/portal-home.css" />
 </head>
 <!-- Served at portal.SITE_DOMAIN/ only, behind login. Identity comes from /me.json and tiles from
      /apps.json (infra/config/apps.json). Showing or hiding a tile is for convenience only:
@@ -29,10 +30,10 @@
 <body data-portal>
 <div id="site-header" class="shbar-mount"><div id="shell-bar"></div></div>
 
-<main class="portal-main" id="main">
+<main class="portal-main home-g" id="main">
   <div class="homehead">
-    <p class="homedate" id="today"></p>
     <h1 id="greeting">Hi <span id="name">there</span>.</h1>
+    <p class="homedate" id="today"></p>
   </div>
   <p class="portal-error" id="portal-error" hidden>The portal couldn't load your apps. Try reloading the page.</p>
 
@@ -41,31 +42,33 @@
     <p>Your team apps will appear here as soon as that's done.</p>
   </div>
 
-  <!-- Above the tiles, in the demo's order (release 8.1.5): the guide's "Get started" card (the kit draws it here),
-       then Waiting on you, Today and the student's next task, from /today.json (js/portal-home.js). -->
-  <div data-guide-card></div>
-  <div id="home-cards">
-    <div class="home-cards" id="home-card-list"></div>
-    <!-- One lasting status line for the Done messages: it stays when the cards are drawn again. -->
-    <p class="home-status" id="home-done-status" role="status"></p>
+  <!-- Release 8.3, Ground up (D182): under the greeting the season line (or, at an event, the event line); then two
+       columns. Main: Now, the next task, Waiting on others, Recent activity (a parent: This week, Coming up). Side:
+       This week (a parent: Can you help?), Apps, Get started. All from /today.json (js/portal-ground.js). -->
+  <div id="home-top"></div>
+  <div class="homecols" id="home-cols">
+    <div class="homemain" id="home-main"></div>
+    <aside class="homeside" id="home-side" aria-label="This week and your apps">
+      <div class="homeside-lead" id="home-side-lead"></div>
+      <section class="hsec appssec" id="apps" aria-labelledby="apps-h" hidden>
+        <div class="apps-head" id="apps-head">
+          <h2 id="apps-h">Apps</h2>
+          <label class="app-search" id="search-wrap" hidden>
+            <input id="q" type="search" placeholder="Find an app" aria-label="Find an app" autocomplete="off" />
+          </label>
+        </div>
+        <div class="applist" id="app-grid"></div>
+        <!-- Tools, Admin apps and Team links: closed rows (the kit's mountHomeGroups); a row with nothing in it is not drawn. -->
+        <div class="homegroups" id="home-groups" hidden></div>
+        <p class="app-empty" id="app-empty" hidden>No app matches that. Try a different word.</p>
+        <p class="app-empty" id="portal-empty" hidden>There are no apps for your groups in this mode yet.</p>
+      </section>
+      <!-- The guide's "Get started" card (the kit draws it here); hidden at an event. -->
+      <div class="guideslot" data-guide-card></div>
+    </aside>
   </div>
-
-  <!-- Search stays outside #main-apps. That section hides when every visible app is under More,
-       and the field (and the / shortcut that focuses it) has to stay usable whenever any app is shown. -->
-  <div class="apps-head" id="apps-head" hidden>
-    <h2 id="main-apps-h">Apps</h2>
-    <label class="app-search" id="search-wrap" hidden>
-      <input id="q" type="search" placeholder="Find an app" aria-label="Find an app" autocomplete="off" />
-    </label>
-  </div>
-  <section class="portal-section" id="main-apps" aria-labelledby="main-apps-h" hidden>
-    <div class="app-grid" id="app-grid"></div>
-  </section>
-  <!-- Tools, Admin apps and More: three closed rows (the kit's mountHomeGroups); a row with nothing in it is not drawn. -->
-  <div class="homegroups" id="home-groups" hidden></div>
-  <p class="app-empty" id="app-empty" hidden>No app matches that. Try a different word.</p>
-  <p class="app-empty" id="portal-empty" hidden>There are no apps for your groups in this mode yet.</p>
-  <div class="home-cards" id="home-activity"></div>
+  <!-- One lasting status line for the buttons' messages: it stays when the Home is drawn again. -->
+  <div class="home-status" id="home-status"><p id="home-done-status" role="status"></p></div>
   <section id="access" hidden>
     <h2>Get access</h2>
     <p class="section-lead">The Team Drive and the team's Onshape CAD are shared by invitation. Ask for access and an admin will add you.</p>
@@ -84,30 +87,42 @@
 import { filterByMode, iconPath, parseMode, readCookie, splitGroups } from "/shell/core.js";
 import { mountHomeGroups, mountHomeGuide } from "/shell/static/shell.js";
 import { bindPortalModeChange, mountPortalShell } from "/js/portal-shell.js";
-import { activityCard, blockedAppName, displayHome, el, fetchEventDay, fetchToday, isParentOnly, nextCard, rowsForMode, shiftFirst, svgIcon, todayCard, waitingCard } from "/js/portal-home.js";
+import { blockedAppName, displayHome, el, fetchEventDay, fetchToday, svgIcon } from "/js/portal-home.js";
+import { drawHome, makeActs, oneFilled } from "/js/portal-ground.js";
 
-// t is a resolved kit tile (resolveTiles): href is null for coming-soon tiles. Every app opens in a new tab,
-// so the portal stays open (the demo and the kit's Apps menu do the same).
-function renderTile(t) {
-  const card = el(t.href ? "a" : "div", `app-card${t.href ? "" : " coming-soon"}`);
-  card.dataset.id = t.id;
-  card.dataset.q = `${t.name} ${t.description} ${t.audience}`.toLowerCase();
+// ---- Kit 0.5.0 stand-ins (CONTRACT "Kit asks"): until the kit ships them, the portal does these here and only here.
+// 1. mountHomeGroups names its third row "More"; Ground up calls it "Team links".
+function teamLinksWords(root) {
+  const name = root.querySelector('[data-grp="more"] .grpname');
+  if (name) name.textContent = "Team links";
+}
+// 2. mountHomeGuide has no "event day" switch: the side column's slot is hidden at an event instead.
+// (3. .evline, .move and the side column's guide card are styled in css/portal-home.css, "Kit 0.5.0 stand-ins".)
+// ---- end of the stand-ins
+
+// t is a resolved kit tile (resolveTiles): href is null for coming-soon tiles. Every app opens in a new tab, so the
+// portal stays open. Ground up: one line per app (icon, name, what it is for), not a tile.
+function renderAppRow(t) {
+  const row = el(t.href ? "a" : "div", `approw${t.href ? "" : " coming-soon"}`);
+  row.dataset.id = t.id;
+  row.dataset.q = `${t.name} ${t.description} ${t.audience}`.toLowerCase();
   if (t.href) {
-    card.href = t.href;
-    card.target = "_blank";
-    card.rel = "noopener noreferrer";
-    card.setAttribute("aria-label", `${t.name} (opens in a new tab)`);
+    row.href = t.href;
+    row.target = "_blank";
+    row.rel = "noopener noreferrer";
+    row.setAttribute("aria-label", `${t.name} (opens in a new tab)`);
+    if (t.description) row.dataset.tip = t.description;
   } else {
-    card.setAttribute("aria-disabled", "true");
+    row.setAttribute("aria-disabled", "true");
   }
-  const ico = el("span", "app-ico");
-  ico.append(svgIcon(iconPath(t.icon)));
+  const ico = el("span", "ic");
+  ico.append(svgIcon(iconPath(t.icon), 18));
   const name = el("b", "", t.name);
   if (t.external) name.append(el("span", "ext", " ↗"));
-  card.append(ico, name);
-  if (t.description) card.append(el("small", "", t.description));
-  if (!t.href) card.append(el("span", "status-dot", "Coming soon"));
-  return card;
+  row.append(ico, name);
+  if (t.description) row.append(el("small", "", t.description));
+  if (!t.href) row.append(el("span", "status-dot", "Coming soon"));
+  return row;
 }
 
 // The shop screen (C9): "Pick what this screen shows" and nothing else: no bar, no greeting, no footer, no install
@@ -144,6 +159,7 @@ onContent(async () => {
 
   if (groups.length === 0) {
     document.getElementById("no-group").hidden = false;
+    document.getElementById("home-cols").hidden = true;
     return;
   }
 
@@ -152,107 +168,122 @@ onContent(async () => {
   document.getElementById("access-body").innerHTML = renderRequestAccess({ name: me.name, email: me.email });
   document.getElementById("access").hidden = false;
 
-  // ---- Waiting on you, Today, the next task, Recent activity (C4, C12, C13, C14) ----
-  // /today.json and /event.json are asked for once the person is known; a failure leaves the home as release 8.1 had
-  // it. A row that belongs to one mode shows only in that mode (C12); a mode change redraws the cards. On an event
-  // day Competition's shift rows go first and the next-task card is the compact one (C14). Staff see Waiting on you
-  // and a student the next-task card even when empty, once /today.json answered (C13).
-  const staff = groups.includes("admin") || groups.includes("mentor");
-  const student = groups.includes("student");
+  // ---- the Home from /today.json (C4, C12, C13, C14; 8.3: H1, C1, E1) ----
+  // /today.json and /event.json are asked for once the person is known; a failure leaves the apps and nothing else.
+  // A row that belongs to one mode shows only in that mode (C12); a mode change draws the Home again.
   const status = document.getElementById("home-done-status");
-  const say = (words) => { status.textContent = words; };
-  let todayAsked = Date.now(), posting = false, eventDay = false;
+  let clearTimer = 0;
+  // The status line at the foot of the screen; `undo` ({ until, run }) adds an Undo button while it is offered. A
+  // message goes after 8 seconds, or when its Undo runs out.
+  function say(words, undo) {
+    clearTimeout(clearTimer);
+    status.replaceChildren(document.createTextNode(words));
+    let keep = 8000;
+    if (undo) {
+      const b = el("button", "linkbtn", "Undo");
+      b.type = "button";
+      b.addEventListener("click", () => { b.remove(); undo.run(); });
+      status.append(document.createTextNode(" "), b);
+      keep = Math.max(keep, Date.parse(undo.until) - Date.now());
+    }
+    clearTimer = setTimeout(() => status.replaceChildren(), keep);
+  }
+  let todayAsked = Date.now(), busy = 0, eventDay = false;
   let lastToday = null, cardsMode = null;
+  const acts = makeActs({ say, refresh: () => refreshToday(false), onBusy: (on) => { busy = on ? 1 : 0; } });
+  let doneBusy = false;
+  const posting = () => busy > 0 || doneBusy;
   function paintCards(data, focusNext = false) {
     if (!data) return;
     lastToday = data;
     const mode = cardsMode = parseMode(readCookie(document.cookie, "mode"));
-    const cards = [
-      waitingCard(rowsForMode(data.waiting, mode), { empty: staff }),
-      todayCard(shiftFirst(rowsForMode(data.today, mode), eventDay)),
-      student ? nextCard(data.next, { empty: true, compact: eventDay, say, onBusy: (on) => { posting = on; }, onDone: () => refreshToday(true) }) : null,
-    ].filter(Boolean);
-    document.getElementById("home-card-list").replaceChildren(...cards);
-    const act = isParentOnly(groups) ? null : activityCard(data.activity);
-    document.getElementById("home-activity").replaceChildren(...(act ? [act] : []));
+    const home = drawHome(data, {
+      groups, mode, site, eventDay, acts, filled: oneFilled(),
+      nextOpts: { say, onBusy: (on) => { doneBusy = on; }, onDone: () => refreshToday(true) },
+    });
+    document.getElementById("home-top").replaceChildren(...(home.top ? [home.top] : []));
+    document.getElementById("home-main").replaceChildren(...home.main);
+    document.getElementById("home-side-lead").replaceChildren(...home.side);
+    document.getElementById("main").classList.toggle("evday", home.eventDay);
+    document.getElementById("main").classList.toggle("parent", home.role === "parent");
+    document.querySelector("[data-guide-card]").hidden = home.eventDay;
     if (focusNext) focusAfterDone();
   }
-  // After Done the card is drawn again: focus goes to the next task's Done, else to the greeting.
+  // After Done the Home is drawn again: focus goes to the next task's button, else to the greeting.
   function focusAfterDone() {
     const target = document.querySelector("#home-next button:not([disabled])") || document.getElementById("greeting");
     if (target.id === "greeting") target.tabIndex = -1;
     target.focus();
   }
-  // Resolves to true when the cards were drawn again. Never while a Done is on its way (its answer redraws them).
+  // Resolves to true when the Home was drawn again. Never while a button's POST is on its way (its answer redraws).
   async function refreshToday(focusNext) {
-    if (posting) return false;
+    if (posting()) return false;
     todayAsked = Date.now();
     const data = await fetchToday(site);
-    if (data && !posting) { paintCards(data, focusNext); return true; }
+    if (data && !posting()) { acts.hidden.clear(); paintCards(data, focusNext); return true; }
     if (focusNext) focusAfterDone();
     return false;
   }
   Promise.all([fetchToday(site), fetchEventDay()]).then(([data, onToday]) => {
     eventDay = onToday;
-    if (!posting) paintCards(data);
+    if (!posting()) paintCards(data);
   });
 
-  // ---- the tiles, then Tools, Admin apps and More as three closed rows (C1; the kit's mountHomeGroups) ----
-  // Coming-soon tiles go last in each list; the sort is stable, so apps.json order holds otherwise.
-  const homeGroups = mountHomeGroups(document.getElementById("home-groups"), { site });
+  // ---- Apps: one line per app, then Tools, Admin apps and Team links as closed rows (C1; the kit's mountHomeGroups) ----
+  // Coming-soon apps go last; the sort is stable, so apps.json order holds otherwise.
+  const groupsRoot = document.getElementById("home-groups");
+  const homeGroups = mountHomeGroups(groupsRoot, { site });
   let guide = null;
   const q = document.getElementById("q");
   function applySearch() {
     const text = q.value.trim().toLowerCase();
     let matches = 0;
-    document.querySelectorAll("#app-grid .app-card").forEach((card) => {
-      card.hidden = !!text && !card.dataset.q.includes(text);
-      if (!card.hidden) matches++;
+    document.querySelectorAll("#app-grid .approw").forEach((row) => {
+      row.hidden = !!text && !row.dataset.q.includes(text);
+      if (!row.hidden) matches++;
     });
     matches += homeGroups.filter(text);
     document.getElementById("app-empty").hidden = !text || matches > 0;
   }
   function paintTiles() {
     if (groups.length === 0) return;
-    if (lastToday && !posting && cardsMode !== parseMode(readCookie(document.cookie, "mode"))) paintCards(lastToday);
+    if (lastToday && !posting() && cardsMode !== parseMode(readCookie(document.cookie, "mode"))) paintCards(lastToday);
     const mode = parseMode(readCookie(document.cookie, "mode"));
     const shown = filterByMode(resolved, mode).sort((a, b) => !a.href - !b.href);
-    // The kit's split, the same as the bar's Apps menu: the core apps here, Admin apps (group "admin") and More below.
+    // The kit's split, the same as the bar's Apps menu: the core apps here, Admin apps (group "admin") and the rest below.
     const { main } = splitGroups(shown);
     const toolRows = filterByMode(tools, mode);
-    document.getElementById("app-grid").replaceChildren(...main.map(renderTile));
+    document.getElementById("app-grid").replaceChildren(...main.map(renderAppRow));
     homeGroups.update({ tiles: shown, tools, mode });
+    teamLinksWords(groupsRoot);
     if (guide) guide.update({ mode });
     const any = shown.length + toolRows.length;
-    document.getElementById("main-apps-h").hidden = main.length === 0;
-    document.getElementById("main-apps").hidden = main.length === 0;
-    // The search row is not inside #main-apps, so a catalog with only grouped apps still shows the field.
-    document.getElementById("apps-head").hidden = any === 0;
+    document.getElementById("apps").hidden = false;
+    document.getElementById("app-grid").hidden = main.length === 0;
     document.getElementById("search-wrap").hidden = any === 0;
     document.getElementById("portal-empty").hidden = any > 0;
     applySearch();
   }
   paintTiles();
-  // The guide's "Get started" card (C2), drawn by the kit only while the person's guide is wanted; it also opens a stop
-  // that is open for Home (the admin's Admin link, Waiting on you, "Start the tour again"). After the rows are drawn,
-  // so the admin's stop finds Home's Admin link.
+  // The guide's "Get started" card (C2), drawn by the kit only while the person's guide is wanted, in the side column
+  // under Apps. After the rows are drawn, so the admin's stop finds Home's Admin link.
   guide = mountHomeGuide(document.querySelector("[data-guide-card]"), {
     user, tiles: resolved, mode: parseMode(readCookie(document.cookie, "mode")), siteScheme: site.scheme, siteDomain: site.domain,
   });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
     paintTiles();
-    if (!posting && Date.now() - todayAsked > 60000) refreshToday(false);
+    if (!posting() && Date.now() - todayAsked > 60000) refreshToday(false);
   });
 
   q.addEventListener("input", applySearch);
   addEventListener("keydown", (event) => {
-    if (event.key === "/" && document.activeElement !== q && !event.metaKey && !event.ctrlKey) {
+    if (event.key === "/" && document.activeElement !== q && !event.metaKey && !event.ctrlKey && !/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName || "")) {
       event.preventDefault(); q.focus();
     } else if (event.key === "Escape" && document.activeElement === q) {
       q.value = ""; applySearch(); q.blur();
     } else if (event.key === "Enter" && document.activeElement === q) {
-      const first = [...document.querySelectorAll("#app-grid a.app-card, #home-groups .grpbody a")].find((a) => !a.closest("[hidden]"));
+      const first = [...document.querySelectorAll("#app-grid a.approw, #home-groups .grpbody a")].find((a) => !a.closest("[hidden]"));
       if (first) first.click();
     }
   });

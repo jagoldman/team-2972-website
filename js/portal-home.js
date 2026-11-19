@@ -1,9 +1,10 @@
-// The portal home's cards above the tiles (release 8.1.5, CONTRACT C4, C12, C13, C14) and the shop screen's home
-// (C9, C14), drawn as the demo's Home (portal-demo js/core.js views.portal, todayRow, waitingRows, practiceRows,
-// displayHome; js/tasks.js nextUp).
+// The portal home's data (release 8.1.5, CONTRACT C4, C12, C13, C14; release 8.3, H1, C1, E1) and the shop screen's
+// home (C9, C14). The signed-in Home is drawn by js/portal-ground.js from what parseToday gives it.
 // Data: same-origin GET /today.json (Caddy sends it to Account's /api/today with the identity headers):
-//   {v:1, today:[row], waiting:[row], next:{taskId, title, due, project, href, …}|null, activity:[{app?, title, detail?, href, at}]}
-//   row = {id, section, title, detail, href, count?, cta?:{label, href}, modes?}
+//   {v:1, today:[row], waiting:[row], others?:[row], next:{taskId, title, due, project, href, nextStep?, …}|null,
+//    activity:[{app?, title, detail?, href, at}], season?, milestones?, week?, coming?, event?}
+//   row = {id, section, title, detail, href, count?, cta?:{label, href}, modes?, group?, mark?, lines?, acts?}
+// Writes: POST /today/task-done {taskId} (C4) and POST /today/act {app, action, key, reason?} (H2).
 // A part with no data is not drawn; a failed or missing /today.json leaves the home as it was in release 8.1.
 // Every text goes in with textContent, never as HTML; every link must be on this site (parseToday drops the rest).
 // No imports, so node can test the pure parts (test/portal-home-test.mjs).
@@ -38,8 +39,6 @@ export function svgIcon(d, size) {
   svg.append(path);
   return svg;
 }
-const CHECK = "M5 12l5 5 9-10";
-const PARTS = "M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"; // the kit's parts icon
 
 // ---------- pure: checking /today.json ----------
 
@@ -76,6 +75,23 @@ export function shiftFirst(rows, eventDay) {
   return [...rows.filter(shift), ...rows.filter((r) => !shift(r))];
 }
 
+// Release 8.3 (CONTRACT H1): the act a row may carry, checked here as Account checks it. Unknown apps and keys that
+// are not plain ids are dropped (the act, not the row).
+export const ACT_APPS = Object.freeze(["parts", "skills", "calendar", "tasks"]);
+const ACT_KEY = /^[A-Za-z0-9_:.-]{1,100}$/;
+const ACT_ACTION = /^[a-z][a-z_.-]{0,39}$/;
+const TONES = ["ok", "warn", "bad"];
+function act(a) {
+  if (!a || typeof a !== "object") return null;
+  const label = text(a.label, 40);
+  if (!label || !ACT_APPS.includes(a.app) || typeof a.action !== "string" || !ACT_ACTION.test(a.action)) return null;
+  if (typeof a.key !== "string" || !ACT_KEY.test(a.key)) return null;
+  const out = { label, app: a.app, action: a.action, key: a.key };
+  if (a.primary === true) out.primary = true;
+  if (a.reason === true) out.reason = true;
+  return out;
+}
+
 function row(r, site, origin) {
   if (!r || typeof r !== "object") return null;
   const title = text(r.title);
@@ -84,11 +100,23 @@ function row(r, site, origin) {
   // C12: a row may belong to one mode; no (or no known) `modes` means both.
   const modes = Array.isArray(r.modes) ? MODES.filter((m) => r.modes.includes(m)) : [];
   const out = { id: text(r.id, 200), title, detail: text(r.detail), href, modes: modes.length ? modes : MODES.slice() };
+  if (r.section === "others") out.section = "others";
   if (Number.isInteger(r.count) && r.count > 0) out.count = r.count;
   if (r.cta && typeof r.cta === "object") {
     const label = text(r.cta.label, 40), ctaHref = safeHref(r.cta.href, site, origin);
     if (label && ctaHref) out.cta = { label, href: ctaHref };
   }
+  // H1, all optional: a group label, a state (a dot and a word), up to two more lines, up to two acts.
+  const group = text(r.group, 60);
+  if (group) out.group = group;
+  if (r.mark && typeof r.mark === "object" && TONES.includes(r.mark.tone)) {
+    const word = text(r.mark.word, 30);
+    if (word) out.mark = { word, tone: r.mark.tone };
+  }
+  const lines = (Array.isArray(r.lines) ? r.lines : []).map((l) => text(l)).filter(Boolean).slice(0, 2);
+  if (lines.length) out.lines = lines;
+  const acts = (Array.isArray(r.acts) ? r.acts : []).slice(0, 2).map(act).filter(Boolean);
+  if (acts.length) out.acts = acts;
   return out;
 }
 
@@ -112,10 +140,168 @@ function nextTask(n, site, origin) {
   if (waiting.length) out.waitingOn = waiting;
   if (n.onHold === true) out.onHold = true;
   if (n.blocked === true) out.blocked = true;
+  // 8.3 (CONTRACT T, still pending at Tasks): the next unticked step, shown as words only. Done stays the task's Done.
+  if (n.nextStep && typeof n.nextStep === "object") {
+    const label = text(n.nextStep.label, 160);
+    if (label) out.nextStep = label;
+  }
   return out;
 }
 
-/** /today.json's answer → { today, waiting, next, activity }, every part checked; null when the answer is not v1. */
+// ---------- pure: release 8.3's optional parts (CONTRACT H1, C1, E1) ----------
+
+const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+/** "2026-11-10" when it is a real day, else "". */
+export function isoDay(v) {
+  if (typeof v !== "string") return "";
+  const m = ISO_DAY.exec(v);
+  if (!m) return "";
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return d.getFullYear() === +m[1] && d.getMonth() === +m[2] - 1 && d.getDate() === +m[3] ? v : "";
+}
+/** Today's date on this device, as "YYYY-MM-DD". */
+export function todayIso(now = new Date()) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
+}
+function dayOf(s) { const m = ISO_DAY.exec(s); return new Date(+m[1], +m[2] - 1, +m[3]); }
+/** Whole days from `from` to `to` (both "YYYY-MM-DD"). */
+export function daysBetween(from, to) { return Math.round((dayOf(to) - dayOf(from)) / 86400000); }
+/** "Thu, Nov 12". */
+export function fmtDay(s, opts = { weekday: "short", month: "short", day: "numeric" }) {
+  return isoDay(s) ? dayOf(s).toLocaleDateString("en-US", opts) : "";
+}
+/** "15:30" → "3:30 pm", "18:00" → "6 pm"; anything else → "". */
+export function clock(t) {
+  const m = typeof t === "string" ? /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(t) : null;
+  if (!m) return "";
+  const h = +m[1];
+  return `${h % 12 || 12}${m[2] === "00" ? "" : `:${m[2]}`} ${h < 12 ? "am" : "pm"}`;
+}
+/** "3:30 pm–6 pm", "3:30 pm", or "". */
+export function timeSpan(start, end) {
+  const a = clock(start), b = clock(end);
+  return a && b ? `${a}–${b}` : a;
+}
+export function plural(n, one, many) { return `${n} ${n === 1 ? one : many}`; }
+
+// A link the data gives as an app path ("/pit?tab=check") belongs to that app's host; a full link is checked as is.
+function appHref(href, site, host) {
+  if (!site || !site.domain) return null;
+  return safeHref(href, site, `${site.scheme || "https"}://${host}.${site.domain}`);
+}
+
+const SEASON_KINDS = ["practice", "build", "comp"];
+function season(sn) {
+  if (!sn || typeof sn !== "object" || !sn.target || typeof sn.target !== "object") return null;
+  const t = sn.target;
+  const date = isoDay(t.date), kind = t.kind === "kickoff" || t.kind === "comp" ? t.kind : "";
+  const name = text(t.name, 80);
+  if (!date || !kind || (kind === "comp" && !name)) return null;
+  if (!Array.isArray(sn.days)) return null;
+  const seen = new Set();
+  const days = sn.days.slice(0, 200).map((d) => (d && typeof d === "object" && isoDay(d.date) && SEASON_KINDS.includes(d.kind) && d.date < date ? { date: d.date, kind: d.kind } : null))
+    .filter((d) => d && !seen.has(d.date) && seen.add(d.date)).sort((a, b) => (a.date < b.date ? -1 : 1));
+  return { target: { name: kind === "kickoff" ? "kickoff" : name, title: kind === "kickoff" ? "Kickoff" : name, date, kind }, days };
+}
+
+const COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+function milestones(list, site) {
+  return (Array.isArray(list) ? list : []).slice(0, 12).map((m) => {
+    if (!m || typeof m !== "object") return null;
+    const name = text(m.name, 120), date = isoDay(m.date), href = appHref(m.href, site, "tasks");
+    if (!name || !date || !href) return null;
+    const out = { name, date, project: text(m.project, 120), href };
+    if (typeof m.color === "string" && COLOR.test(m.color)) out.color = m.color;
+    return out;
+  }).filter(Boolean).sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+const WEEK_KINDS = ["practice", "build", "comp", "outreach", "meeting", "volunteer"];
+function weekItem(i) {
+  if (!i || typeof i !== "object" || !WEEK_KINDS.includes(i.kind)) return null;
+  const name = text(i.name, 120);
+  if (!name && i.kind !== "practice" && i.kind !== "build") return null;
+  return { kind: i.kind, name, time: timeSpan(i.startTime, i.endTime), location: text(i.location, 120) };
+}
+function week(list, site) {
+  if (!Array.isArray(list)) return null;
+  const seen = new Set();
+  const out = list.slice(0, 7).map((d) => {
+    if (!d || typeof d !== "object" || !isoDay(d.date) || seen.has(d.date)) return null;
+    const items = (Array.isArray(d.items) ? d.items : []).slice(0, 6).map(weekItem).filter(Boolean);
+    const href = appHref(d.href, site, "calendar");
+    if (!items.length || !href) return null;
+    seen.add(d.date);
+    const day = { date: d.date, href, items };
+    if (Number.isInteger(d.mentorsComing) && d.mentorsComing >= 0 && d.mentorsComing < 1000) day.mentorsComing = d.mentorsComing;
+    const sn = d.snacks;
+    if (sn && typeof sn === "object" && Number.isInteger(sn.open) && sn.open >= 0 && sn.open < 100) {
+      const names = (Array.isArray(sn.names) ? sn.names : []).map((n) => text(n, 60)).filter(Boolean).slice(0, 6);
+      const modes = Array.isArray(sn.modes) ? MODES.filter((m) => sn.modes.includes(m)) : [];
+      day.snacks = { names, open: sn.open, modes: modes.length ? modes : MODES.slice() };
+    }
+    return day;
+  }).filter(Boolean).sort((a, b) => (a.date < b.date ? -1 : 1));
+  return out;
+}
+
+function coming(list, site) {
+  if (!Array.isArray(list)) return null;
+  return list.slice(0, 4).map((e) => {
+    if (!e || typeof e !== "object") return null;
+    const date = isoDay(e.date), name = text(e.name, 120), href = appHref(e.href, site, "calendar");
+    if (!date || !name || !href) return null;
+    return { date, name, time: timeSpan(e.startTime, e.endTime), location: text(e.location, 120), href };
+  }).filter(Boolean);
+}
+
+const TEAM = (n) => Number.isInteger(n) && n > 0 && n < 100000;
+function eventPart(ev, site) {
+  if (!ev || typeof ev !== "object" || !ev.line || typeof ev.line !== "object") return null;
+  const l = ev.line;
+  const line = { now: text(l.now, 120), robot: text(l.robot, 120), match: null };
+  if (l.match && typeof l.match === "object" && text(l.match.text, 120)) {
+    line.match = { label: l.match.label === "Our match now" ? "Our match now" : "Next match", text: text(l.match.text, 120) };
+  }
+  const pit = (Array.isArray(ev.pit) ? ev.pit : []).slice(0, 2).map((p) => {
+    if (!p || typeof p !== "object") return null;
+    const title = text(p.title), href = appHref(p.href, site, "compete");
+    if (!title || !href) return null;
+    const out = { id: `compete:${text(p.id, 160)}`, title, detail: text(p.detail), href, modes: MODES.slice() };
+    const lines = (Array.isArray(p.lines) ? p.lines : []).map((x) => text(x)).filter(Boolean).slice(0, 2);
+    if (lines.length) out.lines = lines;
+    if (p.cta && typeof p.cta === "object") {
+      const label = text(p.cta.label, 40), ctaHref = appHref(p.cta.href, site, "compete");
+      if (label && ctaHref) out.cta = { label, href: ctaHref };
+    }
+    return out;
+  }).filter(Boolean);
+  const next = (Array.isArray(ev.next) ? ev.next : []).slice(0, 3).map((m) => {
+    if (!m || typeof m !== "object" || !Number.isInteger(m.match) || m.match < 1 || m.match > 999) return null;
+    if (m.alliance !== "Red" && m.alliance !== "Blue") return null;
+    const teams = (v) => (Array.isArray(v) ? v.filter(TEAM).slice(0, 3) : []);
+    const at = typeof m.at === "string" && !Number.isNaN(Date.parse(m.at)) ? m.at : "";
+    return { match: m.match, at, alliance: m.alliance, with: teams(m.with), against: teams(m.against) };
+  }).filter(Boolean);
+  if (!line.now && !line.robot && !line.match && !pit.length && !next.length) return null;
+  return { name: text(ev.name, 120), line, pit, next };
+}
+
+/** The meeting days from `today` up to and with `date` (the demo's "N practices left"); null when it can't be told. */
+export function practicesLeft(sn, date, today) {
+  if (!sn || !isoDay(date) || date < today || date >= sn.target.date) return null;
+  return sn.days.filter((d) => d.date >= today && d.date <= date).length;
+}
+export function practicesText(sn, date, today) {
+  const n = practicesLeft(sn, date, today);
+  return n == null ? "" : n === 0 ? "no practice before then" : `${plural(n, "practice", "practices")} left`;
+}
+
+/**
+ * /today.json's answer → { today, waiting, others, next, activity, season, milestones, week, coming, event }, every
+ * part checked; null when the answer is not v1. Each 8.3 part is null (or []) when it is missing or malformed.
+ */
 export function parseToday(json, site, origin) {
   if (!json || typeof json !== "object" || json.v !== 1) return null;
   const rows = (list) => (Array.isArray(list) ? list : []).map((r) => row(r, site, origin)).filter(Boolean);
@@ -126,7 +312,14 @@ export function parseToday(json, site, origin) {
     const at = typeof a.at === "string" && !Number.isNaN(Date.parse(a.at)) ? a.at : "";
     return { app: text(a.app, 40), title, detail: text(a.detail), href, at };
   }).filter(Boolean).slice(0, 5);
-  return { today: rows(json.today), waiting: rows(json.waiting), next: nextTask(json.next, site, origin), activity };
+  // A row's `section` decides: "others" rows (Waiting on others, H1) may come in their own list or in another one.
+  const all = [rows(json.today), rows(json.waiting), rows(json.others)];
+  const mine = (list) => list.filter((r) => r.section !== "others");
+  return {
+    today: mine(all[0]), waiting: mine(all[1]), others: all.flat().filter((r) => r.section === "others"), next: nextTask(json.next, site, origin), activity,
+    season: season(json.season), milestones: milestones(json.milestones, site), week: week(json.week, site),
+    coming: coming(json.coming, site), event: eventPart(json.event, site),
+  };
 }
 
 /** Is the next task held back? Then Done is a plain button, not the gold one (C14, the demo). */
@@ -257,194 +450,39 @@ export async function postTaskDone(taskId, { timeout = WAIT_MS, fetchImpl = fetc
   }
 }
 
+/**
+ * POST /today/act {app, action, key, reason?} (CONTRACT H2). Resolves to { result, undoUntil? }:
+ * "ok" (204, or 200 with {undoUntil}); "changed" (409: someone else already did it); "refused" (403); "gone" (404);
+ * "reason" (422: a reason is needed); "timeout" (no answer in time: it may have worked); "failed" (5xx, network).
+ */
+export async function postAct(body, { timeout = WAIT_MS, fetchImpl = fetch } = {}) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeout);
+  try {
+    const res = await fetchImpl("/today/act", {
+      method: "POST", credentials: "same-origin", cache: "no-store", signal: ctl.signal,
+      headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      let undoUntil = "";
+      if (res.status === 200) {
+        try {
+          const j = await res.json();
+          if (j && typeof j.undoUntil === "string" && Date.parse(j.undoUntil) > Date.now()) undoUntil = j.undoUntil;
+        } catch { /* no body: nothing to undo */ }
+      }
+      return undoUntil ? { result: "ok", undoUntil } : { result: "ok" };
+    }
+    const map = { 409: "changed", 403: "refused", 404: "gone", 422: "reason" };
+    return { result: map[res.status] || (res.status >= 400 && res.status < 500 ? "refused" : "failed") };
+  } catch {
+    return { result: ctl.signal.aborted ? "timeout" : "failed" };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ---------- drawing ----------
-
-// A link to another app opens a new tab, as the tiles do, so the portal stays open; a link on this host stays here.
-function linkTo(a, href) {
-  a.href = href;
-  let other = true;
-  try { other = new URL(href).host !== location.host; } catch { /* keep the new tab */ }
-  if (other) {
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.append(el("span", "vh", " (opens in a new tab)"));
-  }
-  return a;
-}
-
-function card(id, title, extra = {}) {
-  const sec = el("section", `hcard${extra.className ? ` ${extra.className}` : ""}`);
-  sec.id = id;
-  const h = el("h2", "", title);
-  h.id = `${id}-h`;
-  sec.setAttribute("aria-labelledby", h.id);
-  if (extra.guide) sec.dataset.guide = extra.guide;
-  sec.append(h);
-  return sec;
-}
-
-// One row: title, one muted line, a count, a chevron; an inline button (Sign in, Sign up) when the app gives one.
-function todayRow(r, warn) {
-  const li = el("li", "li todayrow");
-  li.dataset.id = r.id;
-  const a = el("a", "rowlink");
-  const words = el("span", "rtext");
-  words.append(el("span", "rt", r.title));
-  if (r.detail) words.append(el("span", "rl", r.detail));
-  a.append(words);
-  if (r.count) a.append(el("span", warn ? "tcount warn" : "tcount", String(r.count)));
-  if (!r.cta) a.append(el("span", "chev", "›"));
-  li.append(linkTo(a, r.href));
-  if (r.cta) li.append(linkTo(el("a", "btn btn-outline btn-row-cta", r.cta.label), r.cta.href));
-  a.querySelector(".chev")?.setAttribute("aria-hidden", "true");
-  return li;
-}
-
-function rowList(rows, warn) {
-  const ul = el("ul", "list");
-  ul.append(...rows.map((r) => todayRow(r, warn)));
-  return ul;
-}
-
-/**
- * The Waiting on you card. data-guide="wait" is the guide's stop. With no rows it is drawn only when `empty` is set
- * (staff, once /today.json answered: the demo's "Nothing is waiting on you.", C13). Counts are the demo's amber chip.
- */
-export function waitingCard(rows, { empty = false } = {}) {
-  if (!rows.length && !empty) return null;
-  const sec = card("home-waiting", "Waiting on you", { guide: "wait" });
-  sec.append(rows.length ? rowList(rows, true) : el("p", "mute home-empty", "Nothing is waiting on you."));
-  return sec;
-}
-
-export function todayCard(rows) {
-  if (!rows.length) return null;
-  const sec = card("home-today", "Today");
-  sec.append(rowList(rows, false));
-  return sec;
-}
-
-function pill(cls, words) {
-  return el("span", `pill-dot ${cls}`, words);
-}
-
-/**
- * The student's next task, as the demo's Next up card (C4, C13, C14). Done is gold unless the task is held back
- * (blocked, on hold or waiting on another task). With no task and `empty` set: "Nothing assigned to you".
- * o: { empty, compact (event day), say(message) (the lasting status line), onBusy(bool), onDone() → Promise<boolean>
- *      (true when the home was drawn again), post (tests) }.
- * Done: "ok" redraws the home; "refused" offers "Open task" (gold) instead; "timeout" says so and asks for
- * /today.json again; "failed" puts Done back with a short message.
- */
-export function nextCard(next, o = {}) {
-  const { empty = false, compact = false, say = () => {}, onBusy = () => {}, onDone = async () => true, post = postTaskDone } = o;
-  const cls = `hero nextup${compact ? " evcompact" : ""}`;
-  if (!next) {
-    if (!empty) return null;
-    const none = card("home-next", "Nothing assigned to you", { className: cls });
-    none.append(el("p", "mute", "Take something nobody has yet."));
-    return none;
-  }
-  const sec = card("home-next", "", { className: cls });
-  const h = sec.querySelector("h2");
-  h.textContent = next.title;
-  sec.insertBefore(el("p", "next-eyebrow", "Your next task"), h);
-  const line = nextLine(next);
-  if (line) sec.append(el("p", "mute next-line", line));
-  if (next.onHold) sec.append(el("p", "small mute next-hold", "This task is on hold."));
-  if (next.blocked) {
-    const b = el("p", "small next-blocked");
-    b.append(pill("bad", "Blocked"));
-    sec.append(b);
-  }
-  if (next.steps) {
-    const r = el("div", "next-steps");
-    const bar = el("div", "next-bar");
-    bar.setAttribute("aria-hidden", "true");
-    const fill = el("i");
-    fill.style.width = `${Math.round((100 * next.steps.done) / next.steps.total)}%`;
-    bar.append(fill);
-    r.append(bar, el("span", "small mute", `${next.steps.done} of ${next.steps.total} steps`));
-    sec.append(r);
-  }
-  if (next.waitingOn) {
-    const w = el("p", "small next-waiting");
-    w.append(pill("bad", "Waiting on"), document.createTextNode(` ${next.waitingOn.join(", ")}.`));
-    sec.append(w);
-  }
-  const acts = el("div", "heroacts");
-  const done = el("button", taskHeld(next) ? "btn btn-outline" : "btn");
-  done.type = "button";
-  done.dataset.tip = "Mark this task done and bring up your next one.";
-  done.append(svgIcon(CHECK, 16), document.createTextNode("Done"));
-  acts.append(done);
-  if (next.stuckHref) acts.append(linkTo(el("a", "btn btn-outline", "I'm stuck"), next.stuckHref));
-  if (next.partHref) {
-    const part = el("a", "btn btn-outline");
-    part.append(svgIcon(PARTS, 16), document.createTextNode("Request a part"));
-    acts.append(linkTo(part, next.partHref));
-  }
-  const open = linkTo(el("a", "btn btn-ghost", "Open"), next.href);
-  open.dataset.tip = "The task in the Task App, with its steps.";
-  acts.append(open);
-  let busy = false;
-  const again = () => { busy = false; done.disabled = false; };
-  done.addEventListener("click", async () => {
-    if (busy) return; // a second press while the first is on its way sends nothing
-    busy = true;
-    done.disabled = true;
-    onBusy(true);
-    say("Marking it done…");
-    const result = await post(next.taskId);
-    onBusy(false);
-    if (result === "ok" || result === "timeout") {
-      say(result === "ok" ? "Done." : "We couldn't tell if that worked.");
-      if (!(await onDone())) again();
-      return;
-    }
-    if (result === "failed") {
-      say("That didn't go through. Press Done to try again.");
-      again();
-      done.focus();
-      return;
-    }
-    // "refused": this task can't be marked done from the portal; the card shows "Open task" instead (C4).
-    const openTask = linkTo(el("a", "btn", "Open task"), next.href);
-    openTask.dataset.tip = "Finish the task in the Task App.";
-    done.replaceWith(openTask);
-    open.remove();
-    say("This task can't be marked done from here. Open it in the Task App.");
-    openTask.focus();
-  });
-  sec.append(acts);
-  return sec;
-}
-
-/** Recent activity: five rows, the app's name muted in front, plain text, with when it happened. Not for parents. */
-export function activityCard(items, now = Date.now()) {
-  if (!items.length) return null;
-  const sec = card("home-activity", "Recent activity");
-  const ul = el("ul", "list");
-  for (const a of items) {
-    const li = el("li", "li actli");
-    const link = el("a", "actlink");
-    if (a.app) link.append(el("span", "actapp", a.app));
-    const body = el("span", "grow");
-    body.append(el("b", "", a.title));
-    if (a.detail) body.append(document.createTextNode(` ${a.detail}`));
-    link.append(body);
-    const when = whenText(a.at, now);
-    if (when) {
-      const w = el("time", "who", when);
-      w.dateTime = a.at;
-      link.append(w);
-    }
-    li.append(linkTo(link, a.href));
-    ul.append(li);
-  }
-  sec.append(ul);
-  return sec;
-}
 
 /**
  * The shop screen's home (C9): "Pick what this screen shows" and three large links, nothing else. `blocked` is the

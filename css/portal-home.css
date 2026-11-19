@@ -1,0 +1,230 @@
+/* The portal Home in design 8.3 "Ground up" (D182–D190; demo design83 css/ground.css, css/ideal.css, the Home part).
+   Loaded by portal/index.html only, after css/style.css and the kit's CSS. Token names only: no colour values, radii
+   or fonts of its own (RULES 8.3). The kit 0.5.0 sync brings the Ground up tokens (Archivo, bumper blue); this file
+   then needs no change, because it names the tokens and not their values.
+   One sheet: no boxes round content, a rule between parts. A state is a dot and a word. One filled button. */
+
+.home-g { font-family: var(--body, var(--font)); }
+
+/* ---------- The head: "Hi Sam." and the date on one line (no display face, no tall type) ---------- */
+.home-g .homehead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; margin-bottom: 0; }
+.home-g .homehead h1 { margin: 0; font: 700 1.6rem/1.2 var(--body, var(--font)); letter-spacing: -0.01em; }
+.home-g .homedate { margin: 0; color: var(--text-2); font-weight: 600; font-size: 0.95rem; }
+.home-g.evday .homedate { display: none; }
+#home-top:empty { display: none; }
+
+/* ---------- The season line: the one dark bar ---------- */
+.season { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 22px; align-items: center; margin-top: 14px; padding: 12px 16px; background: var(--rail); color: var(--rail-text); border-radius: 4px; }
+.season p { margin: 0; }
+.snhead { display: flex; align-items: center; gap: 12px; }
+.snhead > span { display: grid; line-height: 1.25; }
+.snmute { color: var(--rail-mute); font-size: 0.86rem; font-weight: 400; }
+.snnum { font-weight: 800; font-size: 2rem; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.sntrack { display: flex; align-items: flex-start; gap: 4px; min-width: 0; height: 40px; padding-top: 6px; }
+.pm { position: relative; flex: 1 1 0; min-width: 2px; max-width: 64px; height: 10px; margin-top: 4px; border-radius: 2px; background: color-mix(in srgb, var(--rail-text) 30%, transparent); }
+.pm.build, .pm.comp { height: 18px; margin-top: 0; }
+.pm.today { background: var(--rail-text); }
+.pm.today::after, .pm.next::after { content: "Today"; position: absolute; left: 0; top: calc(100% + 5px); color: var(--rail-text); font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+.pm.next::after { content: "Next practice"; }
+.pm.due::before { content: ""; position: absolute; left: 50%; top: 50%; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; transform: rotate(45deg); background: var(--mc, var(--rail-text)); box-shadow: 0 0 0 3px var(--rail); }
+.snend { flex: none; margin-left: 6px; font-weight: 700; font-size: 0.86rem; white-space: nowrap; }
+.snnext { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 2px 22px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--rail-text) 16%, transparent); }
+.snms { display: inline-flex; align-items: baseline; gap: 7px; min-height: 30px; color: inherit; text-decoration: none; }
+.snms:hover { color: inherit; text-decoration: none; }
+.snms b { font-weight: 650; }
+.snms > span:not(.vh) { color: var(--rail-mute); font-size: 0.86rem; }
+.snms:hover b { text-decoration: underline; text-underline-offset: 3px; }
+.snms:focus-visible { outline: 2px solid var(--rail-text); outline-offset: 2px; }
+.snd { flex: none; align-self: center; display: inline-block; width: 9px; height: 9px; transform: rotate(45deg); background: var(--mc, currentColor); }
+/* A parent's line: the next practice leads; the days to the date are the smaller part. */
+.season.simple { grid-template-columns: minmax(0, 1fr) auto; padding-block: 10px; }
+.snpractice { font-weight: 750; font-size: 1.15rem; }
+.season.simple .snhead > span { text-align: right; }
+.season.simple .snhead b { font-weight: 600; font-size: 0.92rem; }
+@media (max-width: 760px) {
+  .season { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px 14px 12px; }
+  .season:not(.simple) .sntrack { display: none; }   /* too small to read on a phone: the count and the milestones stay */
+  .snnum { font-size: 1.7rem; }
+  .snnext { display: grid; gap: 4px; padding-top: 6px; }
+  .season.simple { grid-template-columns: minmax(0, 1fr); }
+  .season.simple .snhead > span { text-align: left; }
+}
+
+/* ---------- Two columns: main and side; on a phone one column in the order a person needs it ---------- */
+.homecols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); gap: 0 32px; align-items: start; margin-top: 6px; }
+.homecols[hidden] { display: none; }
+.homemain, .homeside { min-width: 0; }
+.homeside { padding-left: 32px; border-left: 1px solid var(--line); }
+.homeside-lead:empty { display: none; }
+.hsec { padding: 14px 0 8px; border-top: 1px solid var(--line); min-width: 0; }
+.hsec[hidden] { display: none; }
+.hsec > h2, .home-g .apps-head h2 { margin: 0 0 6px; font: 700 1.1rem/1.3 var(--body, var(--font)); letter-spacing: 0; color: var(--text); }
+.homemain > :first-child, .homeside-lead > .hsec:first-child, .homeside-lead:empty + .appssec { border-top: 0; }
+.gempty { margin: 0 0 6px; }
+@media (max-width: 899px) {
+  .homecols { display: flex; flex-direction: column; gap: 0; }
+  .homemain, .homeside, .homeside-lead { display: contents; }
+  .homeside { padding: 0; border: 0; }
+  .homecols > *, .homemain > *, .homeside > *, .homeside-lead > * { order: 3; border-top: 1px solid var(--line); }
+  #home-now { order: 1; }
+  #home-next { order: 2; }
+  #home-others { order: 3; }
+  #home-week { order: 4; }
+  #apps { order: 5; }
+  .guideslot { order: 6; }
+  #home-activity { order: 7; }
+  .parent #home-week { order: 0; }
+  .parent #home-help { order: 1; }
+  .parent #home-coming { order: 2; }
+  .evday .shiftcard, .evday .homemain > .evline { order: 0; border-top: 0; }
+  .evday #home-matches { order: 2; }
+  .homecols > :first-child { border-top: 0; }
+}
+
+/* ---------- Rows: Now, Waiting on others, In the pit, Can you help? ---------- */
+.glist { list-style: none; margin: 0; padding: 0; display: grid; }
+.glist > li + li { border-top: 1px solid var(--line); }
+.glist > li[hidden] { display: none; }
+.nowrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 52px; padding: 8px 4px; min-width: 0; }
+.nowrow:hover { background: var(--surface-2); }
+.nowrow .rowlink { flex: 1 1 14rem; min-width: 0; min-height: 44px; display: grid; align-content: center; gap: 1px; color: inherit; text-decoration: none; }
+.nowrow .rowlink:hover { color: inherit; text-decoration: none; }
+.nowrow .rowlink:hover .rt { text-decoration: underline; text-underline-offset: 3px; }
+.nowrow .rt { font-weight: 650; color: var(--text); overflow-wrap: anywhere; }
+.nowrow .rl { color: var(--text-2); font-size: 0.9rem; overflow-wrap: anywhere; }
+.nowrow > .chev { flex: none; color: var(--mute); font-size: 1.25rem; line-height: 1; }
+.nowbtns { display: flex; flex: none; gap: 8px; }
+.home-g .nowbtn { flex: none; min-height: 40px; padding: 8px 16px; border-radius: var(--r-ctl, 8px); }
+.home-g .nowbtn.nowdeny { color: var(--bad); }
+.nowmsg { flex: 1 1 100%; margin: 0; color: var(--bad); font-size: 0.9rem; font-weight: 600; }
+/* Signing in is the first job at practice: until it is done its row is a block with a blue edge. */
+.nowrow.nowfirst { margin: 4px 0 6px; padding: 14px; border-left: 4px solid var(--accent); background: var(--tint); }
+.nowrow.nowfirst:hover { background: var(--tint); }
+.glist > li.nowfirst + li { border-top: 0; }
+.nowrow.nowfirst .rt { font-size: 1.06rem; font-weight: 700; }
+.nowrow.nowfirst .nowbtn { min-height: 44px; padding-inline: 22px; }
+.nowgroup { margin: 10px 0 2px; padding: 10px 4px 0; border-top: 1px solid var(--line); color: var(--text); font: 650 0.95rem/1.3 var(--body, var(--font)); }
+.hsec > h2 + .nowgroup { margin-top: 2px; padding-top: 0; border-top: 0; }
+@media (max-width: 640px) {
+  .nowrow { padding-block: 6px; }
+  .nowrow:has(.nowbtns, .nowbtn) .rowlink { flex-basis: 100%; }
+  .nowbtns { flex: 1 1 100%; display: grid; }
+  .nowrow > .nowbtn { flex: 1 1 100%; }
+}
+
+/* A state: a dot and a word (never colour alone). */
+.gmark { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); font-size: 0.92em; font-weight: 600; white-space: nowrap; vertical-align: baseline; }
+.gmark::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.gmark.ok { color: var(--ok); }
+.gmark.warn { color: var(--warn); }
+.gmark.bad { color: var(--bad); }
+
+/* ---------- This week, Coming up, Next for us: a day (or a match) column, then what and the facts ---------- */
+.wkrow { display: grid; grid-template-columns: 4.2rem minmax(0, 1fr); gap: 12px; align-items: start; padding: 8px 4px; color: inherit; text-decoration: none; }
+.wkrow:hover { color: inherit; text-decoration: none; background: var(--surface-2); }
+.wkrow:hover .grow > b { text-decoration: underline; text-underline-offset: 3px; }
+.wkd { display: grid; line-height: 1.25; }
+.wkd b { font-weight: 650; white-space: nowrap; }
+.wkd span { color: var(--mute); font-size: 0.84rem; }
+.wkrow.today .wkd b { color: var(--accent); }
+.wkrow .grow { display: grid; gap: 1px; min-width: 0; }
+.wkrow .grow > b { font-weight: 650; overflow-wrap: anywhere; }
+.wkfacts { display: grid; gap: 1px; color: var(--text-2); font-size: 0.88rem; }
+.wkdue { display: inline-flex; align-items: center; gap: 6px; }
+.alsq { display: inline-block; width: 10px; height: 10px; margin-right: 7px; vertical-align: 0; }
+.alsq.red { background: var(--bad); }
+.alsq.blue { background: var(--info); }
+
+/* ---------- The next task ---------- */
+.nexthead { margin: 2px 0 2px; }
+.nexttitle { display: inline-flex; align-items: baseline; gap: 8px; max-width: 100%; color: var(--text); font: 700 1.3rem/1.25 var(--body, var(--font)); text-decoration: none; overflow-wrap: anywhere; }
+.nexttitle:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.nexttitle .chev { font-size: 1.1rem; color: var(--mute); }
+.nextdue { margin: 0; color: var(--text); font-weight: 650; }
+.nextwhere, .nexthold { margin: 2px 0 8px; font-size: 0.92rem; }
+.nextblocked, .nextwaiting { margin: 0 0 8px; font-size: 0.92rem; }
+.nextsteps { display: flex; align-items: center; gap: 10px; margin: 4px 0 8px; font-size: 0.9rem; }
+.nextbar { flex: none; width: 160px; max-width: 45%; height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.nextbar i { display: block; height: 100%; background: var(--ok); }
+.nextstep { margin: 0 0 10px; color: var(--text-2); font-size: 0.92rem; }
+.nextstep b { color: var(--text); font-weight: 650; }
+.nextsec .heroacts { margin: 8px 0 4px; }
+.nextsec.evcompact .nexttitle { font-size: 1.1rem; }
+@media (max-width: 640px) { .nexttitle { min-height: 44px; align-items: center; } }
+
+/* ---------- Recent activity ---------- */
+.home-g .actlink { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 12px; width: 100%; min-height: 44px; padding: 8px 4px; color: inherit; text-decoration: none; }
+.home-g .actlink:hover { color: inherit; text-decoration: none; background: var(--surface-2); }
+.home-g .actlink .grow { grid-column: 1; color: var(--text); overflow-wrap: anywhere; }
+.home-g .actlink .actapp { grid-column: 1; width: auto; color: var(--mute); font-size: 0.84rem; }
+.home-g .actlink .who { grid-column: 2; grid-row: 1 / span 2; align-self: end; color: var(--mute); font-size: 0.84rem; white-space: nowrap; }
+
+/* ---------- Apps: one line per app, then the closed rows ---------- */
+.home-g .apps-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0; }
+.home-g .apps-head h2 { margin-bottom: 4px; }
+.home-g .app-search { width: 100%; margin-bottom: 6px; }
+.home-g .app-search[hidden] { display: none; }
+.home-g .app-search input { min-height: 40px; border-radius: var(--r-ctl, 8px); border-color: var(--line-2); }
+.applist { display: grid; }
+.applist[hidden] { display: none; }
+.approw { display: grid; grid-template-columns: 22px auto minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 40px; padding: 4px; color: var(--text); text-decoration: none; border-radius: 4px; }
+.approw:hover { color: var(--text); text-decoration: none; background: var(--surface-2); }
+.approw[hidden] { display: none; }
+.approw .ic { display: grid; place-items: center; color: var(--text-2); }
+.approw b { font-weight: 650; white-space: nowrap; }
+.approw b .ext { color: var(--mute); font-weight: 400; }
+.approw small { min-width: 0; overflow: hidden; color: var(--mute); font-size: 0.86rem; white-space: nowrap; text-overflow: ellipsis; }
+.approw.coming-soon { color: var(--text-2); }
+.home-g .homegroups { margin-top: 10px; }
+@media (max-width: 640px) {
+  .applist { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+  .approw { grid-template-columns: 22px minmax(0, 1fr); min-height: 44px; }
+  .approw b { white-space: normal; }
+  .approw small, .approw .status-dot { display: none; }
+}
+
+/* ---------- The status line: a short message at the foot of the screen; Undo while it is offered ---------- */
+.home-g .home-status { position: fixed; left: 50%; bottom: 16px; z-index: 30; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); margin: 0; }
+#home-done-status { margin: 0; padding: 10px 16px; border-radius: var(--r-ctl, 8px); background: var(--rail); color: var(--rail-text); font-size: 0.92rem; font-weight: 600; }
+#home-done-status:empty { display: none; }
+.linkbtn { min-height: 32px; padding: 0 4px; border: 0; background: none; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+/* ---------- Deny's small dialog ---------- */
+.gdialog { width: min(calc(100vw - 32px), 440px); padding: 18px; border: 1px solid var(--line-2); border-radius: var(--r-ctl, 8px); background: var(--surface); color: var(--text); font-family: var(--body, var(--font)); }
+.gdialog::backdrop { background: color-mix(in srgb, var(--rail) 55%, transparent); }
+.gdialog h2 { margin: 0 0 8px; font: 700 1.1rem/1.3 var(--body, var(--font)); }
+.gdialog p { margin: 0 0 8px; }
+.gdialog label { display: block; margin: 10px 0 4px; font-weight: 600; }
+.gdialog textarea { box-sizing: border-box; width: 100%; padding: 8px 10px; border: 1px solid var(--input-line); border-radius: var(--r-ctl, 8px); background: var(--surface); color: var(--text); font: inherit; font-size: 16px; }
+.gerr { color: var(--bad); font-weight: 600; }
+.gerr:empty { display: none; }
+.gbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+/* ---------- Get access stays, under the columns ---------- */
+.home-g #access { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); }
+
+/* ============================================================
+   Kit 0.5.0 stand-ins (CONTRACT "Kit asks"): delete when the kit ships them.
+   ============================================================ */
+/* .evline: the one line at an event (you now, next match, robot). */
+.evline { display: flex; min-width: 0; margin: 14px 0 2px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); overflow: hidden; }
+.evpart { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; align-content: center; gap: 2px 10px; min-height: 44px; padding: 7px 14px; color: var(--text); text-decoration: none; }
+.evpart:hover { color: var(--text); text-decoration: none; background: var(--surface-2); }
+.evpart:hover .evv { text-decoration: underline; text-underline-offset: 3px; }
+.evpart:focus-visible { outline-offset: -3px; }
+.evpart + .evpart { border-left: 1px solid var(--line); }
+.evk { color: var(--mute); font-size: 0.86rem; white-space: nowrap; }
+.evv { min-width: 0; font-weight: 700; font-size: 1.02rem; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .evline { flex-direction: column; border-radius: 0; border-inline: 0; }
+  .evpart { padding: 9px 4px 10px; }
+  .evpart + .evpart { border-left: 0; border-top: 1px solid var(--line); }
+}
+.shiftcard { margin-top: 12px; }
+.shiftcard .glist > li { border-top: 0; }
+/* The guide's card in the side column: a section of the sheet, not a box. */
+.homeside .guideslot { border-top: 1px solid var(--line); }
+.guideslot:empty, .guideslot[hidden] { display: none; }
+.guideslot > .shell-guidecard { padding: 14px 0 8px; border: 0; border-radius: 0; background: none; }
+.guideslot > .shell-guidecard h2 { font: 700 1.1rem/1.3 var(--body, var(--font)); }
+.home-g .guideslot { margin-top: 0; }

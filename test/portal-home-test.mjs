@@ -3,8 +3,8 @@
 // The drawing is covered in the browser by test/portal-shell-test.mjs.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { BLOCKED_APPS, DISPLAY_SCREENS, blockedAppName, displayHref, dueText, fetchToday, isDisplayOnly, isParentOnly, nextLine, parseToday, postTaskDone, rowsForMode,
-  safeHref, shiftFirst, taskHeld, whenText } from "../js/portal-home.js";
+import { BLOCKED_APPS, DISPLAY_SCREENS, blockedAppName, clock, daysBetween, displayHref, dueText, fetchToday, fmtDay, isDisplayOnly, isParentOnly, isoDay, nextLine,
+  parseToday, postAct, postTaskDone, practicesLeft, practicesText, rowsForMode, safeHref, shiftFirst, taskHeld, timeSpan, whenText } from "../js/portal-home.js";
 
 const site = { scheme: "https", domain: "example.test" };
 const origin = "https://portal.example.test";
@@ -48,7 +48,8 @@ test("parseToday refuses another version, and a bad next task is no card", () =>
   assert.equal(parseToday(null, site, origin), null);
   assert.equal(parseToday("x", site, origin), null);
   const d = parseToday({ v: 1, next: { taskId: "", title: "No id", href: "https://tasks.example.test/" } }, site, origin);
-  assert.deepEqual(d, { today: [], waiting: [], next: null, activity: [] });
+  // 8.3: the optional parts are there, empty, when the answer has none of them (CONTRACT H1).
+  assert.deepEqual(d, { today: [], waiting: [], others: [], next: null, activity: [], season: null, milestones: [], week: null, coming: null, event: null });
   assert.equal(parseToday({ v: 1, next: { taskId: 5, title: "Off site", href: "https://evil.test/" } }, site, origin).next, null);
   assert.equal(parseToday({ v: 1, next: { taskId: 5, title: "Numeric id", href: "/x" } }, site, origin).next.taskId, "5");
 });
@@ -189,4 +190,148 @@ test("hostile text stays text: parseToday keeps it as a string for textContent",
   const d = parseToday({ v: 1, today: [{ title: evil, detail: evil, href: "/a", cta: { label: evil, href: "/b" } }] }, site, origin);
   assert.equal(d.today[0].title, evil);
   assert.equal(d.today[0].cta.label, evil);
+});
+
+// ---------------------------------------------------------------- release 8.3 (CONTRACT H1, H2, C1, E1)
+
+test("8.3 H1: a row's group, mark, lines and acts are checked; a bad act is dropped, not the row", () => {
+  const d = parseToday({ v: 1, waiting: [
+    { id: "parts:req:12", section: "waiting", title: "Kraken X60 motor", detail: "$399.98, asked by Sam", href: "https://parts.example.test/?request=12",
+      group: "Needs your OK", mark: { word: "Blocking", tone: "bad" }, lines: ["Order by Sun, Nov 8", "Mechanisms budget: $1,838.52 left", "a third line"],
+      acts: [{ label: "Approve", app: "parts", action: "approve", key: "12", primary: true }, { label: "Deny", app: "parts", action: "deny", key: "12", reason: true }, { label: "Third", app: "parts", action: "x", key: "12" }] },
+    { id: "skills:so:1", title: "Motor power leads", href: "/s", mark: { word: "Odd", tone: "purple" },
+      acts: [{ label: "Sign off", app: "admin", action: "signoff", key: "u1:s1" }, { label: "Sign off", app: "skills", action: "signoff", key: "u1 s1" }] },
+    { id: "skills:so:2", title: "Belt drives", href: "/s", acts: [{ label: "Sign off", app: "skills", action: "signoff", key: "u-2:belts", primary: "yes" }] },
+    { id: "x", title: "Lines that are not text", href: "/x", lines: "one line", group: 7 },
+  ] }, site, origin);
+  const [a, b, c, x] = d.waiting;
+  assert.equal(a.group, "Needs your OK");
+  assert.deepEqual(a.mark, { word: "Blocking", tone: "bad" });
+  assert.deepEqual(a.lines, ["Order by Sun, Nov 8", "Mechanisms budget: $1,838.52 left"], "two lines at most");
+  assert.deepEqual(a.acts, [{ label: "Approve", app: "parts", action: "approve", key: "12", primary: true }, { label: "Deny", app: "parts", action: "deny", key: "12", reason: true }]);
+  assert.equal(b.mark, undefined, "an unknown tone is no mark");
+  assert.equal(b.acts, undefined, "an act for another app, or a key outside the pattern, is dropped");
+  assert.deepEqual(c.acts, [{ label: "Sign off", app: "skills", action: "signoff", key: "u-2:belts" }], "primary only when true");
+  assert.deepEqual([x.lines, x.group], [undefined, undefined]);
+});
+
+test("8.3 H1: rows marked section \"others\" are Waiting on others, from any list", () => {
+  const d = parseToday({ v: 1,
+    today: [{ id: "parts:mine:4", section: "others", title: "Bearing", href: "/p", mark: { word: "Ordered", tone: "ok" }, lines: ["Arrives about Wed, Nov 11"] }, { id: "calendar:practice", section: "today", title: "Practice", href: "/c" }],
+    others: [{ id: "skills:mine:2", section: "others", title: "Sign-off: Lathe", href: "/s" }],
+  }, site, origin);
+  assert.deepEqual(d.today.map((r) => r.id), ["calendar:practice"]);
+  assert.deepEqual(d.others.map((r) => r.id), ["parts:mine:4", "skills:mine:2"]);
+});
+
+const SEASON = { target: { name: "Season kickoff", date: "2027-01-09", kind: "kickoff" }, days: [
+  { date: "2026-11-10", kind: "practice" }, { date: "2026-11-12", kind: "practice" }, { date: "2026-11-14", kind: "build" },
+  { date: "2026-11-12", kind: "practice" }, { date: "2026-11-17", kind: "holiday" }, { date: "2026-11-31", kind: "practice" },
+  { date: "2027-01-09", kind: "practice" }, { date: "2026-11-19", kind: "practice" },
+] };
+
+test("8.3 C1: the season line's data is checked: days are real, before the target, sorted, once each", () => {
+  const sn = parseToday({ v: 1, season: SEASON }, site, origin).season;
+  assert.deepEqual(sn.target, { name: "kickoff", title: "Kickoff", date: "2027-01-09", kind: "kickoff" });
+  assert.deepEqual(sn.days.map((d) => d.date), ["2026-11-10", "2026-11-12", "2026-11-14", "2026-11-19"]);
+  const comp = parseToday({ v: 1, season: { target: { name: "Colorado Regional", date: "2027-03-04", kind: "comp" }, days: [] } }, site, origin).season;
+  assert.deepEqual([comp.target.name, comp.target.title, comp.days], ["Colorado Regional", "Colorado Regional", []]);
+  for (const bad of [{}, { target: { name: "x", date: "2027-02-30", kind: "kickoff" }, days: [] }, { target: { name: "", date: "2027-01-09", kind: "comp" }, days: [] },
+    { target: { name: "x", date: "2027-01-09", kind: "party" }, days: [] }, { target: { name: "x", date: "2027-01-09", kind: "kickoff" } }, "season"]) {
+    assert.equal(parseToday({ v: 1, season: bad }, site, origin).season, null, JSON.stringify(bad));
+  }
+});
+
+test("8.3: practices left counts the meeting days from today to the date, with both ends", () => {
+  const sn = parseToday({ v: 1, season: SEASON }, site, origin).season;
+  assert.equal(practicesLeft(sn, "2026-11-14", "2026-11-10"), 3);
+  assert.equal(practicesLeft(sn, "2026-11-10", "2026-11-10"), 1);
+  assert.equal(practicesLeft(sn, "2026-11-11", "2026-11-11"), 0, "none before the date");
+  assert.equal(practicesLeft(sn, "2026-11-18", "2026-11-11"), 2, "a cancelled day is simply absent");
+  assert.equal(practicesLeft(sn, "2027-02-01", "2026-11-10"), null, "after the target: Calendar did not send those days");
+  assert.equal(practicesLeft(sn, "2026-11-01", "2026-11-10"), null, "already past");
+  assert.equal(practicesLeft(null, "2026-11-14", "2026-11-10"), null);
+  assert.equal(practicesText(sn, "2026-11-14", "2026-11-10"), "3 practices left");
+  assert.equal(practicesText(sn, "2026-11-10", "2026-11-10"), "1 practice left");
+  assert.equal(practicesText(sn, "2026-11-11", "2026-11-11"), "no practice before then");
+  assert.equal(practicesText(sn, "2027-02-01", "2026-11-10"), "");
+});
+
+test("8.3: dates and times as the demo words them", () => {
+  assert.equal(isoDay("2026-11-31"), "");
+  assert.equal(isoDay("2026-11-30"), "2026-11-30");
+  assert.equal(daysBetween("2026-11-10", "2027-01-09"), 60);
+  assert.equal(fmtDay("2026-11-12"), "Thu, Nov 12");
+  assert.deepEqual([clock("15:30"), clock("18:00"), clock("09:05"), clock("00:00"), clock("12:00"), clock("25:00"), clock(null)], ["3:30 pm", "6 pm", "9:05 am", "12 am", "12 pm", "", ""]);
+  assert.equal(timeSpan("15:30", "18:00"), "3:30 pm–6 pm");
+  assert.equal(timeSpan("15:30", null), "3:30 pm");
+  assert.equal(timeSpan(null, null), "");
+});
+
+test("8.3 C1: This week, Coming up and the milestones are checked; app paths go to the app's host", () => {
+  const d = parseToday({ v: 1,
+    week: [
+      { date: "2026-11-12", href: "/?tab=agenda", items: [{ kind: "practice", name: "Practice", startTime: "15:30", endTime: "18:00", location: "Dawson shop" }], mentorsComing: 3, snacks: { names: ["Kim family"], open: 1, modes: ["build"] } },
+      { date: "2026-11-10", href: "https://calendar.example.test/?tab=agenda", items: [{ kind: "volunteer", name: "Library demo", startTime: null, endTime: null, location: null }, { kind: "party", name: "x" }] },
+      { date: "2026-11-11", href: "https://evil.test/", items: [{ kind: "practice", name: "" }] },
+      { date: "bad", href: "/", items: [{ kind: "practice", name: "" }] },
+      { date: "2026-11-13", href: "/", items: [] },
+      { date: "2026-11-14", href: "/", items: [{ kind: "build", name: "" }], mentorsComing: -1, snacks: { names: "x", open: 2 } },
+    ],
+    coming: [{ date: "2026-11-19", name: "Library robot demo", startTime: "18:00", endTime: "20:00", location: "Lafayette Public Library", href: "/?e=4" }, { date: "x", name: "y", href: "/" }],
+    milestones: [{ name: "Design review", date: "2026-11-19", project: "Drive", color: "#2b6cff", href: "/projects/3" }, { name: "Bad colour", date: "2026-11-12", project: "Intake", color: "red;background:url(x)", href: "/p" }, { name: "Off site", date: "2026-11-12", href: "https://evil.test/" }],
+  }, site, origin);
+  assert.deepEqual(d.week.map((w) => w.date), ["2026-11-10", "2026-11-12", "2026-11-14"], "sorted; bad days and days with nothing are dropped");
+  assert.equal(d.week[1].href, "https://calendar.example.test/?tab=agenda");
+  assert.deepEqual(d.week[1].items[0], { kind: "practice", name: "Practice", time: "3:30 pm–6 pm", location: "Dawson shop" });
+  assert.deepEqual([d.week[1].mentorsComing, d.week[1].snacks], [3, { names: ["Kim family"], open: 1, modes: ["build"] }]);
+  assert.deepEqual(d.week[0].items.map((i) => i.kind), ["volunteer"]);
+  assert.deepEqual([d.week[2].mentorsComing, d.week[2].snacks], [undefined, { names: [], open: 2, modes: ["build", "competition"] }]);
+  assert.deepEqual(d.coming, [{ date: "2026-11-19", name: "Library robot demo", time: "6 pm–8 pm", location: "Lafayette Public Library", href: "https://calendar.example.test/?e=4" }]);
+  assert.deepEqual(d.milestones.map((m) => [m.name, m.color, m.href]), [["Bad colour", undefined, "https://tasks.example.test/p"], ["Design review", "#2b6cff", "https://tasks.example.test/projects/3"]]);
+  assert.equal(parseToday({ v: 1, week: "x" }, site, origin).week, null, "no list: no This week at all");
+  assert.deepEqual(parseToday({ v: 1, week: [] }, site, origin).week, [], "an empty list: This week says nothing is planned");
+});
+
+test("8.3 E1: the event part is checked; its paths are Competition's", () => {
+  const ev = parseToday({ v: 1, event: {
+    name: "Colorado Regional",
+    line: { now: "Scouting until 10:00", match: { label: "Our match now", text: "Qual 14, Red, on the field" }, robot: "On the field, battery B1 at 12.9 V" },
+    pit: [{ id: "pit-save:1:14", title: "Save the Qual 14 checklist after the match", detail: "Then start Qual 19", href: "/pit?tab=check", cta: { label: "Open the Pit", href: "/pit?tab=check" } },
+      { id: "pit-issues:1", title: "2 open issues in the pit", detail: "Open since 9:02", lines: ["Cracked sprocket", "Squeak", "Third"], href: "/pit?tab=check" }, { id: "3", title: "Third row", href: "/pit" }],
+    next: [{ match: 19, at: "2026-03-06T20:15:00Z", alliance: "Blue", with: [2945, 9033], against: [2036, 4388, 1410] }, { match: 20, at: null, alliance: "Green", with: [], against: [] }],
+  } }, site, origin).event;
+  assert.deepEqual(ev.line, { now: "Scouting until 10:00", robot: "On the field, battery B1 at 12.9 V", match: { label: "Our match now", text: "Qual 14, Red, on the field" } });
+  assert.deepEqual(ev.pit.map((p) => [p.id, p.href, p.cta && p.cta.href, p.lines]), [
+    ["compete:pit-save:1:14", "https://compete.example.test/pit?tab=check", "https://compete.example.test/pit?tab=check", undefined],
+    ["compete:pit-issues:1", "https://compete.example.test/pit?tab=check", undefined, ["Cracked sprocket", "Squeak"]],
+  ]);
+  assert.deepEqual(ev.next, [{ match: 19, at: "2026-03-06T20:15:00Z", alliance: "Blue", with: [2945, 9033], against: [2036, 4388, 1410] }]);
+  assert.equal(parseToday({ v: 1, event: { name: "x", line: { now: null, match: null, robot: null }, pit: [], next: [] } }, site, origin).event, null, "nothing to draw: no event");
+  assert.equal(parseToday({ v: 1, event: { name: "x" } }, site, origin).event, null);
+});
+
+test("8.3 T: the next task's next step is words only", () => {
+  const n = parseToday({ v: 1, next: { taskId: "t", title: "Cut plates", href: "/t", nextStep: { id: "s2", label: "Cut on the router" } } }, site, origin).next;
+  assert.equal(n.nextStep, "Cut on the router");
+  assert.equal(parseToday({ v: 1, next: { taskId: "t", title: "x", href: "/t", nextStep: "loose" } }, site, origin).next.nextStep, undefined);
+});
+
+test("8.3 H2: the act's answers: ok (204, 200 with undoUntil), changed, refused, gone, reason, failed, timeout", async () => {
+  const answer = (status, body) => async () => ({ ok: status >= 200 && status < 300, status, json: async () => body });
+  const act = { app: "parts", action: "approve", key: "12" };
+  assert.deepEqual(await postAct(act, { fetchImpl: answer(204) }), { result: "ok" });
+  const until = new Date(Date.now() + 120000).toISOString();
+  assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: until }) }), { result: "ok", undoUntil: until });
+  assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: "2000-01-01T00:00:00Z" }) }), { result: "ok" }, "an Undo that ran out is not offered");
+  assert.deepEqual(await postAct(act, { fetchImpl: answer(200, null) }), { result: "ok" });
+  for (const [st, r] of [[409, "changed"], [403, "refused"], [404, "gone"], [422, "reason"], [400, "refused"], [500, "failed"], [502, "failed"], [503, "failed"]]) {
+    assert.deepEqual(await postAct(act, { fetchImpl: answer(st) }), { result: r }, String(st));
+  }
+  assert.deepEqual(await postAct(act, { fetchImpl: async () => { throw new TypeError("network"); } }), { result: "failed" });
+  const hang = (_url, init) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
+  assert.deepEqual(await postAct(act, { fetchImpl: hang, timeout: 30 }), { result: "timeout" });
+  let sent;
+  await postAct({ ...act, action: "deny", reason: "Use stock" }, { fetchImpl: async (url, init) => { sent = [url, init.method, init.body, init.credentials]; return { ok: true, status: 204 }; } });
+  assert.deepEqual(sent, ["/today/act", "POST", JSON.stringify({ app: "parts", action: "deny", key: "12", reason: "Use stock" }), "same-origin"]);
 });
