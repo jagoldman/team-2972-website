@@ -232,8 +232,8 @@ try {
     const left = await page.$eval("#shell-bar .shbar-appsbtn", (b) => b.getBoundingClientRect().left);
     check("the nine-dot launcher is at the far left of the bar", left < 24, `left=${left}`);
 
-    // Kit 0.5.0: Home (this page) and Tools (one link to the Tools page) open in the same tab; every app opens a new one.
-    const links = await page.$$eval("#app-grid a, #more-list a, #shell-bar .shbar-apps a", (as) => as.filter((a) => a.href !== "http://portal.landing.test/" && !a.classList.contains("shbar-toolslink")).map((a) => ({ href: a.href, target: a.target, rel: a.rel })));
+    // Kit 0.5.1: Home (this page), the favourite tools and "All N tools" open in the same tab; every app opens a new one.
+    const links = await page.$$eval("#app-grid a, #more-list a, #shell-bar .shbar-apps a", (as) => as.filter((a) => a.href !== "http://portal.landing.test/" && !a.matches(".shbar-toolitem, .shbar-alltools")).map((a) => ({ href: a.href, target: a.target, rel: a.rel })));
     const bad = links.filter((l) => l.target !== "_blank" || !l.rel.split(/\s+/).includes("noopener"));
     check(`every app link opens a new tab with rel=noopener (${links.length} links)`, links.length >= 10 && bad.length === 0, bad);
     const hrefs = await page.$$eval("#app-grid a", (as) => as.map((a) => a.getAttribute("href")));
@@ -407,8 +407,8 @@ try {
     { id: "editor", name: "Website editor", description: "Edit the public website, preview, then publish.", host: "editor", groups: ["admin", "mentor"], group: "admin" },
     { id: "github", name: "GitHub", description: "Robot code.", url: "https://example.com/code", groups: ["admin", "mentor", "student"] },
     { id: "handbook", name: "Team Handbook", description: "Team rules and info.", path: "/resources.html", groups: [] },
-    { id: "tool-trace", name: "Drawing to vector", description: "A photo of a drawing becomes a laser or CAD file.", tip: "Make an SVG for the laser and a DXF for Onshape, at true size.", host: "tools", path: "/trace", tool: true, icon: "trace", groups: ["admin", "mentor", "student"] },
-    { id: "tool-gear", name: "Gear and sprocket finder", description: "A photo and one measurement name the part.", tip: "Work out gear pitch, chain size or belt profile, then find it in Parts.", host: "tools", path: "/gear", tool: true, icon: "gear", groups: ["admin", "mentor", "student"] },
+    { id: "tool-trace", name: "Drawing to vector", description: "A photo of a drawing becomes a laser or CAD file.", tip: "Make an SVG for the laser and a DXF for Onshape, at true size.", host: "tools", path: "/trace", tool: true, top: true, icon: "trace", groups: ["admin", "mentor", "student"] },
+    { id: "tool-gear", name: "Gear and sprocket finder", description: "A photo and one measurement name the part.", tip: "Work out gear pitch, chain size or belt profile, then find it in Parts.", host: "tools", path: "/gear", tool: true, top: true, icon: "gear", groups: ["admin", "mentor", "student"] },
   ]);
   const SHOTS = process.env.PORTAL_TEST_SHOTS || "";
   const shot = async (page, name, full = false) => { if (SHOTS) await page.screenshot({ path: join(SHOTS, `${name}.png`), fullPage: full }); };
@@ -1286,10 +1286,11 @@ try {
     await page.focus('[data-grp="adminapps"] .grphead');
     await page.keyboard.press(" ");
     const tools = await page.$$eval("#tools-list a", (as) => as.map((a) => [a.querySelector("b")?.textContent || a.textContent.trim(), a.getAttribute("href"), a.target, a.dataset.tip || ""]));
-    check(`${width}px: Tools opens to the two tools (same tab, with tips) and All tools last`, JSON.stringify(tools) === JSON.stringify([
+    // Kit 0.5.1 (M6): the favourites (no cookie: the tools marked top, here both), then "All N tools".
+    check(`${width}px: Tools opens to the two favourite tools (same tab, with tips) and All 2 tools last`, JSON.stringify(tools) === JSON.stringify([
       ["Drawing to vector", "http://tools.landing.test/trace", "", "Make an SVG for the laser and a DXF for Onshape, at true size."],
       ["Gear and sprocket finder", "http://tools.landing.test/gear", "", "Work out gear pitch, chain size or belt profile, then find it in Parts."],
-      ["All tools›", "http://tools.landing.test/", "", ""]]), tools);
+      ["All 2 tools›", "http://tools.landing.test/", "", ""]]), tools);
     const cookie = (await context.cookies(PORTAL)).find((c) => c.name === "shellgroups");
     check(`${width}px: the open rows are remembered site-wide (shellgroups = tools.adminapps)`, cookie && cookie.value === "tools.adminapps" && cookie.domain === ".landing.test", cookie);
     await page.waitForTimeout(400); // the chevrons finish turning
@@ -1320,6 +1321,95 @@ try {
     const back = await page.$$eval("#home-groups .grp", (els) => els.map((e) => [e.hidden, e.querySelector(".grphead").getAttribute("aria-expanded")]));
     check("clearing the search closes the rows again (search never saves a row open)", back.every(([hid, exp]) => !hid && exp === "false") && !(await context.cookies(PORTAL)).some((c) => c.name === "shellgroups"), back);
     await context.close();
+  }
+
+  // 8.3.1, M6 and F3: Home's own Tools row lists the person's favourites (the kit reads the shelltoolfavs cookie), then
+  // "All N tools". The seventeen tools are infra's apps.json at r831 5983bb9 (test/fixtures/tools-831.json); one more,
+  // made up for this test, is for mentors only, so a student's cookie that names it shows nothing for it.
+  {
+    const TOOLS = JSON.parse(readFileSync(join(root, "test/fixtures/tools-831.json"), "utf8"));
+    const TOOL_APPS = JSON.stringify([
+      { id: "tasks", name: "Task App", description: "Your tasks.", host: "tasks", groups: ["admin", "mentor", "student", "parent"] },
+      ...TOOLS,
+      { id: "tool-staffonly", tool: true, name: "Staff only tool", description: "Made up for this test.", host: "tools", path: "/staffonly", icon: "units", groups: ["mentor"] },
+    ]);
+    const SIX = [["Shooter", "/shooter"], ["Elevator", "/elevator"], ["Belt, chain and gear spacing", "/spacing"], ["Gear ratio", "/ratio"], ["Drawing to vector", "/trace"], ["Gear and sprocket finder", "/gear"]];
+    const NOTE = "Star a tool on the Tools page to keep it here.";
+    const homeTools = (page) => page.evaluate(() => {
+      const g = document.querySelector('#home-groups [data-grp="tools"]');
+      if (!g) return null;
+      return { count: g.querySelector(".tcount").textContent, expanded: g.querySelector(".grphead").getAttribute("aria-expanded"),
+        favs: [...g.querySelectorAll("#tools-list a.toolrow:not(.all)")].map((a) => [a.querySelector("b").textContent, a.getAttribute("href"), a.target]),
+        note: g.querySelector(".grpnote")?.textContent || "", all: [...g.querySelectorAll("#tools-list a.toolrow.all")].map((a) => [a.textContent.trim(), a.getAttribute("href")]) };
+    });
+    const want = (favs, all = "All 17 tools›", count = "17") => ({ count, favs: favs.map(([n, p]) => [n, `http://tools.landing.test${p}`, ""]), all: [[all, "http://tools.landing.test/"]] });
+    const same = (got, w, note = "") => got && got.count === w.count && JSON.stringify(got.favs) === JSON.stringify(w.favs) && JSON.stringify(got.all) === JSON.stringify(w.all) && got.note === note;
+    const CASES = [
+      ["no cookie: the six marked top, in apps.json's order", null, SIX, ""],
+      ["a cookie naming two tools: those two, in the cookie's order", "tool-ratio.tool-shooter", [["Gear ratio", "/ratio"], ["Shooter", "/shooter"]], ""],
+      ['the "none" value: the line and All 17 tools', "-", [], NOTE],
+      ["a cookie naming a tool this person may not open, an unknown id and a repeat: only Gear ratio", "tool-staffonly.tool-nope.tool-ratio.tool-ratio", [["Gear ratio", "/ratio"]], ""],
+    ];
+    for (const [label, value, favs, note] of CASES) {
+      const { context } = await newContext(browser, { groups: "student", apps: TOOL_APPS });
+      if (value !== null) await context.addCookies([site("shelltoolfavs", value)]);
+      const { page, errors } = await openPortal(context);
+      const closed = await homeTools(page);
+      check(`M6 student, ${label}: Home's Tools row is closed to start with`, closed && closed.expanded === "false" && (await page.isHidden("#tools-list")), closed);
+      await page.click('[data-grp="tools"] .grphead');
+      const got = await homeTools(page);
+      check(`M6 student, ${label}`, same(got, want(favs), note) && errors.length === 0, { got, errors });
+      // The bar's menu draws the same favourites from the same cookie (kit 0.5.1).
+      await page.click("#shell-bar .shbar-appsbtn");
+      const menu = await page.$eval("#shell-bar .shbar-apps", (p) => ({ open: p.querySelector(".shbar-toolsbtn")?.getAttribute("aria-expanded"),
+        favs: [...p.querySelectorAll(".shbar-toolitem b")].map((b) => b.textContent), all: p.querySelector(".shbar-alltools")?.textContent.trim() }));
+      check(`M6 student, ${label}: the Apps menu shows the same favourites and All 17 tools`, menu.open === "true" && menu.favs.join() === favs.map((f) => f[0]).join() && menu.all === "All 17 tools›", menu);
+      await context.close();
+    }
+    {
+      // The mentor may open the made-up tool: the same cookie shows it (the filter is the person's groups), and N counts it.
+      const { context } = await newContext(browser, { groups: "mentor", apps: TOOL_APPS });
+      await context.addCookies([site("shelltoolfavs", "tool-staffonly.tool-ratio")]);
+      const { page } = await openPortal(context);
+      await page.click('[data-grp="tools"] .grphead');
+      const got = await homeTools(page);
+      check("M6 mentor: the same cookie shows the mentors' tool, and All 18 tools", same(got, want([["Staff only tool", "/staffonly"], ["Gear ratio", "/ratio"]], "All 18 tools›", "18")), got);
+      await context.close();
+    }
+    {
+      // Competition mode: every tool is in both modes, so the row is the same. Home's search finds the favourites only.
+      const { context } = await newContext(browser, { groups: "student", apps: TOOL_APPS });
+      await context.addCookies([site("mode", "competition")]);
+      const { page } = await openPortal(context);
+      await page.click('[data-grp="tools"] .grphead');
+      check("M6 Competition mode: the six favourites and All 17 tools", same(await homeTools(page), want(SIX)), await homeTools(page));
+      await page.fill("#q", "ratio");
+      const hit = await page.$$eval("#tools-list a.toolrow:not(.all)", (as) => as.filter((a) => !a.hidden).map((a) => a.querySelector("b").textContent));
+      await page.fill("#q", "pneumatics");
+      const miss = { row: await page.isHidden('[data-grp="tools"]'), empty: await page.isVisible("#app-empty") };
+      check("M6 search: a favourite is found; a tool that is not a favourite is not on Home", hit.join() === "Gear ratio" && miss.row && miss.empty, { hit, miss });
+      await context.close();
+    }
+    // Screenshots (looked at by hand): Home's open Tools row, and the open Apps menu, at 390 and 320 wide.
+    for (const [width, height] of [[390, 844], [320, 568]]) {
+      const { context } = await newContext(browser, { groups: "student", apps: TOOL_APPS, width, height, today: TODAY.student });
+      const { page, errors } = await openPortal(context);
+      await settle(page);
+      await page.click('[data-grp="tools"] .grphead');
+      await page.$eval('[data-grp="tools"]', (e) => e.scrollIntoView({ block: "start" }));
+      await page.evaluate(() => scrollBy(0, -80));
+      await page.waitForTimeout(400);
+      await shot(page, `r831-home-tools-open-${width}`);
+      check(`M6 ${width}px: Home's open Tools row, no sideways scroll`, (await over(page)) <= 0);
+      await page.evaluate(() => scrollTo(0, 0));
+      await page.click("#shell-bar .shbar-appsbtn");
+      await page.waitForTimeout(300);
+      await shot(page, `r831-apps-menu-${width}`);
+      const m = await page.$eval("#shell-bar .shbar-apps", (p) => ({ title: p.querySelector(".shbar-panel-head")?.textContent.replace("Close", "").trim(),
+        mode: p.querySelectorAll(".shbar-mode").length, favs: p.querySelectorAll(".shbar-toolitem").length, all: p.querySelector(".shbar-alltools")?.textContent.trim() }));
+      check(`M6 ${width}px: the open Apps menu reads Apps, no mode switch, six favourites, All 17 tools; no sideways scroll`, m.title === "Apps" && m.mode === 0 && m.favs === 6 && m.all === "All 17 tools›" && (await over(page)) <= 0 && errors.length === 0, { m, errors });
+      await context.close();
+    }
   }
 
   // The shop screen (C9): "Pick what this screen shows" and nothing else.
@@ -1414,10 +1504,13 @@ try {
     const more = (await names(page, "#shell-bar .shbar-more ul.shbar-grid > li")).join();
     check(`${width}px: Admin and Website editor are under Admin apps, not More`, admin === "Admin,Website editor" && more === "GitHub,Team Handbook", { admin, more });
     await shot(page, `apps-menu-groups-${width}`);
-    // the × follows the switch: after Competition, Tab reaches it
-    await page.focus("#shell-bar .shbar-mode button:last-child");
-    await page.keyboard.press("Tab");
-    check(`${width}px: the Apps menu's × follows the Build / Competition switch`, await page.evaluate(() => document.activeElement?.matches(".shbar-apps .shbar-x")));
+    // Kit 0.5.1 (M1): the head is the word "Apps" and the ×; no Build / Competition switch, so the × is the first stop.
+    const head = await page.$eval("#shell-bar .shbar-apps", (p) => ({
+      title: p.querySelector(".shbar-panel-head")?.textContent.replace("Close", "").trim(),
+      mode: p.querySelectorAll('.shbar-mode, [role="group"][aria-label="App mode"]').length,
+      first: [...p.querySelectorAll("a[href], button")].find((e) => !e.closest("[hidden]"))?.matches(".shbar-x") }));
+    check(`${width}px: the Apps menu's head reads Apps, has no mode switch, and its × is the first stop`, head.title === "Apps" && head.mode === 0 && head.first, head);
+    await page.focus("#shell-bar .shbar-apps .shbar-x");
     await page.keyboard.press("Enter");
     check(`${width}px: the × closes the Apps menu`, !(await page.isVisible("#shell-bar .shbar-apps")));
     // the scrim: a press on the page closes the menu and does not reach the control beneath

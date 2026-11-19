@@ -1,0 +1,331 @@
+[
+  {
+    "id": "tool-shooter",
+    "tool": true,
+    "name": "Shooter",
+    "description": "Wheel, hood and the shot's flight, played out.",
+    "tip": "See what a wheel speed and a hood angle do to a shot, and how fast the wheel recovers.",
+    "icon": "shooter",
+    "host": "tools",
+    "path": "/shooter",
+    "top": true,
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-elevator",
+    "tool": true,
+    "name": "Elevator",
+    "description": "Stages, rigging, speed and holding power.",
+    "tip": "Size the motor and reduction for a lift, and watch the stages move.",
+    "icon": "elevator",
+    "host": "tools",
+    "path": "/elevator",
+    "top": true,
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-arm",
+    "tool": true,
+    "name": "Arm",
+    "description": "Torque through the swing and time to move.",
+    "tip": "Check that an arm can hold and move its load at every angle.",
+    "icon": "arm",
+    "host": "tools",
+    "path": "/arm",
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-drive",
+    "tool": true,
+    "name": "Drivetrain",
+    "description": "Top speed, sprint times and wheel slip.",
+    "tip": "Race two gearings over a distance to see which one gets there first.",
+    "icon": "drivetrain",
+    "host": "tools",
+    "path": "/drive",
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-intake",
+    "tool": true,
+    "name": "Intake",
+    "description": "Roller speed against driving speed.",
+    "tip": "Make sure the rollers pull a game piece in faster than the robot drives onto it.",
+    "icon": "intake",
+    "host": "tools",
+    "path": "/intake",
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-spacing",
+    "tool": true,
+    "name": "Belt, chain and gear spacing",
+    "description": "Centre distances for pulleys, sprockets and gears.",
+    "tip": "Find the hole spacing that makes a belt, chain or gear pair fit.",
+    "icon": "belt",
+    "host": "tools",
+    "path": "/spacing",
+    "top": true,
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-ratio",
+    "tool": true,
+    "name": "Gear ratio",
+    "description": "Build a reduction stage by stage, or find parts for one.",
+    "tip": "See speed and torque through each stage, and which stock gears reach a ratio.",
+    "icon": "ratio",
+    "host": "tools",
+    "path": "/ratio",
+    "top": true,
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-motors",
+    "tool": true,
+    "name": "Motors",
+    "description": "Torque, current and power curves, compared.",
+    "tip": "Compare motors under the current limit you will really run.",
+    "icon": "motor",
+    "host": "tools",
+    "path": "/motors",
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-power",
+    "tool": true,
+    "name": "Battery and breakers",
+    "description": "What the robot pulls, and when it browns out.",
+    "tip": "Add up the current of every mechanism and see the battery voltage sag.",
+    "icon": "battery",
+    "host": "tools",
+    "path": "/power",
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-air",
+    "tool": true,
+    "name": "Pneumatics",
+    "description": "Air used against what the tanks hold.",
+    "tip": "Check that the tanks and compressor keep up with the cylinders.",
+    "icon": "air",
+    "host": "tools",
+    "path": "/air",
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-tip",
+    "tool": true,
+    "name": "Tip-over",
+    "description": "Centre of gravity and how hard you can brake.",
+    "tip": "Find where the robot's weight sits and when it tips.",
+    "icon": "tip",
+    "host": "tools",
+    "path": "/tip",
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-beam",
+    "tool": true,
+    "name": "Tube strength",
+    "description": "How far a tube bends and when it yields.",
+    "tip": "Pick a tube size and wall for an arm or a frame member.",
+    "icon": "beam",
+    "host": "tools",
+    "path": "/beam",
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-holes",
+    "tool": true,
+    "name": "Holes and fasteners",
+    "description": "Drill sizes for taps, rivets, bearings and inserts.",
+    "tip": "Look up the drill for a thread, a rivet or a press fit.",
+    "icon": "holes",
+    "host": "tools",
+    "path": "/holes",
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-units",
+    "tool": true,
+    "name": "Unit conversion",
+    "description": "One number in every unit of its kind.",
+    "tip": "Convert a length, a force, a torque or a speed between inch and metric units.",
+    "icon": "units",
+    "host": "tools",
+    "path": "/units",
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-code",
+    "tool": true,
+    "name": "Code constants",
+    "description": "Gearing and wheel size as the numbers robot code needs.",
+    "tip": "Turn gearing and wheel size into the conversion factors for code.",
+    "icon": "code",
+    "host": "tools",
+    "path": "/code",
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-trace",
+    "tool": true,
+    "name": "Drawing to vector",
+    "description": "A photo of a drawing becomes a laser or CAD file.",
+    "tip": "Make an SVG for the laser and a DXF for Onshape, at true size.",
+    "icon": "trace",
+    "host": "tools",
+    "path": "/trace",
+    "top": true,
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  },
+  {
+    "id": "tool-gear",
+    "tool": true,
+    "name": "Gear and sprocket finder",
+    "description": "A photo and one measurement name the part.",
+    "tip": "Work out gear pitch, chain size or belt profile, then find it in Parts.",
+    "icon": "gear",
+    "host": "tools",
+    "path": "/gear",
+    "top": true,
+    "modes": [
+      "build",
+      "competition"
+    ],
+    "groups": [
+      "admin",
+      "mentor",
+      "student"
+    ]
+  }
+]

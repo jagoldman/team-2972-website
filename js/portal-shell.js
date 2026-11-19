@@ -8,12 +8,13 @@ import { mountAppBar } from "/shell/static/shell.js";
 import { parseGroups, resolveTiles, resolveTools } from "/shell/core.js";
 import { isDisplayOnly } from "/js/portal-home.js";
 
-export function bindPortalModeChange(onChange, root = document.getElementById("shell-bar")) {
-  const listener = (event) => {
-    if (event.target?.closest?.(".shbar-mode button")) onChange();
-  };
-  root.addEventListener("click", listener);
-  return () => root.removeEventListener("click", listener);
+// The bar tells this tab when it wrote the mode cookie (the kit's "shell:change"; since kit 0.5.1 the only switch in
+// the bar is the event-day banner's "Switch to Competition", the menu's Build / Competition switch is on Account).
+// A change made in another tab or on Account is followed when the tab comes back (Home's visibilitychange).
+export function bindPortalModeChange(onChange, win = window) {
+  const listener = () => onChange();
+  win.addEventListener("shell:change", listener);
+  return () => win.removeEventListener("shell:change", listener);
 }
 
 async function getJson(path) {

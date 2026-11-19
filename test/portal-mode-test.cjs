@@ -8,28 +8,26 @@ const path = require("node:path");
 const source = fs.readFileSync(path.join(__dirname, "../js/portal-shell.js"), "utf8")
   .replace(/^import .*;$/gm, "").replace(/^export /gm, "");
 
-test("portal mode subscription refreshes after a kit click and can be removed", () => {
+// Kit 0.5.1: the menu's Build / Competition switch is gone (it is on Account). Home follows the kit's "shell:change"
+// (the event-day banner's "Switch to Competition" writes the mode and dispatches it), not clicks in the bar.
+test("portal mode subscription refreshes on the kit's shell:change and can be removed", () => {
   const listeners = new Map();
-  const root = {
+  const win = {
     addEventListener: (type, listener) => listeners.set(type, listener),
     removeEventListener: (type, listener) => {
       if (listeners.get(type) === listener) listeners.delete(type);
     },
   };
-  const context = vm.createContext({ document: { getElementById: () => root } });
+  const context = vm.createContext({ document: { getElementById: () => ({}) }, window: win });
   vm.runInContext(source, context);
   let cookie = "build";
   const observed = [];
   const remove = context.bindPortalModeChange(() => observed.push(cookie));
-  const click = (matches) => listeners.get("click")({
-    target: { closest: (selector) => selector === ".shbar-mode button" && matches },
-  });
+  assert.deepEqual([...listeners.keys()], ["shell:change"]);
   cookie = "competition";
-  click(true);
+  listeners.get("shell:change")({ detail: { mode: "competition", theme: "system" } });
   cookie = "build";
-  click(true);
-  click(false);
-  listeners.get("click")({ target: null });
+  listeners.get("shell:change")({ detail: { mode: "build", theme: "system" } });
   assert.deepEqual(observed, ["competition", "build"]);
   remove();
   assert.equal(listeners.size, 0);

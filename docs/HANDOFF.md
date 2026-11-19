@@ -1,5 +1,23 @@
 # landing: handoff
 
+## 2026-11-19: release 8.3.1, kit 0.5.1 and Home's Tools row (CONTRACT r831 M6, branch `r831`)
+
+From `new-apps/briefs/r831/HOME_TOOLS.md` and `SYNC.md`. The static kit is synced from infra `r831` `5983bb9`
+(`scripts/sync-shell.sh static`; `scripts/check-shell.sh static`: hashes match), as a commit of its own.
+
+- **The bar:** the Apps menu's head is "Apps" and the ×; the Build / Competition switch is on the Account page only.
+  Tools opens in place with the person's favourite tools and "All N tools". The event-day banner keeps "Switch to Competition".
+- **Home's Tools row (M6)** needs no code here: `homeGroups.update({ tiles, tools, mode })` with every tool makes the kit
+  draw the favourites (its reader of the `shelltoolfavs` cookie; never parse it here), then "All N tools", or the line
+  "Star a tool on the Tools page to keep it here." The row still starts closed and keeps its own saved choice. Home's
+  search finds the favourites only.
+- **`bindPortalModeChange`** (`js/portal-shell.js`) now follows the kit's `shell:change` window event (the banner's
+  switch writes the mode and dispatches it), not clicks on the menu's switch, which is gone.
+- **Tests:** `test/fixtures/tools-831.json` is the seventeen tool entries of infra's `config/apps.json` at `r831`
+  `5983bb9`; refresh it when infra's tools change. A test that needs Competition sets the `mode` cookie before the page loads.
+- **`sw.js` stays v11:** it never precaches or stores `/shell/` scripts or styles (only `/shell/fonts/`), and `/js/` is
+  network first, so no stored file outlives this change.
+
 ## 2026-11-19: release 8.3.1, the hero photo shown as it is (D206, branch `r831`)
 
 From `new-apps/briefs/r831/UNBLUR.md`. The hero's blur (D193) was removed at the owner's request.
