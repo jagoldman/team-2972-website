@@ -122,7 +122,8 @@ check("imgUrl: an ID that is also an Object property name is not looked up there
   const cfg = read("config.js");
   check("D193: the table in config.js never holds a Caddy template opening (two braces)", !cfg.slice(cfg.indexOf("window.PHOTO_BLUR")).includes("{{"));
   check("D193: the image build gets config.js (the table) next to content.js", /COPY config\.js \/build\/config\.js/.test(read("Dockerfile")));
-  check("D193: the service worker's cache version moved with the b2 mark (v9)", /const VERSION = "v9"/.test(read("sw.js")));
+  // v9 moved with the b2 mark; the merge of release 8.3's two branches is v10. Any later version keeps the rule.
+  check("D193: the service worker's cache version moved with the b2 mark (v9 or later)", +((read("sw.js").match(/const VERSION = "v(\d+)"/) || [])[1] || 0) >= 9);
   check("D193: the version mark is b2 (the mask is fully opaque over the face; new addresses for the new pixels)", blur[HERO].v === "b2" && fetchPhotos.OG.file === "og-image-b2.jpg");
 }
 
