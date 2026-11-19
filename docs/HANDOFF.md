@@ -1,5 +1,38 @@
 # landing: handoff
 
+## 2026-11-18: release 8.3, the portal Home in Ground up (branch `r83`)
+
+From `new-apps/briefs/r83/HOME.md`, CONTRACT H1, H2, C1, E1 and the portal side of `GAP_HOME_ACCOUNT.md`. The demo is
+`portal-demo` design83 `homeGround()` (`?design=c`).
+
+- **Where:** `portal/index.html` (the page and its module), `js/portal-home.js` (data: `parseToday`, `postAct`,
+  `postTaskDone`, dates and practice counts, the shop screen), `js/portal-ground.js` (the drawing: season line, Now
+  with its acts, This week, Coming up, Can you help?, the event line, In the pit, Next for us, the next task, Recent
+  activity), `css/portal-home.css` (tokens only; loaded by the portal page only). `css/style.css` is not touched.
+- **The page:** "Hi Sam." and the date; the season line (a parent: the next practice, then days and practices to the
+  date); two columns. Main: Now, the next task (student), Waiting on others, Recent activity (3). A parent: This week,
+  Coming up. Side: This week (a parent: Can you help?), Apps (one line per app, search with "/", Tools, Admin apps,
+  Team links), Get started. On a phone one column in the order of `css/portal-home.css` (`order`). An event
+  (`event` in `/today.json`): my shift, the event line, In the pit, Next for us; no week, activity, next task or
+  guide. Without `event` but with `/event.json` `happeningNow`: the 8.1.5 behaviour (shift rows first, compact card).
+- **Every 8.3 part is optional:** `parseToday` returns `others`, `season`, `milestones`, `week`, `coming`, `event`
+  (null or [] when missing or malformed) and row fields `group`, `mark`, `lines` (≤2), `acts` (≤2; app one of
+  parts, skills, calendar, tasks; key `^[A-Za-z0-9_:.-]{1,100}$`). App paths in `week`, `coming`, `milestones` and
+  `event` are made absolute on that app's host. An 8.1.5 answer draws the Home from its rows alone.
+- **Acts (D187):** Approve, Deny (a dialog with Parts' default "Let's use the ones in stock first."), Sign off and
+  Sign up post `{app, action, key, reason?}` to same-origin `POST /today/act`; the row goes at once; on any answer
+  but 204/200 it comes back with a sentence (kept when the Home is drawn again). Undo only when the answer carries
+  `undoUntil` (Parts), as `action: "unapprove"`. One call per key at a time. Sign in stays a link. `sw.js` already
+  never stores `/today/…`.
+- **One filled button:** `oneFilled()`: the first of Sign in, a primary act, my shift's button, the next task's
+  Mark task done. "Mark task done" is Done (the whole task); Mark step done waits for CONTRACT T.
+- **Kit 0.5.0 stand-ins** (delete when the kit has them): "More" renamed "Team links" after `mountHomeGroups` draws
+  (`teamLinksWords` in `portal/index.html`); the guide's slot hidden on an event day; `.evline` and the guide card in
+  the side column in the marked block at the end of `css/portal-home.css`.
+- **Tests:** `test/fixtures/today-83.mjs` (made-up answers dated from the run day); `test/portal-home-test.mjs` (every
+  new part, `postAct`'s answers); `test/portal-shell-test.mjs` (the 8.3 block: roles at 1280/390, light/dark, acts,
+  event day, the 8.1.5 answer, contrast).
+
 ## 2026-11-14: release 8.1.5, shell kit 0.4.0 (branch `r815`)
 
 From `new-apps/briefs/r815/SYNC_040.md`. The static kit is synced from infra `release-8.1.5` `c0e09bb`

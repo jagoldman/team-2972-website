@@ -153,7 +153,7 @@ async function openPage(url, theme) {
   const ready = () => { try { const w = f.contentWindow; return w.location.href !== "about:blank" && (w.document.documentElement.classList.contains("content-ready") || (url === "offline.html" && w.document.readyState === "complete")); } catch (e) { return false; } };
   for (let i = 0; i < 200 && !ready(); i++) await sleep(50);
   const w = f.contentWindow;
-  if (url === "portal/index.html") for (let i = 0; i < 100 && !(w.document.querySelector("#app-grid .app-card") || (w.document.getElementById("no-group") && !w.document.getElementById("no-group").hidden)); i++) await sleep(50);
+  if (url === "portal/index.html") for (let i = 0; i < 100 && !(w.document.querySelector("#app-grid .approw") || (w.document.getElementById("no-group") && !w.document.getElementById("no-group").hidden)); i++) await sleep(50);
   if (url.startsWith("portal/")) for (let i = 0; i < 100 && !w.document.querySelector("#shell-bar [aria-label=Theme]"); i++) await sleep(50);
   await sleep(300);
   return { frame: f, win: w, doc: w.document };
