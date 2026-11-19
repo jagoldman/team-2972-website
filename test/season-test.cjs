@@ -22,6 +22,9 @@ function load(contentSource) {
   ctx.window = ctx;
   ctx.document = { documentElement: { getAttribute: () => null }, body: { hasAttribute: () => false }, querySelectorAll: () => [], querySelector: () => null, getElementById: () => ({}), addEventListener() {}, cookie: "" };
   vm.createContext(ctx);
+  ctx.URL = URL;
+  // config.js first, as every page loads it (it carries the D193 blur list; without it no Drive photo is shown).
+  vm.runInContext(read("config.js"), ctx, { filename: "config.js" });
   vm.runInContext(contentSource || read("js/content.js"), ctx, { filename: "content.js" });
   vm.runInContext(read("js/components.js") + "\n;globalThis.T = { resultType, seasonStats, seasonLog, seasonSummary, parseResult, resultRow, resultsTable, parseEventDates, renderNextUp, sponsorNames, robotsRow, teamDay };", ctx, { filename: "components.js" });
   return ctx;

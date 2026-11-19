@@ -44,7 +44,10 @@ function makeEnv({ fetchImpl, ready = true, timeoutMs = 60, withComponents = fal
     querySelectorAll: () => [],
     getElementById: () => ({ set innerHTML(v) {}, setAttribute() {}, classList: { toggle() {}, add() {} } }),
   };
+  ctx.URL = URL;
   vm.createContext(ctx);
+  // config.js first, as every page loads it (it carries the D193 blur list; without it no Drive photo is shown).
+  vm.runInContext(read("config.js"), ctx, { filename: "config.js" });
   vm.runInContext(read("js/content.js"), ctx, { filename: "content.js" });
   vm.runInContext(read("js/content-loader.js"), ctx, { filename: "content-loader.js" });
   if (withComponents) vm.runInContext(read("js/components.js"), ctx, { filename: "components.js" });
