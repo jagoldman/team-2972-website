@@ -72,7 +72,7 @@ body[data-portal] { font: revert-layer; line-height: revert-layer; }
 .homemain > :first-child, .homeside-lead > .hsec:first-child, .homeside-lead:empty + .appssec { border-top: 0; }
 .gempty { margin: 0 0 6px; }
 @media (max-width: 899px) {
-  .homecols { display: flex; flex-direction: column; gap: 0; }
+  .homecols { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
   .homemain, .homeside, .homeside-lead { display: contents; }
   .homeside { padding: 0; border: 0; }
   .homecols > *, .homemain > *, .homeside > *, .homeside-lead > * { order: 3; border-top: 1px solid var(--line); }
@@ -160,7 +160,16 @@ body[data-portal] { font: revert-layer; line-height: revert-layer; }
 .nextsec .heroacts { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px; }
 .nextsec .heroacts .shell-btn svg { flex: none; }
 .nextsec.evcompact .nexttitle { font-size: 1.1rem; }
-@media (max-width: 640px) { .nexttitle { min-height: 44px; align-items: center; } }
+@media (max-width: 640px) {
+  .nexttitle { min-height: 44px; align-items: center; }
+  /* The demo's phone card: the main button across, the two doors side by side under it. */
+  .nextsec .heroacts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nextsec .heroacts > :first-child { grid-column: 1 / -1; }
+  .nextsec .heroacts > .shell-btn { min-width: 0; white-space: normal; }
+  /* The guide's Show me across, as the demo's phone Home. */
+  .guideslot .shell-gnext { flex-wrap: wrap; }
+  .guideslot .shell-gnext > .shell-gbtn { flex: 1 1 100%; justify-content: center; }
+}
 
 /* ---------- Recent activity ---------- */
 .home-g .actlink { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 12px; width: 100%; min-height: 44px; padding: 8px 4px; color: inherit; text-decoration: none; }
@@ -210,14 +219,32 @@ body[data-portal] { font: revert-layer; line-height: revert-layer; }
 .gerr:empty { display: none; }
 .gbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 
-/* ---------- Get access stays, under the columns ---------- */
-.home-g #access { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); }
+/* ---------- Get access stays (the real app has it), under the columns: a section of the sheet, no boxes ---------- */
+.home-g #access { margin-top: 12px; padding-top: 16px; border-top: 1px solid var(--line); }
+.home-g #access > h2 { margin: 0 0 6px; font-size: 1.06rem; }
+.home-g #access .section-lead { margin: 0 0 4px; font-size: 0.92rem; }
+.home-g #access .contact-grid { gap: 0 32px; }
+.home-g #access .contact-card { display: grid; gap: 4px; align-content: start; padding: 12px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; box-shadow: none; }
+.home-g #access .contact-card h3 { margin: 0; font-size: 0.95rem; }
+.home-g #access .contact-card p { margin: 0; font-size: 0.9rem; }
+.home-g #access .contact-card > .btn { margin-top: 6px; }
+.home-g #access .access-note { margin-top: 8px; font-size: 0.86rem; }
+/* The portal's buttons from css/style.css (Get access, the footer's Copy) take the kit's plain button: the page has
+   one filled button, and it is Home's own. */
+body[data-portal] :is(#access, #site-footer) .btn { min-height: 34px; padding: 0 14px; border: 1px solid var(--line-2); border-radius: var(--r-ctl); background: var(--surface); color: var(--text); font: 700 0.92rem/1.2 var(--body); box-shadow: none; }
+body[data-portal] :is(#access, #site-footer) .btn:hover { background: var(--surface-2); color: var(--text); }
+@media (max-width: 640px) { body[data-portal] :is(#access, #site-footer) .btn { min-height: 44px; } }
+/* No upper-case labels (the look's rules): the footer's "Contact" and "Pages" in sentence case. */
+body[data-portal] #site-footer .label { letter-spacing: 0; text-transform: none; font-size: 0.86rem; }
 
 /* ---------- At an event: my shift, then the kit's event line (.shell-evline), In the pit, Next for us ---------- */
 .homemain > .shell-evline { margin: 12px 0 2px; }
 #home-top > .shell-evline { margin-top: 14px; }
 .shiftcard { margin-top: 12px; }
 .shiftcard .glist > li { border-top: 0; }
+/* My shift is the hero of an event day: its words, then its one button under them (the demo's shift card). */
+.shiftcard .nowrow.nowfirst { flex-direction: column; align-items: flex-start; gap: 8px; }
+.shiftcard .nowrow.nowfirst .rowlink { flex: none; min-height: 0; width: 100%; }
 
 /* ---------- The guide's card (the kit's quiet .shell-guidecard: a rule above, no box) in the side column ---------- */
 .guideslot:empty, .guideslot[hidden] { display: none; }
