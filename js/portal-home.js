@@ -545,8 +545,14 @@ export async function postTaskDone(taskId, { timeout = WAIT_MS, fetchImpl = fetc
   }
 }
 
-/** Parts' id of the approval an Undo must name (CONTRACT P4): at most 64 of A-Z a-z 0-9 _ -. */
+/**
+ * Parts' id of the approval an Undo must name (CONTRACT P4): a positive integer (a JSON number, as Parts sends it), or a
+ * short string of A-Z a-z 0-9 _ -. It is kept exactly as received and sent back with the same JSON type.
+ */
 const APPROVAL_ID = /^[A-Za-z0-9_-]{1,64}$/;
+export function isApprovalId(v) {
+  return (Number.isSafeInteger(v) && v > 0) || (typeof v === "string" && APPROVAL_ID.test(v));
+}
 /**
  * POST /today/act {app, action, key, reason?, approval?} (CONTRACT H2, P4). Resolves to { result, undoUntil?,
  * approval?, message? }:
@@ -570,7 +576,7 @@ export async function postAct(body, { timeout = WAIT_MS, fetchImpl = fetch } = {
       if (!isJson(res)) return { result: "uncertain" };
       const j = await jsonCapped(res, 4096);
       if (!j || typeof j !== "object") return { result: "uncertain" };
-      if (typeof j.undoUntil === "string" && Date.parse(j.undoUntil) > Date.now() && typeof j.approval === "string" && APPROVAL_ID.test(j.approval)) {
+      if (typeof j.undoUntil === "string" && Date.parse(j.undoUntil) > Date.now() && isApprovalId(j.approval)) {
         return { result: "ok", undoUntil: j.undoUntil, approval: j.approval };
       }
       return { result: "ok" };

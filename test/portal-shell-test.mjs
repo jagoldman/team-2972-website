@@ -426,7 +426,7 @@ try {
     const filled = [...document.querySelectorAll("#main .shell-btn--primary, #main .btn:not(.btn-outline):not(.btn-ghost)")].filter((b) => vis(b) && !b.closest("[data-guide-card]")).map(text);
     return {
       top: document.querySelector("#home-top > *")?.className || null, topText: (document.querySelector("#home-top > *")?.innerText || "").replace(/\s+/g, " ").trim(),
-      main: ids("#home-main > *"), side: ids("#home-side-lead > *, #home-side > section, #home-side > .guideslot > section"),
+      main: ids("#home-main > *:not([data-guide-card])"), side: ids("#home-side-lead > *, #home-side > section, #home-side > .guideslot > section"),
       groups: [...document.querySelectorAll("#home-now .nowgroup")].map(text),
       now: rows("home-now"), others: rows("home-others"), help: rows("home-help"),
       week: [...document.querySelectorAll("#home-week .wkrow")].map((a) => [text(a.querySelector(".wkd b")), text(a.querySelector(".grow > b")), [...a.querySelectorAll(".wkfacts > *")].map(text)]),
@@ -437,7 +437,7 @@ try {
       filled, waitGuide: document.querySelector("#home-now")?.dataset.guide || null, guideHidden: document.querySelector("[data-guide-card]").hidden,
       undef: /undefined|null|NaN/.test(document.getElementById("main").innerText),
       emptyHeads: [...document.querySelectorAll("#main h2, #main h3")].filter((h) => vis(h) && !h.closest("[data-guide-card]") && !h.nextElementSibling).map(text),
-      links: [...document.querySelectorAll("#home-top a, #home-main a, #home-side-lead a")].map((a) => ({ href: a.href, target: a.target, rel: a.rel })),
+      links: [...document.querySelectorAll("#home-top a, #home-main a, #home-side-lead a")].filter((a) => !a.closest("#apps, [data-guide-card]")).map((a) => ({ href: a.href, target: a.target, rel: a.rel })),
     };
   });
   const F = await import(new URL("./fixtures/today-83.mjs", import.meta.url));
@@ -460,7 +460,11 @@ try {
         const h = await homeState(page);
         const w = WANT[role];
         const tag = `8.3 ${role} ${width}px ${theme}`;
-        check(`${tag}: the top line, then main ${w.main.join(", ")} and side ${w.side.join(", ")}`, h.top === w.top && JSON.stringify(h.main) === JSON.stringify(w.main) && JSON.stringify(h.side.slice(0, 2)) === JSON.stringify(w.side), h);
+        // From 900 px two columns; below, one column that holds every section in reading order (review item 7).
+        const phoneMain = { student: ["home-now", "home-next", "home-others", "home-week", "apps", "home-activity"], mentor: ["home-now", "home-week", "apps", "home-activity"],
+          admin: ["home-now", "home-week", "apps", "home-activity"], parent: ["home-week", "home-help", "home-coming", "apps"] }[role];
+        check(width === 390 ? `${tag}: the top line, then one column: ${phoneMain.join(", ")}` : `${tag}: the top line, then main ${w.main.join(", ")} and side ${w.side.join(", ")}`,
+          h.top === w.top && (width === 390 ? JSON.stringify(h.main) === JSON.stringify(phoneMain) && h.side.length === 0 : JSON.stringify(h.main) === JSON.stringify(w.main) && JSON.stringify(h.side.slice(0, 2)) === JSON.stringify(w.side)), h);
         check(`${tag}: one filled button on the page (${w.filled[0]})`, JSON.stringify(h.filled) === JSON.stringify(w.filled), h.filled);
         check(`${tag}: no sideways scroll, no script error, no "undefined", no empty heading`, (await over(page)) <= 0 && errors.length === 0 && !h.undef && h.emptyHeads.length === 0, { over: await over(page), errors, undef: h.undef, empty: h.emptyHeads });
         const bad = h.links.filter((l) => !/\.landing\.test$/.test(new URL(l.href).host) || (new URL(l.href).host !== "portal.landing.test" && (l.target !== "_blank" || !l.rel.includes("noopener"))));
@@ -470,11 +474,11 @@ try {
             .map((e) => [e.textContent.trim().slice(0, 24), Math.round(e.getBoundingClientRect().height)]).filter(([, hh]) => hh < 44));
           check(`${tag}: every control is at least 44px tall`, small.length === 0, small);
           // On a phone one column, in the order a person needs it.
-          const order = await page.evaluate(() => [...document.querySelectorAll("#home-main > *, #home-side-lead > *, #apps")].filter((e) => e.getClientRects().length).sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top).map((e) => e.id));
+          const order = await page.evaluate(() => [...document.querySelectorAll("#home-main > *:not([data-guide-card]), #home-side-lead > *, #apps")].filter((e) => e.getClientRects().length).sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top).map((e) => e.id));
           const wantOrder = role === "parent" ? ["home-week", "home-help", "home-coming", "apps"] : role === "student" ? ["home-now", "home-next", "home-others", "home-week", "apps", "home-activity"] : ["home-now", "home-week", "apps", "home-activity"];
           check(`${tag}: one column in the order ${wantOrder.join(", ")}`, JSON.stringify(order) === JSON.stringify(wantOrder), order);
           // Review item 7: the document order is the order on screen (no CSS reordering), so the keyboard follows it.
-          const domOrder = await page.evaluate(() => [...document.querySelectorAll("#home-main > *, #home-side-lead > *, #apps")].filter((e) => e.getClientRects().length).map((e) => e.id));
+          const domOrder = await page.evaluate(() => [...document.querySelectorAll("#home-main > *:not([data-guide-card]), #home-side-lead > *, #apps")].filter((e) => e.getClientRects().length).map((e) => e.id));
           check(`${tag}: the document order is the order on screen`, JSON.stringify(domOrder) === JSON.stringify(order), { domOrder, order });
         }
         if (role === "student" && theme === "light") {
@@ -627,7 +631,7 @@ try {
   {
     // P4: Undo is offered only when Parts answered {undoUntil, approval}; it sends "unapprove" with that approval.
     const until = new Date(Date.now() + 120000).toISOString();
-    const { context, actPosts } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor, act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: until, approval: "ev_42" } } : 204) });
+    const { context, actPosts } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor, act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: until, approval: 1234 } } : 204) });
     const { page } = await openPortal(context);
     await page.waitForSelector('#home-now [data-id="parts:request:12"]');
     await page.click('#home-now [data-id="parts:request:12"] .nowbtn');
@@ -635,10 +639,11 @@ try {
     await shot(page, "act-undo-1280");
     await page.click("#home-undo .undobtn");
     await page.waitForFunction(() => /Put back/.test(document.getElementById("home-done-status").textContent));
-    check("Approve answered {undoUntil, approval}: Undo is offered and sends {app, action: \"unapprove\", key, approval}", actPosts.length === 2 && actPosts[1].body === JSON.stringify({ app: "parts", action: "unapprove", key: "12", approval: "ev_42" }), actPosts);
+    // P4: Parts' approval is a JSON number; it goes back as the same number, never a string.
+    check("Approve answered {undoUntil, approval: 1234}: Undo is offered and sends {app, action: \"unapprove\", key, approval: 1234} (a number)", actPosts.length === 2 && actPosts[1].body === JSON.stringify({ app: "parts", action: "unapprove", key: "12", approval: 1234 }) && JSON.parse(actPosts[1].body).approval === 1234, actPosts);
     await context.close();
     // Undo refused with 409: the request changed since; it stays approved (the row stays gone) and the page says so.
-    const c409 = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: until, approval: "ev_42" } } : { status: 409, body: { error: "changed" } }) });
+    const c409 = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: until, approval: 1234 } } : { status: 409, body: { error: "changed" } }) });
     c409.answers.today = () => (c409.actPosts.length ? { ...today83.mentor, waiting: today83.mentor.waiting.filter((r) => r.id !== "parts:request:12") } : today83.mentor);
     const p409 = (await openPortal(c409.context)).page;
     await p409.waitForSelector('#home-now [data-id="parts:request:12"]');
@@ -649,6 +654,19 @@ try {
     check("Undo answered 409: \"The request changed since you approved it, so it stays approved.\" and the request stays off Now", (await p409.textContent("#home-done-status")) === "The request changed since you approved it, so it stays approved."
       && !(await p409.isVisible('#home-now [data-id="parts:request:12"]')));
     await c409.context.close();
+    // Undo answered 409 with Account's words for an expired window, and 403 (someone else made the approval).
+    for (const [label, answer, words] of [["409 expired", { status: 409, body: { error: "changed", message: "The time to undo this has passed." } }, "The time to undo this has passed."],
+      ["403", { status: 403, body: { error: "not_allowed" } }, "Someone else made this approval, so the request stays approved."]]) {
+      const c = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor, act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: until, approval: 1234 } } : answer) });
+      const pc = (await openPortal(c.context)).page;
+      await pc.waitForSelector('#home-now [data-id="parts:request:12"]');
+      await pc.click('#home-now [data-id="parts:request:12"] .nowbtn');
+      await pc.waitForSelector("#home-undo .undobtn");
+      await pc.click("#home-undo .undobtn");
+      const said = await pc.waitForFunction((w) => document.getElementById("home-done-status").textContent === w, words, { timeout: 5000 }).then(() => true, () => false);
+      check(`Undo answered ${label}: "${words}", and the request stays off Now`, said && !(await pc.isVisible('#home-now [data-id="parts:request:12"]')), await pc.textContent("#home-done-status"));
+      await c.context.close();
+    }
     // An answer with the time but no approval (an older Parts): no Undo.
     const half = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor, act: { status: 200, body: { undoUntil: until } } });
     const ph = (await openPortal(half.context)).page;
@@ -780,7 +798,7 @@ try {
     // pressed after its time it sends nothing; an offer with under five seconds left is not shown.
     const until = () => new Date(Date.now() + 60000).toISOString();
     const { context, actPosts } = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor,
-      act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: until(), approval: "ev_9" } } : 204) });
+      act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: until(), approval: 77 } } : 204) });
     const page = await context.newPage();
     await page.clock.install();
     await page.goto(PORTAL + "/");
@@ -796,7 +814,7 @@ try {
     await context.close();
     // Pressed after its time (the timer has not run yet): too late, nothing sent; and used once.
     const c2 = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor,
-      act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: new Date(Date.now() + 8000).toISOString(), approval: "ev_9" } } : 204) });
+      act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: new Date(Date.now() + 8000).toISOString(), approval: 77 } } : 204) });
     const p2 = (await openPortal(c2.context)).page;
     await p2.waitForSelector('#home-now [data-id="parts:request:12"]');
     await p2.click('#home-now [data-id="parts:request:12"] .nowbtn');
@@ -807,7 +825,7 @@ try {
     check("Undo pressed after its time: \"It's too late to undo that…\", nothing sent, the offer gone", /too late/.test(await status(p2)) && c2.actPosts.length === 1 && !(await p2.$("#home-undo .undobtn")), { posts: c2.actPosts.length, status: await status(p2) });
     await c2.context.close();
     const c3 = await newContext(browser, { groups: "mentor", apps: GROUPED_APPS, today: today83.mentor,
-      act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: new Date(Date.now() + 3000).toISOString(), approval: "ev_9" } } : 204) });
+      act: (b) => (b.action === "approve" ? { status: 200, body: { undoUntil: new Date(Date.now() + 3000).toISOString(), approval: 77 } } : 204) });
     const p3 = (await openPortal(c3.context)).page;
     await p3.waitForSelector('#home-now [data-id="parts:request:12"]');
     await p3.click('#home-now [data-id="parts:request:12"] .nowbtn');
@@ -1015,11 +1033,11 @@ try {
     const { page } = await openPortal(context);
     await page.waitForSelector("#home-next");
     await page.click("#home-next .heroacts button");
-    await page.waitForFunction(() => /try again/.test(document.getElementById("home-done-status").textContent));
+    await page.waitForFunction(() => /Try again/.test(document.getElementById("home-done-status").textContent));
     const s = await page.$eval("#home-next .heroacts button", (b) => ({ text: b.textContent.trim(), disabled: b.disabled, focused: b === document.activeElement }));
     check("task-done 503: the button is back, focused, with a short message; no Open task", s.text === "Mark task done" && !s.disabled && s.focused && !(await page.$("#home-next .heroacts a[href$='t-41']")), s);
     await page.click("#home-next .heroacts button");
-    await page.waitForFunction(() => /try again/.test(document.getElementById("home-done-status").textContent) && !document.querySelector("#home-next .heroacts button").disabled);
+    await page.waitForFunction(() => /Try again/.test(document.getElementById("home-done-status").textContent) && !document.querySelector("#home-next .heroacts button").disabled);
     check("task-done 503: it can be pressed again", posts.length === 2, posts.length);
     await context.close();
   }

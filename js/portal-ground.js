@@ -293,7 +293,7 @@ export function makeActs(o = {}) {
   async function perform(s) {
     if (busy.has(s.key)) return "busy";
     lock(s.key);
-    s.apply();
+    s.apply(true);
     say(PENDING_WORDS[s.act.action] || "Saving…");
     let res;
     try { res = await s.send(); } catch { res = { result: "uncertain" }; }
@@ -306,7 +306,7 @@ export function makeActs(o = {}) {
       say(UNCERTAIN);
       fresh = await check();
       const verdict = s.confirm(fresh);
-      if (verdict === "done") { s.apply(true); say(DONE_WORDS[s.act.action] || "Done."); outcome = "ok"; }
+      if (verdict === "done") { s.apply(false); say(DONE_WORDS[s.act.action] || "Done."); outcome = "ok"; }
       else if (verdict === "notdone") { s.revert(AFTER_CHECK); say(AFTER_CHECK); outcome = "notdone"; }
       else { const w = notConfirmed(s.act.app); s.revert(w); say(w); outcome = "unknown"; }
     } else {
@@ -331,15 +331,15 @@ export function makeActs(o = {}) {
     const btns = () => li.querySelectorAll(".nowbtn");
     await perform({
       key: a.key, act: a,
-      apply: () => {
+      apply: (pressed) => {
         hidden.add(r.id);
         notes.delete(r.id);
         li.querySelector(".nowmsg")?.remove();
         const next = li.nextElementSibling;
-        const hadFocus = li.contains(document.activeElement);
+        const move = pressed || li.contains(document.activeElement);
         li.hidden = true;
-        // Focus that was on the row goes on down the list, else to the section's heading.
-        if (hadFocus) {
+        // After a press, or when the focus was on the row, it goes on down the list, else to the section's heading.
+        if (move) {
           const after = (next && !next.hidden && next.querySelector("button, a")) || li.closest("section")?.querySelector("h2");
           if (after) { if (after.tagName === "H2") after.tabIndex = -1; after.focus(); }
         }
@@ -375,7 +375,11 @@ export function makeActs(o = {}) {
     say(PENDING_WORDS.unapprove);
     let res;
     try { res = await post({ app: a.app, action: "unapprove", key, approval }); } catch { res = { result: "uncertain" }; }
-    say(res.result === "ok" ? DONE_WORDS.unapprove : res.result === "changed" ? "The request changed since you approved it, so it stays approved."
+    // Parts' answers to an Undo (CONTRACT P4): 409 with Account's words (the window has passed, or the request changed);
+    // 403 when someone else made the approval; either way the request stays approved.
+    say(res.result === "ok" ? DONE_WORDS.unapprove
+      : res.result === "changed" ? res.message || "The request changed since you approved it, so it stays approved."
+      : res.result === "refused" ? "Someone else made this approval, so the request stays approved."
       : res.result === "uncertain" ? "That may not have been undone. Check the request in Parts." : actMessage("unapprove", res.result));
     if (res.result === "ok") hidden.delete(r.id);
     release(key, res.result !== "reason" && res.result !== "signedout");

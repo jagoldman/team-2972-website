@@ -365,10 +365,17 @@ test("8.3 H2, P4: the act's answers: ok (204, 200 with undoUntil and approval), 
   assert.deepEqual(await postAct(act, { fetchImpl: answer(204) }), { result: "ok" });
   const until = new Date(Date.now() + 120000).toISOString();
   // P4: Undo needs both the time and the approval Parts wrote; either alone, or a bad id, is no Undo.
+  // Parts sends a positive integer (a JSON number); it is kept as that number. A short safe string is accepted too.
+  assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: until, approval: 1234 }) }), { result: "ok", undoUntil: until, approval: 1234 });
+  assert.equal(typeof (await postAct(act, { fetchImpl: answer(200, { undoUntil: until, approval: 1234 }) })).approval, "number");
   assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: until, approval: "ev_7Kx-2" }) }), { result: "ok", undoUntil: until, approval: "ev_7Kx-2" });
+  for (const bad of [0, -3, 1.5, 2 ** 60, "1 2", true]) assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: until, approval: bad }) }), { result: "ok" }, `approval ${bad}`);
+  let undoBody;
+  await postAct({ app: "parts", action: "unapprove", key: "12", approval: 1234 }, { fetchImpl: async (_u, i) => { undoBody = i.body; return new Response(null, { status: 204 }); } });
+  assert.equal(undoBody, JSON.stringify({ app: "parts", action: "unapprove", key: "12", approval: 1234 }), "sent back as a number");
   assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: until }) }), { result: "ok" }, "no approval: no Undo");
   assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { approval: "ev1" }) }), { result: "ok" }, "no time: no Undo");
-  for (const bad of ["", "a b", "x".repeat(65), "ev;1", 7]) assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: until, approval: bad }) }), { result: "ok" }, String(bad));
+  for (const bad of ["", "a b", "x".repeat(65), "ev;1", -7]) assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: until, approval: bad }) }), { result: "ok" }, String(bad));
   assert.deepEqual(await postAct(act, { fetchImpl: answer(200, { undoUntil: "2000-01-01T00:00:00Z", approval: "ev1" }) }), { result: "ok" }, "an Undo that ran out is not offered");
   assert.deepEqual(await postAct(act, { fetchImpl: answer(200, {}) }), { result: "ok" }, "Approve's 200 with valid JSON and no Undo");
   // Review item 1: a 200 that is not valid JSON is not a success; a redirect or a sign-in page means signed out.
