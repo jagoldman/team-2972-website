@@ -101,9 +101,24 @@ check("imgUrl: an ID that is also an Object property name is not looked up there
     plainGot.every(([w, u]) => u === `/img/drive/${HERO}-${plainWant[w]}.webp`) && fetchPhotos.fileName(HERO, 800, real) === `${HERO}-800.webp`, JSON.stringify(plainGot));
   const heroSet = site.imgSized(HERO, [400, 800, 1600], "100vw");
   check("D206: the hero's srcset names its plain files and no marked (-b2-) file", new RegExp(`srcset="[^"]*${HERO}-400\\.webp 400w, [^"]*${HERO}-800\\.webp 800w, [^"]*${HERO}-1600\\.webp 1600w"`).test(heroSet) && !/-b\d+-/.test(heroSet), heroSet);
-  const nomark = [];
-  for (const f of ["js/components.js", "scripts/drive-photos/fetch.cjs", "container/Caddyfile", "index.html", "config.js"]) if (read(f).includes(HERO) || /og-image-b\d/.test(read(f).replace(/\/\/[^\n]*/g, ""))) nomark.push(f);
-  check("D206: no source names the hero's ID or an old link-preview name outside a comment (only content.js names the hero)", nomark.length === 0, nomark.join(" "));
+  // The active text of each source, with only its real comments taken out, in that file's own syntax: HTML <!-- -->,
+  // Caddyfile # (at the start of a line or after a space), JavaScript // (at the start of a line or after a space, so
+  // the :// of an address stays) and /* */. index.html's og:image line (an address with ://) is scanned.
+  const active = (f) => {
+    const t = read(f);
+    if (f.endsWith(".html")) return t.replace(/<!--[\s\S]*?-->/g, "");
+    if (/Caddyfile$/.test(f)) return t.replace(/(^|[ \t])#[^\n]*/gm, "$1");
+    return t.replace(/(^|[ \t])\/\/[^\n]*/gm, "$1").replace(/\/\*[\s\S]*?\*\//g, "");
+  };
+  const OLD_OG = /og-image(?:-b[0-9]+)?\.jpg/;   // the retired link-preview names: og-image.jpg, og-image-b1.jpg, og-image-b2.jpg
+  check("D206: the retired-name pattern catches all three old link-preview names and not the current one",
+    ["og-image.jpg", "og-image-b1.jpg", "og-image-b2.jpg"].every((n) => OLD_OG.test(n)) && !OLD_OG.test("og-image-v3.jpg"));
+  const sources = ["js/components.js", "scripts/drive-photos/fetch.cjs", "container/Caddyfile", "index.html", "config.js"];
+  const nomark = sources.filter((f) => read(f).includes(HERO) || OLD_OG.test(active(f)));
+  check("D206: no source names the hero's ID, or an old link-preview name (og-image.jpg, og-image-b1.jpg, og-image-b2.jpg) outside a comment (only content.js names the hero)",
+    nomark.length === 0, nomark.map((f) => `${f}: ${(active(f).match(OLD_OG) || [""])[0]}`).join(" "));
+  check("D206: the scan reads index.html's og:image line whole (its address with :// is not taken for a comment)",
+    /<meta property="og:image" content="[^\n]*:\/\/[^\n]*\/img\/drive\/og-image-v3\.jpg/.test(active("index.html")) && active("container/Caddyfile").includes("path /img/drive/og-image-v3.jpg"));
 }
 {
   // The mechanism, with a made-up photo in a made-up list.
