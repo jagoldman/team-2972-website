@@ -10,7 +10,8 @@
 //
 // Change VERSION when this file's rules or the precached list change. Old caches are deleted on activate.
 
-const VERSION = "v6";   // v6: /today.json and /today/ (the portal home's cards, release 8.1.5) are named in NEVER_STORE
+const VERSION = "v7";   // v7: the portal's font is the shell kit's Archivo (/shell/fonts/, kit 0.5.0): precached and stored
+                       // v6: /today.json and /today/ (the portal home's cards, release 8.1.5) are named in NEVER_STORE
                        // v5: the public site is Midnight & brass, dark only (new stylesheet and scripts; public pages no longer carry the theme script)
                        // v4: offline.html's theme script only reads the choice (never writes the shared cookie)
                        // v3: offline.html has the shell kit's theme script (one site-wide cookie, also on editor.)
@@ -24,11 +25,12 @@ const PRECACHE = [
   "/css/style.css",
   "/fonts/inter-latin.woff2",
   "/fonts/bricolage-grotesque-latin.woff2",
+  "/shell/fonts/archivo-latin-var.woff2",
   "/pwa-icons/site/icon.svg",
 ];
 
 // Only files that are the same for everyone may be stored: a path under one of these folders AND a file type below.
-const STATIC_FOLDERS = ["/css/", "/js/", "/fonts/", "/pwa-icons/", "/assets/"];
+const STATIC_FOLDERS = ["/css/", "/js/", "/fonts/", "/shell/fonts/", "/pwa-icons/", "/assets/"];
 const STATIC_TYPES = /\.(?:css|js|woff2|png|svg|webp|ico)$/i;
 const CODE_TYPES = /\.(?:css|js)$/i;        // network first; see the fetch handler
 // Never stored, even if a path above would match.

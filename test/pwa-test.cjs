@@ -195,6 +195,7 @@ const okNetwork = async () => basic("from the network");
   let w = makeWorker({ fetchImpl: okNetwork });
   await w.dispatch("install");
   check("install stores the offline page and the shared styles, fonts and icon", ["/offline.html", "/css/style.css", "/fonts/inter-latin.woff2", "/fonts/bricolage-grotesque-latin.woff2", "/pwa-icons/site/icon.svg"].every((p) => w.pathsStored().includes(p)));
+  check("install stores the portal's font, the shell kit's Archivo (8.3)", w.pathsStored().includes("/shell/fonts/archivo-latin-var.woff2"));
   check("the cache name is versioned", [...w.store.keys()].every((n) => /^2972-static-v\d+$/.test(n)));
   w = makeWorker({ fetchImpl: async (r) => (new URL(r.url).pathname === "/css/style.css" ? basic("x", 404) : okNetwork()) });
   let ok = true; try { await w.dispatch("install"); } catch (e) { ok = false; }
@@ -286,7 +287,8 @@ const okNetwork = async () => basic("from the network");
   check("(before sign-out) extra shared files are stored", c.pathsStored().includes("/js/components.js"));
   await c.dispatch("message", { data: { type: "clear-caches" } });
   check("clear-caches removes everything that was stored", !c.pathsStored().includes("/js/components.js") && !c.pathsStored().includes("/assets/placeholder-robot.svg"));
-  check("clear-caches puts back only the public offline files", c.pathsStored().includes("/offline.html") && c.pathsStored().length <= 5);
+  // Six since v7: the kit's Archivo joined the precached list (release 8.3).
+  check("clear-caches puts back only the public offline files", c.pathsStored().includes("/offline.html") && c.pathsStored().length <= 6);
   const n = c.pathsStored().length;
   await c.dispatch("message", { data: { type: "something-else" } });
   check("other messages do nothing", c.pathsStored().length === n);
