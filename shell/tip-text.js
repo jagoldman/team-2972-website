@@ -17,12 +17,11 @@
 export const BAR_TIPS = Object.freeze({
   apps: "Every app, tool and team link.",
   home: "Your starting page, with what needs you today.",
-  build: "Show the apps for build season.",
-  competition: "Show the event apps: schedule, pit and scouting.",
-  tools: "Small helpers that open on this site.",
+  // 0.5.1: the Build / Competition switch left the Apps menu (B1), and its two tips with it.
+  tools: "Your favourite tools, and a link to all of them.",
   adminapps: "Apps for the people who run the team's accounts and its public website.",
   more: "Other apps and links to team sites.",
-  chip: "Competition mode is on; change it in Apps or Account.",
+  chip: "Competition mode is on; change it on your Account page.",
   bell: "What is new for you in every app.",
   account: "Your theme, notices and account settings.",
   closeapps: "Close the apps menu.",

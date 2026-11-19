@@ -186,6 +186,8 @@ export function resolveTools(appsJson, groups, site) {
       href,
       icon: typeof t.icon === "string" ? t.icon : t.id,
       modes: tileModes(t),
+      // 0.5.1 (F1): one of the favourites a person starts with (no shelltoolfavs cookie).
+      top: t.top === true,
     });
   }
   return out;
@@ -220,7 +222,7 @@ export function splitGroups(tiles) {
   return core.length || admin.length ? { main: core, admin, rest: more } : { main: more, admin: [], rest: [] };
 }
 
-/** The Tools row's last line, "All tools": the tools service's own page (C1, C7). */
+/** The Tools row's last line, "All N tools": the tools service's own page (C1, C7; M2). */
 export function toolsHref(site) {
   return `${site.scheme}://tools.${site.domain}/`;
 }
@@ -491,11 +493,25 @@ export function parseOpenGroups(v) {
 }
 
 /**
+ * 0.5.1 (M3): the Apps menu's own Tools row (the favourites) starts open, so the cookie stores the opposite: this id
+ * in `shellgroups` means "the person closed Tools in the menu". No cookie, or one written before 0.5.1 (it never holds
+ * this id), reads as open. Home's own Tools row keeps the id "tools" and still starts closed (M6).
+ */
+export const MENU_TOOLS_SHUT = "toolsshut";
+// Every id the cookie may hold, in the order it is written.
+const SAVED_GROUPS = [...MENU_GROUPS, MENU_TOOLS_SHUT];
+const savedIds = (v) => {
+  const have = new Set(typeof v === "string" ? v.split(".") : []);
+  return SAVED_GROUPS.filter((g) => have.has(g));
+};
+
+/**
  * document.cookie string that stores the open groups, with the mode cookie's attributes (site-wide, 400 days), so
- * every app on the site opens the menu the same way on this device. No open group deletes the cookie.
+ * every app on the site opens the menu the same way on this device. No open group deletes the cookie. The list may
+ * also hold MENU_TOOLS_SHUT (0.5.1), which is kept.
  */
 export function openGroupsCookie(open, site) {
-  const list = parseOpenGroups((open || []).join("."));
+  const list = savedIds((open || []).join("."));
   return list.length
     ? `${GROUPS_COOKIE}=${list.join(".")}${cookieAttributes(site, COOKIE_MAX_AGE)}`
     : `${GROUPS_COOKIE}=${cookieAttributes(site, 0)}`;
@@ -506,17 +522,115 @@ export function readOpenGroups(doc = document) {
   return parseOpenGroups(readCookie(doc.cookie, GROUPS_COOKIE));
 }
 
+/** Is the Apps menu's Tools row open? (M3) True unless this device closed it: no cookie and an old cookie read open. */
+export function menuToolsOpen(cookieString) {
+  return !savedIds(readCookie(cookieString, GROUPS_COOKIE)).includes(MENU_TOOLS_SHUT);
+}
+
 /**
  * Opens or closes one group, stores the choice and returns the new list of open groups. `current` is the page's own
- * list (the adapters pass it), so with cookies blocked opening a second group does not close the first.
+ * list (the adapters pass it), so with cookies blocked opening a second group does not close the first. The menu's
+ * Tools choice (MENU_TOOLS_SHUT) already in the cookie is kept.
  */
 export function setGroupOpen(id, open, site, doc = document, current = null) {
   const now = new Set(Array.isArray(current) ? parseOpenGroups(current.join(".")) : readOpenGroups(doc));
   if (open) now.add(id);
   else now.delete(id);
   const list = parseOpenGroups([...now].join("."));
-  doc.cookie = openGroupsCookie(list, site);
+  const shut = !menuToolsOpen(doc.cookie);
+  doc.cookie = openGroupsCookie(shut ? [...list, MENU_TOOLS_SHUT] : list, site);
   return list;
+}
+
+/**
+ * Opens or closes the Apps menu's Tools row (M3) and stores it in `shellgroups` with the other rows' choices. Returns
+ * the new state (true = open). With cookies blocked the bar keeps its own state for this page.
+ */
+export function setMenuToolsOpen(open, site, doc = document) {
+  const list = readOpenGroups(doc);
+  doc.cookie = openGroupsCookie(open ? list : [...list, MENU_TOOLS_SHUT], site);
+  return !!open;
+}
+
+/**
+ * 0.5.1 (F2): the person's favourite tools, for every host. The Tools service writes it (setToolFavs) and every bar
+ * and Home read it (readToolFavs, favouriteTools); nobody else builds or parses the value. The value is the tool ids
+ * in the person's order joined with "."; TOOL_FAVS_NONE ("-") means none (M4). No cookie means the tools marked `top`
+ * in apps.json. Same attributes as `shellgroups` (site-wide, 400 days, SameSite=Lax, not HttpOnly). Tool ids only,
+ * nothing about a person (F5).
+ */
+export const TOOL_FAVS_COOKIE = "shelltoolfavs";
+export const TOOL_FAVS_NONE = "-";
+/** The most favourites read or written (there are seventeen tools). */
+export const TOOL_FAVS_MAX = 17;
+// A tool id as apps.json writes them ("tool-shooter"); the cookie holds nothing else.
+const TOOL_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
+// The longest value read: 17 ids of 40 characters and their dots. Anything longer is not read at all.
+const TOOL_FAVS_LEN = TOOL_FAVS_MAX * 41;
+
+/**
+ * A `shelltoolfavs` value → the favourite ids, in order, or null for "no choice" (no cookie, or a value that cannot be
+ * read at all: empty, too long, a character other than a-z, 0-9, "-" and ".", an empty id). F3: with `allowed` (ids
+ * the person may open in this mode) the others are dropped; duplicates are dropped; at most TOOL_FAVS_MAX are kept.
+ * "-" is [] (none).
+ */
+export function parseToolFavs(v, allowed = null) {
+  if (typeof v !== "string" || v === "" || v.length > TOOL_FAVS_LEN) return null;
+  if (v === TOOL_FAVS_NONE) return [];
+  const parts = v.split(".");
+  if (!parts.every((id) => TOOL_ID.test(id))) return null;
+  const ok = allowed ? new Set(allowed) : null;
+  const out = [];
+  for (const id of parts) {
+    if (out.length >= TOOL_FAVS_MAX) break;
+    if (out.includes(id) || (ok && !ok.has(id))) continue;
+    out.push(id);
+  }
+  return out;
+}
+
+/** The favourite ids stored on this device (browser), or null when there is no readable choice. Not filtered. */
+export function readToolFavs(doc = document) {
+  return parseToolFavs(readCookie(doc.cookie, TOOL_FAVS_COOKIE));
+}
+
+/**
+ * document.cookie string that stores the favourites (F2). Ids are kept in order; anything that is not a tool id and
+ * repeats are dropped, at most TOOL_FAVS_MAX. An empty list stores "-" (none), never deletes the cookie (no cookie
+ * would mean the six defaults again).
+ */
+export function toolFavsCookie(ids, site) {
+  const list = [];
+  for (const id of Array.isArray(ids) ? ids : []) {
+    if (list.length >= TOOL_FAVS_MAX) break;
+    if (typeof id === "string" && TOOL_ID.test(id) && !list.includes(id)) list.push(id);
+  }
+  return `${TOOL_FAVS_COOKIE}=${list.length ? list.join(".") : TOOL_FAVS_NONE}${cookieAttributes(site, COOKIE_MAX_AGE)}`;
+}
+
+/**
+ * The writer (F4, the Tools service): stores the favourites and tells this tab's bar ("shell:toolfavs"), so a star
+ * pressed on the Tools page shows in its own Apps menu at once. Returns the ids stored. Browser only.
+ */
+export function setToolFavs(ids, site, doc = document, win = typeof window === "undefined" ? undefined : window) {
+  doc.cookie = toolFavsCookie(ids, site);
+  const stored = parseToolFavs(readCookie(doc.cookie, TOOL_FAVS_COOKIE)) ?? [];
+  if (win && typeof win.dispatchEvent === "function" && typeof CustomEvent === "function") {
+    win.dispatchEvent(new CustomEvent("shell:toolfavs", { detail: { ids: stored } }));
+  }
+  return stored;
+}
+
+/**
+ * The favourites to draw (M2, M4, M6): `tools` are the tools this person may open in this mode (resolveTools, then
+ * filterByMode), `favs` the cookie's ids (readToolFavs or parseToolFavs; null = no choice). No choice → the tools
+ * marked `top`, in apps.json order. A choice → those tools in the person's order, unknown ids left out; [] when none.
+ */
+export function favouriteTools(tools, favs) {
+  const list = Array.isArray(tools) ? tools : [];
+  const ids = parseToolFavs(Array.isArray(favs) ? favs.join(".") || TOOL_FAVS_NONE : favs, list.map((t) => t.id));
+  if (ids === null) return list.filter((t) => t.top === true).slice(0, TOOL_FAVS_MAX);
+  return ids.map((id) => list.find((t) => t.id === id));
 }
 
 /** Two letters for the account button. "Pat Example" → "PE"; falls back to the email. */
@@ -607,6 +721,22 @@ export const ICONS = Object.freeze({
   close: "M6 6l12 12M18 6L6 18",
   trace: "M12 19l7-7 3 3-7 7zM18 13l-1.5-7.5L2 2l3.5 14.5L13 18zM2 2l7.6 7.6M11 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
   gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM10.3 3h3.4l.5 2.4 1.7.7 2-1.4 2.4 2.4-1.4 2 .7 1.7 2.4.5v3.4l-2.4.5-.7 1.7 1.4 2-2.4 2.4-2-1.4-1.7.7-.5 2.4h-3.4l-.5-2.4-1.7-.7-2 1.4-2.4-2.4 1.4-2-.7-1.7L3 13.7v-3.4l2.4-.5.7-1.7-1.4-2 2.4-2.4 2 1.4 1.7-.7z",
+  // 0.5.1: the fifteen calculators (demo-design83 1bb0acc, D.ic), same drawing.
+  shooter: "M3 20c2-9 7-13 13-11M16 9l-4 .2M16 9l-1.6 3.6M20.5 14a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z",
+  elevator: "M6 3v18M18 3v18M4 21h16M9 13h6v5H9zM12 13V5M10 7l2-2 2 2",
+  arm: "M5 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6.5 15.5L17 6M17 6l3 1M17 6l-1 3M3 21h8",
+  drivetrain: "M6 6h12v12H6zM3 7v4M3 13v4M21 7v4M21 13v4M12 15V9M10 11l2-2 2 2",
+  intake: "M7 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM10 8h10M4 19h16M15 13a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z",
+  belt: "M7 7a5 5 0 1 0 0 10A5 5 0 0 0 7 7zM18 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM7 7l11 2.5M7 17l11-2.5",
+  ratio: "M8 8a5 5 0 1 0 0 10A5 5 0 0 0 8 8zM17.5 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM8 13h.01M17.5 7h.01",
+  motor: "M4 8h11v8H4zM15 10h3v4h-3zM18 12h3M7 8V6M12 8V6M7 16v2M12 16v2",
+  battery: "M3 8h16v9H3zM19 11h2v3h-2zM7 12.5h3M8.5 11v3M13 12.5h3",
+  air: "M3 10h11v4H3zM14 12h7M21 9v6M6 10V6h5",
+  tip: "M3 20h18M6 20l4-12 8 3-3 9M12 14h.01",
+  beam: "M4 5v14M4 8h16M4 8c8 0 13 2 16 7M20 8v6M18 12l2 2 2-2",
+  holes: "M12 3v8M9 11h6l-1 4h-4zM12 15v3M5 21h14M8 6h8",
+  units: "M4 8h13M14 5l3 3-3 3M20 16H7M10 13l-3 3 3 3",
+  code: "M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14",
   camera: "M3 8h4l2-3h6l2 3h4v11H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
   download: "M12 3v12M7 10l5 5 5-5M5 21h14",
   bell: "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0",

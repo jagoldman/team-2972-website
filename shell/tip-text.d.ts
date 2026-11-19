@@ -4,8 +4,6 @@
 export const BAR_TIPS: Readonly<{
   apps: string;
   home: string;
-  build: string;
-  competition: string;
   tools: string;
   adminapps: string;
   more: string;

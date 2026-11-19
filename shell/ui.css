@@ -880,6 +880,13 @@
   font-size: 0.92rem;
   font-weight: 600;
 }
+/* 0.5.1 (M6): no favourite tool: one quiet line before "All N tools". */
+.shell-homegroups .grpnote {
+  margin: 0;
+  padding: 4px;
+  color: var(--mute);
+  font-size: 0.86rem;
+}
 .shell-homegroups .morelinks {
   display: flex;
   flex-wrap: wrap;

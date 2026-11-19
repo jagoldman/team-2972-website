@@ -63,6 +63,8 @@ export interface ShellTool {
   href: string;
   icon: string;
   modes: Mode[];
+  /** 0.5.1 (F1): one of the favourites a person starts with (apps.json `top: true`). Absent from a 0.5.0 server. */
+  top?: boolean;
 }
 
 export type MenuGroup = "tools" | "adminapps" | "more";
@@ -193,6 +195,33 @@ export function openGroupsCookie(open: readonly string[], site: Site): string;
 export function readOpenGroups(doc?: Document): MenuGroup[];
 /** Opens or closes one group (from `current`, the page's list, else the cookie), writes the cookie, returns the open groups. Browser only. */
 export function setGroupOpen(id: MenuGroup, open: boolean, site: Site, doc?: Document, current?: readonly string[] | null): MenuGroup[];
+/** 0.5.1 (M3): the id in `shellgroups` that means "the person closed Tools in the Apps menu". */
+export const MENU_TOOLS_SHUT: "toolsshut";
+/** Is the Apps menu's Tools row open? True unless this device closed it (no cookie, or a pre-0.5.1 one: open). */
+export function menuToolsOpen(cookieString: string | null | undefined): boolean;
+/** Opens or closes the Apps menu's Tools row and stores it; returns the new state. Browser only. */
+export function setMenuToolsOpen(open: boolean, site: Site, doc?: Document): boolean;
+/** 0.5.1 (F2): the favourite tools cookie, "shelltoolfavs". */
+export const TOOL_FAVS_COOKIE: "shelltoolfavs";
+/** The value that means "no favourites" (M4). */
+export const TOOL_FAVS_NONE: "-";
+export const TOOL_FAVS_MAX: 17;
+/**
+ * A cookie value → favourite ids in order, or null (no cookie, or unreadable: counts as no choice). With `allowed`,
+ * other ids are dropped; duplicates are dropped; at most 17. "-" → [].
+ */
+export function parseToolFavs(v: string | null | undefined, allowed?: readonly string[] | null): string[] | null;
+/** This device's favourite ids (not filtered), or null for no choice. Browser only. */
+export function readToolFavs(doc?: Document): string[] | null;
+/** document.cookie string storing the favourites; [] stores "-". */
+export function toolFavsCookie(ids: readonly string[], site: Site): string;
+/** The writer (the Tools service, F4): stores the ids, dispatches `shell:toolfavs`, returns the ids stored. Browser only. */
+export function setToolFavs(ids: readonly string[], site: Site, doc?: Document, win?: Window): string[];
+/**
+ * The favourites to draw: `tools` = the tools this person may open in this mode; `favs` = the cookie's ids (or its raw
+ * value), null = no choice → the tools marked `top`.
+ */
+export function favouriteTools(tools: readonly ShellTool[], favs: readonly string[] | string | null | undefined): ShellTool[];
 export function initials(name?: string | null, email?: string | null): string;
 export function applyTheme(choice: ThemeChoice, doc?: Document, win?: Window): "light" | "dark";
 /** Writes the theme cookie and applies it. In a browser, also dispatches `shell:change` with `{ mode, theme }`. */

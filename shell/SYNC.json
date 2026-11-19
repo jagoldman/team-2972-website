@@ -1,10 +1,10 @@
 {
-  "version": "0.5.0",
+  "version": "0.5.1",
   "profile": "static",
   "files": [
     {
       "path": "shell/VERSION",
-      "sha256": "a0ad50640139a524f86591157145bf1d4674ea9c065bfea21558f0f7b04430c8"
+      "sha256": "aba951626c8690ce493cbc8f018205bb468003f61fbf00fd3d3c71cebabc0177"
     },
     {
       "path": "shell/tokens.css",
@@ -16,19 +16,19 @@
     },
     {
       "path": "shell/app-bar.css",
-      "sha256": "a9c26dd83296c202847d1bd47d7bdae4ab8778018a5b17eff482070be16f1f74"
+      "sha256": "a7b937da2f05a28e6b014d1d8d83679f0c28adb3e333fc11593f76326f464f21"
     },
     {
       "path": "shell/ui.css",
-      "sha256": "dc3e1d8e24080084b85b8b91cf5ad2e871cda8848dd3086f51e58558a386c0a6"
+      "sha256": "e759108e2915745b9963c0ec654ca79b34814b6fb9f538916b0a070906559bdd"
     },
     {
       "path": "shell/core.js",
-      "sha256": "9d2928544eff53918d9feed6c4141b51bac82307ce268b9ea199053ec8d698a4"
+      "sha256": "b2935e0e002e5bee37f9a1c19840ca35d2a285330154930730ff55113089acc4"
     },
     {
       "path": "shell/core.d.ts",
-      "sha256": "9ee5ef2e3fac5c7e7ae9f23c961b3ef21635a224925c72d82815076b780bc873"
+      "sha256": "4996688a6e49033be972eda29a35f5d82d308e0822efc3cb1c833bcc81241b5b"
     },
     {
       "path": "shell/tip.js",
@@ -40,11 +40,11 @@
     },
     {
       "path": "shell/tip-text.js",
-      "sha256": "cbf9174a052f0ba25d1afb2543819cd07840027c283ed4af3c7def280ea09937"
+      "sha256": "ce1806c2dcf7a8ac90d5b0a7e3a182c25510f8565bce806d44f47e872a97b05d"
     },
     {
       "path": "shell/tip-text.d.ts",
-      "sha256": "4b0204e18707232d178da5f6caeeae5f889f5ca73d272080eebce33867748bce"
+      "sha256": "ea7f9b460b80e5dc66d38cc73a9db15b42043b6cf9962b3a98149fb4c8136313"
     },
     {
       "path": "shell/guide-state.js",
@@ -96,7 +96,7 @@
     },
     {
       "path": "shell/static/shell.js",
-      "sha256": "f11e94b2672e30524336b6491ce4689042d275c51beaadb09d7ff34e4c8a3a8f"
+      "sha256": "8d4a33170632be819b9b0e650f7fe8d7b8bd4eb11be46556069a641ce94d28fd"
     }
   ]
 }

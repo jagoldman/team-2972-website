@@ -22,13 +22,19 @@
 // (C5). The portal home's helpers are below the bar: loadLandingApps, mountHomeGroups, mountHomeGuide.
 // 0.5.0 (8.3, Ground up): the black bar and the bumper badge; the Apps menu starts with Home, Tools is one link to the
 // Tools page, More reads "Team links", no counts on the menu's rows; the account panel shows the role and "Appearance".
+// 0.5.1 (8.3.1): the menu's head is "Apps" and the ×, with no Build / Competition switch (it is on Account); Tools is a
+// row that opens in place (open to start with) with the person's favourite tools and "All N tools" (shelltoolfavs).
 
 import {
   GROUP_LABELS,
   MENU_GROUPS,
   accountHref,
   eventBanner,
+  favouriteTools,
+  menuToolsOpen,
   parseEventStatus,
+  readToolFavs,
+  setMenuToolsOpen,
   hasAccountMenu,
   inboxHref,
   INBOX_READ_ALL,
@@ -153,6 +159,31 @@ function homeEl(href, appId, base) {
   );
 }
 
+// 0.5.1 (M2): a favourite tool in the Apps menu: a quieter, smaller icon than an app's and the name; same tab (a tool
+// lives on this site). The one line is its hover description and, for a screen reader, its description.
+function favEl(t, current, base) {
+  const tip = t.tip || t.description || null;
+  const did = tip ? descId(base, "t", t.id) : null;
+  return h(
+    "li",
+    null,
+    h("a", { class: "shbar-item shbar-toolitem", href: t.href, "data-tip": tip, "aria-describedby": did, "aria-current": current ? "page" : null },
+      h("span", { class: "shbar-item-ic" }, icon(t.icon, 18)), h("span", { class: "shbar-item-text" }, h("b", { text: t.name }))),
+    tip ? h("span", { id: did, class: "shbar-sr", text: tip }) : null,
+  );
+}
+
+// Is this tool the page the person is on? (M5) The same host and path, a trailing slash aside.
+const pathOf = (href) => {
+  try {
+    const u = new URL(href, location.href);
+    return `${u.origin}${u.pathname.replace(/\/+$/, "") || "/"}`;
+  } catch {
+    return "";
+  }
+};
+const isHere = (href) => typeof location !== "undefined" && pathOf(href) === pathOf(location.href);
+
 // The tip tables' ids: opts.tipIds (one id or a list), else opts.appId.
 const tipIdsOf = (opts) => (Array.isArray(opts.tipIds) ? opts.tipIds : [opts.tipIds ?? opts.appId ?? ""]).filter(Boolean);
 
@@ -224,6 +255,9 @@ export function mountAppBar(root, opts) {
     theme: resolveTheme(document, window, opts.themeFallback),
     tiles: opts.tiles || null,
     tools: opts.tools || [],
+    // 0.5.1: the menu's Tools row (M3: open unless this device closed it) and the favourites' cookie (null = none set).
+    toolsOpen: menuToolsOpen(document.cookie),
+    favs: readToolFavs(),
     failed: false,
     user: opts.user || null,
     inbox: { available: false, unread: 0, items: [] },
@@ -238,16 +272,6 @@ export function mountAppBar(root, opts) {
     icon("apps", 20),
     sr("Apps"),
   );
-  const modeChoices = [["build", "Build"], ["competition", "Competition"]].map(([choice, label]) => {
-    const button = h("button", { type: "button", "aria-pressed": "false", "data-tip": BAR_TIPS[choice], text: label });
-    button.addEventListener("click", () => {
-      state.mode = setModeCookie(choice, site);
-      renderTiles();
-      render();
-      button.focus();
-    });
-    return [choice, button];
-  });
   // The panel's body is built once and patched (hidden toggles, list contents), so focus on a group row survives.
   const retry = h("button", { type: "button", class: "shbar-linkbtn", text: "Try again" });
   retry.addEventListener("click", () => load());
@@ -255,10 +279,22 @@ export function mountAppBar(root, opts) {
   const failedNote = h("p", { class: "shbar-note", role: "status", hidden: true }, "Couldn't load the apps. ", retry);
   const emptyNote = h("p", { class: "shbar-note", text: "No apps here yet. If you just joined, an admin still has to add you to a group.", hidden: true });
   const mainList = h("ul", { class: "shbar-grid" });
-  // Tools (0.5.0): one door to the Tools page, same tab; drawn when the person has a tool in this mode.
-  const toolsLink = h("a", { class: "shbar-groupbtn shbar-toolslink", href: toolsHref(site), "aria-current": opts.appId === "tools" ? "page" : null, "data-tip": BAR_TIPS.tools },
+  // Tools (0.5.1, M2): a row that opens in place, open to start with (M3): the person's favourite tools two to a row,
+  // or a line when there are none (M4), then "All N tools", the Tools page. Drawn when the person has a tool in this mode.
+  const toolsBtn = h("button", { type: "button", class: "shbar-groupbtn shbar-toolsbtn", "aria-expanded": "true", "aria-controls": `${id}-tools`, "data-tip": BAR_TIPS.tools },
     h("span", { text: GROUP_LABELS.tools }), icon("chevron", 16));
-  const toolsBox = h("div", { class: "shbar-group shbar-tools", hidden: true }, toolsLink);
+  const favList = h("ul", { class: "shbar-grid shbar-favs" });
+  const favNote = h("p", { class: "shbar-note shbar-favnote", text: "Star a tool on the Tools page to keep it here.", hidden: true });
+  const allToolsText = h("span");
+  const allTools = h("a", { class: "shbar-toolrow shbar-alltools", href: toolsHref(site) }, allToolsText, h("span", { class: "shbar-chev", "aria-hidden": "true", text: "›" }));
+  const toolsBody = h("div", { id: `${id}-tools`, class: "shbar-toolsbody" }, favList, favNote, allTools);
+  const toolsBox = h("div", { class: "shbar-group shbar-tools", hidden: true }, toolsBtn, toolsBody);
+  toolsBtn.addEventListener("click", () => {
+    state.toolsOpen = setMenuToolsOpen(!state.toolsOpen, site);
+    // Cookies blocked: the choice did not stick, so the page keeps its own state from now on.
+    groupsStick = menuToolsOpen(document.cookie) === state.toolsOpen;
+    renderGroups();
+  });
   // The two rows that open (C1): Admin apps and Team links (two columns of tiles).
   const groups = {};
   for (const g of MENU_GROUPS.filter((x) => x !== "tools")) {
@@ -278,8 +314,8 @@ export function mountAppBar(root, opts) {
   const appsPanel = h(
     "nav",
     { id: `${id}-apps`, class: "shbar-panel shbar-apps", "aria-label": "All apps", hidden: true },
-    h("div", { class: "shbar-panel-head" },
-      h("div", { class: "shbar-mode", role: "group", "aria-label": "App mode" }, modeChoices.map(([, button]) => button)), closeApps),
+    // M1 (0.5.1): the word "Apps" and the ×; the Build / Competition switch is on the Account page only (B1).
+    h("div", { class: "shbar-panel-head" }, h("p", { class: "shbar-panel-title", text: "Apps" }), closeApps),
     appsBody,
   );
   const choices = THEME_CHOICES.map(([c, label]) => {
@@ -292,7 +328,7 @@ export function mountAppBar(root, opts) {
     });
     return [c, b];
   });
-  const chip = h("a", { class: "shbar-chip", href: account, target: "_blank", rel: "noopener noreferrer", "data-tip": BAR_TIPS.chip, hidden: true }, h("span", { "aria-hidden": "true" }, "Comp", h("span", { class: "shbar-chip-rest", text: "etition" })), sr("Competition mode is on. Change it in Apps or Account (opens in a new tab)."));
+  const chip = h("a", { class: "shbar-chip", href: account, target: "_blank", rel: "noopener noreferrer", "data-tip": BAR_TIPS.chip, hidden: true }, h("span", { "aria-hidden": "true" }, "Comp", h("span", { class: "shbar-chip-rest", text: "etition" })), sr("Competition mode is on. Change it on your Account page (opens in a new tab)."));
 
   // ---- the bell (C3): a button and the notices panel ----
   const bellSr = sr("Notifications");
@@ -399,7 +435,16 @@ export function mountAppBar(root, opts) {
     emptyNote.hidden = !(state.tiles !== null && !state.failed && shown.length === 0);
     // Home first (0.5.0), then the core apps.
     mainList.replaceChildren(homeEl(portal, opts.appId, id), ...main.map((t) => tileEl(t, opts.appId, id)));
-    toolsBox.hidden = filterByMode(state.tools, state.mode).length === 0;
+    const tools = filterByMode(state.tools, state.mode);
+    toolsBox.hidden = tools.length === 0;
+    const favs = favouriteTools(tools, state.favs);
+    favList.replaceChildren(...favs.map((t) => favEl(t, opts.appId === "tools" && isHere(t.href), id)));
+    favList.hidden = favs.length === 0;
+    favNote.hidden = favs.length !== 0;
+    allToolsText.textContent = `All ${tools.length} tools`;
+    // On the Tools page itself, "All N tools" is the page the person is on (M5).
+    if (opts.appId === "tools" && isHere(toolsHref(site))) allTools.setAttribute("aria-current", "page");
+    else allTools.removeAttribute("aria-current");
     const lists = { adminapps: admin, more: rest };
     for (const g of Object.keys(groups)) {
       groups[g].list.replaceChildren(...lists[g].map((t) => tileEl(t, opts.appId, id)));
@@ -409,6 +454,8 @@ export function mountAppBar(root, opts) {
     renderInbox();
   }
   function renderGroups() {
+    toolsBtn.setAttribute("aria-expanded", String(state.toolsOpen));
+    toolsBody.hidden = !state.toolsOpen;
     for (const g of Object.keys(groups)) {
       const open = state.open.includes(g);
       groups[g].button.setAttribute("aria-expanded", String(open));
@@ -487,7 +534,6 @@ export function mountAppBar(root, opts) {
     scrim.hidden = !state.panel;
     if (state.panel) header.setAttribute("data-open", "");
     else header.removeAttribute("data-open");
-    for (const [choice, button] of modeChoices) button.setAttribute("aria-pressed", String(state.mode === choice));
     for (const [c, b] of choices) b.setAttribute("aria-pressed", String(state.theme === c));
     chip.hidden = state.mode !== "competition";
     appName.textContent = opts.appName || "";
@@ -547,7 +593,8 @@ export function mountAppBar(root, opts) {
   // A guide stop asks for the Apps menu, and a group in it: open both for this time, without storing the group.
   const onOpenApps = (e) => {
     const g = e && e.detail && e.detail.group;
-    if (MENU_GROUPS.includes(g) && !state.open.includes(g)) state.open = [...state.open, g];
+    if (g === "tools") state.toolsOpen = true;
+    else if (MENU_GROUPS.includes(g) && !state.open.includes(g)) state.open = [...state.open, g];
     state.panel = "apps";
     renderGroups();
     render();
@@ -555,7 +602,10 @@ export function mountAppBar(root, opts) {
   // When that stop closes, the menu closes too and the groups go back to what the person left.
   const onCloseApps = () => {
     if (state.panel === "apps") state.panel = null;
-    if (groupsStick) state.open = readOpenGroups();
+    if (groupsStick) {
+      state.open = readOpenGroups();
+      state.toolsOpen = menuToolsOpen(document.cookie);
+    }
     renderGroups();
     render();
   };
@@ -568,8 +618,13 @@ export function mountAppBar(root, opts) {
     if (p !== "bell") noticeMenu.close(false);
     // The groups open as this device left them (another app or tab may have changed it).
     if (p === "apps" && was !== "apps") {
-      if (groupsStick) state.open = readOpenGroups();
-      renderGroups();
+      if (groupsStick) {
+        state.open = readOpenGroups();
+        state.toolsOpen = menuToolsOpen(document.cookie);
+      }
+      // The favourites may have changed on the Tools page in another tab.
+      state.favs = readToolFavs();
+      renderTiles();
     }
     // The notices are fetched again each time the panel opens, so the list is fresh.
     if (p === "bell" && was !== "bell") {
@@ -597,8 +652,10 @@ export function mountAppBar(root, opts) {
     const mode = parseMode(readCookie(document.cookie, MODE_COOKIE));
     state.theme = resolveTheme(document, window, opts.themeFallback);
     applyTheme(state.theme);
-    if (mode !== state.mode) {
+    const favs = readToolFavs();
+    if (mode !== state.mode || String(favs) !== String(state.favs)) {
       state.mode = mode;
+      state.favs = favs;
       renderTiles();
     }
     render();
@@ -623,6 +680,12 @@ export function mountAppBar(root, opts) {
     render();
   };
   window.addEventListener("shell:change", onShellChange);
+  // The Tools page pressed a star in this tab (setToolFavs): its own menu follows at once.
+  const onFavs = () => {
+    state.favs = readToolFavs();
+    renderTiles();
+  };
+  window.addEventListener("shell:toolfavs", onFavs);
 
   let inboxKey = "";
   async function loadInbox(force = false) {
@@ -789,6 +852,7 @@ export function mountAppBar(root, opts) {
       window.removeEventListener("shell:open-apps", onOpenApps);
       window.removeEventListener("shell:close-apps", onCloseApps);
       window.removeEventListener("shell:change", onShellChange);
+      window.removeEventListener("shell:toolfavs", onFavs);
       noticeMenu.destroy();
       removeWarm();
       removeTip();
@@ -801,14 +865,16 @@ export function mountAppBar(root, opts) {
 
 /**
  * The portal home's three rows under the app tiles (C1; the demo's .homegroups, groupRow, toolsGroup, adminGroup):
- * Tools (a row per tool, then "All tools"), Admin apps and More (links that open in a new tab). Each is one quiet row
+ * Tools (0.5.1, M6: the person's favourite tools, a row each, then "All N tools"; with no favourite, the line "Star a
+ * tool on the Tools page to keep it here."), Admin apps and More (links that open in a new tab). Each is one quiet row
  * (name, count, chevron), a real button with aria-expanded, closed until opened; open or closed is remembered in the
  * same `shellgroups` cookie as the bar's Apps menu (ids tools, adminapps, more). A row with nothing in it is not drawn.
  * Made to replace landing's own js/portal-groups.js whole: the same calls, markup, class names and list ids.
  *
  *   const rows = mountHomeGroups(document.getElementById("home-groups"), { site });
- *   rows.update({ tools, adminApps, more, allToolsHref }); // lists already filtered by mode, in drawing order
- *   rows.update({ tiles, tools, mode });                   // or: the resolved tiles; the kit splits and filters them
+ *   rows.update({ tools, adminApps, more, allToolsHref }); // lists already filtered by mode, drawn as given
+ *   rows.update({ tiles, tools, mode });                   // or (landing): the resolved tiles and every tool; the kit
+ *                                                          // splits and filters them and draws the favourites (M6)
  *   const n = rows.filter("cad");                          // search: matching entries only; returns how many
  *
  * opts: { site } or { siteScheme, siteDomain }, and optionally the first lists (as update). filter(text) (lower-case
@@ -824,7 +890,8 @@ export function mountHomeGroups(root, opts = {}) {
   let stick = true;
   let query = "";
   let guideOpen = null; // a row the guide opened for one stop
-  let lists = { tools: [], adminApps: [], more: [], allToolsHref: "" };
+  let lists = { tools: [], allCount: 0, adminApps: [], more: [], allToolsHref: "" };
+  let last = null; // the last update({ tiles, … }), drawn again when the favourites change
   for (const c of ["homegroups", "shell-homegroups"]) root.classList.add(c);
 
   // Each drawn row: its id, button, body and searchable entries ([the element with data-q, the element to hide, counts]).
@@ -875,19 +942,20 @@ export function mountHomeGroups(root, opts = {}) {
     rows.push(row);
     return grp;
   }
-  function allTools(href) {
-    const a = h("a", { class: "toolrow all", href, "data-q": "all tools" }, h("span", { text: "All tools" }), h("span", { class: "chev", "aria-hidden": "true", text: "›" }));
+  function allTools(href, n) {
+    const a = h("a", { class: "toolrow all", href, "data-q": "all tools" }, h("span", { text: `All ${n} tools` }), h("span", { class: "chev", "aria-hidden": "true", text: "›" }));
     return entry(a, a, false);
   }
   function draw() {
-    const { tools, adminApps, more, allToolsHref } = lists;
+    const { tools, allCount, adminApps, more, allToolsHref } = lists;
     rows = [];
     items = [];
     const out = [];
     // Each list is built before its row, so the row takes the entries just made.
-    if (tools.length) {
-      const list = h("div", { class: "toollist", id: "tools-list" }, tools.map(tool), allToolsHref ? allTools(allToolsHref) : null);
-      out.push(group("tools", tools.length, list));
+    if (allCount) {
+      const note = tools.length ? null : h("p", { class: "grpnote", text: "Star a tool on the Tools page to keep it here." });
+      const list = h("div", { class: "toollist", id: "tools-list" }, tools.map(tool), note, allToolsHref ? allTools(allToolsHref, allCount) : null);
+      out.push(group("tools", allCount, list));
     }
     if (adminApps.length) {
       const list = h("ul", { class: "morelinks", id: "admin-list" }, adminApps.map(link));
@@ -906,14 +974,19 @@ export function mountHomeGroups(root, opts = {}) {
       const mode = parseMode(more.mode || readCookie(document.cookie, MODE_COOKIE));
       // The same split as the page's tiles: a person with only "more" tiles has them as Home's tiles, not in More too.
       const { admin, rest } = splitGroups(filterByMode(more.tiles, mode));
+      const all = filterByMode(more.tools || [], mode);
+      last = more;
       lists = {
-        tools: filterByMode(more.tools || [], mode),
+        tools: favouriteTools(all, readToolFavs()),
+        allCount: all.length,
         adminApps: admin,
         more: rest,
         allToolsHref: more.allToolsHref ?? toolsHref(site),
       };
     } else {
-      lists = { tools: more.tools || [], adminApps: more.adminApps || [], more: more.more || [], allToolsHref: more.allToolsHref || "" };
+      last = null;
+      const tools = more.tools || [];
+      lists = { tools, allCount: tools.length, adminApps: more.adminApps || [], more: more.more || [], allToolsHref: more.allToolsHref || "" };
     }
     draw();
   }
@@ -946,7 +1019,14 @@ export function mountHomeGroups(root, opts = {}) {
   };
   // Another tab or the bar changed the rows: follow the cookie when the page comes back.
   const onVis = () => {
-    if (document.visibilityState !== "visible" || !stick) return;
+    if (document.visibilityState !== "visible") return;
+    // The favourites may have changed on the Tools page.
+    if (last) {
+      const before = lists.tools.map((t) => t.id).join(".");
+      const all = filterByMode(last.tools || [], parseMode(last.mode || readCookie(document.cookie, MODE_COOKIE)));
+      if (favouriteTools(all, readToolFavs()).map((t) => t.id).join(".") !== before) update(last);
+    }
+    if (!stick) return;
     open = readOpenGroups();
     if (!query) for (const row of rows) show(row, isOpen(row.id));
   };

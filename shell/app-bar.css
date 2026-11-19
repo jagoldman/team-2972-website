@@ -265,33 +265,6 @@
   font-size: 0.8rem;
   font-weight: 600;
 }
-/* Build / Competition: a grey track with a white selected piece (the demo's .seg). */
-.shbar-mode {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  padding: 2px;
-  border-radius: var(--r-ctl, 8px);
-  background: var(--surface-3);
-}
-.shbar-mode button {
-  min-height: 44px;
-  padding: 5px 12px;
-  border: 0;
-  border-radius: var(--r-ctl, 8px);
-  background: transparent;
-  color: var(--text-2);
-  font-size: 0.88rem;
-  font-weight: 600;
-}
-.shbar-mode button:hover {
-  color: var(--text);
-}
-.shbar-mode button[aria-pressed="true"] {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: 0 0 0 1px var(--text);
-}
 .shbar-eyebrow a,
 .shbar-linkbtn {
   padding: 0;
@@ -364,9 +337,48 @@
 .shbar-groupbtn[aria-expanded="true"] svg {
   transform: rotate(-90deg);
 }
-/* Tools: a door to the Tools page (same tab), so its chevron points right and never turns. */
-.shbar .shbar-toolslink svg {
-  transform: none;
+/* 0.5.1 (M2, the demo's "Apps menu, 2026-11-19"): Tools opens in place. The favourites are two to a row like the apps
+   above, but quieter: a smaller grey mark and a lighter name, so the two lists do not read as one. Every target is at
+   least 44 px tall. */
+.shbar-toolsbody {
+  display: grid;
+  gap: 4px;
+}
+/* Doubled class: these beat the app tile's own rules (.shbar-item, .shbar-item b), which come later in this file. */
+.shbar-item.shbar-toolitem {
+  min-height: 44px;
+}
+.shbar-item.shbar-toolitem .shbar-item-ic {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-ctl, 8px);
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+.shbar-item.shbar-toolitem b {
+  font-weight: 550;
+  line-height: 1.25;
+}
+.shbar-favnote {
+  padding: 4px 8px;
+  font-size: 0.86rem;
+}
+.shbar .shbar-alltools[aria-current="page"] {
+  background: var(--tint);
+}
+/* The demo's .chev: a quiet grey "›", also after the blue words of "All N tools". */
+.shbar-chev {
+  margin-left: auto;
+  color: var(--mute);
+  font-size: 1.1rem;
+  font-weight: 400;
+  line-height: 1;
+}
+/* The menu's head (M1): the word "Apps", level with the rows' words, and the ×. */
+.shbar-apps .shbar-panel-head .shbar-panel-title {
+  padding-left: 8px;
+  font-size: 1rem;
+  font-weight: 650;
 }
 /* Tools: one column of rows, each icon, name and one line; same tab (the demo's .toolrow). */
 .shbar-toollist {
@@ -781,12 +793,6 @@ a.shbar-item:hover {
     left: 8px;
     right: 8px;
     width: auto;
-  }
-  .shbar-mode button {
-    padding-inline: 16px;
-  }
-  .shbar-mode button {
-    min-height: 44px;
   }
   /* The bar's icon buttons (the bell, an app's own icon in the bar) are 44 px on a phone, as the account button; the
      bar stays 52 px, and at 360 px and below its gaps shrink so a 320 px screen still holds everything. */
