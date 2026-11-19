@@ -269,7 +269,7 @@ else
   echo "FAIL the hero photo was not saved in this build"; fail=1
 fi
 # D193 (the machinery stays): a stale file under a retired link-preview name answers 404 even when it is on disk, and is
-# not cached; the current og-image-v3.jpg still answers 200. (With the blur list empty, no photo name is retired.)
+# not cached; the current og-image-v3.jpg still answers 200. (A photo in a blur list: the test-only image below.)
 if docker exec "$NAME" test -f /srv/site/img/drive/og-image-v3.jpg; then
   docker exec -u 0 "$NAME" sh -c "cd /srv/site/img/drive && for n in og-image.jpg og-image-b1.jpg og-image-b2.jpg; do cp og-image-v3.jpg \$n; done" \
     && echo "ok   stale files put under the retired names" || { echo "FAIL could not put stale files in the container"; fail=1; }
@@ -279,6 +279,38 @@ if docker exec "$NAME" test -f /srv/site/img/drive/og-image-v3.jpg; then
   check 200 "the current og-image-v3.jpg is still served" -H "Host: $D" "$URL/img/drive/og-image-v3.jpg"
   # take the stale files away again (the photo check below looks for any stray picture in the image)
   docker exec -u 0 "$NAME" sh -c "cd /srv/site/img/drive && rm -f og-image.jpg og-image-b1.jpg og-image-b2.jpg"
+fi
+# D193 (the machinery stays): a photo that IS in a blur list. The production list is empty since D206, so a test-only image
+# (test/fixtures/blur/Dockerfile, built on this image) runs the real build step, fetch.cjs, with a fixture config.js whose
+# PHOTO_BLUR names a made-up Drive ID (mark b7) and a generated test picture; the drive-retired.caddy it writes is the one
+# Caddy loads. Stale WebPs under the photo's plain names and an old mark answer 404, not cached; the current copy 200.
+FAKE=1TeStOnLyBlUrFiXtUrEiDzZzZzZzZ42
+BLUR_IMAGE=2972/landing:test-blur-fixture
+NAME4=landing-test-blur-$$
+if docker build -q -t "$BLUR_IMAGE" --build-arg BASE="$IMAGE" --build-context fixture=test/fixtures/blur -f test/fixtures/blur/Dockerfile . >/dev/null; then
+  echo "ok   the test-only image with the fixture blur list is built"
+  docker run -d --rm --name "$NAME4" -p "127.0.0.1:$((HOST_PORT+3)):3001" \
+    -e PORT=3001 -e SITE_DOMAIN=$D -e SITE_SCHEME=http -e PROXY_SHARED_SECRET=$SECRET "$BLUR_IMAGE" >/dev/null
+  trap 'docker stop "$NAME" "$NAME4" >/dev/null 2>&1 || true' EXIT
+  URL4="http://127.0.0.1:$((HOST_PORT+3))"
+  i=0; until curl -fs "$URL4/healthz" >/dev/null 2>&1; do i=$((i+1)); [ $i -lt 50 ] || { docker logs "$NAME4"; break; }; sleep 0.2; done
+  docker exec "$NAME4" grep -qF "$FAKE" /etc/caddy/drive-retired.caddy && echo "ok   the generated drive-retired.caddy Caddy loads names the made-up photo" || { echo "FAIL drive-retired.caddy does not name the made-up photo"; fail=1; }
+  docker exec -u 0 "$NAME4" sh -c "cd /srv/site/img/drive && for w in 400 800 1200 1600; do cp $FAKE-b7-\$w.webp $FAKE-\$w.webp && cp $FAKE-b7-\$w.webp $FAKE-b6-\$w.webp || exit 1; done" \
+    && echo "ok   stale WebPs put under the made-up photo's plain names and an old mark (b6)" || { echo "FAIL could not put stale WebPs in the test container"; fail=1; }
+  for w in 400 800 1200 1600; do
+    for n in "$FAKE-$w.webp" "$FAKE-b6-$w.webp"; do
+      check 404 "blurred photo: retired name $n is 404 with a stale file present" -H "Host: $D" "$URL4/img/drive/$n"
+      rh=$(curl -s -D - -o /dev/null -H "Host: $D" "$URL4/img/drive/$n" | tr -d '\r')
+      echo "$rh" | grep -qi '^cache-control: no-store' && echo "ok   blurred photo: $n is not cached (no-store)" || { echo "FAIL blurred photo: $n cache header: $(echo "$rh" | grep -i '^cache-control')"; fail=1; }
+    done
+    check 200 "blurred photo: the current marked copy $FAKE-b7-$w.webp is served" -H "Host: $D" "$URL4/img/drive/$FAKE-b7-$w.webp"
+  done
+  ch=$(curl -s -D - -o /dev/null -H "Host: $D" "$URL4/img/drive/$FAKE-b7-1600.webp" | tr -d '\r')
+  echo "$ch" | grep -qi '^content-type: image/webp' && echo "$ch" | grep -qi '^cache-control: public, max-age=31536000, immutable' && echo "ok   blurred photo: the current marked copy is image/webp, cached for a year" || { echo "FAIL blurred photo: the current copy's headers"; fail=1; }
+  docker stop "$NAME4" >/dev/null 2>&1 || true
+  docker rmi "$BLUR_IMAGE" >/dev/null 2>&1 || true
+else
+  echo "FAIL the test-only image with the fixture blur list did not build"; fail=1
 fi
 for p in /img/drive/ /img/drive/manifest.json /img/drive/nope-400.webp /img/drive/1AbCdEfGhIjKlMnOpQrStUvWxYz012345-400.webp; do
   check 404 "public $p is not served" -H "Host: $D" "$URL$p"
