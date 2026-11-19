@@ -1395,13 +1395,16 @@ try {
       const { context } = await newContext(browser, { groups: "student", apps: TOOL_APPS, width, height, today: TODAY.student });
       const { page, errors } = await openPortal(context);
       await settle(page);
+      // The install banner (a first visit on a phone) sits over the page; "Not now" puts it away for these shots.
+      const notNow = page.getByRole("button", { name: "Not now" });
+      if (await notNow.isVisible()) await notNow.click();
       await page.click('[data-grp="tools"] .grphead');
-      await page.$eval('[data-grp="tools"]', (e) => e.scrollIntoView({ block: "start" }));
-      await page.evaluate(() => scrollBy(0, -80));
+      // The page scrolls smoothly: jump at once, so the shot shows the row under the bar.
+      await page.$eval('[data-grp="tools"]', (e) => scrollTo({ top: e.getBoundingClientRect().top + scrollY - 64, behavior: "instant" }));
       await page.waitForTimeout(400);
       await shot(page, `r831-home-tools-open-${width}`);
       check(`M6 ${width}px: Home's open Tools row, no sideways scroll`, (await over(page)) <= 0);
-      await page.evaluate(() => scrollTo(0, 0));
+      await page.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
       await page.click("#shell-bar .shbar-appsbtn");
       await page.waitForTimeout(300);
       await shot(page, `r831-apps-menu-${width}`);
