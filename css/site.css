@@ -463,3 +463,5 @@ a.tabbtn { text-decoration: none; }
 /* touch targets: the Dawson D and the wordmark links are at least 44px tall */
 .hdr-school { display: flex; align-items: center; min-height: 44px; }
 .wm-link { display: inline-flex; align-items: center; min-height: 44px; }
+.brand { min-height: 44px; }
+.ftr-legal a { display: inline-flex; align-items: center; min-height: 44px; }

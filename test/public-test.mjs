@@ -118,6 +118,8 @@ function inspect() {
   for (const el of document.body.querySelectorAll("*")) {
     if (["SCRIPT", "STYLE", "NOSCRIPT", "IMG", "SVG", "PATH", "CIRCLE", "TITLE"].includes(el.tagName.toUpperCase())) continue;
     const cs = getComputedStyle(el);
+    // Text in a closed disclosure is laid out by Chrome but not shown: skip it as the page's visitors never see it.
+    if (el.closest("details:not([open]) > :not(summary)")) continue;
     if (el.closest("[hidden], [aria-hidden='true']") || cs.display === "none" || cs.visibility === "hidden" || !el.getClientRects().length) continue;
     const r0 = el.getBoundingClientRect();
     if (parseFloat(cs.opacity) === 0 && !el.closest(".vh") && r0.width > 1 && r0.height > 1) out.zero.push(el.tagName + "." + el.className);
@@ -214,6 +216,7 @@ try {
     check("bumper: blue at first, says 'Swap to red bumpers' (words and aria-label), 2972 at each end", before.alliance === null && before.label === "Swap to red bumpers" && before.words === "2972|Swap to red bumpers|2972" && before.bg === "rgb(29, 67, 192)", before);
     check("bumper: its colour change is the site's one transition", before.transition[0] === "background-color" && before.transition[1] === "0.25s", before.transition);
     await page.click("#bumper");
+    await page.mouse.move(5, 5);   // off the bumper: its hover colour is the pressed one
     await page.waitForTimeout(400);
     const after = await page.evaluate(() => { const b = document.getElementById("bumper"); return { alliance: document.documentElement.getAttribute("data-alliance"), label: b.getAttribute("aria-label"), words: document.getElementById("bumperT").textContent, bg: getComputedStyle(b).backgroundColor, stored: localStorage.getItem("2972-alliance"), focus: document.activeElement.id }; });
     check("bumper: a press swaps to red, the words and aria-label say 'Swap to blue bumpers', the choice is kept", after.alliance === "red" && after.label === "Swap to blue bumpers" && after.words === "Swap to blue bumpers" && after.bg === "rgb(195, 18, 42)" && after.stored === "red", after);
@@ -294,7 +297,7 @@ try {
         next: { head: [...document.querySelectorAll("#nextUp thead th")].map(txt), rows: [...document.querySelectorAll("#nextUp tbody tr")].map((tr) => [tr.className, ...[...tr.children].map(txt)]) },
         footer: { pages: [...document.querySelectorAll(".ftr-pages a")].map(txt), columns: getComputedStyle(document.querySelector(".ftr-pages")).columnCount, privacy: !!document.querySelector('.ftr-base a[href="privacy.html"]') && !!document.querySelector('.ftr-base a[href="terms.html"]'),
           login: !!document.querySelector(".ftr-pages a[href^='http'][href*='portal.']"), request: !!document.querySelector(".ftr-pages a[href$='/request']"), since: txt(document.querySelector(".ftr-id p + p")), wordmark: !!document.querySelector(".ftr-base img.wm-light") },
-        brand: { n: txt(document.querySelector(".brand .brand-n")), name: txt(document.querySelector(".brand .brand-t")), nameShown: vis(document.querySelector(".brand .brand-t")) && getComputedStyle(document.querySelector(".brand .brand-t")).display !== "none" },
+        brand: { n: txt(document.querySelector(".brand .brand-n")), name: txt(document.querySelector(".brand .brand-t")), nameShown: Boolean(vis(document.querySelector(".brand .brand-t"))) && getComputedStyle(document.querySelector(".brand .brand-t")).display !== "none" },
         data: { years: ROBOTS.map((r) => r.year), machines: HISTORY.workshop.machines, sponsors: SPONSOR_TIERS.find((t) => t.sponsors.length).sponsors.map((x) => x.name), n: ROBOTS.length },
       };
     });
@@ -333,7 +336,7 @@ try {
       const img = document.querySelector("#hero-photo"), c = img && getComputedStyle(img);
       return { h1: box(".hero h1"), btns: [...document.querySelectorAll(".hero .btns a")].map((a) => a.getBoundingClientRect().bottom), bumper: box("#bumper"), photo: box("#hero-photo"), filter: c && c.filter, opacity: c && c.opacity, vh: innerHeight };
     });
-    check("Home 1440x900: the headline, both buttons and the bumper are on screen", h.h1.bottom <= h.vh && h.btns.every((b) => b <= h.vh) && h.bumper.bottom <= h.vh, h);
+    check("Home 1440x900: the headline and both buttons are on screen, and the bumper starts on screen (as in the demo)", h.h1.bottom <= h.vh && h.btns.every((b) => b <= h.vh) && h.bumper.top < h.vh - 20, h);
     check("Home 1440x900: the bumper sits across the base of the photo; the photo is at full brightness", h.bumper.top < h.photo.bottom && h.bumper.bottom > h.photo.bottom && h.filter === "none" && h.opacity === "1", h);
     if (SHOTS) {
       await page.screenshot({ path: join(SHOTS, "home-hero-1440.png") });
