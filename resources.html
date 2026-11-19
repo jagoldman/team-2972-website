@@ -30,7 +30,7 @@
 <script src="js/content-loader.js"></script>
 <script src="js/components.js"></script>
 <script>
-// Filter chips by category and a search box over the links. Both are kept while the page is re-rendered (the editor's preview).
+// Filters by category and a search box over the links. Both are kept while the page is re-rendered (the editor's preview).
 let resCat = "all", resQ = "";
 const external = (url) => /^https?:/i.test(url);
 
@@ -43,6 +43,14 @@ function matches(item, q) {
   const text = `${item.label} ${item.note || ""}`.toLowerCase();
   return !q || text.includes(q.toLowerCase());
 }
+// One link: an outside address opens in a new tab (and says so); a file to download (the logo) downloads; a page or
+// place on this site ("#cad-overview") opens here.
+function resourceLink(item, P) {
+  const href = safeUrl(item.url), label = `<span${ck(`${P}.label`)}>${esc(item.label)}</span>`;
+  if (item.download) return `<a href="${esc(href)}" download="${esc(item.download)}"${ckHref(`${P}.url`)}>${label}</a>`;
+  if (external(href)) return extLink(href, label, ckHref(`${P}.url`));
+  return `<a href="${esc(href)}"${ckHref(`${P}.url`)}>${label}</a>`;
+}
 function listHtml() {
   let n = 0;
   const html = visibleGroups().map(({ group, gi, items }) => {
@@ -50,13 +58,13 @@ function listHtml() {
     const shown = items.filter(({ item }) => matches(item, resQ));
     if (!shown.length) return "";
     n += shown.length;
-    return `<div class="resource-group res-cat"${ck(`RESOURCE_LINKS[${gi}]`)}><h2 class="label"${ck(`RESOURCE_LINKS[${gi}].category`)}>${esc(group.category)}</h2>
+    return `<div class="res-cat"${ck(`RESOURCE_LINKS[${gi}]`)}><h2${ck(`RESOURCE_LINKS[${gi}].category`)}>${esc(group.category)}</h2>
       <ul class="res-list"${ck(`RESOURCE_LINKS[${gi}].items`)}>${shown.map(({ item, ii }) => {
-        const href = safeUrl(item.url), P = `RESOURCE_LINKS[${gi}].items[${ii}]`, out = external(href);
-        return `<li${ck(P)}><a href="${esc(href)}"${item.download ? ` download="${esc(item.download)}"` : ""}${out ? ' target="_blank" rel="noopener"' : ""}${ckHref(`${P}.url`)}><span${ck(`${P}.label`)}>${esc(item.label)}</span>${out ? " ↗" : ""}</a>${item.note ? `<span class="res-note"${ck(`${P}.note`)}>${esc(item.note)}</span>` : ""}</li>`;
+        const P = `RESOURCE_LINKS[${gi}].items[${ii}]`;
+        return `<li${ck(P)}>${resourceLink(item, P)}${item.note ? `<span class="res-note"${ck(`${P}.note`)}>${esc(item.note)}</span>` : ""}</li>`;
       }).join("")}</ul></div>`;
   }).join("");
-  return { count: `Showing ${plural(n, "link")}`, html: n ? html : `<p>No resources match. <button type="button" class="tl-link" data-resclear>Clear the search.</button></p>` };
+  return { count: `Showing ${plural(n, "link")}`, html: n ? html : `<p class="res-none">No link matches that search. <button type="button" class="asbtn" data-resclear>Clear the search</button></p>` };
 }
 function refresh() {
   const g = listHtml();
@@ -67,21 +75,22 @@ function refresh() {
 function render() {
   const g = listHtml();
   const cats = [["all", "All"]].concat(visibleGroups().map(({ group }) => [group.category, group.category]));
+  const onshape = extLink(SITE.onshapePublic, "public Onshape publication", ' id="onshape-public" data-ck-href="SITE.onshapePublic"') || "public Onshape publication";
   document.getElementById("resources-page").innerHTML = `
-    <section class="band"><div class="wrap"><h1 class="h1" tabindex="-1">Resources</h1><p class="lead">Documents, code, and guides for team members and other FRC teams.</p>
-      <div class="res-tools"><div class="chips" role="group" aria-label="Filter by category">${cats.map(([v, label]) => `<button type="button" class="fchip" data-ck-ignore data-rescat="${esc(v)}" aria-pressed="${resCat === v}">${esc(label)}</button>`).join("")}</div>
-        <div class="res-q-w"><label class="label" for="res-q">Search resources</label><input type="search" id="res-q" autocomplete="off" value="${esc(resQ)}"></div></div>
-      <p class="small mute tab" id="res-count" aria-live="polite">${g.count}</p>
+    <section class="band band-first"><div class="wrap"><h1 tabindex="-1">Resources</h1><p class="lead">Documents, code, and guides for team members and other FRC teams.</p>
+      <div class="res-tools"><div class="filters" role="group" aria-label="Filter by category">${cats.map(([v, label]) => `<button type="button" class="filter" data-ck-ignore data-rescat="${esc(v)}" aria-pressed="${resCat === v}">${esc(label)}</button>`).join("")}</div>
+        <div class="field"><label for="res-q">Search resources</label><input type="search" id="res-q" autocomplete="off" value="${esc(resQ)}"></div></div>
+      <p class="small mute tab res-count" id="res-count" aria-live="polite">${g.count}</p>
       <div class="res-cols" id="resource-groups"${ck("RESOURCE_LINKS")}>${g.html}</div></div></section>
-    <section class="band alt" id="request-access"><div class="wrap"><h2 class="h2">Code, CAD and the Team Drive</h2>
-      <p>Anyone can read our robot code on GitHub and view our robots in the <a id="onshape-public" href="${esc(safeUrl(SITE.onshapePublic))}" target="_blank" rel="noopener" data-ck-href="SITE.onshapePublic">public Onshape publication</a>. The team's Google Drive and the editable Onshape CAD are shared by invitation only. Team members can ask for access here.</p>
-      <div id="team-tools">${renderTeamTools()}</div><div id="request-access-body">${renderRequestAccess()}</div></div></section>
+    <section class="band band-floor" id="request-access"><div class="wrap"><h2>Code, CAD and the Team Drive</h2>
+      <p class="measure">Anyone can read our robot code on GitHub and view our robots in the ${onshape}. The team's Google Drive and the editable Onshape CAD are shared by invitation only. Team members can ask for access here.</p>
+      <div id="team-tools">${renderTeamTools()}</div><div id="request-access-body">${siteRequestAccess()}</div></div></section>
     <section class="band" id="cad-overview"><div class="wrap">
       <!-- fixed page heading; it only happens to match a link label, so it is not a content field -->
-      <h2 class="h2" data-ck-ignore>3D CAD/CAM Modeling Overview</h2>
-      <div class="disc-list"${ck("CAD_OVERVIEW")}>${CAD_OVERVIEW.map((part, i) => `<details class="disc"${ck(`CAD_OVERVIEW[${i}]`)}><summary${ck(`CAD_OVERVIEW[${i}].heading`)}>${esc(part.heading)}</summary>
+      <h2 data-ck-ignore>3D CAD/CAM Modeling Overview</h2>
+      <div class="cad"${ck("CAD_OVERVIEW")}>${CAD_OVERVIEW.map((part, i) => `<details class="disc"${ck(`CAD_OVERVIEW[${i}]`)}><summary${ck(`CAD_OVERVIEW[${i}].heading`)}>${esc(part.heading)}</summary>
         ${part.body ? `<p${ck(`CAD_OVERVIEW[${i}].body`, "rich")}>${rich(part.body)}</p>` : ""}
-        ${part.list ? `<ul class="cad-ul"${ck(`CAD_OVERVIEW[${i}].list`)}>${part.list.map((li, j) => `<li${ck(`CAD_OVERVIEW[${i}].list[${j}]`, "rich")}>${rich(li)}</li>`).join("")}</ul>` : ""}
+        ${part.list ? `<ul${ck(`CAD_OVERVIEW[${i}].list`)}>${part.list.map((li, j) => `<li${ck(`CAD_OVERVIEW[${i}].list[${j}]`, "rich")}>${rich(li)}</li>`).join("")}</ul>` : ""}
         ${part.after ? `<p${ck(`CAD_OVERVIEW[${i}].after`, "rich")}>${rich(part.after)}</p>` : ""}</details>`).join("")}</div></div></section>`;
 }
 

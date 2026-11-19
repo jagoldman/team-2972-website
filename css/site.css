@@ -449,3 +449,14 @@ a.tabbtn { text-decoration: none; }
 .first-h { margin-top: 36px; }
 .prose .first-links { margin-top: 12px; }
 .no-pic > .s7 { grid-column: 1 / -1; }
+/* Resources, Outreach, Media, Contact, Privacy and Terms */
+.res-count { margin-top: 20px; }
+.res-none { padding-top: 28px; }
+.band .team-tools { margin-top: 24px; }
+.band .cad { max-width: 820px; margin-top: 24px; }
+.cad .disc ul { padding-left: 1.2em; list-style: disc; }
+.intro { margin-top: 16px; }
+.media-head { padding-bottom: 0; }
+.media-body { padding-block: 48px clamp(48px, 7vw, 96px); }
+.band .contact { margin-top: 48px; }
+.legal-head { padding-bottom: 0; }

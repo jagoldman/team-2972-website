@@ -35,25 +35,30 @@ function watchUrl(embed) {
   const m = /^https:\/\/www\.youtube\.com\/embed\/([\w-]{11})(?:\?start=(\d+))?$/.exec(embed);
   return m ? `https://www.youtube.com/watch?v=${m[1]}${m[2] ? `&t=${m[2]}s` : ""}` : "";
 }
+const sec = (title, body, id) => `<section class="sec"${id ? ` id="${id}"` : ""}><h2>${title}</h2><div class="sec-body">${body}</div></section>`;
 onContent(() => {
   const videos = MEDIA_VIDEOS
     .map((v, i) => ({ src: youtubeEmbed(typeof v === "string" ? v : v.url), caption: typeof v === "string" ? "" : (v.caption || ""), i, obj: typeof v !== "string" }))
     .filter((v) => v.src);
-  const photos = MEDIA_PHOTOS.length
-    ? `<div class="photo-grid" id="photo-grid"${ck("MEDIA_PHOTOS")}>${MEDIA_PHOTOS.map((src, i) => `<a class="photo r43" href="${esc(imgUrl(src, 1600))}" target="_blank" rel="noopener"${ck(`MEDIA_PHOTOS[${i}]`)}><img${imgAttrs(src, 600)}${ck(`MEDIA_PHOTOS[${i}]`)} alt="${esc(altFor(src, "Team photo"))}" loading="lazy" width="600" height="450" /></a>`).join("")}</div>`
-    : `<div id="photo-grid"${ck("MEDIA_PHOTOS")}><p class="empty-note">Photo gallery coming soon.</p></div>`;
+  const videoList = videos.length
+    ? `<ul class="links" id="video-grid"${ck("MEDIA_VIDEOS")}>${videos.map((v) => `<li${ck(`MEDIA_VIDEOS[${v.i}]`)}><span${v.caption ? ck(`MEDIA_VIDEOS[${v.i}].caption`) : ""}>${esc(v.caption || `Team ${SITE.teamNumber} video`)}</span>${extLink(watchUrl(v.src), "Watch on YouTube", ckHref(v.obj ? `MEDIA_VIDEOS[${v.i}].url` : `MEDIA_VIDEOS[${v.i}]`))}</li>`).join("")}</ul>`
+    : `<div id="video-grid"${ck("MEDIA_VIDEOS")}><p class="empty-note">Video gallery coming soon.</p></div>`;
   const press = MEDIA_PUBLICITY.length
-    ? `<ul class="links"${ck("MEDIA_PUBLICITY")}>${MEDIA_PUBLICITY.map((p, i) => `<li class="press"${ck(`MEDIA_PUBLICITY[${i}]`)}><a href="${esc(safeUrl(p.url))}" target="_blank" rel="noopener"${ck(`MEDIA_PUBLICITY[${i}].title`)}${ckHref(`MEDIA_PUBLICITY[${i}].url`)}>${esc(p.title)}</a> ↗<span class="mute small" ${ck(`MEDIA_PUBLICITY[${i}].outlet`).trim()}>${esc(p.outlet)}</span></li>`).join("")}</ul>`
+    ? `<ul class="links"${ck("MEDIA_PUBLICITY")}>${MEDIA_PUBLICITY.map((p, i) => `<li class="press"${ck(`MEDIA_PUBLICITY[${i}]`)}>${extLink(p.url, `<span${ck(`MEDIA_PUBLICITY[${i}].title`)}>${esc(p.title)}</span>`, ckHref(`MEDIA_PUBLICITY[${i}].url`))}<span class="mute small"${ck(`MEDIA_PUBLICITY[${i}].outlet`)}>${esc(p.outlet)}</span></li>`).join("")}</ul>`
     : `<p class="empty-note"${ck("MEDIA_PUBLICITY")}>No press coverage listed yet.</p>`;
+  // Photos: the team's uploads (MEDIA_PHOTOS) in a grid, each opening the large copy in a new tab.
+  const photos = MEDIA_PHOTOS.length
+    ? `<div class="pics" id="photo-grid"${ck("MEDIA_PHOTOS")}>${MEDIA_PHOTOS.map((src, i) => `<a class="shot r43" href="${esc(imgUrl(src, 1600))}" target="_blank" rel="noopener"${ck(`MEDIA_PHOTOS[${i}]`)}><img${imgSized(src, [400, 800], "(min-width: 900px) 220px, 50vw")}${ck(`MEDIA_PHOTOS[${i}]`)} alt="${esc(altFor(src, "Team photo"))}" loading="lazy" width="600" height="450" /><span class="vh"> (opens in a new tab)</span></a>`).join("")}</div>`
+    : `<div id="photo-grid"${ck("MEDIA_PHOTOS")}><p class="empty-note">Photo gallery coming soon.</p></div>`;
+  const instagram = extLink(SITE.instagram, `Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span>`, ' class="textlink" id="ig-link" data-ck-href="SITE.instagram"');
   document.getElementById("media-page").innerHTML = `
-    <section class="band"><div class="wrap"><h1 class="h1" tabindex="-1">Media</h1><p class="lead">Photos, videos, and press coverage of the team.</p></div></section>
-    <section class="band alt tight"><div class="wrap"><h2 class="h2">Photos</h2>${photos}</div></section>
-    <section class="band tight"><div class="wrap"><h2 class="h2">Videos</h2>
-      ${videos.length ? `<ul class="links rows" id="video-grid"${ck("MEDIA_VIDEOS")}>${videos.map((v) => `<li${ck(`MEDIA_VIDEOS[${v.i}]`)}><span${v.caption ? ck(`MEDIA_VIDEOS[${v.i}].caption`) : ""}>${esc(v.caption || "Team video")}</span><a href="${esc(watchUrl(v.src))}" target="_blank" rel="noopener"${ckHref(v.obj ? `MEDIA_VIDEOS[${v.i}].url` : `MEDIA_VIDEOS[${v.i}]`)}>Watch on YouTube ↗</a></li>`).join("")}</ul>` : `<div id="video-grid"${ck("MEDIA_VIDEOS")}><p class="empty-note">Video gallery coming soon.</p></div>`}</div></section>
-    <section class="band alt tight"><div class="wrap"><h2 class="h2">In the press</h2>${press}
-      <p class="spaced-sm">Press inquiries are welcome. We coordinate them with Dawson School before materials or comments go out, so please reach us through the <a href="contact.html">contact page</a>.</p></div></section>
-    <section class="band tight"><div class="wrap"><h2 class="h2">Follow along</h2><p>Follow us on Instagram for behind-the-scenes updates from build season. We don't check messages there; to reach us, use the <a href="contact.html">contact page</a>.</p>
-      <div class="tl-links"><a class="tl-link" href="robots.html">Robot pages →</a><a class="tl-link" id="ig-link" href="${esc(safeUrl(SITE.instagram))}" target="_blank" rel="noopener" data-ck-href="SITE.instagram">Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span> ↗</a></div></div></section>`;
+    <section class="band band-first media-head"><div class="wrap"><h1 tabindex="-1">Media</h1><p class="lead">Photos, videos, and press coverage of the team.</p></div></section>
+    <div class="wrap media-body">
+      ${sec("Videos", videoList)}
+      ${sec("In the press", `${press}<p>Press inquiries are welcome. We coordinate them with Dawson School before materials or comments go out, so please reach us through the <a href="contact.html">contact page</a>.</p>`)}
+      ${sec("Photos", `${photos}<p>More photos are on our robot pages and on Instagram.</p><p class="linkrow"><a class="textlink" href="robots.html">Robot pages</a>${instagram}</p>`)}
+      ${sec("Follow along", `<p>Follow us on Instagram for behind-the-scenes updates from build season. We don't check messages there; to reach us, use the <a href="contact.html">contact page</a>.</p>`)}
+    </div>`;
 });
 </script>
 </body>
