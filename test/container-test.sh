@@ -307,7 +307,7 @@ if docker build -q -t "$BLUR_IMAGE" --build-arg BASE="$IMAGE" --build-context fi
   done
   ch=$(curl -s -D - -o /dev/null -H "Host: $D" "$URL4/img/drive/$FAKE-b7-1600.webp" | tr -d '\r')
   echo "$ch" | grep -qi '^content-type: image/webp' && echo "$ch" | grep -qi '^cache-control: public, max-age=31536000, immutable' && echo "ok   blurred photo: the current marked copy is image/webp, cached for a year" || { echo "FAIL blurred photo: the current copy's headers"; fail=1; }
-  docker stop "$NAME4" >/dev/null 2>&1 || true
+  docker rm -f "$NAME4" >/dev/null 2>&1 || true   # removes it now (--rm alone is asynchronous), so the image can go
   docker rmi "$BLUR_IMAGE" >/dev/null 2>&1 || true
 else
   echo "FAIL the test-only image with the fixture blur list did not build"; fail=1
