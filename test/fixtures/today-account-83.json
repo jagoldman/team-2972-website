@@ -1,5 +1,5 @@
 {
- "about": "What Account (account branch r83 at 302b3c8, src/lib/today.ts gatherToday with today-home.ts) served for made-up app answers shaped as CONTRACT P1, S1, C1, E1, T1, on Thu, Nov 19 2026, site http://landing.test. Made by running Account's own code; not edited by hand. Made-up people only.",
+ "about": "What Account (account branch r83 at 9c94c71, src/lib/today.ts gatherToday with today-home.ts, filtered by the person's groups) served for made-up app answers shaped as CONTRACT P1, S1, C1, E1, T1, on Thu, Nov 19 2026, site http://landing.test. adminOnly: the apps answered as for a mentor, the person is in the admin group only. Made by running Account's own code; not edited by hand. Made-up people only.",
  "mentor": {
   "v": 1,
   "today": [
@@ -13,12 +13,12 @@
   ],
   "waiting": [
    {
-    "id": "parts:request:r12",
+    "id": "parts:request:12",
     "section": "waiting",
     "group": "Needs your OK",
     "title": "Motor, brushless",
     "detail": "Order by Tue, Nov 17, 2 days late",
-    "href": "http://parts.landing.test/?request=r12",
+    "href": "http://parts.landing.test/?request=12",
     "mark": {
      "word": "Blocking",
      "tone": "bad"
@@ -32,25 +32,25 @@
       "label": "Approve",
       "app": "parts",
       "action": "approve",
-      "key": "r12",
+      "key": "12",
       "primary": true
      },
      {
       "label": "Deny",
       "app": "parts",
       "action": "deny",
-      "key": "r12",
+      "key": "12",
       "reason": true
      }
     ]
    },
    {
-    "id": "parts:request:r13",
+    "id": "parts:request:13",
     "section": "waiting",
     "group": "Needs your OK",
     "title": "Polycarbonate sheet",
     "detail": "$42.50, asked by Jordan Sample, order by Wed, Nov 25",
-    "href": "http://parts.landing.test/?request=r13",
+    "href": "http://parts.landing.test/?request=13",
     "lines": [
      "$42.50, asked by Jordan Sample, order by Wed, Nov 25"
     ],
@@ -59,13 +59,13 @@
       "label": "Approve",
       "app": "parts",
       "action": "approve",
-      "key": "r13"
+      "key": "13"
      },
      {
       "label": "Deny",
       "app": "parts",
       "action": "deny",
-      "key": "r13",
+      "key": "13",
       "reason": true
      }
     ]
@@ -127,83 +127,39 @@
     "detail": "The first must be ordered by Mon, Nov 23",
     "href": "http://parts.landing.test/?tab=toorder",
     "count": 5
-   },
-   {
-    "id": "calendar:mentors-silent",
-    "section": "waiting",
-    "title": "2 mentors haven't answered for this week",
-    "detail": "Pat Example, Lee Sample",
-    "href": "http://calendar.landing.test/?tab=mentors",
-    "count": 2
    }
   ],
   "others": [],
   "next": null,
-  "week": [
+  "activity": [
    {
-    "date": "2026-11-19",
-    "href": "http://calendar.landing.test/?tab=agenda",
-    "items": [
-     {
-      "kind": "practice",
-      "name": "Practice",
-      "startTime": "15:30",
-      "endTime": "18:00",
-      "location": null
-     }
-    ],
-    "mentorsComing": 2,
-    "snacks": {
-     "names": [
-      "Test family"
-     ],
-     "open": 0,
-     "modes": [
-      "build"
-     ]
-    }
-   },
+    "app": "Calendar",
+    "title": "Avery Test",
+    "detail": "signed in at the door",
+    "href": "http://calendar.landing.test/here",
+    "at": "2026-11-19T22:40:00.000Z"
+   }
+  ],
+  "milestones": [
    {
+    "id": "1",
+    "name": "Driving on carpet",
     "date": "2026-11-21",
-    "href": "http://calendar.landing.test/?tab=agenda",
-    "items": [
-     {
-      "kind": "build",
-      "name": "Build day",
-      "startTime": "10:00",
-      "endTime": "14:00",
-      "location": null
-     }
-    ],
-    "mentorsComing": 0,
-    "snacks": {
-     "names": [],
-     "open": 2,
-     "modes": [
-      "build"
-     ]
-    }
+    "project": "Drive base",
+    "projectId": "1",
+    "color": "#1f9d55",
+    "practicesLeft": 1,
+    "href": "http://tasks.landing.test/projects/1"
    },
    {
-    "date": "2026-11-24",
-    "href": "http://calendar.landing.test/?tab=agenda",
-    "items": [
-     {
-      "kind": "practice",
-      "name": "Practice",
-      "startTime": "15:30",
-      "endTime": "18:00",
-      "location": null
-     }
-    ],
-    "mentorsComing": 2,
-    "snacks": {
-     "names": [],
-     "open": 2,
-     "modes": [
-      "build"
-     ]
-    }
+    "id": "2",
+    "name": "Design review",
+    "date": "2026-11-28",
+    "project": "Shooter",
+    "projectId": "3",
+    "color": null,
+    "practicesLeft": 4,
+    "href": "http://tasks.landing.test/projects/3"
    }
   ],
   "season": {
@@ -320,35 +276,71 @@
    ]
   },
   "coming": [],
-  "milestones": [
+  "week": [
    {
-    "id": "1",
-    "name": "Driving on carpet",
-    "date": "2026-11-21",
-    "project": "Drive base",
-    "projectId": "1",
-    "color": "#1f9d55",
-    "practicesLeft": 1,
-    "href": "http://tasks.landing.test/projects/1"
+    "date": "2026-11-19",
+    "href": "http://calendar.landing.test/?tab=agenda",
+    "items": [
+     {
+      "kind": "practice",
+      "name": "Practice",
+      "startTime": "15:30",
+      "endTime": "18:00",
+      "location": null
+     }
+    ],
+    "mentorsComing": 2,
+    "snacks": {
+     "names": [
+      "Test family"
+     ],
+     "open": 0,
+     "modes": [
+      "build"
+     ]
+    }
    },
    {
-    "id": "2",
-    "name": "Design review",
-    "date": "2026-11-28",
-    "project": "Shooter",
-    "projectId": "3",
-    "color": null,
-    "practicesLeft": 4,
-    "href": "http://tasks.landing.test/projects/3"
-   }
-  ],
-  "activity": [
+    "date": "2026-11-21",
+    "href": "http://calendar.landing.test/?tab=agenda",
+    "items": [
+     {
+      "kind": "build",
+      "name": "Build day",
+      "startTime": "10:00",
+      "endTime": "14:00",
+      "location": null
+     }
+    ],
+    "mentorsComing": 0,
+    "snacks": {
+     "names": [],
+     "open": 2,
+     "modes": [
+      "build"
+     ]
+    }
+   },
    {
-    "app": "Calendar",
-    "title": "Avery Test",
-    "detail": "signed in at the door",
-    "href": "http://calendar.landing.test/here",
-    "at": "2026-11-19T22:40:00.000Z"
+    "date": "2026-11-24",
+    "href": "http://calendar.landing.test/?tab=agenda",
+    "items": [
+     {
+      "kind": "practice",
+      "name": "Practice",
+      "startTime": "15:30",
+      "endTime": "18:00",
+      "location": null
+     }
+    ],
+    "mentorsComing": 2,
+    "snacks": {
+     "names": [],
+     "open": 2,
+     "modes": [
+      "build"
+     ]
+    }
    }
   ]
  },
@@ -370,11 +362,11 @@
   "waiting": [],
   "others": [
    {
-    "id": "parts:mine:r41",
+    "id": "parts:mine:41",
     "section": "others",
     "title": "Bearing 1/2\" hex, flanged",
     "detail": "Arrives about Fri, Nov 20",
-    "href": "http://parts.landing.test/?request=r41",
+    "href": "http://parts.landing.test/?request=41",
     "mark": {
      "word": "Ordered",
      "tone": "ok"
@@ -384,11 +376,11 @@
     ]
    },
    {
-    "id": "parts:mine:r42",
+    "id": "parts:mine:42",
     "section": "others",
     "title": "Crimp tool",
     "detail": "Needs an OK",
-    "href": "http://parts.landing.test/?request=r42",
+    "href": "http://parts.landing.test/?request=42",
     "lines": [
      "Needs an OK",
      "Waiting on a mentor"
@@ -426,71 +418,35 @@
     "title": "Cut on the router"
    }
   },
-  "week": [
+  "activity": [
    {
-    "date": "2026-11-19",
-    "href": "http://calendar.landing.test/?tab=agenda",
-    "items": [
-     {
-      "kind": "practice",
-      "name": "Practice",
-      "startTime": "15:30",
-      "endTime": "18:00",
-      "location": null
-     }
-    ],
-    "mentorsComing": 2,
-    "snacks": {
-     "names": [
-      "Test family"
-     ],
-     "open": 0,
-     "modes": [
-      "build"
-     ]
-    }
-   },
+    "app": "Calendar",
+    "title": "Avery Test",
+    "detail": "signed in at the door",
+    "href": "http://calendar.landing.test/here",
+    "at": "2026-11-19T22:40:00.000Z"
+   }
+  ],
+  "milestones": [
    {
+    "id": "1",
+    "name": "Driving on carpet",
     "date": "2026-11-21",
-    "href": "http://calendar.landing.test/?tab=agenda",
-    "items": [
-     {
-      "kind": "build",
-      "name": "Build day",
-      "startTime": "10:00",
-      "endTime": "14:00",
-      "location": null
-     }
-    ],
-    "mentorsComing": 0,
-    "snacks": {
-     "names": [],
-     "open": 2,
-     "modes": [
-      "build"
-     ]
-    }
+    "project": "Drive base",
+    "projectId": "1",
+    "color": "#1f9d55",
+    "practicesLeft": 1,
+    "href": "http://tasks.landing.test/projects/1"
    },
    {
-    "date": "2026-11-24",
-    "href": "http://calendar.landing.test/?tab=agenda",
-    "items": [
-     {
-      "kind": "practice",
-      "name": "Practice",
-      "startTime": "15:30",
-      "endTime": "18:00",
-      "location": null
-     }
-    ],
-    "mentorsComing": 2,
-    "snacks": {
-     "names": [],
-     "open": 2,
-     "modes": [
-      "build"
-     ]
-    }
+    "id": "2",
+    "name": "Design review",
+    "date": "2026-11-28",
+    "project": "Shooter",
+    "projectId": "3",
+    "color": null,
+    "practicesLeft": 4,
+    "href": "http://tasks.landing.test/projects/3"
    }
   ],
   "season": {
@@ -607,35 +563,48 @@
    ]
   },
   "coming": [],
-  "milestones": [
+  "week": [
    {
-    "id": "1",
-    "name": "Driving on carpet",
-    "date": "2026-11-21",
-    "project": "Drive base",
-    "projectId": "1",
-    "color": "#1f9d55",
-    "practicesLeft": 1,
-    "href": "http://tasks.landing.test/projects/1"
+    "date": "2026-11-19",
+    "href": "http://calendar.landing.test/?tab=agenda",
+    "items": [
+     {
+      "kind": "practice",
+      "name": "Practice",
+      "startTime": "15:30",
+      "endTime": "18:00",
+      "location": null
+     }
+    ],
+    "mentorsComing": 2
    },
    {
-    "id": "2",
-    "name": "Design review",
-    "date": "2026-11-28",
-    "project": "Shooter",
-    "projectId": "3",
-    "color": null,
-    "practicesLeft": 4,
-    "href": "http://tasks.landing.test/projects/3"
-   }
-  ],
-  "activity": [
+    "date": "2026-11-21",
+    "href": "http://calendar.landing.test/?tab=agenda",
+    "items": [
+     {
+      "kind": "build",
+      "name": "Build day",
+      "startTime": "10:00",
+      "endTime": "14:00",
+      "location": null
+     }
+    ],
+    "mentorsComing": 0
+   },
    {
-    "app": "Calendar",
-    "title": "Avery Test",
-    "detail": "signed in at the door",
-    "href": "http://calendar.landing.test/here",
-    "at": "2026-11-19T22:40:00.000Z"
+    "date": "2026-11-24",
+    "href": "http://calendar.landing.test/?tab=agenda",
+    "items": [
+     {
+      "kind": "practice",
+      "name": "Practice",
+      "startTime": "15:30",
+      "endTime": "18:00",
+      "location": null
+     }
+    ],
+    "mentorsComing": 2
    }
   ]
  },
@@ -666,21 +635,21 @@
     ]
    },
    {
-    "id": "calendar:vol:ev4",
+    "id": "calendar:vol:clx4v0lunteer9demo",
     "section": "today",
     "title": "Library robot demo",
     "detail": "Sat, Nov 28, 10 am–noon, 2 more people needed",
-    "href": "http://calendar.landing.test/volunteer?e=ev4",
+    "href": "http://calendar.landing.test/volunteer?e=clx4v0lunteer9demo",
     "cta": {
      "label": "Sign up",
-     "href": "http://calendar.landing.test/volunteer?e=ev4"
+     "href": "http://calendar.landing.test/volunteer?e=clx4v0lunteer9demo"
     },
     "acts": [
      {
       "label": "Sign up",
       "app": "calendar",
       "action": "volunteer",
-      "key": "ev4"
+      "key": "clx4v0lunteer9demo"
      }
     ]
    }
@@ -688,70 +657,7 @@
   "waiting": [],
   "others": [],
   "next": null,
-  "week": [
-   {
-    "date": "2026-11-19",
-    "href": "http://calendar.landing.test/?tab=agenda",
-    "items": [
-     {
-      "kind": "practice",
-      "name": "Practice",
-      "startTime": "15:30",
-      "endTime": "18:00",
-      "location": "Team shop"
-     }
-    ],
-    "snacks": {
-     "names": [
-      "Test family"
-     ],
-     "open": 0,
-     "modes": [
-      "build"
-     ]
-    }
-   },
-   {
-    "date": "2026-11-21",
-    "href": "http://calendar.landing.test/?tab=agenda",
-    "items": [
-     {
-      "kind": "build",
-      "name": "Build day",
-      "startTime": "10:00",
-      "endTime": "14:00",
-      "location": "Team shop"
-     }
-    ],
-    "snacks": {
-     "names": [],
-     "open": 2,
-     "modes": [
-      "build"
-     ]
-    }
-   },
-   {
-    "date": "2026-11-24",
-    "href": "http://calendar.landing.test/?tab=agenda",
-    "items": [
-     {
-      "kind": "practice",
-      "name": "Practice",
-      "startTime": "15:30",
-      "endTime": "18:00",
-      "location": "Team shop"
-     }
-    ],
-    "snacks": {
-     "names": [],
-     "open": 2,
-     "modes": [
-      "build"
-     ]
-    }
-   }
-  ],
+  "activity": [],
   "season": {
    "target": {
     "name": "Kickoff",
@@ -883,7 +789,70 @@
     "href": "http://calendar.landing.test/?e=k"
    }
   ],
-  "activity": []
+  "week": [
+   {
+    "date": "2026-11-19",
+    "href": "http://calendar.landing.test/?tab=agenda",
+    "items": [
+     {
+      "kind": "practice",
+      "name": "Practice",
+      "startTime": "15:30",
+      "endTime": "18:00",
+      "location": "Team shop"
+     }
+    ],
+    "snacks": {
+     "names": [
+      "Test family"
+     ],
+     "open": 0,
+     "modes": [
+      "build"
+     ]
+    }
+   },
+   {
+    "date": "2026-11-21",
+    "href": "http://calendar.landing.test/?tab=agenda",
+    "items": [
+     {
+      "kind": "build",
+      "name": "Build day",
+      "startTime": "10:00",
+      "endTime": "14:00",
+      "location": "Team shop"
+     }
+    ],
+    "snacks": {
+     "names": [],
+     "open": 2,
+     "modes": [
+      "build"
+     ]
+    }
+   },
+   {
+    "date": "2026-11-24",
+    "href": "http://calendar.landing.test/?tab=agenda",
+    "items": [
+     {
+      "kind": "practice",
+      "name": "Practice",
+      "startTime": "15:30",
+      "endTime": "18:00",
+      "location": "Team shop"
+     }
+    ],
+    "snacks": {
+     "names": [],
+     "open": 2,
+     "modes": [
+      "build"
+     ]
+    }
+   }
+  ]
  },
  "studentEvent": {
   "v": 1,
@@ -914,11 +883,11 @@
   "waiting": [],
   "others": [
    {
-    "id": "parts:mine:r41",
+    "id": "parts:mine:41",
     "section": "others",
     "title": "Bearing 1/2\" hex, flanged",
     "detail": "Arrives about Fri, Nov 20",
-    "href": "http://parts.landing.test/?request=r41",
+    "href": "http://parts.landing.test/?request=41",
     "mark": {
      "word": "Ordered",
      "tone": "ok"
@@ -928,11 +897,11 @@
     ]
    },
    {
-    "id": "parts:mine:r42",
+    "id": "parts:mine:42",
     "section": "others",
     "title": "Crimp tool",
     "detail": "Needs an OK",
-    "href": "http://parts.landing.test/?request=r42",
+    "href": "http://parts.landing.test/?request=42",
     "lines": [
      "Needs an OK",
      "Waiting on a mentor"
@@ -970,6 +939,15 @@
     "title": "Cut on the router"
    }
   },
+  "activity": [
+   {
+    "app": "Calendar",
+    "title": "Avery Test",
+    "detail": "signed in at the door",
+    "href": "http://calendar.landing.test/here",
+    "at": "2026-11-19T22:40:00.000Z"
+   }
+  ],
   "event": {
    "name": "Test Regional",
    "line": {
@@ -1034,71 +1012,26 @@
     }
    ]
   },
-  "week": [
+  "milestones": [
    {
-    "date": "2026-11-19",
-    "href": "http://calendar.landing.test/?tab=agenda",
-    "items": [
-     {
-      "kind": "practice",
-      "name": "Practice",
-      "startTime": "15:30",
-      "endTime": "18:00",
-      "location": null
-     }
-    ],
-    "mentorsComing": 2,
-    "snacks": {
-     "names": [
-      "Test family"
-     ],
-     "open": 0,
-     "modes": [
-      "build"
-     ]
-    }
-   },
-   {
+    "id": "1",
+    "name": "Driving on carpet",
     "date": "2026-11-21",
-    "href": "http://calendar.landing.test/?tab=agenda",
-    "items": [
-     {
-      "kind": "build",
-      "name": "Build day",
-      "startTime": "10:00",
-      "endTime": "14:00",
-      "location": null
-     }
-    ],
-    "mentorsComing": 0,
-    "snacks": {
-     "names": [],
-     "open": 2,
-     "modes": [
-      "build"
-     ]
-    }
+    "project": "Drive base",
+    "projectId": "1",
+    "color": "#1f9d55",
+    "practicesLeft": 1,
+    "href": "http://tasks.landing.test/projects/1"
    },
    {
-    "date": "2026-11-24",
-    "href": "http://calendar.landing.test/?tab=agenda",
-    "items": [
-     {
-      "kind": "practice",
-      "name": "Practice",
-      "startTime": "15:30",
-      "endTime": "18:00",
-      "location": null
-     }
-    ],
-    "mentorsComing": 2,
-    "snacks": {
-     "names": [],
-     "open": 2,
-     "modes": [
-      "build"
-     ]
-    }
+    "id": "2",
+    "name": "Design review",
+    "date": "2026-11-28",
+    "project": "Shooter",
+    "projectId": "3",
+    "color": null,
+    "practicesLeft": 4,
+    "href": "http://tasks.landing.test/projects/3"
    }
   ],
   "season": {
@@ -1215,6 +1148,99 @@
    ]
   },
   "coming": [],
+  "week": [
+   {
+    "date": "2026-11-19",
+    "href": "http://calendar.landing.test/?tab=agenda",
+    "items": [
+     {
+      "kind": "practice",
+      "name": "Practice",
+      "startTime": "15:30",
+      "endTime": "18:00",
+      "location": null
+     }
+    ],
+    "mentorsComing": 2
+   },
+   {
+    "date": "2026-11-21",
+    "href": "http://calendar.landing.test/?tab=agenda",
+    "items": [
+     {
+      "kind": "build",
+      "name": "Build day",
+      "startTime": "10:00",
+      "endTime": "14:00",
+      "location": null
+     }
+    ],
+    "mentorsComing": 0
+   },
+   {
+    "date": "2026-11-24",
+    "href": "http://calendar.landing.test/?tab=agenda",
+    "items": [
+     {
+      "kind": "practice",
+      "name": "Practice",
+      "startTime": "15:30",
+      "endTime": "18:00",
+      "location": null
+     }
+    ],
+    "mentorsComing": 2
+   }
+  ]
+ },
+ "adminOnly": {
+  "v": 1,
+  "today": [
+   {
+    "id": "calendar:practice",
+    "section": "today",
+    "title": "Practice today, 3:30 pm–6 pm",
+    "detail": "5 people are signed in",
+    "href": "http://calendar.landing.test/here?tab=today"
+   }
+  ],
+  "waiting": [
+   {
+    "id": "parts:parts-needsok",
+    "section": "waiting",
+    "title": "2 part requests need an OK",
+    "detail": "",
+    "href": "http://parts.landing.test/?tab=needsok",
+    "count": 2
+   },
+   {
+    "id": "parts:parts-toorder",
+    "section": "waiting",
+    "title": "5 parts are waiting to be ordered",
+    "detail": "The first must be ordered by Mon, Nov 23",
+    "href": "http://parts.landing.test/?tab=toorder",
+    "count": 5
+   },
+   {
+    "id": "calendar:mentors-silent",
+    "section": "waiting",
+    "title": "2 mentors haven't answered for this week",
+    "detail": "Pat Example, Lee Sample",
+    "href": "http://calendar.landing.test/?tab=mentors",
+    "count": 2
+   }
+  ],
+  "others": [],
+  "next": null,
+  "activity": [
+   {
+    "app": "Calendar",
+    "title": "Avery Test",
+    "detail": "signed in at the door",
+    "href": "http://calendar.landing.test/here",
+    "at": "2026-11-19T22:40:00.000Z"
+   }
+  ],
   "milestones": [
    {
     "id": "1",
@@ -1237,13 +1263,185 @@
     "href": "http://tasks.landing.test/projects/3"
    }
   ],
-  "activity": [
+  "season": {
+   "target": {
+    "name": "Kickoff",
+    "date": "2027-01-18",
+    "kind": "kickoff"
+   },
+   "days": [
+    {
+     "date": "2026-11-19",
+     "kind": "practice"
+    },
+    {
+     "date": "2026-11-21",
+     "kind": "build"
+    },
+    {
+     "date": "2026-11-24",
+     "kind": "practice"
+    },
+    {
+     "date": "2026-11-26",
+     "kind": "practice"
+    },
+    {
+     "date": "2026-11-28",
+     "kind": "build"
+    },
+    {
+     "date": "2026-12-01",
+     "kind": "practice"
+    },
+    {
+     "date": "2026-12-03",
+     "kind": "practice"
+    },
+    {
+     "date": "2026-12-05",
+     "kind": "build"
+    },
+    {
+     "date": "2026-12-08",
+     "kind": "practice"
+    },
+    {
+     "date": "2026-12-10",
+     "kind": "practice"
+    },
+    {
+     "date": "2026-12-12",
+     "kind": "build"
+    },
+    {
+     "date": "2026-12-15",
+     "kind": "practice"
+    },
+    {
+     "date": "2026-12-17",
+     "kind": "practice"
+    },
+    {
+     "date": "2026-12-19",
+     "kind": "build"
+    },
+    {
+     "date": "2026-12-22",
+     "kind": "practice"
+    },
+    {
+     "date": "2026-12-24",
+     "kind": "practice"
+    },
+    {
+     "date": "2026-12-26",
+     "kind": "build"
+    },
+    {
+     "date": "2026-12-29",
+     "kind": "practice"
+    },
+    {
+     "date": "2026-12-31",
+     "kind": "practice"
+    },
+    {
+     "date": "2027-01-02",
+     "kind": "build"
+    },
+    {
+     "date": "2027-01-05",
+     "kind": "practice"
+    },
+    {
+     "date": "2027-01-07",
+     "kind": "practice"
+    },
+    {
+     "date": "2027-01-09",
+     "kind": "build"
+    },
+    {
+     "date": "2027-01-12",
+     "kind": "practice"
+    },
+    {
+     "date": "2027-01-14",
+     "kind": "practice"
+    },
+    {
+     "date": "2027-01-16",
+     "kind": "build"
+    }
+   ]
+  },
+  "coming": [],
+  "week": [
    {
-    "app": "Calendar",
-    "title": "Avery Test",
-    "detail": "signed in at the door",
-    "href": "http://calendar.landing.test/here",
-    "at": "2026-11-19T22:40:00.000Z"
+    "date": "2026-11-19",
+    "href": "http://calendar.landing.test/?tab=agenda",
+    "items": [
+     {
+      "kind": "practice",
+      "name": "Practice",
+      "startTime": "15:30",
+      "endTime": "18:00",
+      "location": null
+     }
+    ],
+    "mentorsComing": 2,
+    "snacks": {
+     "names": [
+      "Test family"
+     ],
+     "open": 0,
+     "modes": [
+      "build"
+     ]
+    }
+   },
+   {
+    "date": "2026-11-21",
+    "href": "http://calendar.landing.test/?tab=agenda",
+    "items": [
+     {
+      "kind": "build",
+      "name": "Build day",
+      "startTime": "10:00",
+      "endTime": "14:00",
+      "location": null
+     }
+    ],
+    "mentorsComing": 0,
+    "snacks": {
+     "names": [],
+     "open": 2,
+     "modes": [
+      "build"
+     ]
+    }
+   },
+   {
+    "date": "2026-11-24",
+    "href": "http://calendar.landing.test/?tab=agenda",
+    "items": [
+     {
+      "kind": "practice",
+      "name": "Practice",
+      "startTime": "15:30",
+      "endTime": "18:00",
+      "location": null
+     }
+    ],
+    "mentorsComing": 2,
+    "snacks": {
+     "names": [],
+     "open": 2,
+     "modes": [
+      "build"
+     ]
+    }
    }
   ]
  }

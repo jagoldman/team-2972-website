@@ -660,7 +660,7 @@ try {
   // ---------- Account's own answer (test/fixtures/today-account-83.json, made by Account r83's gatherToday) ----------
   {
     const A = JSON.parse(readFileSync(new URL("./fixtures/today-account-83.json", import.meta.url), "utf8"));
-    for (const [who, groups] of [["mentor", "mentor"], ["student", "student"], ["parent", "parent"], ["studentEvent", "student"]]) {
+    for (const [who, groups] of [["mentor", "mentor"], ["student", "student"], ["parent", "parent"], ["studentEvent", "student"], ["adminOnly", "admin"]]) {
       const { context } = await newContext(browser, { groups, apps: GROUPED_APPS, today: A[who], event: who === "studentEvent" ? { name: "Test Regional", happeningNow: true } : 404 });
       const { page, errors } = await openPortal(context);
       await settle(page);
@@ -669,9 +669,13 @@ try {
       check(`Account's answer, ${who}: drawn with no error, no "undefined", no empty heading, no line twice, one filled button at most`, errors.length === 0 && !h.undef && h.emptyHeads.length === 0 && rows.length > 0
         && rows.every((r) => new Set(r.lines).size === r.lines.length) && h.filled.length <= 1, { errors, undef: h.undef, empty: h.emptyHeads, filled: h.filled, rows: rows.map((r) => [r.id, r.lines]) });
       if (who === "mentor") check("Account's answer, mentor: its groups and rows in its order; the late request's urgent line", h.groups.join("|") === "Needs your OK|Sign-off requests|Stuck|Parts and practice"
-        && h.now.map((r) => r.id).join() === [...A.mentor.waiting, ...A.mentor.today].map((r) => r.id).join() && await page.$eval('#home-now [data-id="parts:request:r12"] .rl', (l) => l.classList.contains("nowdue") && l.textContent.endsWith("2 days late")), h.now.map((r) => r.id));
+        && h.now.map((r) => r.id).join() === [...A.mentor.waiting, ...A.mentor.today].map((r) => r.id).join() && await page.$eval('#home-now [data-id="parts:request:12"] .rl', (l) => l.classList.contains("nowdue") && l.textContent.endsWith("2 days late")), h.now.map((r) => r.id));
       if (who === "student") check("Account's answer, student: Sign in is the one filled button (Calendar sends no primary yet: known by its words); Mark step done; Waiting on others", h.filled.join() === "Sign in" && h.nextActs[0][0] === "Mark step done"
         && h.nextDue === `Due Mon, Nov 23, ${A.student.next.practicesLeft} practices left` && h.others.map((r) => r.id).join() === A.student.others.map((r) => r.id).join(), h);
+      // Account filters by the person's current groups (CONTRACT A1c): an admin who is not a mentor gets the count rows
+      // and no Needs your OK, sign-off or Stuck rows (D166); the page is whole without them.
+      if (who === "adminOnly") check("Account's answer, admin only: the count rows as doors, no groups, no buttons on Now, This week and the season line", h.groups.length === 0
+        && h.now.map((r) => r.id).sort().join() === [...A.adminOnly.today, ...A.adminOnly.waiting].map((r) => r.id).sort().join() && h.now.every((r) => r.btns.length === 0) && h.top === "season" && h.side.includes("home-week"), h);
       if (who === "parent") check("Account's answer, parent: Can you help? with both Sign up buttons (the snack day's filled), Coming up", JSON.stringify(h.help.map((r) => r.btns.map((b) => [b[0], b[2]]))) === JSON.stringify([[["Sign up", "filled"]], [["Sign up", "plain"]]]) && h.coming.length >= 1, h.help);
       await context.close();
     }

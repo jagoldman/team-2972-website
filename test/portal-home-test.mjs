@@ -369,7 +369,7 @@ test("8.3 H1: Account's own answer, read field for field", async () => {
   assert.deepEqual(m.waiting.map((r) => [r.id, r.group || null, r.mark ? r.mark.word : null, (r.lines || []).length, (r.acts || []).map((a) => a.label + (a.primary ? "*" : "")).join("/")]), A.mentor.waiting.map((r) =>
     [r.id, r.group || null, r.mark ? r.mark.word : null, (r.lines || []).length, (r.acts || []).map((a) => a.label + (a.primary ? "*" : "")).join("/")]));
   assert.ok(m.waiting.some((r) => r.group === "Stuck" && r.mark.tone === "bad" && r.lines[1].startsWith("Waits on ")), "stuck rows come through whole");
-  assert.deepEqual(m.waiting.find((r) => r.id === "parts:request:r12").acts, A.mentor.waiting.find((r) => r.id === "parts:request:r12").acts);
+  assert.deepEqual(m.waiting.find((r) => r.id === "parts:request:12").acts, A.mentor.waiting.find((r) => r.id === "parts:request:12").acts);
   assert.equal(m.milestones.length, A.mentor.milestones.length);
   assert.deepEqual(m.milestones.map((x) => x.color || null), A.mentor.milestones.map((x) => x.color));
   assert.equal(m.week.length, A.mentor.week.length);
@@ -385,6 +385,9 @@ test("8.3 H1: Account's own answer, read field for field", async () => {
     A.parent.today.map((r) => [r.id, r.acts[0].action, r.acts[0].key, !!r.acts[0].primary, r.cta.label]));
   assert.deepEqual(p.coming.map((c) => [c.name, c.time, c.location]), [["Library robot demo", "6 pm–8 pm", "Public library"], ["Kickoff", "9 am", ""]]);
   assert.equal(p.week[0].items[0].location, "Team shop");
+  const ad = parseToday(A.adminOnly, site83, origin83);
+  assert.deepEqual([...ad.today, ...ad.waiting].map((r) => [r.id, !!r.acts, r.group || null]), [...A.adminOnly.today, ...A.adminOnly.waiting].map((r) => [r.id, false, null]), "admin only: count rows, no acts, no groups (D166)");
+  assert.equal(ad.next, null);
   const e = parseToday(A.studentEvent, site83, origin83).event;
   assert.deepEqual(e.line, A.studentEvent.event.line);
   assert.deepEqual(e.pit.map((x) => [x.id, x.href, x.lines || null]), A.studentEvent.event.pit.map((x) => ["compete:" + x.id, x.href, x.lines || null]));
@@ -396,4 +399,10 @@ test("8.3 S3: Sign off's key is \"<Authentik uid>:<skillId>\" (up to 250 charact
   const row = (k) => parseToday({ v: 1, waiting: [{ id: "skills:signoff:x", section: "waiting", title: "Lathe", href: "/s", acts: [{ label: "Sign off", app: "skills", action: "signoff", key: k }] }] }, site, origin).waiting[0];
   assert.equal(row(key).acts[0].key, key);
   assert.equal(row("k".repeat(251)).acts, undefined);
+});
+
+test("8.3 T1: a milestone's colour is a plain # and 3, 4, 6 or 8 hex digits (the Task App's rule); anything else is none", () => {
+  const colour = (c) => parseToday({ v: 1, milestones: [{ name: "M", date: "2026-12-01", href: "/p", color: c }] }, site, origin).milestones[0].color;
+  for (const ok of ["#2a6", "#2a6f", "#22aa66", "#22aa66cc"]) assert.equal(colour(ok), ok, ok);
+  for (const bad of ["#22aa6", "#22aa66c", "22aa66", "red", "#ggg", "#22aa66; background:url(x)", "rgb(1,2,3)", null]) assert.equal(colour(bad), undefined, String(bad));
 });

@@ -215,7 +215,8 @@ function season(sn) {
   return { target: { name: kind === "kickoff" ? "kickoff" : name, title: kind === "kickoff" ? "Kickoff" : name, date, kind }, days };
 }
 
-const COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+// The Task App's own rule (safeColor): a plain # and 3, 4, 6 or 8 hex digits; anything else is no colour.
+const COLOR = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 function milestones(list, site) {
   return (Array.isArray(list) ? list : []).slice(0, 12).map((m) => {
     if (!m || typeof m !== "object") return null;
