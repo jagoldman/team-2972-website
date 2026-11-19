@@ -79,7 +79,7 @@ async function newContext(browser, { width, scheme = "dark", saved = false, redu
     const saved = url.pathname.match(/^\/img\/drive\/([\w-]{20,}?)-b2-(\d+)\.webp$/);
     if (saved && saved[1] === HERO) {
       const file = PHOTOS[HERO];
-      if (file && existsSync(file)) return route.fulfill({ contentType: file.endsWith(".png") ? "image/png" : "image/jpeg", body: readFileSync(file) });
+      if (file && existsSync(file)) return route.fulfill({ contentType: file.endsWith(".png") ? "image/png" : file.endsWith(".webp") ? "image/webp" : "image/jpeg", body: readFileSync(file) });
       return route.fulfill({ contentType: "image/svg+xml", body: `<svg xmlns="http://www.w3.org/2000/svg" width="${saved[2]}" height="${saved[2] * 3 / 4}"><rect width="100%" height="100%" fill="#445"/></svg>` });
     }
     if (/^\/(content|media)\//.test(url.pathname)) return route.fulfill({ status: 404, body: "" });
