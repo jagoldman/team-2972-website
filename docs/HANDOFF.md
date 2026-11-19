@@ -20,7 +20,11 @@ From `new-apps/briefs/r83/ADOPT.md`. The static kit is synced from infra `r83-ki
   without buttons starts its lines with its state on a line of its own (Stuck, Waiting on others); `cta.primary`
   makes the filled button (Calendar does not send it yet: Sign in is still known by its words); a 409's `message`
   is shown. `test/fixtures/today-account-83.json` is Account r83's own `gatherToday` output on made-up app
-  answers; `test/fixtures/today-83.mjs` matches it field for field.
+  answers (made again at Account `9c94c71`, which filters every part by the person's current groups: any part may be
+  absent for anyone); `test/fixtures/today-83.mjs` matches it field for field. Act keys up to 250 characters (Skills'
+  `<uid>:<skillId>`), up to three pit lines, milestone colours of 3, 4, 6 or 8 hex digits, as Account.
+- **Left as the demo is not, on purpose:** one filled button per screen (the demo fills Sign up on every snack row and
+  Approve on each blocking request); Get access and the footer stay (the real app has them), made quiet.
 
 ## 2026-11-18: release 8.3, the portal Home in Ground up (branch `r83`)
 
