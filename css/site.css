@@ -465,3 +465,5 @@ a.tabbtn { text-decoration: none; }
 .wm-link { display: inline-flex; align-items: center; min-height: 44px; }
 .brand { min-height: 44px; }
 .ftr-legal a { display: inline-flex; align-items: center; min-height: 44px; }
+/* The header is drawn inside <div id="site-header">: the wrapper is what sticks (a sticky child only sticks within it). */
+#site-header { position: sticky; top: 0; z-index: 50; }

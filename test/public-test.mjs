@@ -506,6 +506,9 @@ try {
           clear: shown(toggle) ? brand.getBoundingClientRect().right <= tr.left : true, login: (document.querySelector(".nav-login") || {}).textContent, school: !!document.querySelector(".hdr-school img[alt='Dawson School']"), over: document.documentElement.scrollWidth - innerWidth };
       });
       const want = name === "index" ? (width >= 900 ? "2972|Gears & Buccaneers" : "2972") : "2972 Team";
+      // The bar stays at the top of the screen when the page is scrolled.
+      const stuck = await page.evaluate(async () => { scrollTo(0, 700); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); const t = Math.round(document.querySelector(".hdr").getBoundingClientRect().top); scrollTo(0, 0); return t; });
+      check(`header ${width}px ${name}: stays at the top when the page is scrolled`, stuck === 0, stuck);
       check(`header ${width}px ${name}: "${want}", the Dawson D, a ${width >= 900 ? "72" : "60"}px bar with the 3px black rule, clear of Menu, no sideways scroll`,
         h.words === want && h.school && h.barH >= (width >= 900 ? 72 : 60) && h.rule === "3px" && h.clear && h.over <= 0 && h.login === "Team login", h);
     }
