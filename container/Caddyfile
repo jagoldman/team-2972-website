@@ -13,7 +13,7 @@
 #   Everything else                                  -> the public static site (identity ignored)
 #   /content/content.json, /media/<id>-<w>.webp      -> published content (read-only mounts), any host
 #   /img/drive/<drive id>-<w>.webp                   -> Drive photos saved at image build time (public and direct hosts)
-#   /img/drive/og-image.jpg                          -> the link-preview picture made from the hero photo at build time
+#   /img/drive/og-image-b2.jpg                          -> the link-preview picture made from the hero photo at build time
 #   / and /index.html (public and direct hosts)      -> the home page, rendered as a template so its og: tags carry
 #                                                       full addresses built from SITE_SCHEME and SITE_DOMAIN
 #
@@ -120,6 +120,9 @@
 # file never changes: cache it for a year. As with /media, only files that exist get that header, and only
 # this one name shape is served (the manifest reaches pages through /config.js instead).
 (drive_photos) {
+	# D193: every retired name of a blurred photo and of the link-preview picture answers 404, first (the build writes
+	# this file from the blur list; scripts/drive-photos/fetch.cjs retiredRoutes()).
+	import /etc/caddy/drive-retired.caddy
 	@drive_photo {
 		path_regexp drive ^/img/drive/[A-Za-z0-9_-]{20,}-(400|800|1200|1600)\.webp$
 		file {
@@ -133,7 +136,7 @@
 	}
 	# The link-preview picture keeps its name when the hero photo changes, so it is cached for a day, not a year.
 	@og_image {
-		path /img/drive/og-image.jpg
+		path /img/drive/og-image-b2.jpg
 		file {
 			try_files {http.request.uri.path}
 		}

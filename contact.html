@@ -4,8 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Contact | Team 2972 Gears & Buccaneers</title>
-<meta name="color-scheme" content="dark" />
-<meta name="theme-color" content="#101827" />
+<meta name="color-scheme" content="light" />
+<meta name="theme-color" content="#ffffff" />
 <link rel="manifest" href="/manifest.webmanifest" />
 <link rel="icon" href="/pwa-icons/site/icon.svg" type="image/svg+xml" />
 <link rel="icon" href="/pwa-icons/site/icon-192.png" sizes="192x192" type="image/png" />
@@ -13,12 +13,16 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Team 2972" />
-<link rel="stylesheet" href="css/style.css" />
+<!-- bumper: the accent colour a visitor picked with Home's bumper, set before the first paint so a red choice never
+     shows blue first. It reads one stored value and sets one attribute; nothing else (test/theme-test.cjs). -->
+<script>try{var a=localStorage.getItem("2972-alliance");if(a==="red"||a==="blue")document.documentElement.setAttribute("data-alliance",a)}catch(e){}</script>
+<link rel="stylesheet" href="css/site.css" />
 </head>
 <body>
+<a class="skip" href="#contact-page">Skip to the page</a>
 <div id="site-header"></div>
 
-<main id="contact-page"></main>
+<main id="contact-page" tabindex="-1"></main>
 
 <div id="site-footer"></div>
 
@@ -28,16 +32,17 @@
 <script src="js/components.js"></script>
 <script>
 onContent(() => {
-  const school = safeUrl(SITE.schoolUrl);
+  const instagram = extLink(SITE.instagram, `Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span>`, ' class="textlink" id="ig-link" data-ck-href="SITE.instagram"');
+  const school = isSet(SITE.schoolUrl) ? extLink(SITE.schoolUrl, "Visit Dawson School", ` class="textlink"${ckHref("SITE.schoolUrl")}`) : "";
   document.getElementById("contact-page").innerHTML = `
-    <section class="band"><div class="wrap"><h1 class="h1" tabindex="-1">Contact</h1><p class="lead">Questions, sponsorship interest, or want to mentor? Reach out.</p>
-      <div class="grid2 top spaced"><div>
-        <p class="label">Email</p><p>With any questions or concerns, please reach out.</p><div class="addr-big">${emailAddress()}</div>
-        <p class="label spaced">Instagram</p><p>Follow along with build season and competitions. We don't check Instagram messages, so please email us instead.</p>
-        <p><a id="ig-link" href="${esc(safeUrl(SITE.instagram))}" target="_blank" rel="noopener" data-ck-href="SITE.instagram">Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span> ↗</a></p>
-        <p class="label spaced">School</p><p><span${ck("SITE.school")}>${esc(SITE.school)}</span>, <span${ck("SITE.location")}>${esc(SITE.location)}</span></p>
-        ${school ? `<p><a href="${esc(school)}" target="_blank" rel="noopener"${ckHref("SITE.schoolUrl")}>Visit Dawson School ↗</a></p>` : ""}
-      </div><div><p class="label">Where to next</p><ul class="route"><li><a href="member.html">Join as a student →</a></li><li><a href="mentor.html">Mentor the team →</a></li><li><a href="sponsors.html">Sponsor the team →</a></li></ul></div></div>
+    <section class="band band-first"><div class="wrap"><h1 tabindex="-1">Contact</h1><p class="lead">Questions, sponsorship interest, or want to mentor? Reach out.</p>
+      <div class="split contact"><div class="s7">
+        <h2>Email</h2><p>With any questions or concerns, please reach out.</p><p class="addr-big">${siteAddress()}</p>
+        <h2>Instagram</h2><p>Follow along with build season and competitions. We don't check Instagram messages, so please email us instead.</p>
+        ${instagram ? `<p>${instagram}</p>` : ""}
+        <h2>School</h2><p><span${ck("SITE.school")}>${esc(SITE.school)}</span>, <span${ck("SITE.location")}>${esc(SITE.location)}</span></p>
+        ${school ? `<p>${school}</p>` : ""}
+      </div><div class="s5"><h2>Where to next</h2><ul class="routes"><li><a href="member.html">Join as a student</a></li><li><a href="mentor.html">Mentor the team</a></li><li><a href="sponsors.html">Sponsor the team</a></li></ul></div></div>
     </div></section>`;
 });
 </script>

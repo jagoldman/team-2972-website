@@ -4,8 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Become a Team Member | Team 2972 Gears & Buccaneers</title>
-<meta name="color-scheme" content="dark" />
-<meta name="theme-color" content="#101827" />
+<meta name="color-scheme" content="light" />
+<meta name="theme-color" content="#ffffff" />
 <link rel="manifest" href="/manifest.webmanifest" />
 <link rel="icon" href="/pwa-icons/site/icon.svg" type="image/svg+xml" />
 <link rel="icon" href="/pwa-icons/site/icon-192.png" sizes="192x192" type="image/png" />
@@ -13,26 +13,32 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Team 2972" />
-<link rel="stylesheet" href="css/style.css" />
+<!-- bumper: the accent colour a visitor picked with Home's bumper, set before the first paint so a red choice never
+     shows blue first. It reads one stored value and sets one attribute; nothing else (test/theme-test.cjs). -->
+<script>try{var a=localStorage.getItem("2972-alliance");if(a==="red"||a==="blue")document.documentElement.setAttribute("data-alliance",a)}catch(e){}</script>
+<link rel="stylesheet" href="css/site.css" />
 </head>
 <body>
+<a class="skip" href="#main">Skip to the page</a>
 <div id="site-header"></div>
 
-<main>
-  <section class="band"><div class="wrap">
-    <h1 class="h1" tabindex="-1">Join the team</h1>
+<main id="main" tabindex="-1">
+  <section class="band band-first"><div class="wrap">
+    <h1 tabindex="-1">Join the team</h1>
     <p class="lead">No robotics background required.</p>
-    <nav class="seg" aria-label="Join as"><a class="segb" href="member.html" aria-current="page">Students</a><a class="segb" href="mentor.html">Mentors</a></nav>
-    <div class="grid2 top" id="member-split">
-      <div>
-        <p>Team 2972 is made up of students mainly from Dawson School. Members work on the robot, on the business side of the team, and in the community, alongside mentors who guide them.</p>
-        <p>Write to us and we will tell you how the team works and when we meet.</p>
-        <p id="member-addr"></p>
-      </div>
-      <div class="photo r11 member-photo" id="member-pic" hidden></div>
+    <div class="join">
+      <nav class="tabs" aria-label="Join as"><a class="tabbtn" href="member.html" aria-current="page">Students</a><a class="tabbtn" href="mentor.html">Mentors</a></nav>
+      <div class="panel"><div class="split" id="member-split">
+        <div class="s7 stack prose">
+          <p>Team 2972 is made up of students mainly from Dawson School. Members work on the robot, on the business side of the team, and in the community, alongside mentors who guide them.</p>
+          <p>Write to us and we will tell you how the team works and when we meet.</p>
+          <p id="member-addr"></p>
+        </div>
+        <div class="s5" id="member-pic" hidden></div>
+      </div></div>
     </div>
   </div></section>
-  <section class="band alt" id="year"></section>
+  <section class="band band-floor" id="year"></section>
 </main>
 
 <div id="site-footer"></div>
@@ -43,25 +49,27 @@
 <script src="js/components.js"></script>
 <script>
 
-// "The year at a glance": ANNUAL_EVENTS in order (a real sequence, so it is a numbered timeline), the first sentence of each.
+// "The year at a glance": ANNUAL_EVENTS in order, the first sentence of each, and the Team calendar link.
 function renderYear() {
+  const cal = isSet(contentGet("TEAM_CALENDAR_URL")) ? `<p class="more">${extLink(contentGet("TEAM_CALENDAR_URL"), "Team calendar", ' class="textlink" id="calendar-link" data-ck-href="TEAM_CALENDAR_URL"')}</p>` : "";
   document.getElementById("year").innerHTML = `
-    <div class="wrap"><h2 class="h2">The year at a glance</h2>
-    <ol class="steps"${ck("ANNUAL_EVENTS")}>${ANNUAL_EVENTS.map((e, i) => `<li${ck(`ANNUAL_EVENTS[${i}]`)}>
-      <p class="label gold"${ck(`ANNUAL_EVENTS[${i}].when`)}>${esc(e.when)}</p><h3 class="h3"${ck(`ANNUAL_EVENTS[${i}].name`)}>${esc(e.name)}</h3><p class="step-d"${ck(`ANNUAL_EVENTS[${i}].description`)}>${esc(firstSentence(e.description))}</p></li>`).join("")}</ol>
-    ${isSet(contentGet("TEAM_CALENDAR_URL")) ? `<p class="spaced-sm"><a class="tl-link" id="calendar-link" href="${esc(safeUrl(contentGet("TEAM_CALENDAR_URL")))}" target="_blank" rel="noopener" data-ck-href="TEAM_CALENDAR_URL">Team calendar ↗</a></p>` : ""}</div>`;
+    <div class="wrap"><h2>The year at a glance</h2>
+    <ol class="year"${ck("ANNUAL_EVENTS")}>${ANNUAL_EVENTS.map((e, i) => `<li${ck(`ANNUAL_EVENTS[${i}]`)}>
+      <p class="when"${ck(`ANNUAL_EVENTS[${i}].when`)}>${esc(e.when)}</p><h3${ck(`ANNUAL_EVENTS[${i}].name`)}>${esc(e.name)}</h3><p${ck(`ANNUAL_EVENTS[${i}].description`)}>${esc(firstSentence(e.description))}</p></li>`).join("")}</ol>
+    ${cal}</div>`;
 }
 
 // The photo beside the text (SITE.memberImage). Without one the text keeps the full width.
 onContent(() => {
-  const src = SITE.memberImage;
+  const src = hasPhoto(SITE.memberImage) ? SITE.memberImage : "";
   const pic = document.getElementById("member-pic");
   document.getElementById("member-split").classList.toggle("no-pic", !src);
-  pic.hidden = !src;
+  const spot = src ? "" : editorPhotoSpot("SITE.memberImage", "Student photo not shown: set or replace it", "r11");
+  pic.hidden = !src && !spot;
   pic.innerHTML = src
-    ? `<img${imgAttrs(src, 800)}${ck("SITE.memberImage")}${ckAlt("SITE.memberImageAlt")} alt="${esc(altFor(src, SITE.memberImageAlt))}" loading="lazy" width="1000" height="1000" />`
-    : "";
-  document.getElementById("member-addr").innerHTML = emailAddress();
+    ? `<span class="shot r11"><img${imgSized(src, [400, 800, 1600], "(min-width: 900px) 40vw, 100vw")}${ck("SITE.memberImage")}${ckAlt("SITE.memberImageAlt")} alt="${esc(altFor(src, SITE.memberImageAlt))}" loading="lazy" width="1000" height="1000" /></span>`
+    : spot;
+  document.getElementById("member-addr").innerHTML = siteAddress();
   renderYear();
 });
 </script>

@@ -13,6 +13,10 @@ COPY scripts/drive-photos/package.json scripts/drive-photos/package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 COPY scripts/drive-photos/fetch.cjs ./
 COPY js/content.js /build/js/content.js
+# config.js holds the blur table (window.PHOTO_BLUR, D193) the pages read too, and js/components.js the one copy of the
+# rules for reading it (its "photo-rules" block).
+COPY config.js /build/config.js
+COPY js/components.js /build/js/components.js
 RUN node fetch.cjs /build/js/content.js /out/drive
 
 # Stage 2: the site.
@@ -29,7 +33,9 @@ COPY --chmod=0755 container/entrypoint.sh /usr/local/bin/landing-entrypoint
 COPY . /srv/site
 # config.js reads img/drive/manifest.json, so it must exist (it is "{}" when every download failed).
 COPY --from=drive-photos /out/drive /srv/site/img/drive
+# drive-retired.caddy (written with the photos) is the Caddy rule that answers 404 for retired photo names (D193).
 RUN rm -rf /srv/site/container /srv/site/scripts && test -f /srv/site/img/drive/manifest.json \
+	&& mv /srv/site/img/drive/drive-retired.caddy /etc/caddy/drive-retired.caddy \
 	&& mkdir -p /config /srv/content /srv/media
 
 EXPOSE 3001

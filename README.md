@@ -56,26 +56,31 @@ the download by hand: `cd scripts/drive-photos && npm ci && node fetch.cjs` (wri
 ignores). A changed photo needs a new Drive file, not an edit of the old one, because visitors' browsers keep
 the saved copy for a year.
 
-## Look: Midnight & brass, dark only (public pages)
+## Look: design 8.2, light only (public pages, release 8.3, D190)
 
-The public pages are **dark only** (user, 2026-11-11, `docs/PUBLIC_REDESIGN_PROPOSAL.md` §5b): navy ink with brass accents,
-Bricolage Grotesque + Inter. They ignore the system setting and any saved light/dark choice, and have no theme switch. Each
-public page says so itself, before anything loads: `<html data-site="public">` and `<meta name="color-scheme" content="dark">`,
-with no script. They never read or write the shared `theme` cookie or the old localStorage key (the portal's app bar owns those).
+The 13 public pages follow `../public-redesign-demo/v8.2/` (its README has the reasons and the eight rules): white paper, flag
+black ink, arena grey bands, and one accent, the bumper colour, blue `#1d43c0` or red `#c3122a`. Headlines and numerals are Big
+Shoulders (900), text is Libre Franklin, both self-hosted in `fonts/`. The pages load only `css/site.css`; `css/style.css` is the
+portal's (and still holds the old Midnight & brass public block, unused, until the portal's owner agrees to remove it).
 
-- **To change a colour, edit one line** in the token blocks at the top of `css/style.css`. The public pages use the second block,
-  `:root[data-site="public"]` (`--ink #101827`, `--ink-2 #152033`, `--ink-3 #1c293b`, `--text #f3f5fa`, `--text-2 #c5cfdd`,
-  `--mute #b4c0d1`, `--gold`/`--accent #e6b849`, `--gold-2`/`--accent-2 #f2cd74`, `--on-gold #101827`). Don't write colours
-  anywhere else (`node test/theme-test.cjs` catches it).
-- **Brass is two things.** `--gold` fills buttons and marks (with `--on-gold` text); `--accent` is brass used as text, links and focus.
-- **No text over photographs**, nothing at `opacity: 0` at rest, and nothing moves except the four effects ported in
-  `docs/PUBLIC_REDESIGN_PROPOSAL.md` §5a (next-event border beam, record number ticker, "Find your way in" hover wash, About
-  timeline fill). All four are static with `prefers-reduced-motion`.
+- **Light only.** `<html data-site="public">`, `<meta name="color-scheme" content="light">`, `theme-color #ffffff`. The pages
+  ignore the system setting and any saved light/dark choice, have no theme switch, and never touch the shared `theme` cookie.
+- **The bumper.** Home's hero photo has the bumper across its base: a button that swaps the accent between blue and red. The
+  choice is kept in `localStorage["2972-alliance"]` (a colour, nothing personal) and set before the first paint by each public
+  page's one head script, so a red choice never flashes blue. That script is the only one allowed in a public page's head.
+- **To change a colour, edit one line** in the token block at the top of `css/site.css` (`--ink`, `--paper`, `--floor`,
+  `--rule`, `--text-2`, `--mute`, `--accent`, `--accent-press`, `--on-accent`, the footer greys) or the red block under it.
+  Don't write colours anywhere else (`node test/theme-test.cjs` catches it).
+- **To change the headline face**, change `--display` and its one `@font-face` (one line and one file).
+- **The rules:** the accent only for acting and winning; soft corners only for buttons and the bumper; no boxes round content
+  (the school's box is the one); no upper-case labels, no middle dots, no arrows on links (an outside link says "opens in a
+  new tab" to a screen reader); no text over photographs; nothing moves except the bumper's colour change (none with
+  reduced motion).
 - **The portal, its install page and the offline page keep Light / Dark / System** (the first token block, written
   `light-dark(light, dark)`, and the shell kit's app bar). Their pages carry the kit's no-flash theme script, written by
   `node scripts/theme-init.mjs` (run it after each kit sync; it skips the public pages).
 - **After changing colours, run `test/theme-test.sh` and `test/public-test.mjs`.** The first checks the portal in both themes and that
-  public pages stay dark under every setting; the second walks every public page at 320, 390 and 1440 px.
+  public pages stay light under every setting; the second walks every public page at 320, 390 and 1440 px, with blue and red.
 
 ## Installable app (PWA)
 
@@ -106,7 +111,7 @@ Hiding a tile is only a convenience. Who can actually open an app is decided by 
 ## Files
 
 ```
-index.html, about.html, mentor.html,     Public pages (dark only)
+index.html, about.html, mentor.html,     Public pages (light only, css/site.css)
 member.html, robots.html, robot.html,    (robot.html shows one season: robot.html?year=2025)
 sponsors.html, outreach.html, media.html,
 resources.html, contact.html, privacy.html, terms.html
@@ -116,8 +121,10 @@ portal/index.html  The portal page (only works inside the full site, behind logi
 js/content.js      >>> EDIT THIS to change text, links and photos <<<
 js/components.js   Shared header and footer, plus helpers
 config.js          Site address settings, filled in by the server. Don't edit.
-css/style.css      All styling (Midnight & brass public site; the portal keeps light/dark/system)
-fonts/             The two fonts (Bricolage Grotesque, Inter) and their licenses; hosted here, not loaded from Google
+css/site.css       The public pages' styles (design 8.2, light only)
+css/style.css      The portal, install, offline and team-login styles (light/dark/system)
+fonts/             The fonts and their licenses (Big Shoulders and Libre Franklin for the public pages; Bricolage Grotesque
+                   and Inter for the portal); hosted here, not loaded from Google
 assets/            SVG placeholders only
 
 Dockerfile, container/   How the server runs (see below)

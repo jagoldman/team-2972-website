@@ -4,8 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>About | Team 2972 Gears & Buccaneers</title>
-<meta name="color-scheme" content="dark" />
-<meta name="theme-color" content="#101827" />
+<meta name="color-scheme" content="light" />
+<meta name="theme-color" content="#ffffff" />
 <link rel="manifest" href="/manifest.webmanifest" />
 <link rel="icon" href="/pwa-icons/site/icon.svg" type="image/svg+xml" />
 <link rel="icon" href="/pwa-icons/site/icon-192.png" sizes="192x192" type="image/png" />
@@ -13,12 +13,16 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Team 2972" />
-<link rel="stylesheet" href="css/style.css" />
+<!-- bumper: the accent colour a visitor picked with Home's bumper, set before the first paint so a red choice never
+     shows blue first. It reads one stored value and sets one attribute; nothing else (test/theme-test.cjs). -->
+<script>try{var a=localStorage.getItem("2972-alliance");if(a==="red"||a==="blue")document.documentElement.setAttribute("data-alliance",a)}catch(e){}</script>
+<link rel="stylesheet" href="css/site.css" />
 </head>
 <body>
+<a class="skip" href="#about-page">Skip to the page</a>
 <div id="site-header"></div>
 
-<main id="about-page"></main>
+<main id="about-page" tabindex="-1"></main>
 
 <div id="site-footer"></div>
 
@@ -32,17 +36,20 @@ function disclosure(o, name, summaryId, bodyId) {
   return `<details class="disc"${ck(name)}><summary id="${summaryId}"${ck(`${name}.heading`)}>${esc(o.heading)}</summary><p id="${bodyId}"${ck(`${name}.body`, "rich")}>${rich(o.body)}</p></details>`;
 }
 
-// Photos for the milestones that have one come from the content (HISTORY.milestones[].image).
-function timeline() {
+// A list of named lines in two columns (VALUES, STRATEGY): the name in banner lettering, the sentence beside it.
+function namedList(list, key) {
+  return `<ul class="values"${ck(key)}>${list.map((v, i) => `<li${ck(`${key}[${i}]`)}><b${ck(`${key}[${i}].name`)}>${esc(v.name)}</b><span${ck(`${key}[${i}].text`, "rich")}>${rich(v.text)}</span></li>`).join("")}</ul>`;
+}
+
+// "How the team grew": the team milestones, the year large in its own column. Photos for the milestones that have one
+// come from the content (HISTORY.milestones[].image).
+function grew() {
   const rows = HISTORY.milestones.map((m, i) => ({ m, i, items: (m.items || []).map((it, j) => ({ it, j })).filter(({ it }) => it.kind === "team") })).filter((x) => x.items.length);
-  return `<div class="tl" id="history"${ck("HISTORY.milestones")}>${rows.map(({ m, i, items }) => `
-    <div class="tl-row timeline-item"${ck(`HISTORY.milestones[${i}]`)}>
-      <div class="tl-side"><div class="tl-mark" aria-hidden="true"><i></i></div><h3 class="tl-t tl-t-d"${ck(`HISTORY.milestones[${i}].year`)}>${esc(m.year)}</h3></div>
-      <div class="tl-body timeline-body"><h3 class="tl-t tl-t-m"${ck(`HISTORY.milestones[${i}].year`)}>${esc(m.year)}</h3>
-        <div${ck(`HISTORY.milestones[${i}].items`)}>${items.map(({ it, j }) => `<div class="tl-item"><p${ck(`HISTORY.milestones[${i}].items[${j}].text`, "rich")}>${rich(it.text)}</p></div>`).join("")}</div>
-        ${m.image ? `<div class="photo r43 tl-photo"><img${imgAttrs(m.image, 600)}${ck(`HISTORY.milestones[${i}].image`)}${ckAlt(`HISTORY.milestones[${i}].imageAlt`)} alt="${esc(altFor(m.image, m.imageAlt || m.year))}" loading="lazy" width="900" height="675" /></div>` : ""}
-      </div>
-    </div>`).join("")}<div class="tl-track" aria-hidden="true"><i class="tl-fill"></i></div></div>`;
+  return `<ol class="grew" id="history"${ck("HISTORY.milestones")}>${rows.map(({ m, i, items }) => `
+    <li${ck(`HISTORY.milestones[${i}]`)}><p class="yr"${ck(`HISTORY.milestones[${i}].year`)}>${esc(m.year)}</p><div>
+      <div${ck(`HISTORY.milestones[${i}].items`)}>${items.map(({ it, j }) => `<p${ck(`HISTORY.milestones[${i}].items[${j}].text`, "rich")}>${rich(it.text)}</p>`).join("")}</div>
+      ${m.image && !hasPhoto(m.image) ? editorPhotoSpot(`HISTORY.milestones[${i}].image`, "Photo not shown: set or replace it", "r43") : ""}${hasPhoto(m.image) ? `<span class="shot r43"><img${imgSized(m.image, [400, 800], "(min-width: 720px) 420px, 100vw")}${ck(`HISTORY.milestones[${i}].image`)}${ckAlt(`HISTORY.milestones[${i}].imageAlt`)} alt="${esc(altFor(m.image, m.imageAlt || m.year))}" loading="lazy" width="900" height="675" /></span>` : ""}
+    </div></li>`).join("")}</ol>`;
 }
 
 onContent(() => {
@@ -55,22 +62,21 @@ onContent(() => {
     ["Home", `<span${ck("SITE.location")}>${esc(SITE.location)}</span>`],
     ["Founded", `<span${ck("SITE.founded")}>${esc(SITE.founded)}</span>`],
     ["Seasons played", esc(String(ROBOTS.length))],
-    ["Event wins", wins.length ? esc(wins.join(" · ")) : "None yet"],
+    ["Event wins", wins.length ? esc(wins.join(", ")) : "None yet"],
   ];
-  const href = safeUrl(SITE.schoolUrl);
+  const school = isSet(SITE.schoolUrl) ? extLink(SITE.schoolUrl, "Visit Dawson School", ` class="textlink"${ckHref("SITE.schoolUrl")}`) : "";
   document.getElementById("about-page").innerHTML = `
-    <section class="band"><div class="wrap">
-      <h1 class="h1" tabindex="-1">About the team</h1><p class="lead"${ck("SITE.mission")}>${esc(SITE.mission)}</p>
-      <div class="grid2 top spaced"><dl class="sheet tab">${sheet.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
-        <div class="school-box">${schoolMark("lg")}<p${ck("ABOUT_SCHOOL.body", "rich")}>${esc(firstSentence(ABOUT_SCHOOL.body))}</p>${href ? `<p class="flush"><a href="${esc(href)}" target="_blank" rel="noopener"${ckHref("SITE.schoolUrl")}>Visit Dawson School ↗</a></p>` : ""}</div></div>
-      <div class="disc-row spaced">${disclosure(ABOUT_FIRST, "ABOUT_FIRST", "first-title", "first-body")}${disclosure(ABOUT_SCHOOL, "ABOUT_SCHOOL", "school-title", "school-body")}</div>
+    <section class="band band-first"><div class="wrap">
+      <h1 tabindex="-1">About the team</h1><p class="lead"${ck("SITE.mission")}>${esc(SITE.mission)}</p>
+      <div class="split about-top"><dl class="sheet s7">${sheet.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
+        <div class="school s5"><img class="wm" src="brand/dawson-school-logo.png" width="230" height="87" alt="Dawson School" data-school-mark data-ck-ignore><p${ck("ABOUT_SCHOOL.body", "rich")}>${esc(firstSentence(ABOUT_SCHOOL.body))}</p>${school ? `<p>${school}</p>` : ""}</div></div>
+      <div class="disc-2 about-disc">${disclosure(ABOUT_FIRST, "ABOUT_FIRST", "first-title", "first-body")}${disclosure(ABOUT_SCHOOL, "ABOUT_SCHOOL", "school-title", "school-body")}</div>
     </div></section>
-    <section class="band alt"><div class="wrap"><h2 class="h2">What we value</h2><div class="vgrid"${ck("VALUES")}>${VALUES.map((v, i) => `<div${ck(`VALUES[${i}]`)}><b${ck(`VALUES[${i}].name`)}>${esc(v.name)}</b><span${ck(`VALUES[${i}].text`, "rich")}>${rich(v.text)}</span></div>`).join("")}</div></div></section>
-    <section class="band"><div class="wrap"><h2 class="h2">How we work</h2><div class="vgrid"${ck("STRATEGY")}>${STRATEGY.map((v, i) => `<div${ck(`STRATEGY[${i}]`)}><b${ck(`STRATEGY[${i}].name`)}>${esc(v.name)}</b><span${ck(`STRATEGY[${i}].text`, "rich")}>${rich(v.text)}</span></div>`).join("")}</div></div></section>
-    <section class="band alt"><div class="wrap"><h2 class="h2">How the team grew</h2>${timeline()}
-      <p class="spaced-sm"><a class="tl-link" href="robots.html">Competition results are on the Robots page →</a></p>
-      <p class="tl-links"><a class="tl-link" href="outreach.html">Outreach →</a><a class="tl-link" href="media.html">Media →</a></p></div></section>`;
-  initTimeline();
+    <section class="band band-floor"><div class="wrap"><h2>What we value</h2>${namedList(VALUES, "VALUES")}</div></section>
+    <section class="band"><div class="wrap"><h2>How we work</h2>${namedList(STRATEGY, "STRATEGY")}</div></section>
+    <section class="band band-floor"><div class="wrap"><h2>How the team grew</h2>${grew()}
+      <p class="grew-after">Competition results are on the <a href="robots.html">Robots page</a>.</p>
+      <p class="linkrow more"><a class="textlink" href="outreach.html">Outreach</a><a class="textlink" href="media.html">Media</a></p></div></section>`;
 });
 </script>
 </body>

@@ -4,8 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Sponsors | Team 2972 Gears & Buccaneers</title>
-<meta name="color-scheme" content="dark" />
-<meta name="theme-color" content="#101827" />
+<meta name="color-scheme" content="light" />
+<meta name="theme-color" content="#ffffff" />
 <link rel="manifest" href="/manifest.webmanifest" />
 <link rel="icon" href="/pwa-icons/site/icon.svg" type="image/svg+xml" />
 <link rel="icon" href="/pwa-icons/site/icon-192.png" sizes="192x192" type="image/png" />
@@ -13,12 +13,16 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Team 2972" />
-<link rel="stylesheet" href="css/style.css" />
+<!-- bumper: the accent colour a visitor picked with Home's bumper, set before the first paint so a red choice never
+     shows blue first. It reads one stored value and sets one attribute; nothing else (test/theme-test.cjs). -->
+<script>try{var a=localStorage.getItem("2972-alliance");if(a==="red"||a==="blue")document.documentElement.setAttribute("data-alliance",a)}catch(e){}</script>
+<link rel="stylesheet" href="css/site.css" />
 </head>
 <body>
+<a class="skip" href="#sponsors-page">Skip to the page</a>
 <div id="site-header"></div>
 
-<main id="sponsors-page"></main>
+<main id="sponsors-page" tabindex="-1"></main>
 
 <div id="site-footer"></div>
 
@@ -33,30 +37,35 @@ onContent(() => {
   const built = [];
   HISTORY.milestones.forEach((m, i) => (m.items || []).forEach((it, j) => { if (it.kind === "team") built.push({ i, j, m, it }); }));
   built.sort((a, b) => Number(b.m.year) - Number(a.m.year));
-  const stands = today.image
-    ? `<div class="photo r32"><img${imgAttrs(today.image, 800)}${ck("HISTORY.today.image")}${ckAlt("HISTORY.today.imageAlt")} alt="${esc(altFor(today.image, today.imageAlt || today.heading))}" loading="lazy" width="1000" height="666"></div>` : "";
+  const stands = hasPhoto(today.image)
+    ? `<div class="s6"><span class="shot r32"><img${imgSized(today.image, [400, 800, 1600], "(min-width: 900px) 50vw, 100vw")}${ck("HISTORY.today.image")}${ckAlt("HISTORY.today.imageAlt")} alt="${esc(altFor(today.image, today.imageAlt || today.heading))}" width="1000" height="666"></span></div>`
+    : inEditorPreview() ? `<div class="s6">${editorPhotoSpot("HISTORY.today.image", "Photo not shown: set or replace it", "r32")}</div>` : "";
   const packet = safeUrl(contentGet("SPONSOR_PACKET_URL"));
 
-  // A tier with no sponsors yet is hidden on the public site. In the editor preview (window.__editorOverlay,
-  // set by the editor's overlay.js) it is shown, so its tier and list hooks can be reached.
+  // Each tier: its name and the sponsors as names (a real logo shows as the logo), on white and grey bands in turn.
+  // A tier with no sponsors yet is hidden on the public site. In the editor preview (window.__editorOverlay, set by the
+  // editor's overlay.js) it is shown, so its tier and list hooks can be reached.
+  let shown = 0;
   const tiers = SPONSOR_TIERS.map((tier, i) => {
     const show = tier.sponsors.length > 0 || inEditorPreview();
-    return `<section class="band${show && i % 2 ? " alt" : ""}"${show ? "" : " hidden"}${ck(`SPONSOR_TIERS[${i}]`)}><div class="wrap">
-      <h2 class="h2"${ck(`SPONSOR_TIERS[${i}].tier`)}>${esc(tier.tier)}</h2>
-      ${tier.banner ? `<img class="sponsor-banner"${imgAttrs(tier.banner, 1600)}${ck(`SPONSOR_TIERS[${i}].banner`)} alt="${esc(altFor(tier.banner, tier.tier + " banner"))}" loading="lazy" />` : ""}
-      ${sponsorNames(tier, i)}</div></section>`;
+    const floor = show && shown++ % 2 === 1;
+    return `<section class="band${floor ? " band-floor" : ""}"${show ? "" : " hidden"}${ck(`SPONSOR_TIERS[${i}]`)}><div class="wrap">
+      <h2${ck(`SPONSOR_TIERS[${i}].tier`)}>${esc(tier.tier.replace(/Sponsors/, "sponsors"))}</h2>
+      ${tier.banner && !hasPhoto(tier.banner) ? editorPhotoSpot(`SPONSOR_TIERS[${i}].banner`, "Banner not shown: set or replace it", "tier-banner") : ""}${hasPhoto(tier.banner) ? `<img class="tier-banner"${imgSized(tier.banner, [400, 800, 1600], "(min-width: 1240px) 1200px, 100vw")}${ck(`SPONSOR_TIERS[${i}].banner`)} alt="${esc(altFor(tier.banner, tier.tier + " banner"))}" loading="lazy" />` : ""}
+      <div class="tier-names">${sponsorNames(tier, i)}</div></div></section>`;
   }).join("");
 
   document.getElementById("sponsors-page").innerHTML = `
-    <section class="band"><div class="wrap grid2 top"><div>
-      <h1 class="h1" tabindex="-1">Sponsor the team</h1>
-      <p class="lead">Team ${esc(SITE.teamNumber)} runs on the generosity of local businesses, families, and our school.</p>
+    <section class="band band-first"><div class="wrap split"><div class="s6 stack prose">
+      <h1 tabindex="-1">Sponsor the team</h1>
+      <p class="lead">Team <span${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span> runs on the generosity of local businesses, families, and our school.</p>
       <p>Every dollar goes directly toward robot parts, competition fees, travel, and outreach, and toward improving our shop: the tools, machines and workspace where students build.</p>
-      <div class="btns">${packet ? `<a class="btn btn-gold" id="packet-link" href="${esc(packet)}" target="_blank" rel="noopener" data-ck-href="SPONSOR_PACKET_URL">Sponsorship packet ↗</a>` : ""}${emailAddress()}</div>
+      ${packet ? `<div class="btns packet">${extLink(packet, "Read the sponsorship packet", ' class="btn btn-bumper" id="packet-link" data-ck-href="SPONSOR_PACKET_URL"')}</div>` : ""}
+      <p>${siteAddress()}</p>
     </div>${stands}</div></section>
-    ${built.length || today.paragraphs.length ? `<section class="band alt"><div class="wrap"><h2 class="h2">What support has built</h2>
-      <div${ck("HISTORY.today.paragraphs")}>${today.paragraphs.map((p, j) => `<p${ck(`HISTORY.today.paragraphs[${j}]`, "rich")}>${rich(p)}</p>`).join("")}</div>
-      ${built.length ? `<ul class="dated"${ck("HISTORY.milestones")}>${built.slice(0, 3).map(({ i, j, m, it }) => `<li><b${ck(`HISTORY.milestones[${i}].year`)}>${esc(m.year)}</b><span${ck(`HISTORY.milestones[${i}].items[${j}].text`, "rich")}>${rich(it.text)}</span></li>`).join("")}</ul>` : ""}</div></section>` : ""}
+    ${built.length || today.paragraphs.length ? `<section class="band band-floor"><div class="wrap stack"><h2>What support has built</h2>
+      <div class="prose"${ck("HISTORY.today.paragraphs")}>${today.paragraphs.map((p, j) => `<p${ck(`HISTORY.today.paragraphs[${j}]`, "rich")}>${rich(p)}</p>`).join("")}</div>
+      ${built.length ? `<ul class="dated built"${ck("HISTORY.milestones")}>${built.slice(0, 3).map(({ i, j, m, it }) => `<li><b${ck(`HISTORY.milestones[${i}].year`)}>${esc(m.year)}</b><span${ck(`HISTORY.milestones[${i}].items[${j}].text`, "rich")}>${rich(it.text)}</span></li>`).join("")}</ul>` : ""}</div></section>` : ""}
     <div${ck("SPONSOR_TIERS")}>${tiers}</div>`;
 });
 </script>

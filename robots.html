@@ -4,8 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FRC Robots | Team 2972 Gears & Buccaneers</title>
-<meta name="color-scheme" content="dark" />
-<meta name="theme-color" content="#101827" />
+<meta name="color-scheme" content="light" />
+<meta name="theme-color" content="#ffffff" />
 <link rel="manifest" href="/manifest.webmanifest" />
 <link rel="icon" href="/pwa-icons/site/icon.svg" type="image/svg+xml" />
 <link rel="icon" href="/pwa-icons/site/icon-192.png" sizes="192x192" type="image/png" />
@@ -13,12 +13,16 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Team 2972" />
-<link rel="stylesheet" href="css/style.css" />
+<!-- bumper: the accent colour a visitor picked with Home's bumper, set before the first paint so a red choice never
+     shows blue first. It reads one stored value and sets one attribute; nothing else (test/theme-test.cjs). -->
+<script>try{var a=localStorage.getItem("2972-alliance");if(a==="red"||a==="blue")document.documentElement.setAttribute("data-alliance",a)}catch(e){}</script>
+<link rel="stylesheet" href="css/site.css" />
 </head>
 <body>
+<a class="skip" href="#robots-page">Skip to the page</a>
 <div id="site-header"></div>
 
-<main id="robots-page"></main>
+<main id="robots-page" tabindex="-1"></main>
 
 <div id="site-footer"></div>
 
@@ -27,9 +31,10 @@
 <script src="js/content-loader.js"></script>
 <script src="js/components.js"></script>
 <script>
-// Filters over the season cards. The choice is kept while the page is re-rendered (the editor's live preview).
+// Filters over the robots. The choice is kept while the page is re-rendered (the editor's live preview).
 let robotFilter = "all";
 const FILTERS = [["all", "All"], ["win", "Event winners"], ["po", "Playoffs"], ["svc", "In service"]];
+const GALLERY_SIZES = "(min-width: 1240px) 380px, (min-width: 900px) 30vw, (min-width: 600px) 50vw, 100vw";
 const hasResult = (r, test) => (r.results || []).some((x) => test(resultType(x.result)));
 function passes(r, f) {
   if (f === "win") return hasResult(r, (t) => t === "win");
@@ -38,24 +43,20 @@ function passes(r, f) {
   return true;
 }
 
-// A season card. A season without a photo shows a "Photo wanted" box that is a link to the team's e-mail address.
-function robotCard(r, i) {
+// One robot: its photo and words, one link to its page. A season without a photo shows a "Photo wanted" tile that is a
+// link to the team's address of its own, so the words beside it are a second link (links cannot nest).
+function robotItem(r, i) {
   const P = `ROBOTS[${i}]`;
+  const meta = robotMeta(r, i, { status: true, line: "both" });
+  if (hasPhoto(r.image)) return `<li${ck(P)}><a class="robot-a" href="${robotUrl(r)}">${robotShot(r, i, GALLERY_SIZES)}${meta}</a></li>`;
   const wanted = `mailto:${esc(SITE.email)}?subject=${encodeURIComponent(`Photo of the ${r.year} robot`)}`;
-  const photo = r.image
-    ? `<div class="photo r43"><img${imgAttrs(r.image, 800)}${imgPos(r)}${ck(`${P}.image`)} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}" loading="lazy" width="1000" height="750"></div>`
-    : `<a class="photo r43 ph" href="${wanted}" aria-label="Photo wanted: send us a photo of the ${esc(r.year)} robot"${ck(`${P}.image`, "image")}><b data-ck-ignore>${esc(r.year)}</b><span>Photo wanted</span></a>`;
-  return `<article class="card"${ck(P)}>${photo}<div class="card-b">
-    <p class="label"><span${ck(`${P}.year`)}>${esc(r.year)}</span> · <span${ck(`${P}.game`)}>${esc(r.game)}</span></p>
-    <h3 class="h3"><a class="card-title" href="${robotUrl(r)}"${ck(`${P}.name`)}>${esc(robotName(r))}</a></h3>
-    ${r.tagline ? `<p${ck(`${P}.tagline`)}>${esc(r.tagline)}</p>` : ""}
-    ${r.stats ? `<p class="tab"${ck(`${P}.stats`)}>${esc(r.stats)}</p>` : ""}
-    ${r.status === "In service" ? `<span class="chip"${ck(`${P}.status`)}>In service</span>` : ""}</div></article>`;
+  return `<li${ck(P)}><a class="shot r43" href="${wanted}" aria-label="Photo wanted: send us a photo of the ${esc(r.year)} robot"${ck(`${P}.image`, "image")}><span class="ph"><b data-ck-ignore aria-hidden="true">${esc(r.year)}</b><span>Photo wanted</span></span></a>` +
+    `<a class="robot-a" href="${robotUrl(r)}">${meta}</a></li>`;
 }
 
 function gridHtml() {
   const shown = ROBOTS.map((r, i) => ({ r, i })).filter(({ r }) => passes(r, robotFilter));
-  return { count: `Showing ${shown.length} of ${ROBOTS.length}`, html: shown.map(({ r, i }) => robotCard(r, i)).join("") };
+  return { count: `Showing ${shown.length} of ${ROBOTS.length}`, html: shown.map(({ r, i }) => robotItem(r, i)).join("") };
 }
 
 // The competition milestones ("Highlights"): the comp items of HISTORY. The team milestones are on the About page.
@@ -64,20 +65,19 @@ function highlights() {
   HISTORY.milestones.forEach((m, i) => (m.items || []).forEach((it, j) => {
     if (it.kind === "comp") rows.push(`<li><b${ck(`HISTORY.milestones[${i}].year`)}>${esc(m.year)}</b><span${ck(`HISTORY.milestones[${i}].items[${j}].text`, "rich")}>${rich(it.text)}</span></li>`);
   }));
-  return rows.length ? `<h2 class="h2 spaced">Highlights</h2><ul class="dated hl"${ck("HISTORY.milestones")}>${rows.join("")}</ul>` : "";
+  return rows.length ? `<h2 class="h2-gap">Highlights</h2><ul class="dated"${ck("HISTORY.milestones")}>${rows.join("")}</ul>` : "";
 }
 
 function renderRobots() {
   const g = gridHtml();
   document.getElementById("robots-page").innerHTML = `
-    <section class="band"><div class="wrap"><h1 class="h1" tabindex="-1">Our robots</h1><p class="lead">Every robot we have built, season by season.</p>
-      ${seasonSummary()}<div id="season-log"></div>${highlights()}</div></section>
-    <section class="band alt"><div class="wrap">
-      <div class="chips" role="group" aria-label="Filter robots">${FILTERS.map(([v, label]) => `<button type="button" class="fchip" data-ck-ignore data-filter="${v}" aria-pressed="${robotFilter === v}">${label}</button>`).join("")}</div>
-      <p class="small mute tab" id="count" aria-live="polite">${g.count}</p>
-      <div class="cards" id="robot-archive"${ck("ROBOTS")}>${g.html}</div>
-      <div class="archive"><h2 class="h2">Help us fill in the archive</h2><p>We don't have photos or names for many of our older robots. Were you on the team? Send photos, robot names, or stories to</p>${emailAddress()}</div>
-    </div></section>`;
+    <section class="band band-first"><div class="wrap"><h1 tabindex="-1">Our robots</h1><p class="lead">Every robot we have built, season by season.</p>
+      <div class="robots-record">${seasonSummary()}<div id="season-log"></div></div>${highlights()}</div></section>
+    <section class="band band-floor"><div class="wrap"><h2>Every robot</h2>
+      <div class="filters" role="group" aria-label="Filter robots">${FILTERS.map(([v, label]) => `<button type="button" class="filter" data-ck-ignore data-filter="${v}" aria-pressed="${robotFilter === v}">${label}</button>`).join("")}</div>
+      <p class="small mute tab count" id="count" aria-live="polite">${g.count}</p>
+      <ul class="gallery" id="robot-archive"${ck("ROBOTS")}>${g.html}</ul></div></section>
+    <section class="band"><div class="wrap stack"><h2>Help us fill in the archive</h2><p class="measure">We don't have photos or names for many of our older robots. Were you on the team? Send photos, robot names, or stories to</p><p>${siteAddress()}</p></div></section>`;
   seasonLog(document.getElementById("season-log"), { list: false });
   document.querySelectorAll("[data-filter]").forEach((b) => b.addEventListener("click", () => {
     robotFilter = b.getAttribute("data-filter");
@@ -88,7 +88,14 @@ function renderRobots() {
   }));
 }
 
-onContent(renderRobots);
+let robotsWired = false;
+onContent(() => {
+  renderRobots();
+  if (robotsWired) return;
+  robotsWired = true;
+  // The season log opens at the newest year on a phone, again once fonts and photos have changed its width.
+  addEventListener("load", () => scrollLogToNewest(document, { unlessMoved: true }));
+});
 </script>
 </body>
 </html>

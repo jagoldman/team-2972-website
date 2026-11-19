@@ -12,7 +12,7 @@ From `new-apps/briefs/r83/ADOPT.md`. The static kit is synced from infra `r83-ki
   button, `--danger` for Deny), every state is `.shell-status`, the event line is `.shell-evline`. The bar says
   "Home"; `mountHomeGroups` says "Team links"; `mountHomeGuide` gets `eventDay`. No stand-ins are left.
 - **Shared files (own commits):** `css/style.css`'s first token block holds the kit 0.5.0 values (theme-test pins
-  it); `sw.js` v7 precaches and stores `/shell/fonts/`.
+  it); `sw.js` precaches and stores `/shell/fonts/` (v7 on `r83`; v10 after the merge with `r83-site`).
 - **Mark step done (CONTRACT T1, T3):** `next.nextStep` is `{id, title}`; the button posts `{app:"tasks",
   action:"step-done", key:"<taskId>:<itemId>"}` to `/today/act`, counts the step at once, and puts the card back
   with one sentence on any answer but success. `next.practicesLeft` gives "Due …, N practices left".
@@ -63,6 +63,45 @@ From `new-apps/briefs/r83/HOME.md`, CONTRACT H1, H2, C1, E1 and the portal side 
 - **Tests:** `test/fixtures/today-83.mjs` (made-up answers dated from the run day); `test/portal-home-test.mjs` (every
   new part, `postAct`'s answers); `test/portal-shell-test.mjs` (the 8.3 block: roles at 1280/390, light/dark, acts,
   event day, the 8.1.5 answer, contrast).
+
+## 2026-11-18: release 8.3, the public site in design 8.2 (D190) and the hero blur (D193), branch `r83-site`
+
+The 13 public pages follow `../public-redesign-demo/v8.2/` (`47a6d87`); the brief is `new-apps/briefs/r83/PUBLIC_SITE.md`
+and the work list `new-apps/adoption/r83/GAP_PUBLIC_SITE.md`. `docs/PUBLIC_REDESIGN_PROPOSAL.md` (Midnight & brass) is replaced.
+
+- **Styles:** the public pages load only `css/site.css` (tokens at the top, light only, the red block under them).
+  `css/style.css` is the portal's, install's, offline's and team-login's; its old public block stays, unused, until the
+  portal's owner agrees to remove it. Fonts: Big Shoulders (`--display`) and Libre Franklin; `sw.js` precaches both (v8).
+- **Head:** each public page is `color-scheme light`, `theme-color #ffffff`, and has one head script, the bumper's
+  (reads `localStorage["2972-alliance"]`, sets `data-alliance`). `test/theme-test.cjs` pins its exact text.
+- **`js/components.js`:** new `extLink`, `dash`, `statParts`, `wordmark`, `siteAddress`, `bumperLabel`/`renderBumper`/
+  `swapBumpers`, `robotShot`/`robotMeta`, `siteRequestAccess`, `siteFooter`, `hasPhoto`. Rewritten for the public pages:
+  `renderHeader`, `renderFooter` (its portal branch is unchanged), `renderNextUp` (a table; "Starts tomorrow", "days to go",
+  "The season is over"), `seasonMark`/`seasonLog`/`seasonSummary`/`renderRecord`/`scrollLogToNewest` (banner for a win,
+  22px marks, "No season" years, the record as one sentence), `robotsRow`, `resultRow`/`resultsTable`, `sponsorNames`,
+  `renderTeamTools`, `copyAddress` (keeps its own label), `mountLayout`, `loginLabel` ("Team login"). Removed:
+  `renderCompactFooter`, `seasonStatRow`, `tickerRun`, `initTickers`, `initTimeline`, `timeline*`, `REDUCED_MOTION`.
+  Unchanged for the portal: `renderRequestAccess`, `emailAddress`, `schoolMark`, `siteBase`, `PORTAL_URL`.
+- **Kept sections the demo has no place for**, drawn with the demo's own parts: the robot Photos gallery, awards, photo
+  source; About's How we work; sponsor logos (and links, banners); Join's Team calendar and the three FIRST links;
+  Resources' Code, CAD and the Team Drive with Request access; outreach dates; Media's photo grid and Follow along.
+- **D193, a face blurred at the owner's request in the hero photo:** the one blur table is `window.PHOTO_BLUR` in
+  `config.js` (Drive ID, a version mark `v`, ellipses as fractions of the rotated photo). `scripts/drive-photos/fetch.cjs`
+  reads it (Docker copies `config.js` into the photo stage), blurs the full download before any resize (5x5 blocks, back
+  up, a wide Gaussian, a soft mask fully opaque over the ellipse), and writes `<id>-<v>-<w>.webp`; the link-preview picture
+  is `og-image-b2.jpg`. `imgUrl()` never gives a Google address for a blurred ID; without a saved copy the photo is not
+  shown (`hasPhoto()`), and the build log says `PRIVACY (D193)` loudly. Change `v` whenever the regions change.
+- **D193 fails closed:** the list is `{ format: 1, photos: { <id>: { v, ellipses } } }`. `photoBlurList()`, in the
+  "photo-rules" block of `js/components.js` (the image build runs exactly that block; the Dockerfile copies the file into
+  the photo stage), accepts only that shape. Anything else (no `config.js`, one that does not parse, no list, no
+  `format: 1`, one bad entry) means "did not arrive": the pages then show no Drive photo and ask Google for nothing.
+  `{ format: 1, photos: {} }` means "nothing blurred". The Website editor's preview relies on this signal.
+- **One Drive ID function:** `driveIdOf()` in the same block reduces every Drive link form (an ID, `lh*.googleusercontent.com/d/`,
+  `drive.google.com`/`docs.google.com` `/file/d/`, `?id=` on `/open`, `/uc`, `/thumbnail`, `drive.usercontent.google.com`, the
+  Drive API) to the ID, for the pages and the build. Any other Google-hosted address is never used (`isGoogleHosted()`).
+- **Tests:** `test/public-test.mjs` rewritten (see its header); `theme-test`, `season-test`, `legal-test`, `pwa-test`,
+  `install-test`, `site-test.html`, `menu-test.html`, `portal-shell-test.mjs`, `drive-photos-test` and `container-test.sh`
+  updated.
 
 ## 2026-11-14: release 8.1.5, shell kit 0.4.0 (branch `r815`)
 
@@ -139,11 +178,11 @@ New content keys are listed in `docs/CONTENT_EDITING.md`.
 **Link previews:** Caddy renders `index.html` as a template on the public and direct hosts (`home_page` in
 `container/Caddyfile`, `Cache-Control: no-cache`), so its `og:` tags carry full addresses built from `SITE_SCHEME` and
 `SITE_DOMAIN`. Keep every `{{...}}` inside an attribute value (test/drive-photos-test.cjs checks), or a plain local server
-breaks the head. `og-image.jpg` is made at image build time by `scripts/drive-photos/fetch.cjs` from the built-in
+breaks the head. `og-image-b2.jpg` is made at image build time by `scripts/drive-photos/fetch.cjs` from the built-in
 `SITE.heroImage` (a Drive photo), framed by `heroPosition`; without it the tag names `pwa-icons/site/icon-512.png`. A hero
 changed only in the editor reaches the preview picture after the content sync and the next image build.
 
-## 2026-11-11: public site redesign built (Midnight & brass, dark only)
+## 2026-11-11: public site redesign built (Midnight & brass, dark only; replaced by design 8.2 in release 8.3, D190)
 
 Built from `docs/PUBLIC_REDESIGN_PROPOSAL.md` and its approved demo (`public-redesign-demo/`) on `simple-ui`, one commit per
 work package, **not pushed or deployed**. Public pages are dark only: `<html data-site="public">` + `<meta name="color-scheme"
@@ -239,11 +278,10 @@ framework. It runs as the `landing` container (static Caddy 2.11.7, port 3001, `
 
 ## 3. Look, themes and accessibility (MASTER_PLAN D56; public redesign 2026-11-11)
 
-- **Public pages: "Midnight & brass", dark only.** Bricolage Grotesque + Inter, self-hosted in `fonts/`. Every colour is a `--token`:
-  the first `:root` block (light-dark, the portal's) and the second `:root[data-site="public"]` block (one fixed dark set). Colours
-  may appear nowhere else. `--gold` fills (with `--on-gold` text); `--accent` is brass as text. Sponsor logos sit on white tiles.
-- Public pages ignore saved light choices and the OS setting by construction (no script). The portal's app bar and the kit own the
-  `theme` cookie; `test/portal-shell-test.mjs` checks that public pages leave it alone.
+- **Public pages: design 8.2, light only (release 8.3, D190).** `css/site.css`: Big Shoulders + Libre Franklin, self-hosted in
+  `fonts/`; every colour is a token at its top (and the red bumper block). The portal keeps `css/style.css` (light-dark tokens).
+- Public pages ignore saved theme choices and the OS setting by construction: their one head script is the bumper colour's. The
+  portal's app bar and the kit own the `theme` cookie; `test/portal-shell-test.mjs` checks that public pages leave it alone.
 - **After touching colours run `test/theme-test.sh` and `LANDING_TEST_NODE_MODULES=... node test/public-test.mjs`.**
 
 ## 4. Installable app (PWA, D61)

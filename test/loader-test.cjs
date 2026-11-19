@@ -44,7 +44,10 @@ function makeEnv({ fetchImpl, ready = true, timeoutMs = 60, withComponents = fal
     querySelectorAll: () => [],
     getElementById: () => ({ set innerHTML(v) {}, setAttribute() {}, classList: { toggle() {}, add() {} } }),
   };
+  ctx.URL = URL;
   vm.createContext(ctx);
+  // config.js first, as every page loads it (it carries the D193 blur list; without it no Drive photo is shown).
+  vm.runInContext(read("config.js"), ctx, { filename: "config.js" });
   vm.runInContext(read("js/content.js"), ctx, { filename: "content.js" });
   vm.runInContext(read("js/content-loader.js"), ctx, { filename: "content-loader.js" });
   if (withComponents) vm.runInContext(read("js/components.js"), ctx, { filename: "components.js" });
@@ -245,7 +248,8 @@ const run = (ctx, expr) => vm.runInContext(expr, ctx);
     // on this site; anything else is shown as typed.
     const r = (s) => e(`rich(${JSON.stringify(s)})`);
     check("rich escapes HTML", r("<script>alert(1)</script>") === "&lt;script&gt;alert(1)&lt;/script&gt;");
-    check("rich makes a https link open in a new tab", r("[Site](https://example.com/a?x=1&y=2)") === '<a href="https://example.com/a?x=1&amp;y=2" target="_blank" rel="noopener">Site</a>');
+    check("rich makes a https link open in a new tab and say so to a screen reader", r("[Site](https://example.com/a?x=1&y=2)") === '<a href="https://example.com/a?x=1&amp;y=2" target="_blank" rel="noopener">Site<span class="vh"> (opens in a new tab)</span></a>');
+    check("rich: a link on this site or a mailto: opens here, with no new-tab words", r("[Robot](robot.html?year=2011)") === '<a href="robot.html?year=2011">Robot</a>' && r("[Mail](mailto:a@example.com)") === '<a href="mailto:a@example.com">Mail</a>');
     check("rich keeps a site link in the same tab", r("[Robot](robot.html?year=2011)") === '<a href="robot.html?year=2011">Robot</a>');
     check("rich allows a mailto link", r("[Mail](mailto:pat@example.com)") === '<a href="mailto:pat@example.com">Mail</a>');
     check("rich allows an in-page link", r("[Top](#cad-overview)") === '<a href="#cad-overview">Top</a>');

@@ -11,8 +11,8 @@ const strip = (h) => h.replace(/<!--[\s\S]*?-->/g, "");
 for (const f of ["privacy.html", "terms.html"]) {
   const html = fs.readFileSync(path.join(root, f), "utf8");
   const text = strip(html);
-  check(`${f}: same head as other public pages (manifest, dark only with no theme script, stylesheet)`,
-    html.includes('rel="manifest"') && html.includes('data-site="public"') && html.includes('<meta name="color-scheme" content="dark" />') && !html.includes("theme-init") && html.includes("css/style.css"));
+  check(`${f}: same head as other public pages (manifest, light only with no theme script, the public stylesheet)`,
+    html.includes('rel="manifest"') && html.includes('data-site="public"') && html.includes('<meta name="color-scheme" content="light" />') && !html.includes("theme-init") && html.includes("css/site.css") && !html.includes("css/style.css"));
   check(`${f}: has header, footer and shared scripts`,
     html.includes('id="site-header"') && html.includes('id="site-footer"') && html.includes("js/components.js"));
   check(`${f}: not marked noindex (Google must be able to read it)`, !/noindex/i.test(html));
@@ -29,8 +29,8 @@ check("privacy: does not invent a retention period or consent claim", !/\b\d+ (d
 check("privacy links to terms; terms links to privacy",
   priv.includes('href="terms.html"') && strip(fs.readFileSync(path.join(root, "terms.html"), "utf8")).includes('href="privacy.html"'));
 const comps = fs.readFileSync(path.join(root, "js/components.js"), "utf8");
-check("footer links to both pages (on the portal host too, through pageHref)",
-  comps.includes('pageHref("privacy.html")') && comps.includes('pageHref("terms.html")'));
+check("footer links to both pages (on the portal host too, through pageHref; in the public footer's base line)",
+  comps.includes('pageHref("privacy.html")') && comps.includes('pageHref("terms.html")') && /<span class="ftr-legal"><a href="privacy\.html">Privacy<\/a><a href="terms\.html">Terms<\/a><\/span>/.test(comps));
 const home = strip(fs.readFileSync(path.join(root, "index.html"), "utf8"));
 check("home page links to privacy and terms in plain HTML (Google brand verification reads the raw page)",
   /id="site-footer">[\s\S]*href="privacy\.html"[\s\S]*href="terms\.html"[\s\S]*<\/footer>\s*<\/div>/.test(home));

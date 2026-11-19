@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Team 2972 Gears & Buccaneers | Dawson School FRC</title>
 <meta name="description" content="Gears & Buccaneers, FIRST Robotics Competition Team 2972 at Dawson School in Lafayette, Colorado." />
-<meta name="color-scheme" content="dark" />
-<meta name="theme-color" content="#101827" />
+<meta name="color-scheme" content="light" />
+<meta name="theme-color" content="#ffffff" />
 <!-- Link previews. The container's Caddy renders this file as a template (container/Caddyfile, "home_page"), so the addresses
      are full ones built from SITE_SCHEME and SITE_DOMAIN and are in the HTML a link-preview crawler reads (no script).
-     og-image.jpg is the hero photo, cut to 1200x630 when the image is built (scripts/drive-photos/fetch.cjs); if that
+     og-image-b2.jpg is the hero photo, cut to 1200x630 when the image is built (scripts/drive-photos/fetch.cjs); if that
      failed, the site's app icon stands in. Every template action sits inside an attribute value, so a plain local server
      (no Caddy) still serves a well-formed head; the actions then stay as typed. -->
 <meta property="og:type" content="website" />
@@ -17,12 +17,12 @@
 <meta property="og:title" content="Team 2972 Gears &amp; Buccaneers | Dawson School FRC" />
 <meta property="og:description" content="Gears &amp; Buccaneers, FIRST Robotics Competition Team 2972 at Dawson School in Lafayette, Colorado." />
 <meta property="og:url" content="{{env "SITE_SCHEME" | html}}://{{env "SITE_DOMAIN" | html}}/" />
-<meta property="og:image" content="{{env "SITE_SCHEME" | html}}://{{env "SITE_DOMAIN" | html}}{{if fileExists "/img/drive/og-image.jpg"}}/img/drive/og-image.jpg{{else}}/pwa-icons/site/icon-512.png{{end}}" />
-<meta property="og:image:type" content="{{if fileExists "/img/drive/og-image.jpg"}}image/jpeg{{else}}image/png{{end}}" />
-<meta property="og:image:width" content="{{if fileExists "/img/drive/og-image.jpg"}}1200{{else}}512{{end}}" />
-<meta property="og:image:height" content="{{if fileExists "/img/drive/og-image.jpg"}}630{{else}}512{{end}}" />
-<meta property="og:image:alt" content="{{if fileExists "/img/drive/og-image.jpg"}}Team 2972 students with their robot{{else}}The Team 2972 logo{{end}}" />
-<meta name="twitter:card" content="{{if fileExists "/img/drive/og-image.jpg"}}summary_large_image{{else}}summary{{end}}" />
+<meta property="og:image" content="{{env "SITE_SCHEME" | html}}://{{env "SITE_DOMAIN" | html}}{{if fileExists "/img/drive/og-image-b2.jpg"}}/img/drive/og-image-b2.jpg{{else}}/pwa-icons/site/icon-512.png{{end}}" />
+<meta property="og:image:type" content="{{if fileExists "/img/drive/og-image-b2.jpg"}}image/jpeg{{else}}image/png{{end}}" />
+<meta property="og:image:width" content="{{if fileExists "/img/drive/og-image-b2.jpg"}}1200{{else}}512{{end}}" />
+<meta property="og:image:height" content="{{if fileExists "/img/drive/og-image-b2.jpg"}}630{{else}}512{{end}}" />
+<meta property="og:image:alt" content="{{if fileExists "/img/drive/og-image-b2.jpg"}}Team 2972 students with their robot{{else}}The Team 2972 logo{{end}}" />
+<meta name="twitter:card" content="{{if fileExists "/img/drive/og-image-b2.jpg"}}summary_large_image{{else}}summary{{end}}" />
 <link rel="manifest" href="/manifest.webmanifest" />
 <link rel="icon" href="/pwa-icons/site/icon.svg" type="image/svg+xml" />
 <link rel="icon" href="/pwa-icons/site/icon-192.png" sizes="192x192" type="image/png" />
@@ -30,20 +30,24 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Team 2972" />
-<link rel="preload" href="fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
-<link rel="stylesheet" href="css/style.css" />
+<link rel="preload" href="fonts/big-shoulders-latin.woff2" as="font" type="font/woff2" crossorigin />
+<!-- bumper: the accent colour a visitor picked with Home's bumper, set before the first paint so a red choice never
+     shows blue first. It reads one stored value and sets one attribute; nothing else (test/theme-test.cjs). -->
+<script>try{var a=localStorage.getItem("2972-alliance");if(a==="red"||a==="blue")document.documentElement.setAttribute("data-alliance",a)}catch(e){}</script>
+<link rel="stylesheet" href="css/site.css" />
 </head>
 <body data-home>
+<a class="skip" href="#home">Skip to the page</a>
 <div id="site-header"></div>
 
-<main id="home"></main>
+<main id="home" tabindex="-1"></main>
 
 <div id="site-footer">
   <!-- Plain footer for readers without JavaScript (and Google's brand-verification check, which reads the raw page):
        components.js replaces it with the full footer. Keep the Privacy and Terms links here. -->
-  <footer class="site-footer">
-    <p class="footer-copy"><span>Team 2972 Gears &amp; Buccaneers, Dawson School. Team members sign in to the team portal with Google or an approved account.</span>
-    <span><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></span></p>
+  <footer class="ftr">
+    <div class="wrap"><p>Team 2972 Gears &amp; Buccaneers, Dawson School. Team members sign in to the team portal with Google or an approved account.</p>
+    <p class="ftr-legal"><a href="privacy.html">Privacy</a> <a href="terms.html">Terms</a></p></div>
   </footer>
 </div>
 
@@ -54,12 +58,8 @@
 <script>
 let homeWired = false;   // the page-level listeners below are added once, however often the page is re-rendered
 
-// One tile of "Find your way in" (the layout of Magic UI's bento-grid: a card, its name, a line of text, a link that is always
-// visible). A tile with no picture ("bc-plain") starts its text at the top.
-function bentoTile(cls, picture, name, text, href, cta) {
-  return `<article class="bc ${cls}${picture ? "" : " bc-plain"}"><div class="bc-bg">${picture}</div><div class="bc-main"><div class="bc-body">${name}${text}</div>
-    <div class="bc-cta"><a href="${href}">${esc(cta)}<span aria-hidden="true">→</span></a></div></div><div class="bc-wash"></div></article>`;
-}
+// The hero photo: full width, 4:3 on a phone, 2:1 from 720px, 5:2 from 1100px. A phone takes the 400 or 800 copy.
+const HERO_SIZES = "(min-width: 1240px) 1200px, 100vw";
 
 function renderHome() {
   const win = newestAward();
@@ -71,60 +71,68 @@ function renderHome() {
     ? `${esc(win.award.replace(/Winners/, "winners"))}, ${esc(win.r.year)}. The robot is <a href="${robotUrl(win.r)}"${ck(`ROBOTS[${win.i}].name`)}>${esc(robotName(win.r))}</a>.`
     : "";
   const heroPos = safePosition(SITE.heroPosition);
-  const hero = SITE.heroImage ? `
-    <figure class="photo-col"><div class="photo r43"><img${imgAttrs(SITE.heroImage, 1600)}${ck("SITE.heroImage")}${heroPos ? ` style="object-position: ${esc(heroPos)}"` : ""} id="hero-photo" width="1500" height="1125" fetchpriority="high"
-      alt="${esc(altFor(SITE.heroImage, "Team 2972 students with their robot"))}"></div>${caption ? `<figcaption>${caption}</figcaption>` : ""}</figure>` : "";
+  const photo = hasPhoto(SITE.heroImage)
+    ? `<img${imgSized(SITE.heroImage, [400, 800, 1600], HERO_SIZES)}${ck("SITE.heroImage")}${heroPos ? ` style="object-position: ${esc(heroPos)}"` : ""} id="hero-photo" width="1500" height="1125" fetchpriority="high" alt="${esc(altFor(SITE.heroImage, "Team 2972 students with their robot"))}">`
+    : editorPhotoSpot("SITE.heroImage", "Hero photo not shown: set or replace it", "editor-hero");
 
-  // "Find your way in": students, sponsors, mentors, and the workshop. The text of the three doors is written here (page
-  // text is not an editor field). The workshop tile is HISTORY.workshop: its heading and the machines as chips, once each,
-  // with the newest milestone photo (the milestones run oldest first: the 2025 shop, not the 2021 room).
+  // "Find your way in": the student photo and three doors as a list. The text of the doors is written here (page text
+  // is not an editor field).
+  const studentImg = hasPhoto(SITE.memberImage)
+    ? `<div class="s5"><span class="shot r11"><img${imgSized(SITE.memberImage, [400, 800, 1600], "(min-width: 900px) 40vw, 100vw")}${ck("SITE.memberImage")}${ckAlt("SITE.memberImageAlt")} alt="${esc(altFor(SITE.memberImage, SITE.memberImageAlt))}" loading="lazy" width="1000" height="1000"></span></div>`
+    : inEditorPreview() ? `<div class="s5">${editorPhotoSpot("SITE.memberImage", "Student photo not shown: set or replace it", "r11")}</div>` : "";
+
+  // "Our workshop": HISTORY.workshop's heading and machines, with the newest milestone photo (the milestones run oldest
+  // first: the 2025 shop, not the 2021 room).
   const shopInfo = HISTORY.workshop || {};
   const machines = Array.isArray(shopInfo.machines) ? shopInfo.machines : [];
   const shopName = shopInfo.heading || "Our workshop";
-  const shop = HISTORY.milestones.map((m, i) => ({ m, i })).reverse().find(({ m }) => m.image);
+  const shop = HISTORY.milestones.map((m, i) => ({ m, i })).reverse().find(({ m }) => hasPhoto(m.image));
   const shopImg = shop
-    ? `<img${imgAttrs(shop.m.image, 1000)}${ck(`HISTORY.milestones[${shop.i}].image`)}${ckAlt(`HISTORY.milestones[${shop.i}].imageAlt`)} alt="${esc(altFor(shop.m.image, shop.m.imageAlt || shopName))}" loading="lazy" width="1000" height="750">`
+    ? `<div class="s7"><span class="shot r43"><img${imgSized(shop.m.image, [400, 800, 1600], "(min-width: 900px) 56vw, 100vw")}${ck(`HISTORY.milestones[${shop.i}].image`)}${ckAlt(`HISTORY.milestones[${shop.i}].imageAlt`)} alt="${esc(altFor(shop.m.image, shop.m.imageAlt || shopName))}" loading="lazy" width="1000" height="750"></span></div>`
     : "";
-  const studentImg = SITE.memberImage
-    ? `<img${imgAttrs(SITE.memberImage, 1000)}${ck("SITE.memberImage")}${ckAlt("SITE.memberImageAlt")} alt="${esc(altFor(SITE.memberImage, SITE.memberImageAlt))}" loading="lazy" width="1000" height="1000">` : "";
-  const chips = `<ul class="shop-chips"${ck("HISTORY.workshop.machines")}>${machines.map((m, j) => `<li class="chip"${ck(`HISTORY.workshop.machines[${j}]`)}>${esc(m)}</li>`).join("")}</ul>`;
 
-  // The sponsor strip: the newest season that has sponsors, every name in type, and one link to the Sponsors page.
+  // Recent sponsors: the newest season that has sponsors, every name in type, and one button to the Sponsors page.
   const newest = SPONSOR_TIERS.map((t, i) => ({ t, i })).find(({ t }) => t.sponsors.length);
   const season = newest ? (newest.t.tier.replace(/\s*Sponsors?\s*/i, "").trim() || newest.t.tier) : "";
-  const sponsors = newest ? `<div class="spons"${ck("SPONSOR_TIERS")}><div${ck(`SPONSOR_TIERS[${newest.i}]`)}>
-      <p class="label"><span${ck("SITE.homeSponsorsLabel")}>${esc(SITE.homeSponsorsLabel || "Recent sponsors")}</span> · <span${ck(`SPONSOR_TIERS[${newest.i}].tier`)}>${esc(season)}</span> season</p>
-      ${sponsorNames(newest.t, newest.i, { typeOnly: true })}</div><a class="tl-link" href="sponsors.html">All sponsors →</a></div>` : "";
+  const sponsors = newest ? `<section class="band" aria-labelledby="spons-h"${ck("SPONSOR_TIERS")}><div class="wrap"${ck(`SPONSOR_TIERS[${newest.i}]`)}>
+      <h2 id="spons-h"><span${ck("SITE.homeSponsorsLabel")}>${esc(SITE.homeSponsorsLabel || "Recent sponsors")}</span>, <span${ck(`SPONSOR_TIERS[${newest.i}].tier`)}>${esc(season)}</span> season</h2>
+      <div class="home-names">${sponsorNames(newest.t, newest.i, { typeOnly: true })}</div>
+      <p class="more"><a class="btn" href="sponsors.html">All sponsors</a></p></div></section>` : "";
 
   document.getElementById("home").innerHTML = `
-    <section class="band tight hero"><div class="wrap hero-grid"><div>
-      <p class="label gold"><span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span> · FRC Team <span${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span> · <span${ck("SITE.school")}>${esc(SITE.school)}</span></p>
-      <h1${win ? ck(`ROBOTS[${win.i}].awards`) : ""}>${headline}</h1>
-      <p class="lead"${ck("SITE.mission")}>${esc(SITE.mission)}</p>
-      <div class="btns"><a class="btn btn-gold" href="member.html">Join the team</a><a class="btn btn-line" href="sponsors.html">Sponsor a season</a></div>
-      <div class="school-line"><span class="label">A Dawson School team</span>${schoolMark("sm")}</div>
-    </div>${hero}</div></section>
+    <section class="hero"><div class="wrap">
+      <div class="hero-top"><h1 class="hero-title" tabindex="-1"${win ? ck(`ROBOTS[${win.i}].awards`) : ""}>${headline}</h1>
+        <div class="hero-row"><p class="lead"${ck("SITE.mission")}>${esc(SITE.mission)}</p>
+          <div class="btns"><a class="btn btn-bumper" href="member.html">Join the team</a><a class="btn" href="sponsors.html">Sponsor a season</a></div></div></div>
+      <figure class="hero-shot${photo ? "" : " no-photo"}">${photo}${renderBumper()}
+        <figcaption class="hero-foot">${caption ? `<span class="cap">${caption}</span>` : ""}<span class="school-line">A Dawson School team ${wordmark(96)}</span></figcaption></figure>
+    </div></section>
     <div id="nextUp">${renderNextUp()}</div>
     <div id="record"></div>
     ${robotsRow()}
-    <section class="band" aria-labelledby="way-h"><div class="wrap"><h2 class="h2" id="way-h">Find your way in</h2><div class="bento">
-      ${bentoTile("bc-stud", studentImg, `<h3 class="bc-name">Students</h3>`, `<p>For students who want to design, build and compete with us.</p>`, "member.html", "How to join")}
-      ${bentoTile("bc-spons", "", `<h3 class="bc-name">Sponsors</h3>`, `<p>Every dollar goes directly toward robot parts, competition fees, travel, and outreach.</p>`, "sponsors.html", "Sponsor the team")}
-      ${bentoTile("bc-ment", "", `<h3 class="bc-name">Mentors</h3>`, `<p>For adults who want to guide students with their time and expertise.</p>`, "mentor.html", "Become a mentor")}
-      ${bentoTile("bc-shop", shopImg, `<h3 class="bc-name"${ck("HISTORY.workshop.heading")}>${esc(shopName)}</h3>`, chips, "about.html", "About the team")}
-    </div>${sponsors}</div></section>`;
+    <section class="band" aria-labelledby="way-h"><div class="wrap"><h2 id="way-h">Find your way in</h2>
+      <div class="split doors-split">${studentImg}
+        <ul class="doors s7">
+          <li><h3>Students</h3><p>For students who want to design, build and compete with us.</p><a class="textlink" href="member.html">How to join</a></li>
+          <li><h3>Sponsors</h3><p>Every dollar goes directly toward robot parts, competition fees, travel, and outreach.</p><a class="textlink" href="sponsors.html">Sponsor the team</a></li>
+          <li><h3>Mentors</h3><p>For adults who want to guide students with their time and expertise.</p><a class="textlink" href="mentor.html">Become a mentor</a></li>
+        </ul></div></div></section>
+    <section class="band band-floor" aria-labelledby="shop-h"><div class="wrap split">${shopImg}
+      <div class="s5"><h2 id="shop-h"${ck("HISTORY.workshop.heading")}>${esc(shopName)}</h2><p class="shop-line">Students make the robot's parts here, with mentors beside them.</p>
+        <ul class="tools"${ck("HISTORY.workshop.machines")}>${machines.map((m, j) => `<li${ck(`HISTORY.workshop.machines[${j}]`)}>${esc(m)}</li>`).join("")}</ul>
+        <p class="more"><a class="textlink" href="about.html">About the team</a></p></div></div></section>
+    ${sponsors}`;
   renderRecord(document.getElementById("record"));
 }
 
 onContent(() => {
   renderHome();
-  initTickers(document);
   if (homeWired) return;
   homeWired = true;
   // The season log opens at the newest year on a phone: again once the fonts and photos have loaded (they change its width).
   // Not if the visitor has already scrolled it.
   addEventListener("load", () => scrollLogToNewest(document, { unlessMoved: true }));
-  // The countdown is worked out in the browser: again when the tab is shown, and every 30 minutes.
+  // The day count is worked out in the browser: again when the tab is shown, and every 30 minutes.
   const refresh = () => { const el = document.getElementById("nextUp"); if (el) el.innerHTML = renderNextUp(); };
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
   setInterval(refresh, 30 * 60 * 1000);

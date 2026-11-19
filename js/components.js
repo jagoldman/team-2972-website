@@ -42,17 +42,23 @@ function requestAccessHref(resource, who = {}) {
   return `mailto:${SITE.email}?subject=${encodeURIComponent(`Access request: ${resource.name}`)}&body=${encodeURIComponent(body)}`;
 }
 
-// Buttons for the team's public code and CAD, above the access requests on the Resources page.
+// Buttons for the team's public code and CAD, above the access requests on the Resources page (public pages only).
 function renderTeamTools() {
-  const arrow = `<svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg>`;
   const out = (path, label) => {
     const href = safeUrl(contentGet(path));   // "#" means "not set yet", as in the editor
-    return href && href !== "#" ? `<a class="btn btn-outline" href="${esc(href)}" target="_blank" rel="noopener"${ckHref(path)}>${label} ${arrow}</a>` : "";
+    return href && href !== "#" ? extLink(href, esc(label), ` class="btn"${ckHref(path)}`) : "";
   };
-  return `<div class="btn-row team-tools">
-      ${out("SITE.github", "Robot code on GitHub")}
-      ${out("SITE.onshapePublic", "Robot CAD (public view)")}
-    </div>`;
+  return `<div class="btns team-tools">${out("SITE.github", "Robot code on GitHub")}${out("SITE.onshapePublic", "Robot CAD (public view)")}</div>`;
+}
+
+// The public Resources page's access requests, in the design 8.2 style: one column per resource under a black rule, its
+// name, what it is, and a "Request access" mail link. (The portal keeps renderRequestAccess below, in its own look.)
+function siteRequestAccess() {
+  return `<div class="access"${ck("REQUEST_ACCESS")}>${REQUEST_ACCESS.map((r, i) => `<div${ck(`REQUEST_ACCESS[${i}]`)}>
+      <h3${ck(`REQUEST_ACCESS[${i}].name`)}>${esc(r.name)}</h3>
+      <p><span${ck(`REQUEST_ACCESS[${i}].what`)}>${esc(r.what)}</span> Access is by invitation.</p>
+      <a class="textlink" href="${esc(requestAccessHref(r))}">Request access<span class="vh"> to the ${esc(r.name)}</span></a></div>`).join("")}</div>
+    <p class="access-note small mute">This opens an email to <a href="mailto:${esc(SITE.email)}"${ck("SITE.email")}>${esc(SITE.email)}</a>.</p>`;
 }
 
 function renderRequestAccess(who) {
@@ -122,7 +128,8 @@ function rich(text) {
     out += richEmphasis(esc(md.slice(last, m.index)));
     if (richLinkOk(m[2])) {
       const external = /^https:/i.test(m[2]);
-      out += `<a href="${esc(m[2])}"${external ? ' target="_blank" rel="noopener"' : ""}>${richEmphasis(esc(m[1]))}</a>`;
+      // An outside link opens in a new tab and says so to a screen reader, as extLink() does.
+      out += `<a href="${esc(m[2])}"${external ? ' target="_blank" rel="noopener"' : ""}>${richEmphasis(esc(m[1]))}${external ? '<span class="vh"> (opens in a new tab)</span>' : ""}</a>`;
     } else {
       out += richEmphasis(esc(m[0]));
     }
@@ -156,14 +163,16 @@ function ckAlt(path) {
 //                  /media/<id>-<w>.webp, where <w> is the smallest stored width (400, 800 or 1600) that
 //                  is at least the width asked for; if the published media list says which widths exist,
 //                  only those are used. (<id>-thumb.webp is for the editor's own screens, not for pages.)
-//   a Google Drive image ID or lh3.googleusercontent.com/d/ID URL (any =w size on it is replaced) ->
+//   a Google Drive photo in any form driveIdOf() knows (an ID, lh3.googleusercontent.com/d/ID, drive.google.com/file/d/ID,
+//   ?id=ID, the Drive API; any size on it is replaced) ->
 //                  /img/drive/<id>-<w>.webp, the copy this server downloaded when the image was built, at the
 //                  smallest saved width that is at least the width asked for; if there is none (local preview,
 //                  a photo added later, a failed download), the lh3 URL as before
 //   any other http(s) URL or site path, such as an SVG placeholder, which is returned unchanged
 //   imgUrl("media:<id>", 600) -> "/media/<id>-800.webp"
 //   imgUrl("1AbC…", 400)      -> "/img/drive/1AbC…-400.webp" or "https://lh3.googleusercontent.com/d/1AbC…=w400"
-// The Drive ID rule is also in scripts/drive-photos/fetch.cjs; keep the two in step.
+//   any other Google-hosted address -> "" (never used as it is); a blurred photo -> its blurred copy or "" (D193)
+// The Drive ID rule is driveIdOf() in the "photo-rules" block, which scripts/drive-photos/fetch.cjs runs too.
 const MEDIA_WIDTHS = [400, 800, 1600];
 const MEDIA_REF = /^media:([a-f0-9]{20})$/;
 // { "<Drive id>": [widths saved, smallest first] } from config.js; {} when Caddy did not fill it in.
@@ -175,6 +184,120 @@ const DRIVE_PHOTOS = (() => {
     return {};
   }
 })();
+// ---- photo-rules: start ----
+// One copy of the photo rules for the pages and the image build: scripts/drive-photos/fetch.cjs reads this file and runs
+// exactly the lines between the two "photo-rules" markers. Plain JavaScript only (and URL): no window, no document.
+
+// THE SIGNAL (D193; the Website editor's preview relies on it). window.PHOTO_BLUR, set by config.js, "arrived" only when
+// photoBlurList() accepts it: a plain object with format === 1 and photos a plain object (an empty one is fine) whose
+// every key is a Drive ID and every value is { v: a letter and 1 to 6 digits, ellipses: a non-empty list of [x, y, rx, ry] with
+// each number strictly between 0 and 1 }. Anything else, including no config.js at all, a config.js that failed or did
+// not parse, PHOTO_BLUR missing, null, without format 1, or with one bad entry, is "did not arrive", and then the pages
+// ask Google for nothing: no Drive photo is shown, and no Google-hosted address is used (imgUrl() gives "").
+// The valid empty list, { format: 1, photos: {} }, means "nothing is blurred" and the pages behave as before D193.
+const PHOTO_BLUR_FORMAT = 1;
+// A blurred photo's version mark ("b2"): a letter and 1 to 6 digits, so a saved file's name <id>-<mark>-<w>.webp reads
+// back without doubt.
+const PHOTO_MARK = /^[a-z][0-9]{1,6}$/;
+function photoBlurList(t) {
+  const plain = (o) => Object.prototype.toString.call(o) === "[object Object]";
+  if (!plain(t) || t.format !== PHOTO_BLUR_FORMAT || !plain(t.photos)) return null;
+  const out = {};
+  for (const id of Object.keys(t.photos)) {
+    const b = t.photos[id];
+    const ok = /^[\w-]{20,}$/.test(id) && plain(b) && typeof b.v === "string" && PHOTO_MARK.test(b.v) &&
+      Array.isArray(b.ellipses) && b.ellipses.length > 0 &&
+      b.ellipses.every((e) => Array.isArray(e) && e.length === 4 && e.every((n) => typeof n === "number" && n > 0 && n < 1));
+    if (!ok) return null;
+    out[id] = { v: b.v, ellipses: b.ellipses.map((e) => e.slice()) };
+  }
+  return out;
+}
+
+// True for an address on a Google host (google.com and its country domains, googleusercontent.com, googleapis.com,
+// ggpht.com, gstatic.com, googledrive.com and their subdomains). Such an address is never put on a page as it is.
+function isGoogleHosted(value) {
+  const s = String(value ?? "").replace(/[\u0000-\u0020\u007f-\u009f]/g, "");
+  let host = "";
+  try { host = new URL(s, "http://relative.invalid/").hostname.toLowerCase().replace(/\.$/, ""); } catch (e) { return false; }
+  return /(^|\.)(googleusercontent|googleapis|ggpht|gstatic|googledrive)\.com$/.test(host) || /(^|\.)google\.[a-z]{2,3}(\.[a-z]{2})?$/.test(host);
+}
+// The Drive file ID in a photo value, whatever form it was pasted in, or "". The one function for every Drive form; the
+// pages (imgUrl) and the image build (fetch.cjs) both use it, so a blurred photo is found in any form.
+//   a bare ID                                     20 or more of A-Z a-z 0-9 _ -
+//   lh<N>.googleusercontent.com/d/<id>            with or without a size or other suffix (=w800, =s0, /view)
+//   drive.google.com or docs.google.com           /file/d/<id>/..., /file/u/<n>/d/<id>/..., /open?id=, /uc?id=,
+//                                                 /thumbnail?id= (also under /u/<n>/)
+//   drive.usercontent.google.com                  any path with ?id= (/download?id=, /u/0/uc?id=)
+//   www.googleapis.com/drive/v2|v3/files/<id>     the Drive API
+//   img/drive/<id>-<w>.webp, img/drive/<id>-<mark>-<w>.webp   this site's own saved copy, as a path (resolved by
+//                                                 sitePath: /img/..., img/..., ./ and ../, percent-escapes), current or
+//                                                 retired; imgUrl() also reads this site's full address as its path
+// http: and https: are both taken (both name the same file). Any other Google-hosted address is not a Drive photo
+// this site can serve: imgUrl() gives "" for it (isGoogleHosted).
+function driveIdOf(value) {
+  const s = String(value ?? "").trim();
+  const ok = (id) => (/^[\w-]{20,}$/.test(id || "") ? id : "");
+  if (ok(s)) return s;
+  const saved = /^\/img\/drive\/([\w-]+)-[0-9]+\.webp$/.exec(sitePath(s));
+  if (saved) {
+    const mark = /^(.*)-([a-z][0-9]{1,6})$/.exec(saved[1]);
+    return ok(mark && ok(mark[1]) ? mark[1] : saved[1]);
+  }
+  let u;
+  try { u = new URL(s.replace(/[\u0000-\u0020\u007f-\u009f]/g, "")); } catch (e) { return ""; }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return "";
+  const host = u.hostname.toLowerCase().replace(/\.$/, ""), p = u.pathname, q = u.searchParams.get("id") || "";
+  let m;
+  if (/^lh\d+\.googleusercontent\.com$/.test(host) && (m = /^\/d\/([\w-]+)/.exec(p))) return ok(m[1]);
+  if (host === "drive.google.com" || host === "docs.google.com") {
+    if ((m = /^\/file(?:\/u\/\d+)?\/d\/([\w-]+)/.exec(p))) return ok(m[1]);
+    if (/^(?:\/u\/\d+)?\/(?:open|uc|thumbnail)\/?$/.test(p)) return ok(q);
+  }
+  if (host === "drive.usercontent.google.com") return ok(q);
+  if (host === "www.googleapis.com" && (m = /^\/drive\/v[23]\/files\/([\w-]+)/.exec(p))) return ok(m[1]);
+  return "";
+}
+// A value that is not a full address (no scheme) as the path a browser would ask for from the site's root, with "./",
+// "../" and percent-escapes resolved ("img/./drive/%31x" -> "/img/drive/1x"); "" for a full address or nonsense.
+function sitePath(value) {
+  const s = String(value ?? "").trim();
+  if (!s || /^[a-z][a-z0-9+.-]*:/i.test(s) || s.startsWith("//")) return "";
+  try {
+    const p = new URL(s, "http://relative.invalid/").pathname;
+    try { return decodeURIComponent(p); } catch (e) { return p; }
+  } catch (e) { return ""; }
+}
+// ---- photo-rules: end ----
+
+// The blur list as the pages see it: the photos map, or null when the list did not arrive (see THE SIGNAL above).
+// A blurred photo's saved files are named <id>-<v>-<w>.webp and it is never loaded from Google: with no saved copy
+// listed in the manifest (a failed download, a local preview) imgUrl() gives "" and the page shows what it shows for a
+// missing photo. hasPhoto() says whether a photo value can be shown.
+const PHOTO_BLUR_LIST = photoBlurList(window.PHOTO_BLUR);
+function blurOf(id) {
+  return PHOTO_BLUR_LIST && Object.prototype.hasOwnProperty.call(PHOTO_BLUR_LIST, id) ? PHOTO_BLUR_LIST[id] : null;
+}
+// A full address on this site (its own host, or www., portal. or editor. on the site's domain) as its path, so a pasted
+// https://<site>/img/drive/... is read like /img/drive/...; anything else unchanged.
+function sitePathOf(s) {
+  if (!/^https?:\/\//i.test(s)) return s;
+  try {
+    const u = new URL(s), host = u.host.toLowerCase(), domain = siteBase().domain.toLowerCase();
+    const mine = host === String(location.host).toLowerCase() || host === domain || SITE_SUBDOMAINS.some((sub) => host === `${sub}.${domain}`);
+    return mine ? u.pathname + u.search : s;
+  } catch (e) { return s; }
+}
+// In the Website editor's preview only (inEditorPreview): a spot for a photo field that has no photo to show (unset, or a
+// blurred photo with no saved copy), keyed to that field, so the editor can still click it to set or replace the photo.
+// Visitors never get it: the public page shows what it always shows for a missing photo.
+function editorPhotoSpot(path, label, cls = "") {
+  if (!inEditorPreview()) return "";
+  return `<span class="editor-photo${cls ? ` ${cls}` : ""}"${ck(path, "image")} role="img" aria-label="${esc(label)}">${esc(label)}</span>`;
+}
+function hasPhoto(src) {
+  return Boolean(String(src || "").trim()) && imgUrl(src, MEDIA_WIDTHS[0]) !== "";
+}
 function imgUrl(src, width) {
   const s = String(src || "").trim();
   const media = s.match(MEDIA_REF);
@@ -184,9 +307,21 @@ function imgUrl(src, width) {
     const w = have.find((x) => x >= width) || have[have.length - 1];
     return `/media/${media[1]}-${w}.webp`;
   }
-  const id = /^[\w-]{20,}$/.test(s) ? s : (s.match(/^https:\/\/lh3\.googleusercontent\.com\/d\/([\w-]+)/) || [])[1];
-  if (!id) return safeUrl(s);
+  const local = sitePathOf(s);
+  const id = driveIdOf(local);
+  // A Google-hosted address that is not a Drive photo in a form driveIdOf() knows is never used as it is, and nor is
+  // any other path into img/drive (an old link-preview picture, the manifest): only a current saved copy is ever named.
+  if (!id) return isGoogleHosted(s) || /^\/img\/drive(?:\/|$)/i.test(sitePath(local)) ? "" : safeUrl(s);
+  // The blur list did not arrive: no Drive photo at all (we cannot tell which are blurred), so nothing from Google.
+  if (!PHOTO_BLUR_LIST) return "";
   const saved = Object.prototype.hasOwnProperty.call(DRIVE_PHOTOS, id) && Array.isArray(DRIVE_PHOTOS[id]) ? DRIVE_PHOTOS[id] : [];
+  const blur = blurOf(id);
+  if (blur) {
+    // A blurred photo: the saved copy at the width asked for, or the largest saved (a "full size" link), never Google.
+    const have = saved.filter((x) => Number.isInteger(x) && x > 0);
+    const bw = have.find((x) => x >= width) || have[have.length - 1];
+    return bw && blur.v ? `/img/drive/${id}-${blur.v}-${bw}.webp` : "";
+  }
   const w = saved.find((x) => Number.isInteger(x) && x >= width);
   return w ? `/img/drive/${id}-${w}.webp` : `https://lh3.googleusercontent.com/d/${id}=w${width}`;
 }
@@ -216,7 +351,7 @@ function altFor(src, fallback) {
 //   `<img${imgSized(r.image, [400, 800], "(min-width: 1024px) 300px, 50vw")} alt="…">`
 function imgSized(src, widths, sizes) {
   const media = imgSrcset(src);
-  const urls = [...new Set(widths.map((w) => imgUrl(src, w)))];
+  const urls = [...new Set(widths.map((w) => imgUrl(src, w)).filter(Boolean))];
   const sized = urls.map((u) => [u, Number((u.match(/-(\d+)\.webp$/) || u.match(/=w(\d+)$/) || [])[1])]).filter(([, w]) => w > 0);
   const set = media || (sized.length > 1 ? sized.map(([u, w]) => `${esc(u)} ${w}w`).join(", ") : "");
   return ` src="${esc(imgUrl(src, widths[0]))}"${set ? ` srcset="${set}" sizes="${esc(sizes)}"` : ""}`;
@@ -293,6 +428,61 @@ function robotUrl(r) {
   return `robot.html?year=${encodeURIComponent(r.year)}`;
 }
 
+// ---------- Design 8.2 helpers (the public pages) ----------
+
+// A date or score range shown with an en dash ("March 24–27, 2027", "2–7–0"). Display only: content keeps what was typed.
+function dash(s) {
+  return String(s ?? "").replace(/(\d)\s*-\s*(?=\d)/g, "$1–");
+}
+
+// A link out of the site: it opens in a new tab and says so to a screen reader. `html` is already escaped (it may hold
+// data-ck spans); `attrs` is extra attribute text (class, data-ck-href). An unsafe or empty address gives "".
+function extLink(url, html, attrs = "") {
+  const href = safeUrl(url);
+  if (!href) return "";
+  return `<a href="${esc(href)}" target="_blank" rel="noopener"${attrs}>${html}<span class="vh"> (opens in a new tab)</span></a>`;
+}
+
+// A robot's stats line ("5 events · 2 wins") as its parts. The page shows them as a list or joined with commas, so no
+// middle dot is ever on screen; the content keeps its dots.
+function statParts(r) {
+  return r && r.stats ? String(r.stats).split(/\s+·\s+/).map((p) => p.trim()).filter(Boolean) : [];
+}
+
+// Dawson School's wordmark (brand/dawson-school-logo.png, white artwork). On paper CSS turns it black (.wm); on the black
+// footer it stays white (.wm-light). Linked to SITE.schoolUrl when set. If the file fails to load it is hidden (mountLayout).
+function wordmark(width, light = false) {
+  const img = `<img class="wm${light ? " wm-light" : ""}" src="brand/dawson-school-logo.png" width="${width}" height="${Math.round(width * 157 / 414)}" alt="Dawson School" data-school-mark data-ck-ignore>`;
+  const href = isSet(SITE.schoolUrl) ? safeUrl(SITE.schoolUrl) : "";
+  return href ? `<a class="wm-link" href="${esc(href)}" target="_blank" rel="noopener"${ckHref("SITE.schoolUrl")}>${img}<span class="vh"> (opens in a new tab)</span></a>` : `<span class="wm-link">${img}</span>`;
+}
+
+// The team address on a public page: a mailto link and a Copy address button (the click is handled once, in mountLayout).
+function siteAddress() {
+  return `<span class="addr"><a class="addr-t" href="mailto:${esc(SITE.email)}"${ck("SITE.email")}>${esc(SITE.email)}</a><button type="button" class="copy" data-copy aria-live="polite">Copy address</button></span>`;
+}
+
+// The bumper on Home: the padded strip with the team number at each end, across the base of the hero photo. It swaps the
+// site's accent between bumper blue and bumper red; the choice is kept in this browser (localStorage "2972-alliance",
+// a colour, nothing personal) and read back before the first paint by each public page's one head script.
+const ALLIANCE_KEY = "2972-alliance";
+function bumperLabel() {
+  return document.documentElement.getAttribute("data-alliance") === "red" ? "Swap to blue bumpers" : "Swap to red bumpers";
+}
+function renderBumper() {
+  const n = `<span class="bumper-n" aria-hidden="true">${esc(SITE.teamNumber)}</span>`;
+  return `<button type="button" class="bumper" id="bumper" aria-label="${bumperLabel()}" data-ck-ignore>${n}<span class="bumper-t" id="bumperT" aria-hidden="true">${bumperLabel()}</span>${n}</button>`;
+}
+function swapBumpers() {
+  const root = document.documentElement;
+  const next = root.getAttribute("data-alliance") === "red" ? "blue" : "red";
+  root.setAttribute("data-alliance", next);
+  try { localStorage.setItem(ALLIANCE_KEY, next); } catch (e) { /* storage blocked: the swap still works, it is just not kept */ }
+  const b = document.getElementById("bumper"), t = document.getElementById("bumperT");
+  if (b) b.setAttribute("aria-label", bumperLabel());
+  if (t) t.textContent = bumperLabel();
+}
+
 // ---------- Home helpers: newest award, next event, sponsor names ----------
 
 // The newest season that has an award: { r, i, award } (i is its place in ROBOTS, for data-ck), or null.
@@ -335,42 +525,38 @@ const dateDay = (d) => dayNumber(d.getFullYear(), d.getMonth(), d.getDate());   
 // More than this many days away, the count is one plain line ("In 131 days"); this many or fewer, the large number.
 const BIG_COUNT_DAYS = 60;
 
-// The "Next event" strip: the soonest event in SCHEDULE_2027 that has not ended, how long until it starts, and the
-// rest after it. Computed in the browser from the schedule and today's date in the team's time zone on every call (Home
-// calls it on load, when the tab is shown again and every 30 minutes), so there is no server job and nothing to edit.
-// After the last event: "Season complete".
+// "Next event" on Home: a table of the events in SCHEDULE_2027 that have not ended, soonest first, the next one in bold
+// with how long until it starts. Computed in the browser from the schedule and today's date in the team's time zone on
+// every call (Home calls it on load, when the tab is shown again and every 30 minutes), so there is no server job and
+// nothing to edit. After the last event: "The season is over".
 // A date this page cannot read ("Date TBD") stays in the list under the next event. It is never dropped, and the
-// season is not called complete while one remains. The strip carries the list's data-ck so an editor can always add an event.
+// season is not called over while one remains. The band carries the list's data-ck so an editor can always add an event.
+// The day count: "Happening now", "Starts today", "Starts tomorrow", the large number with "days to go" when the event is
+// BIG_COUNT_DAYS away or fewer, otherwise one plain line "In N days".
 function renderNextUp(now = new Date()) {
   const today = teamDay(now);
   const dated = SCHEDULE_2027.map((e, i) => ({ e, i, d: parseEventDates(e.dates) }));
   const upcoming = dated.filter((x) => x.d && dateDay(x.d.end) >= today).sort((a, b) => a.d.start - b.d.start || a.i - b.i);
   const unread = dated.filter((x) => !x.d);
-  const open = `<section class="band rules alt tight" aria-label="Next event"${ck("SCHEDULE_2027")}><div class="wrap next">`;
-  // Nothing left that we can place, and nothing we failed to read: the season is over.
-  if (!upcoming.length && !unread.length) return `${open}<div><p class="label">Next event</p><p class="next-name">Season complete</p></div></div></section>`;
+  const open = `<section class="band band-floor next-band" aria-labelledby="sched-h"${ck("SCHEDULE_2027")}><div class="wrap">`;
+  if (!upcoming.length && !unread.length) return `${open}<h2 id="sched-h">The season is over</h2><p class="next-none">Next season's events appear here when FIRST announces them.</p></div></section>`;
   // The next event is the soonest readable one still ahead. Unreadable dates follow it. When every readable date
-  // has passed, the unreadable ones are the list (the first stands in as next, with no countdown).
-  const [n, ...rest] = upcoming.length ? [...upcoming, ...unread] : unread;
-  let when = "";
-  if (n.d) {
-    const days = dateDay(n.d.start) - today;
-    if (days < 0) when = `<p class="next-in">Happening now</p>`;
-    else if (days === 0) when = `<p class="next-in">Starts today</p>`;
-    else if (days === 1) when = `<p class="next-in">Tomorrow</p>`;
-    else if (days <= BIG_COUNT_DAYS) when = `<p class="countdown count-big"><span class="stat-n">${days}</span><span class="stat-l">days until the event starts</span></p>`;
-    else when = `<p class="next-in">In ${days} days</p>`;
-  }
-  const where = (x) => `<span${ck(`SCHEDULE_2027[${x.i}].dates`)}>${esc(x.e.dates)}</span> · <span${ck(`SCHEDULE_2027[${x.i}].location`)}>${keepState(esc(x.e.location))}</span>`;
-  return `${open}
-    <div class="next-card"${ck(`SCHEDULE_2027[${n.i}]`)}><span class="beam" aria-hidden="true"><i></i></span>
-      <p class="label gold">Next event</p>
-      <p class="next-name"${ck(`SCHEDULE_2027[${n.i}].event`)}>${esc(n.e.event)}</p>
-      <div>${where(n)}</div>
-      ${when}
-    </div>
-    ${rest.length ? `<div><p class="label">Then</p><ul class="later">${rest.map((x) => `<li${ck(`SCHEDULE_2027[${x.i}]`)}><b${ck(`SCHEDULE_2027[${x.i}].event`)}>${esc(x.e.event)}</b><span class="mute">${where(x)}</span></li>`).join("")}</ul></div>` : ""}
-  </div></section>`;
+  // has passed, the unreadable ones are the list (the first stands in as next, with no count).
+  const list = upcoming.length ? [...upcoming, ...unread] : unread;
+  const rows = list.map((x, k) => {
+    let when = "";
+    if (k === 0 && x.d) {
+      const days = dateDay(x.d.start) - today;
+      if (days < 0) when = "Happening now";
+      else if (days === 0) when = "Starts today";
+      else if (days === 1) when = "Starts tomorrow";
+      else if (days <= BIG_COUNT_DAYS) when = `<span class="count-big">${days}</span> days to go`;
+      else when = `In ${days} days`;
+    }
+    const P = `SCHEDULE_2027[${x.i}]`;
+    return `<tr${k === 0 ? ' class="next"' : ""}${ck(P)}><th scope="row"${ck(`${P}.event`)}>${esc(x.e.event)}</th><td class="when"${ck(`${P}.dates`)}>${esc(dash(x.e.dates))}</td><td${ck(`${P}.location`)}>${keepState(esc(x.e.location))}</td><td class="next-in">${when}</td></tr>`;
+  }).join("");
+  return `${open}<h2 id="sched-h">Next event</h2><table class="sched" aria-labelledby="sched-h"><thead><tr><th scope="col">Event</th><th scope="col">Dates</th><th scope="col">Place</th><th scope="col"><span class="vh">Starts</span></th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
 }
 
 // The editor's overlay.js sets this on the preview page (editor host, /site/<page>) before landing renders.
@@ -392,17 +578,18 @@ function editorLogoTarget(s, P) {
   if (s.logo) return `<img class="logo"${imgAttrs(s.logo, 400)}${ck(`${P}.logo`)}${ckAlt(`${P}.name`)} alt="${alt}" title="${esc(s.name)}" loading="lazy" />`;
   return `<span class="logo"${ck(`${P}.logo`, "image")}${ckAlt(`${P}.name`)} role="img" aria-label="${alt}">Logo</span>`;
 }
-// { typeOnly: true } sets every sponsor's name in type, real logo or not (Home's sponsor strip).
+// The names of one tier as a list in banner lettering. A sponsor with a real logo shows the logo (made for white, it sits
+// on the page as it is); { typeOnly: true } sets every sponsor's name in type, real logo or not (Home's sponsors).
 function sponsorNames(tier, ti, { typeOnly = false } = {}) {
   const base = `SPONSOR_TIERS[${ti}]`;
   const items = tier.sponsors.map((s, j) => {
     const P = `${base}.sponsors[${j}]`;
     const name = `<span${ck(`${P}.name`)}>${esc(s.name)}</span>`;
     const href = isSet(s.url) ? safeUrl(s.url) : "";
-    if (typeOnly || !realLogo(s)) return `<li${ck(P)}>${href ? `<a class="name-link" href="${esc(href)}" target="_blank" rel="noopener"${ckHref(`${P}.url`)}>${name}</a>` : name}${editorLogoTarget(s, P)}</li>`;
+    if (typeOnly || !realLogo(s)) return `<li${ck(P)}>${href ? extLink(href, name, ckHref(`${P}.url`)) : name}${editorLogoTarget(s, P)}</li>`;
     const logoName = `<span class="sp-name"${ck(`${P}.name`)}>${esc(s.name)}</span>`;   // shown only if the logo fails to load
-    const img = `<img class="logo"${imgAttrs(s.logo, 400)}${ck(`${P}.logo`)}${ckAlt(`${P}.name`)} alt="${esc(altFor(s.logo, s.name + " logo"))}" title="${esc(s.name)}" loading="lazy" data-sponsor-logo />`;
-    return `<li class="sponsor-tile"${ck(P)}>${href ? `<a href="${esc(href)}" target="_blank" rel="noopener"${ckHref(`${P}.url`)}>${img}${logoName}</a>` : img + logoName}</li>`;
+    const img = `<img class="logo"${imgAttrs(s.logo, 400)}${ck(`${P}.logo`)}${ckAlt(`${P}.name`)} alt="${esc(altFor(s.logo, s.name + " logo"))}" loading="lazy" data-sponsor-logo />`;
+    return `<li class="logo-tile"${ck(P)}>${href ? extLink(href, img + logoName, ckHref(`${P}.url`)) : img + logoName}</li>`;
   }).join("");
   // An empty tier's list still needs a visible spot in the editor preview (the public page hides the whole tier).
   const vacant = !tier.sponsors.length && inEditorPreview() ? `<li class="editor-empty" data-ck-ignore>No sponsors in this tier yet.</li>` : "";
@@ -411,10 +598,10 @@ function sponsorNames(tier, ti, { typeOnly = false } = {}) {
 
 // ---------- Season log ----------
 // The competition record as one picture: a column per year from the first season to the newest, one mark per event in
-// ROBOTS[].results. The marks come from the words of each result (docs/PUBLIC_REDESIGN_PROPOSAL.md §3), so nothing is
-// typed by hand: "won the event" is a large gold mark with a ring, "captain" a gold mark, a pick or the playoffs a gold
-// outline with a centre dot, and anything else is a grey outline. Years with no season (2020, 2021) stay as empty columns
-// so the gap is visible.
+// ROBOTS[].results. The marks come from the words of each result, so nothing is typed by hand. A won event is a banner
+// (what the winners take home), in the accent; captain a black disc; a pick or the playoffs a ring with a dot; anything
+// else a ring. No mark depends on colour. Years with no season (2020, 2021) stay as columns that say "No season", so the
+// gap is visible; they are not links.
 function resultType(text) {
   const s = String(text || "");
   if (/won the event/i.test(s)) return "win";
@@ -434,24 +621,23 @@ function seasonStats() {
   return { seasons: ROBOTS.length, wins, playoffs };
 }
 
+const SEASON_SHAPES = {
+  win: `<path class="m-win" d="M4 1h14v20l-7-5.2L4 21z"/>`,
+  cap: `<circle class="m-ink" cx="11" cy="11" r="8"/>`,
+  po: `<circle class="m-line" cx="11" cy="11" r="7"/><circle class="m-ink" cx="11" cy="11" r="3"/>`,
+  played: `<circle class="m-line" cx="11" cy="11" r="7"/>`,
+};
+// One 22px mark. With an event ({ event, result }) it is an image named by that event; without one it is decoration.
 function seasonMark(type, ev) {
-  const big = type === "win";
-  const size = big ? 28 : 22;
   const label = ev ? `${ev.event}: ${ev.result}` : "";
-  const shape = {
-    win: `<circle class="m-gold" cx="14" cy="14" r="9"/><circle class="m-ring" cx="14" cy="14" r="12.5"/>`,
-    cap: `<circle class="m-gold" cx="14" cy="14" r="9"/>`,
-    po: `<circle class="m-out" cx="14" cy="14" r="9"/><circle class="m-dot" cx="14" cy="14" r="3.5"/>`,
-    played: `<circle class="m-grey" cx="14" cy="14" r="9"/>`,
-  }[type];
-  return `<svg width="${size}" height="${size}" viewBox="0 0 28 28" ${ev ? `role="img" aria-label="${esc(label)}"` : `aria-hidden="true"`}>${ev ? `<title>${esc(label)}</title>` : ""}${shape}</svg>`;
+  return `<svg width="22" height="22" viewBox="0 0 22 22" ${ev ? `role="img" aria-label="${esc(label)}"><title>${esc(label)}</title>` : `aria-hidden="true">`}${SEASON_SHAPES[type] || SEASON_SHAPES.played}</svg>`;
 }
 
 const SEASON_LEGEND = [["win", "Won the event"], ["cap", "Alliance captain"], ["po", "Picked or in the playoffs"], ["played", "Played the event"]];
 
-// Draws the log into `el`. { compact: true } leaves out the robot names and the legend (for a small spot). The log is keyed as
-// the ROBOTS list unless the page already has another element for it ({ list: false }).
-function seasonLog(el, { compact = false, list = true } = {}) {
+// Draws the log into `el`: the hint (SITE.homeRecordHint), the columns in a box that scrolls sideways on a phone, and the
+// legend. The log is keyed as the ROBOTS list unless the page already has another element for it ({ list: false }).
+function seasonLog(el, { list = true } = {}) {
   const years = ROBOTS.map((r) => Number(r.year)).filter(Number.isFinite);
   if (!years.length) { el.innerHTML = `<p class="empty-note">No seasons yet.</p>`; return; }
   const lo = Math.min(...years), hi = Math.max(...years);
@@ -459,87 +645,88 @@ function seasonLog(el, { compact = false, list = true } = {}) {
   for (let y = lo; y <= hi; y++) {
     const i = ROBOTS.findIndex((r) => Number(r.year) === y);
     if (i < 0) {
-      cols += `<div class="sl-col" data-ck-ignore><div class="sl-marks"><span class="sl-dash" aria-hidden="true">–</span></div><span class="sl-year">${y}<span class="vh"> (no season)</span></span>${compact ? "" : `<span class="sl-name"></span>`}</div>`;
+      cols += `<div class="log-col log-none" data-ck-ignore><span class="log-marks"></span><span class="log-year">${y}</span><span class="log-name">No season</span></div>`;
       continue;
     }
     const r = ROBOTS[i], results = r.results || [], P = `ROBOTS[${i}]`;
     const wins = results.filter((x) => resultType(x.result) === "win");
     const label = `${r.year}${r.name ? `, ${r.name}` : ""}: ${plural(results.length, "event")}${wins.map((w) => `, won the ${w.event}`).join("")}`;
-    cols += `<a class="sl-col" href="${robotUrl(r)}" aria-label="${esc(label)}"${ck(P)}>
-      <span class="sl-marks"${ck(`${P}.results`)}>${results.map((x, j) => `<span class="sl-mark"${ck(`${P}.results[${j}]`)}>${seasonMark(resultType(x.result), x)}</span>`).join("")}</span>
-      <span class="sl-year"${ck(`${P}.year`)}>${esc(r.year)}</span>${compact ? "" : `<span class="sl-name"${r.name ? ` title="${esc(r.name)}"` : ""}${ck(`${P}.name`)}>${esc(r.name)}</span>`}</a>`;
+    cols += `<a class="log-col" href="${robotUrl(r)}" aria-label="${esc(label)}"${ck(P)}><span class="log-marks"${ck(`${P}.results`)}>${results.map((x, j) => `<span class="log-mark"${ck(`${P}.results[${j}]`)}>${seasonMark(resultType(x.result), x)}</span>`).join("")}</span><span class="log-year"${ck(`${P}.year`)}>${esc(r.year)}</span><span class="log-name"${ck(`${P}.name`)}>${esc(r.name)}</span></a>`;
   }
-  const n = hi - lo + 1;
-  el.innerHTML = `<div class="sl-wrap" role="region" aria-label="Season log, scrolls sideways" tabindex="0"${list ? ck("ROBOTS") : ""}><div class="sl-grid" style="--cols:${n}">${cols}</div></div>` +
-    (compact ? "" : `<ul class="legend">${SEASON_LEGEND.map(([t, text]) => `<li>${seasonMark(t)} ${text}</li>`).join("")}</ul>`);
+  const hint = SITE.homeRecordHint ? `<p class="log-hint"${ck("SITE.homeRecordHint")}>${esc(SITE.homeRecordHint)}</p>` : "";
+  el.innerHTML = `${hint}<div class="log-scroll" role="region" aria-label="Season log, scrolls sideways" tabindex="0"${list ? ck("ROBOTS") : ""}><div class="log">${cols}</div></div>` +
+    `<ul class="legend">${SEASON_LEGEND.map(([t, text]) => `<li>${seasonMark(t)} ${text}</li>`).join("")}</ul>`;
+  const wrap = el.querySelector(".log-scroll");
+  // Once the visitor moves the log themselves, it is theirs: a later scrollLogToNewest(..., { unlessMoved: true }) leaves it.
+  const mine = (e) => { if (e.type !== "keydown" || /^(Arrow|Page|Home|End)/.test(e.key)) wrap.slMoved = true; };
+  ["pointerdown", "wheel", "touchstart", "keydown"].forEach((t) => wrap.addEventListener(t, mine, { passive: true }));
+  scrollLogToNewest(el);
 }
 
-// One line above the log: counted from the same data.
+// The record as one sentence, counted from ROBOTS: "16 seasons since 2009, 2 event wins and 14 events in the playoffs."
 function seasonSummary() {
   const s = seasonStats();
-  return `<p class="sl-sum">${plural(s.seasons, "season")} · ${plural(s.wins, "event win")} · ${plural(s.playoffs, "playoff event")}</p>`;
+  const years = ROBOTS.map((r) => Number(r.year)).filter(Number.isFinite);
+  const since = years.length ? ` since ${Math.min(...years)}` : "";
+  return `<p class="record-line">${plural(s.seasons, "season")}${since}, ${plural(s.wins, "event win")} and ${plural(s.playoffs, "event")} in the playoffs.</p>`;
 }
 
-// The three record numbers (they count up once when first seen; the page already holds the final numbers).
-function seasonStatRow() {
-  const s = seasonStats();
-  return `<ul class="stats" aria-label="Competition record">${[[s.seasons, "season"], [s.wins, "event win"], [s.playoffs, "playoff event"]].map(([n, word]) =>
-    `<li><b class="stat-n" data-ticker="${n}">${n}</b><span class="stat-l">${word}${n === 1 ? "" : "s"}</span></li>`).join("")}</ul>`;
-}
-
-// Home: "Competition record" with the hint (SITE.homeRecordHint), the three numbers and the log. The log starts scrolled to
-// the newest year when it is wider than the screen (a phone).
+// Home: "Competition record", the sentence and the log. The log starts scrolled to the newest year when it is wider than
+// the screen (a phone).
 function renderRecord(el) {
   if (!el) return;
-  const hint = SITE.homeRecordHint ? `<p class="rec-hint"${ck("SITE.homeRecordHint")}>${esc(SITE.homeRecordHint)}</p>` : "";
-  el.innerHTML = `<section class="band" aria-labelledby="rec-h"><div class="wrap"><div class="rec-head"><h2 class="h2" id="rec-h">Competition record</h2>${hint}</div>${seasonStatRow()}<div class="sl-host"></div></div></section>`;
+  el.innerHTML = `<section class="band" aria-labelledby="rec-h"><div class="wrap"><h2 id="rec-h">Competition record</h2>${seasonSummary()}<div class="sl-host"></div></div></section>`;
   seasonLog(el.querySelector(".sl-host"));
-  initTickers(el);
-  const wrap = el.querySelector(".sl-wrap");
-  if (wrap) {
-    // Once the visitor moves the log themselves, it is theirs: a later scrollLogToNewest(..., { unlessMoved: true }) leaves it.
-    const mine = (e) => { if (e.type !== "keydown" || /^(Arrow|Page|Home|End)/.test(e.key)) wrap.slMoved = true; };
-    ["pointerdown", "wheel", "touchstart", "keydown"].forEach((t) => wrap.addEventListener(t, mine, { passive: true }));
-  }
-  scrollLogToNewest(el);
 }
 
 // Scrolls a season log to its right-hand end (the newest year). Does nothing when the whole log fits.
 // { unlessMoved: true } (the page's load event, when fonts and photos have changed the width) also leaves the log alone
 // if the visitor has moved it: they touched it, or it is no longer where this function last put it.
 function scrollLogToNewest(root = document, { unlessMoved = false } = {}) {
-  const w = root.querySelector(".sl-wrap");
+  const w = root.querySelector(".log-scroll");
   if (!w || w.scrollWidth <= w.clientWidth) return;
   if (unlessMoved && (w.slMoved || (w.slAutoLeft !== undefined && Math.abs(w.scrollLeft - w.slAutoLeft) > 1))) return;
   w.scrollLeft = w.scrollWidth;
   w.slAutoLeft = w.scrollLeft;
 }
 
-// Home: "The robots", the four newest seasons from ROBOTS (newest year first) as cards that open the robot's page, and a
-// link to the Robots page. A season with no photo shows its year in the photo's place.
+// ---------- Robots in a list (Home and the Robots page) ----------
+// A robot's photo in its 4:3 frame, or, with no photo, a grey "Photo wanted" tile with the year large.
+function robotShot(r, i, sizes, { lazy = true } = {}) {
+  const P = `ROBOTS[${i}]`;
+  if (!hasPhoto(r.image)) return `<span class="shot r43"${ck(`${P}.image`, "image")}><span class="ph"><b data-ck-ignore aria-hidden="true">${esc(r.year)}</b><span>Photo wanted</span></span></span>`;
+  return `<span class="shot r43"><img${imgSized(r.image, [400, 800, 1600], sizes)}${imgPos(r)}${ck(`${P}.image`)} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}"${lazy ? ' loading="lazy"' : ""} width="1000" height="750"></span>`;
+}
+// The words under a robot's photo: year and game, name, then the tagline (or, with no tagline, the stats joined with
+// commas). With { line: "both" } (the Robots page's archive) the tagline and then the stats, each when the robot has it.
+function robotMeta(r, i, { status = false, line: first = "tagline" } = {}) {
+  const P = `ROBOTS[${i}]`;
+  const parts = statParts(r);
+  const tag = r.tagline ? `<span class="robot-line"${ck(`${P}.tagline`)}>${esc(r.tagline)}</span>` : "";
+  const stats = parts.length ? `<span class="robot-line"${ck(`${P}.stats`)}>${esc(parts.join(", "))}</span>` : "";
+  const line = first === "both" ? tag + stats : tag || stats;
+  return `<span class="robot-meta"><span><span class="robot-yr"${ck(`${P}.year`)}>${esc(r.year)}</span> <span class="mute"${ck(`${P}.game`)}>${esc(r.game)}</span></span>` +
+    `<span class="robot-name"${ck(`${P}.name`)}>${esc(robotName(r))}</span>${line}` +
+    `${status && r.status === "In service" ? `<span class="status status-on"${ck(`${P}.status`)}>In service</span>` : ""}</span>`;
+}
+
+// Home: "The robots", the four newest seasons from ROBOTS (newest year first): the newest large, the next three in a
+// list, and a button to the Robots page.
 const HOME_ROBOTS = 4;
-// The CSS width of a card's photo: four columns from 1024px (about 285px in the 1200px page), two below that, one under
-// 350px. A phone takes the 400px copy (the 800px one on a 3x screen); a desktop the 400px or, on a 2x screen, the 800px.
-const ROBOT_ROW_SIZES = "(min-width: 1024px) 300px, (min-width: 350px) 50vw, 100vw";
+const ROBOT_BIG_SIZES = "(min-width: 1240px) 680px, (min-width: 900px) 56vw, 100vw";
+const ROBOT_ROW_SIZES = "(min-width: 900px) 190px, 34vw";
 function robotsRow() {
   const newest = ROBOTS.map((r, i) => ({ r, i })).filter(({ r }) => Number.isFinite(Number(r.year)))
     .sort((a, b) => Number(b.r.year) - Number(a.r.year) || a.i - b.i).slice(0, HOME_ROBOTS);
   if (!newest.length) return "";
-  const cards = newest.map(({ r, i }) => {
-    const P = `ROBOTS[${i}]`;
-    const photo = r.image
-      ? `<div class="photo"><img${imgSized(r.image, [400, 800], ROBOT_ROW_SIZES)}${imgPos(r)}${ck(`${P}.image`)} alt="${esc(altFor(r.image, `${robotName(r)}, the ${r.year} robot`))}" loading="lazy" width="800" height="600"></div>`
-      : `<div class="photo ph"${ck(`${P}.image`, "image")}><b data-ck-ignore>${esc(r.year)}</b></div>`;
-    return `<li${ck(P)}><a class="card" href="${robotUrl(r)}">${photo}<div class="card-b">
-      <p class="label"><span${ck(`${P}.year`)}>${esc(r.year)}</span> · <span${ck(`${P}.game`)}>${esc(r.game)}</span></p>
-      <h3 class="h3"${ck(`${P}.name`)}>${esc(robotName(r))}</h3>
-      ${r.tagline ? `<p${ck(`${P}.tagline`)}>${esc(r.tagline)}</p>` : ""}</div></a></li>`;
-  }).join("");
+  const link = ({ r, i }, cls, sizes) => `<a class="robot-a${cls ? ` ${cls}` : ""}" href="${robotUrl(r)}"${ck(`ROBOTS[${i}]`)}>${robotShot(r, i, sizes)}${robotMeta(r, i)}</a>`;
+  const [big, ...rest] = newest;
   const heading = SITE.homeRobotsHeading || "The robots";
-  return `<section class="band alt" aria-labelledby="rob-h"><div class="wrap">
-    <h2 class="h2" id="rob-h"${ck("SITE.homeRobotsHeading")}>${esc(heading)}</h2>
-    <ul class="rbt">${cards}</ul>
-    <div class="rbt-more"><a class="btn btn-line" href="robots.html">See all robots</a></div></div></section>`;
+  return `<section class="band band-floor" aria-labelledby="rob-h"><div class="wrap">
+    <h2 id="rob-h"${ck("SITE.homeRobotsHeading")}>${esc(heading)}</h2>
+    <div class="star"${ck("ROBOTS")}>${link(big, "robot-big", ROBOT_BIG_SIZES)}
+      <div>${rest.length ? `<ul class="roster">${rest.map((x) => `<li>${link(x, "", ROBOT_ROW_SIZES)}</li>`).join("")}</ul>` : ""}
+      <p class="more"><a class="btn" href="robots.html">See all ${plural(ROBOTS.length, "robot")}</a></p></div></div></div></section>`;
 }
 
 // ---------- Short text from long text ----------
@@ -568,20 +755,20 @@ function parseResult(text) {
   return { parsed: true, rank: r[2] ? `${r[1]} of ${r[2]}` : r[1], record: rec ? rec[1] : "–", playoffs: dash >= 0 ? raw.slice(dash + 3).trim() || "–" : "–" };
 }
 
-// One row: Event · Rank · Record · Playoffs · The Blue Alliance link. `path` is the result's data-ck path (optional).
+// One row: Event (with the banner mark and "Winner" on a won event), Rank, Record, Playoffs, Match data (The Blue
+// Alliance). `path` is the result's data-ck path (optional).
 function resultRow(x, path) {
   const p = parseResult(x.result), win = resultType(x.result) === "win";
   const k = (field) => (path ? ck(`${path}.${field}`) : "");
-  return `<tr${win ? ' class="win"' : ""}${path ? ck(path) : ""}>
-    <td><span${k("event")}>${esc(x.event)}</span>${win ? ` <span class="pill">Winner</span>` : ""}</td>
-    <td${k("result")}>${esc(p.rank)}</td><td${k("result")}>${esc(p.record)}</td><td${k("result")}>${esc(p.playoffs)}</td>
-    <td>${x.tba ? `<a href="${esc(tbaEvent(x.tba))}" target="_blank" rel="noopener"${path ? ckHref(`${path}.tba`) : ""}>The Blue Alliance ↗</a>` : ""}</td></tr>`;
+  return `<tr${win ? ' class="win"' : ""}${path ? ck(path) : ""}><th scope="row"><span${k("event")}>${esc(x.event)}</span>${win ? `<span class="won">${seasonMark("win")}Winner</span>` : ""}</th>` +
+    `<td${k("result")}>${esc(p.rank)}</td><td${k("result")}>${esc(dash(p.record))}</td><td${k("result")}>${esc(p.playoffs)}</td>` +
+    `<td>${x.tba ? extLink(tbaEvent(x.tba), "The Blue Alliance", path ? ckHref(`${path}.tba`) : "") : ""}</td></tr>`;
 }
 
 // The whole table, in a box that scrolls sideways on a phone. `base` is the robot's data-ck path ("ROBOTS[2]").
 function resultsTable(r, base) {
   const rows = (r.results || []).map((x, i) => resultRow(x, base ? `${base}.results[${i}]` : ""));
-  return `<div class="tbl-wrap" role="region" aria-label="Results, scrolls sideways" tabindex="0"${base ? ck(`${base}.results`) : ""}><table><thead><tr><th scope="col">Event</th><th scope="col">Rank</th><th scope="col">Record</th><th scope="col">Playoffs</th><th scope="col"><span class="vh">Link</span></th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+  return `<div class="tbl-scroll" role="region" aria-label="Results, scrolls sideways" tabindex="0"${base ? ck(`${base}.results`) : ""}><table class="tbl"><thead><tr><th scope="col">Event</th><th scope="col">Rank</th><th scope="col">Record</th><th scope="col">Playoffs</th><th scope="col">Match data</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
 }
 
 // ---------- Site hosts ----------
@@ -637,46 +824,44 @@ function setSignedInHint(on) {
   } catch (e) { /* cookies blocked: the link just keeps saying Team Login */ }
 }
 function loginLabel() {
-  return document.cookie.split("; ").includes(`${SIGNED_IN_HINT}=1`) ? "Portal" : "Team Login";
+  return document.cookie.split("; ").includes(`${SIGNED_IN_HINT}=1`) ? "Portal" : "Team login";
 }
 
 function pageHref(page) {
   return isPortalPage() ? hostUrl("", `/${page}`) : page;
 }
 
-// Dawson's Mustang "D" (brand/dawson-mustang.png), to the left of the team logo in the header, linked to
-// SITE.schoolUrl when set. A separate link from the team brand (links cannot nest); hidden if the file fails to load.
+// Dawson's Mustang "D" (brand/dawson-mustang.png), left of the team logo in the header with a thin rule to its right,
+// linked to SITE.schoolUrl when set. A separate link from the team brand (links cannot nest); removed if the file fails
+// to load (mountLayout).
 function renderSchoolBadge() {
-  const img = `<img${imgAttrs("brand/dawson-mustang.png", 80)} data-ck-ignore alt="Dawson School" class="school-badge-img" width="128" height="104" />`;
+  const img = `<img${imgAttrs("brand/dawson-mustang.png", 80)} data-ck-ignore alt="Dawson School" class="school-badge-img" width="42" height="34" />`;
   const href = isSet(SITE.schoolUrl) ? safeUrl(SITE.schoolUrl) : "";
   return href
-    ? `<a class="school-badge" href="${esc(href)}" target="_blank" rel="noopener"${ckHref("SITE.schoolUrl")}>${img}</a>`
-    : `<span class="school-badge">${img}</span>`;
+    ? `<a class="hdr-school" href="${esc(href)}" target="_blank" rel="noopener"${ckHref("SITE.schoolUrl")}>${img}<span class="vh"> (opens in a new tab)</span></a>`
+    : `<span class="hdr-school">${img}</span>`;
 }
 
+// The public header (design 8.2): a white bar with a black rule under it. Home shows the number over the full team name;
+// every other page reads "2972 Team" on one line. The page you are on is underlined in the accent; the login link is the
+// accent button. On a phone the links open under the bar from a "Menu" button (mountLayout: Escape closes it).
 function renderHeader() {
   // The protected portal mounts the static shell bar after /me.json and /apps.json load.
   if (isPortalPage()) return "";
   const active = currentPage();
-  // Home keeps the number over the full team name; every other page reads "2972 Team" on one line (C8, release 8.1.5),
-  // more compact on a phone (css: .brand-short).
   const name = isHomePage()
-    ? `<span class="brand-text"><strong${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</strong><span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span></span>`
-    : `<span class="brand-text brand-short"><strong${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</strong> <b class="brand-team">Team</b></span>`;
-  const links = NAV_LINKS.map((l) => `<a href="${l.href}" class="nav-link"${l.href === active ? ' aria-current="page"' : ""}>${l.label}</a>`).join("");
+    ? `<span class="brand-n"${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span><span class="brand-t"><span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span></span>`
+    : `<span class="brand-one"><span${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span> Team</span>`;
+  const links = NAV_LINKS.map((l) => `<a class="nav-a" href="${l.href}"${l.href === active ? ' aria-current="page"' : ""}>${l.label}</a>`).join("");
   return `
-  <header class="site-header" id="hdr">
-    <div class="wrap hd">
+  <header class="hdr" id="hdr">
+    <div class="wrap hdr-in">
       ${renderSchoolBadge()}
-      <span class="brand-sep" aria-hidden="true"></span>
-      <a href="${pageHref("index.html")}" class="brand">
-        <img${imgAttrs(SITE.logo, 200)}${ck("SITE.logo")} alt="${esc(altFor(SITE.logo, SITE.teamName + " logo"))}" class="brand-logo" width="36" height="36" />
-        ${name}
-      </a>
-      <button type="button" class="nav-toggle" id="menuBtn" aria-expanded="false" aria-controls="site-nav">Menu</button>
-      <nav class="site-nav" id="site-nav" aria-label="Main">
+      <a class="brand" href="${pageHref("index.html")}"><img${imgAttrs(SITE.logo, 200)}${ck("SITE.logo")} alt="" width="44" height="44" />${name}<span class="vh">, home</span></a>
+      <button type="button" class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="site-nav">Menu</button>
+      <nav class="nav" id="site-nav" aria-label="Main">
         ${links}
-        <a href="${PORTAL_URL}" class="btn btn-gold nav-login">${loginLabel()}</a>
+        <a class="btn btn-bumper btn-sm nav-login" href="${PORTAL_URL}">${loginLabel()}</a>
       </nav>
     </div>
   </header>`;
@@ -687,9 +872,13 @@ function emailAddress() {
   return `<span class="addr"><a class="addr-t" href="mailto:${esc(SITE.email)}"${ck("SITE.email")}>${esc(SITE.email)}</a><button type="button" class="btn btn-line btn-sm" data-copy aria-live="polite">Copy</button></span>`;
 }
 
+// The Copy button beside an address: copies it, or, with no clipboard access, selects it so Ctrl/Cmd+C works. The button
+// says "Copied" or "Selected" for two seconds, then its own words again ("Copy" on the portal, "Copy address" on public pages).
 function copyAddress(button) {
   const text = button.parentNode.querySelector(".addr-t");
-  const reset = (label) => { button.textContent = label; setTimeout(() => { button.textContent = "Copy"; }, 2000); };
+  if (!button.hasAttribute("data-label")) button.setAttribute("data-label", button.textContent);
+  const label = button.getAttribute("data-label");
+  const reset = (said) => { button.textContent = said; setTimeout(() => { button.textContent = label; }, 2000); };
   const select = () => {                                // no clipboard access: select the address so Ctrl/Cmd+C works
     try { const r = document.createRange(); r.selectNodeContents(text); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); } catch (e) { /* ignore */ }
     reset("Selected");
@@ -700,36 +889,41 @@ function copyAddress(button) {
   } catch (e) { select(); }
 }
 
-// Home's footer (the approved home page, 2026-11-14): the same facts and links in less space, with the page links in two
-// columns. Every other page keeps renderFooter's three columns until they are redesigned too.
+// Home carries <body data-home> (the header shows the full team name there).
 function isHomePage() {
   return document.body.hasAttribute("data-home");
 }
-function renderCompactFooter() {
+
+// The public footer (design 8.2), the same on every public page: the logo and the team's name and facts; Contact (the
+// address with Copy, Instagram); Pages in two columns; and the base line with the year, Privacy, Terms and the white
+// Dawson wordmark.
+function siteFooter() {
   const page = (href, label) => `<li><a href="${href}">${label}</a></li>`;
-  const instagram = isSet(SITE.instagram) ? `<p><a href="${esc(safeUrl(SITE.instagram))}" target="_blank" rel="noopener"${ckHref("SITE.instagram")}><span>Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span> ↗</span></a></p>` : "";
+  const instagram = isSet(SITE.instagram) ? `<p>${extLink(SITE.instagram, `Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span>`, ckHref("SITE.instagram"))}</p>` : "";
   return `
-  <footer class="site-footer ft-compact">
-    <div class="wrap ft">
-      <div class="ft-l"><div>
-        <p class="ft-name"${ck("SITE.teamName")}>${esc(SITE.teamName)}</p>
-        <p class="ft-sm">FRC Team <span${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span> · <span${ck("SITE.school")}>${esc(SITE.school)}</span></p>
-        <p class="ft-sm"><span${ck("SITE.location")}>${esc(SITE.location)}</span> · Since <span${ck("SITE.founded")}>${esc(SITE.founded)}</span></p>
-      </div>${schoolMark("ft-school")}</div>
-      <div class="ft-contact"><p class="label">Contact</p><p>${emailAddress()}</p>${instagram}</div>
-      <nav aria-label="Footer"><p class="label">Pages</p><ul class="ft-links">
-        ${page("robots.html", "Robots")}${page("about.html", "About")}${page("sponsors.html", "Sponsors")}${page("member.html", "Join")}${page("mentor.html", "Mentor")}
-        ${page("outreach.html", "Outreach")}${page("media.html", "Media")}${page("resources.html", "Resources")}${page("contact.html", "Contact")}
-        <li><a href="${PORTAL_URL}">${loginLabel()}</a></li><li><a href="${REQUEST_URL}">Request an account</a></li>
-      </ul></nav>
+  <footer class="ftr">
+    <div class="wrap">
+      <div class="ftr-grid">
+        <div class="ftr-id"><img${imgAttrs(SITE.logo, 200)} alt="" width="104" height="104" data-ck-ignore /><div>
+          <p class="ftr-name"${ck("SITE.teamName")}>${esc(SITE.teamName)}</p>
+          <p>FRC Team <span${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span>, <span${ck("SITE.school")}>${esc(SITE.school)}</span><br /><span${ck("SITE.location")}>${esc(SITE.location)}</span>. Since <span${ck("SITE.founded")}>${esc(SITE.founded)}</span>.</p>
+        </div></div>
+        <div class="ftr-contact"><h2>Contact</h2><p>${siteAddress()}</p>${instagram}</div>
+        <nav aria-label="Footer"><h2>Pages</h2><ul class="ftr-pages">
+          ${page("robots.html", "Robots")}${page("about.html", "About")}${page("sponsors.html", "Sponsors")}${page("member.html", "Join")}${page("mentor.html", "Mentor")}
+          ${page("outreach.html", "Outreach")}${page("media.html", "Media")}${page("resources.html", "Resources")}${page("contact.html", "Contact")}
+          <li><a href="${PORTAL_URL}">${loginLabel()}</a></li><li><a href="${REQUEST_URL}">Request an account</a></li>
+        </ul></nav>
+      </div>
+      <div class="ftr-base"><span>© ${new Date().getFullYear()} <span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span>, FRC Team <span${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span></span><span class="ftr-legal"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a></span>${wordmark(110, true)}</div>
     </div>
-    <div class="wrap ft-bottom"><p>© ${new Date().getFullYear()} <span${ck("SITE.teamName")}>${esc(SITE.teamName)}</span>, FRC Team <span${ck("SITE.teamNumber")}>${esc(SITE.teamNumber)}</span></p><p><a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></p></div>
   </footer>`;
 }
 
+// The footer: the public one above, or, on the portal (<body data-portal>), the portal's own footer in its present look
+// (css/style.css), with "Install the app".
 function renderFooter() {
-  if (isHomePage()) return renderCompactFooter();
-  const portal = isPortalPage();
+  if (!isPortalPage()) return siteFooter();
   const page = (href, label) => `<li><a href="${pageHref(href)}">${label}</a></li>`;
   const instagram = isSet(SITE.instagram) ? `<a href="${esc(safeUrl(SITE.instagram))}" target="_blank" rel="noopener"${ckHref("SITE.instagram")}>Instagram <span${ck("SITE.instagramHandle")}>${esc(SITE.instagramHandle)}</span> ↗</a>` : "";
   return `
@@ -757,8 +951,7 @@ function renderFooter() {
           ${page("media.html", "Media")}
           ${page("resources.html", "Resources")}
           ${page("contact.html", "Contact")}
-          ${portal ? `<li><a href="/install">Install the app</a></li>` : `<li><a href="${PORTAL_URL}">${loginLabel()}</a></li>
-          <li><a href="${REQUEST_URL}">Request an account</a></li>`}
+          <li><a href="/install">Install the app</a></li>
         </ul>
       </div>
     </div>
@@ -788,79 +981,11 @@ async function clearOfflineCaches() {
   } catch (e) { /* nothing to clear, or not allowed: sign out anyway */ }
 }
 
-// ---------- Motion ----------
-// The public site has no ambient effects. The few motions it keeps (number ticker, next-event border beam, About
-// timeline fill) are ported from Magic UI and Aceternity UI (docs/PUBLIC_REDESIGN_PROPOSAL.md §5a) and are
-// static when the visitor has asked their system for reduced motion.
-const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-// Number Ticker, ported from Magic UI (registry/magicui/number-ticker.tsx): a spring (damping 60, stiffness 100, mass 1)
-// from 0 to the number, once, when the number first comes into view, written with en-US separators. The page already
-// holds the final number, so reduced motion, a missing IntersectionObserver and a script error all show the right value.
-function tickerRun(el, to) {
-  const fmt = new Intl.NumberFormat("en-US");
-  let x = 0, v = 0, last = null;
-  el.textContent = fmt.format(0);
-  const frame = (t) => {
-    const dt = last == null ? 0 : Math.min((t - last) / 1000, 0.05), steps = Math.max(1, Math.ceil(dt * 240)), h = dt / steps;
-    last = t;
-    for (let i = 0; i < steps; i++) { v += (-100 * (x - to) - 60 * v) * h; x += v * h; }
-    if (Math.abs(v) < 0.01 && Math.abs(x - to) < 0.01) { el.textContent = fmt.format(to); return; }
-    el.textContent = fmt.format(Number(x.toFixed(0)));
-    requestAnimationFrame(frame);
-  };
-  requestAnimationFrame(frame);
-  setTimeout(() => { el.textContent = fmt.format(to); }, 6000);
-}
-function initTickers(root = document) {
-  if (REDUCED_MOTION || !("IntersectionObserver" in window)) return;
-  root.querySelectorAll("[data-ticker]:not([data-ticked])").forEach((el) => {
-    const to = Number(el.getAttribute("data-ticker"));
-    if (!Number.isFinite(to)) return;
-    el.setAttribute("data-ticked", "1");
-    const io = new IntersectionObserver((entries) => {
-      if (!entries.some((e) => e.isIntersecting)) return;
-      io.disconnect();
-      tickerRun(el, to);
-    });
-    io.observe(el);
-  });
-}
-
-// Timeline fill, ported from Aceternity UI (components/ui/timeline.tsx): a line that fills as the page scrolls, from the
-// moment the top of the list is at 10% of the viewport until its bottom is at 50% (offset ["start 10%", "end 50%"]); the
-// fill's opacity ramps over the first 10%. Static (no fill at all) when the visitor has asked for reduced motion.
-let timelineBusy = false;
-function timelineUpdate() {
-  timelineBusy = false;
-  const t = document.querySelector(".tl"), f = t && t.querySelector(".tl-fill");
-  if (!f || REDUCED_MOTION) return;
-  const r = t.getBoundingClientRect(), vh = window.innerHeight || document.documentElement.clientHeight;
-  const span = r.height - 0.4 * vh;
-  const p = Math.max(0, Math.min(1, span > 0 ? (0.1 * vh - r.top) / span : (r.top <= 0.1 * vh ? 1 : 0)));
-  f.style.height = `${(p * r.height).toFixed(1)}px`;
-  f.style.opacity = Math.min(1, p / 0.1).toFixed(3);
-}
-function timelineSchedule() {
-  if (timelineBusy) return;
-  timelineBusy = true;
-  requestAnimationFrame(timelineUpdate);
-}
-let timelineWired = false;
-function initTimeline() {
-  if (!document.querySelector(".tl")) return;
-  if (!timelineWired) {
-    timelineWired = true;
-    addEventListener("scroll", timelineSchedule, { passive: true });
-    addEventListener("resize", timelineSchedule, { passive: true });
-  }
-  timelineUpdate();
-}
-
-// ---------- Theme ----------
-// Public pages are dark only: <html data-site="public"> and <meta name="color-scheme" content="dark"> in each page's
-// HTML, no script. They never read or write the shared `theme` cookie or the old localStorage key, so a light choice
-// made in the portal (the shell kit owns that) neither changes these pages nor is changed by them.
+// ---------- Theme and colour ----------
+// Public pages are light only: <html data-site="public"> and <meta name="color-scheme" content="light"> in each page's
+// HTML. They never read or write the shared `theme` cookie or the old localStorage key, so a choice made in the portal
+// (the shell kit owns that) neither changes these pages nor is changed by them. The one thing a public page remembers is
+// the bumper colour ("2972-alliance"), read by its head script and written only when the bumper is pressed.
 
 let layoutStarted = false;
 
@@ -869,10 +994,10 @@ function mountLayout() {
   if (!isPortalPage()) document.getElementById("site-header").innerHTML = renderHeader();
   document.getElementById("site-footer").innerHTML = renderFooter();
 
-  const header = document.querySelector(".site-header");
+  const header = document.querySelector(".hdr");
   const badgeImg = header && header.querySelector(".school-badge-img");
   if (badgeImg) {
-    const hideBadge = () => header.querySelectorAll(".school-badge, .brand-sep").forEach((el) => el.remove());
+    const hideBadge = () => header.querySelectorAll(".hdr-school").forEach((el) => el.remove());
     badgeImg.addEventListener("error", hideBadge);
     if (badgeImg.complete && !badgeImg.naturalWidth) hideBadge();
   }
@@ -885,6 +1010,10 @@ function mountLayout() {
     header.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && header.classList.contains("open")) { setOpen(false); toggle.focus(); }
     });
+    // Focus that moves out of the header (Tab past the last link, or into the page) closes the menu.
+    header.addEventListener("focusout", (e) => {
+      if (header.classList.contains("open") && e.relatedTarget && !header.contains(e.relatedTarget)) setOpen(false);
+    });
   }
 
   // The installable app: register the service worker, and clear what it stored when someone signs out.
@@ -893,16 +1022,18 @@ function mountLayout() {
 
   if (!layoutStarted) {
     layoutStarted = true;
-    // A sponsor logo that does not load: the CSS hides the picture and shows the sponsor's name in type (li.logo-failed).
     document.addEventListener("error", (e) => {
       const img = e.target;
-      if (!img || img.tagName !== "IMG" || !img.hasAttribute("data-sponsor-logo")) return;
-      const li = img.closest("li");
-      if (li) li.classList.add("logo-failed");
+      if (!img || img.tagName !== "IMG") return;
+      // A sponsor logo that does not load: the CSS hides the picture and shows the sponsor's name in type (li.logo-failed).
+      if (img.hasAttribute("data-sponsor-logo")) { const li = img.closest("li"); if (li) li.classList.add("logo-failed"); }
+      // The Dawson wordmark that does not load: hidden, with its link.
+      if (img.hasAttribute("data-school-mark")) { const w = img.closest(".wm-link"); (w || img).hidden = true; }
     }, true);
     document.addEventListener("click", (e) => {
       const copy = e.target.closest && e.target.closest("[data-copy]");
       if (copy) { copyAddress(copy); return; }
+      if (e.target.closest && e.target.closest("#bumper")) { swapBumpers(); return; }
       // A sign-out link clears the stored files first (waiting at most a second), then goes on to sign out.
       const link = e.target.closest && e.target.closest("a[data-signout]");
       if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;

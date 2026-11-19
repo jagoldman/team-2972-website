@@ -10,7 +10,11 @@
 //
 // Change VERSION when this file's rules or the precached list change. Old caches are deleted on activate.
 
-const VERSION = "v7";   // v7: the portal's font is the shell kit's Archivo (/shell/fonts/, kit 0.5.0): precached and stored
+const VERSION = "v10";  // v10: the two branches of release 8.3 together: v9 (the public site) and the portal's kit 0.5.0 font
+                       //      (the shell kit's Archivo under /shell/fonts/: precached and stored); nothing else changes
+                       // v9: the hero blur's mask is fully opaque over the face (D193): photo files renamed b1 -> b2
+                       // v8: a face blurred at the owner's request in the hero photo (D193): new photo file names; no stored file may outlive it
+                       // v7: the public site is design 8.2, light only (css/site.css, Big Shoulders and Libre Franklin)
                        // v6: /today.json and /today/ (the portal home's cards, release 8.1.5) are named in NEVER_STORE
                        // v5: the public site is Midnight & brass, dark only (new stylesheet and scripts; public pages no longer carry the theme script)
                        // v4: offline.html's theme script only reads the choice (never writes the shared cookie)
@@ -23,6 +27,9 @@ const OFFLINE_URL = "/offline.html";
 const PRECACHE = [
   OFFLINE_URL,
   "/css/style.css",
+  "/css/site.css",
+  "/fonts/big-shoulders-latin.woff2",
+  "/fonts/libre-franklin-latin.woff2",
   "/fonts/inter-latin.woff2",
   "/fonts/bricolage-grotesque-latin.woff2",
   "/shell/fonts/archivo-latin-var.woff2",

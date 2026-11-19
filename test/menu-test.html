@@ -13,7 +13,7 @@ async function openPage(url, w, h) {
   f.style.cssText = `width:${w}px;height:${h}px;border:0`;
   document.getElementById("frames").append(f);
   f.src = "/" + url;
-  const ready = () => { try { const d = f.contentWindow.document; return f.contentWindow.location.href !== "about:blank" && !!d.querySelector(".nav-toggle"); } catch (e) { return false; } };
+  const ready = () => { try { const d = f.contentWindow.document; return f.contentWindow.location.href !== "about:blank" && !!d.querySelector(".menu-btn"); } catch (e) { return false; } };
   for (let i = 0; i < 200 && !ready(); i++) await sleep(50);
   await sleep(300);
   return { frame: f, win: f.contentWindow, doc: f.contentWindow.document };
@@ -24,7 +24,7 @@ async function openPage(url, w, h) {
     const { frame, win, doc } = await openPage(url, W, H);
     win.scrollTo(0, scroll); await sleep(200);
     const label = `${url} (scrolled ${scroll}px)`;
-    const btn = doc.querySelector(".nav-toggle"), nav = doc.querySelector(".site-nav"), header = doc.querySelector(".site-header");
+    const btn = doc.querySelector(".menu-btn"), nav = doc.querySelector(".nav"), header = doc.querySelector(".hdr");
     const br = btn.getBoundingClientRect();
     report(br.width >= 44 && br.height >= 44 && br.left >= 0 && br.right <= W, `${label}: the Menu button is at least 44px and on screen`, `${Math.round(br.width)}x${Math.round(br.height)}`);
     report(win.getComputedStyle(nav).display === "none" && btn.getAttribute("aria-expanded") === "false", `${label}: the links are closed at first`);

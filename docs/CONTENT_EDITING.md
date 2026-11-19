@@ -235,6 +235,18 @@ No section or key was added, renamed or removed in `js/content.js`, so the edito
 - Sponsors: a `SPONSOR_TIERS` entry with no sponsors is not shown (still in the page, hidden, so its list can be edited).
 - Derived text (the hero headline, the countdown, the record numbers) is computed in the browser; a click on the headline edits the award.
 
+## Release 8.3: the public site in design 8.2 (D190)
+
+No content key is added, renamed or removed, and the editor's schema is unchanged. What changes is where fields show:
+
+- Home: the headline is `ROBOTS[i].awards[0]` and its year; `SITE.heroImage` is full width with the bumper across its base
+  (framed by `SITE.heroPosition`); `SITE.homeSponsorsLabel` is shown as "<label>, <year> season"; the workshop's machines
+  are a list, not chips; "The robots" is the newest robot large and three in a list.
+- Every `data-ck` mark the old templates had is kept on the matching element. Dates show en dashes ("March 24–27") and
+  stats show as a list or with commas; the editor edits the source text, as typed.
+- A photo in `window.PHOTO_BLUR` (`config.js`, D193) is never loaded from Google: replacing it in the editor with a new
+  photo is fine; a new Drive photo that needs a blur needs its own entry there.
+
 ## Home page, second version (2026-11-14, D154)
 
 New keys, all optional (the page has the same words built in when one is missing). The editor's schema keeps them as loose
