@@ -164,7 +164,18 @@ function makeWorker({ fetchImpl }) {
   const self = { location: new URL("https://site.example/sw.js"), addEventListener: (t, fn) => { listeners[t] = fn; }, skipWaiting: async () => {}, clients: { claim: async () => {} } };
   // In a real worker, new Request("/offline.html") resolves against the worker's own address; Node needs it spelled out.
   class WorkerRequest extends Request { constructor(u, o) { super(typeof u === "string" && u.startsWith("/") ? "https://site.example" + u : u, o); } }
-  const ctx = { self, caches, fetch: fetchImpl, Request: WorkerRequest, Response, URL, Promise, console };
+  // A real server names each file's type; the fakes below send bodies only, so the type is filled in from the path when
+  // a fake leaves it out (a test that wants another type, or none, sets the header itself).
+  const TYPE_BY_EXT = { css: "text/css", js: "text/javascript", woff2: "font/woff2", png: "image/png", svg: "image/svg+xml", webp: "image/webp", ico: "image/x-icon", html: "text/html; charset=utf-8" };
+  const typed = async (r) => {
+    const res = await fetchImpl(r);
+    const ext = (new URL(typeof r === "string" ? r : r.url, "https://site.example").pathname.match(/\.([a-z0-9]+)$/i) || [])[1];
+    // new Response("text") says text/plain by itself: that is the fake's default, not a type it chose.
+    const ct = res && res.headers ? res.headers.get("content-type") || "" : "";
+    if (res && res.headers && (!ct || /^text\/plain;charset=UTF-8$/i.test(ct)) && TYPE_BY_EXT[ext]) { try { res.headers.set("content-type", TYPE_BY_EXT[ext]); } catch { /* immutable */ } }
+    return res;
+  };
+  const ctx = { self, caches, fetch: typed, Request: WorkerRequest, Response, URL, Promise, console };
   vm.createContext(ctx);
   vm.runInContext(swSource, ctx, { filename: "sw.js" });
   const pathsStored = () => [...store.values()].flatMap((m) => [...m.keys()]);
@@ -264,6 +275,29 @@ const okNetwork = async () => basic("from the network");
     await (await caches_open(x, [...x.store.keys()][0])).add("/fonts/inter-latin.woff2");
     const r = await x.request(origin + "/fonts/inter-latin.woff2");
     check("a font is answered from the cache", r.handled && (await r.response.text()) === "old");
+  }
+  // Review item 5: only the server's own 200 of the right type is stored: never the end of a redirect, never a
+  // no-store or private answer, never a page where a font should be; the same for the precached files.
+  {
+    const redirected = () => { const r = basic("signed-in page"); Object.defineProperty(r, "redirected", { value: true }); return r; };
+    const typedAs = (type, extra = {}) => { const r = basic("x"); r.headers.set("content-type", type); for (const [k, v] of Object.entries(extra)) r.headers.set(k, v); return r; };
+    for (const [label, make] of [["a redirected answer", redirected], ["a private, no-store answer", () => typedAs("font/woff2", { "cache-control": "private, no-store" })],
+      ["a no-store answer", () => typedAs("text/css", { "cache-control": "no-store" })], ["a page where a font should be", () => typedAs("text/html")]]) {
+      for (const path of ["/fonts/inter-latin.woff2", "/css/site.css"]) {
+        const x = makeWorker({ fetchImpl: async (r) => (new URL(r.url).pathname === path ? make() : okNetwork()) });
+        await x.dispatch("install");
+        const before = x.pathsStored().includes(path);
+        await x.request(origin + path);
+        await new Promise((r) => setTimeout(r, 10));
+        check(`${label} for ${path} is stored neither at install nor when asked for`, !before && !x.pathsStored().includes(path), x.pathsStored());
+      }
+    }
+    const off = makeWorker({ fetchImpl: async (r) => (new URL(r.url).pathname === "/offline.html" ? redirected() : okNetwork()) });
+    let failed = false; try { await off.dispatch("install"); } catch { failed = true; }
+    check("install fails when the offline page comes back redirected (a sign-in page is never the offline page)", failed && !off.pathsStored().includes("/offline.html"));
+    const fine = makeWorker({ fetchImpl: async (r) => (new URL(r.url).pathname === "/css/site.css" ? typedAs("text/css", { "cache-control": "public, max-age=60" }) : okNetwork()) });
+    await fine.dispatch("install");
+    check("a public answer of the right type is stored", fine.pathsStored().includes("/css/site.css"));
   }
   {
     const x = makeWorker({ fetchImpl: okNetwork });

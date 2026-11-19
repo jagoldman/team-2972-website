@@ -10,7 +10,9 @@
 //
 // Change VERSION when this file's rules or the precached list change. Old caches are deleted on activate.
 
-const VERSION = "v10";  // v10: the two branches of release 8.3 together: v9 (the public site) and the portal's kit 0.5.0 font
+const VERSION = "v11";  // v11: a file is stored only when it is the server's own 200 of the right type, not redirected,
+                       //      and not no-store or private (also for the precached files)
+                       // v10: the two branches of release 8.3 together: v9 (the public site) and the portal's kit 0.5.0 font
                        //      (the shell kit's Archivo under /shell/fonts/: precached and stored); nothing else changes
                        // v9: the hero blur's mask is fully opaque over the face (D193): photo files renamed b1 -> b2
                        // v8: a face blurred at the owner's request in the hero photo (D193): new photo file names; no stored file may outlive it
@@ -56,11 +58,38 @@ function storable(url) {
   return STATIC_FOLDERS.some((f) => p.startsWith(f)) && STATIC_TYPES.test(p);
 }
 
+// What may be stored (review item 5): only the server's own 200 for exactly this address (not the end of a redirect),
+// of the type the address names, and not marked no-store or private. The same rule for the precached files.
+const TYPE_OF = {
+  css: /^text\/css\b/i,
+  js: /^(?:text|application)\/(?:x-)?javascript\b/i,
+  woff2: /^(?:font\/woff2|application\/font-woff2)\b/i,
+  png: /^image\/png\b/i,
+  svg: /^image\/svg\+xml\b/i,
+  webp: /^image\/webp\b/i,
+  ico: /^image\/(?:x-icon|vnd\.microsoft\.icon)\b/i,
+  html: /^text\/html\b/i,                     // the offline page only (pages are never stored otherwise)
+};
+function keepable(path, response) {
+  if (!response || response.redirected || !response.ok || response.status !== 200 || response.type !== "basic") return false;
+  const ext = ((path.match(/\.([a-z0-9]+)$/i) || [])[1] || "").toLowerCase();
+  const want = TYPE_OF[ext];
+  if (!want || !want.test(response.headers.get("content-type") || "")) return false;
+  return !/(?:^|[\s,])(?:no-store|private)(?:$|[\s,=])/i.test(response.headers.get("cache-control") || "");
+}
+// Fetches one file for the cache and stores it only when it may be kept; otherwise it fails (install's offline page
+// must be kept; every other file is best effort).
+async function precache(cache, path) {
+  const response = await fetch(new Request(path, { cache: "reload" }));
+  if (!keepable(path, response)) throw new Error(`not stored: ${path}`);
+  await cache.put(path, response);
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await cache.add(new Request(OFFLINE_URL, { cache: "reload" }));
-    await Promise.all(PRECACHE.slice(1).map((u) => cache.add(new Request(u, { cache: "reload" })).catch(() => {})));
+    await precache(cache, OFFLINE_URL);
+    await Promise.all(PRECACHE.slice(1).map((u) => precache(cache, u).catch(() => {})));
     await self.skipWaiting();
   })());
 });
@@ -97,7 +126,7 @@ self.addEventListener("fetch", (event) => {
         // "no-cache" revalidates with the server (a 304 is cheap), so the browser's own HTTP cache cannot
         // hand back an old copy either: the container sends these files with no Cache-Control.
         const response = await fetch(request, { cache: "no-cache" });
-        if (response.ok && response.status === 200 && response.type === "basic") cache.put(request, response.clone());
+        if (keepable(url.pathname, response)) cache.put(request, response.clone());
         return response;
       } catch (err) {
         return (await cache.match(request)) || Response.error();
@@ -112,7 +141,7 @@ self.addEventListener("fetch", (event) => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(request);
     const refresh = fetch(request).then((response) => {
-      if (response.ok && response.status === 200 && response.type === "basic") cache.put(request, response.clone());
+      if (keepable(url.pathname, response)) cache.put(request, response.clone());
       return response;
     });
     if (cached) { refresh.catch(() => {}); return cached; }
@@ -128,6 +157,6 @@ self.addEventListener("message", (event) => {
     const names = await caches.keys();
     await Promise.all(names.filter((n) => n.startsWith("2972-")).map((n) => caches.delete(n)));
     const cache = await caches.open(CACHE);
-    await Promise.all(PRECACHE.map((u) => cache.add(new Request(u, { cache: "reload" })).catch(() => {})));
+    await Promise.all(PRECACHE.map((u) => precache(cache, u).catch(() => {})));
   })());
 });
