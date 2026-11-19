@@ -115,7 +115,8 @@ body[data-portal] { font: revert-layer; line-height: revert-layer; }
 .nowrow.nowfirst:hover { background: var(--tint); }
 .glist > li.nowfirst + li { border-top: 0; }
 .nowrow.nowfirst .rt { font-family: var(--display); font-stretch: var(--wide); font-size: 1.06rem; font-weight: 700; }
-.nowrow.nowfirst .nowbtn { min-height: 40px; padding-inline: 22px; }
+.nowrow.nowfirst .nowbtn { padding-inline: 22px; }
+@media (min-width: 641px) { .nowrow.nowfirst .nowbtn { min-height: 40px; } }
 .home-g .nowgroup { margin: 10px 0 2px; padding: 10px 4px 0; border-top: 1px solid var(--line); color: var(--text); font-size: 0.95rem; }
 .hsec > h2 + .nowgroup { margin-top: 2px; padding-top: 0; border-top: 0; }
 @media (max-width: 640px) {

@@ -170,13 +170,16 @@ try {
     check(`${label}: "waiting for an admin" notice ${wantMain || wantMore ? "hidden" : "shown"}`, notice === !(wantMain || wantMore));
     check(`${label}: More section ${wantMore ? "shown" : "hidden"} on the home page`, (await page.isVisible("#more-apps")) === !!wantMore);
     await page.click("#shell-bar .shbar-appsbtn");
-    const menuMain = (await names(page, "#shell-bar .shbar-apps ul.shbar-grid > li")).join(",");
+    // Kit 0.5.0 (ADOPT_050 §6): the Apps menu's first tile is Home (the portal itself); the rest are the apps.
+    const menuAll = await names(page, "#shell-bar .shbar-apps ul.shbar-grid > li");
+    check(`${label}: the Apps menu starts with Home`, menuAll[0] === "Home", menuAll);
+    const menuMain = menuAll.slice(1).join(",");
     // the Apps menu has no coming-soon order rule of its own; compare as sets
     const set = (s) => s.split(",").filter(Boolean).sort().join(",");
     check(`${label}: the Apps menu lists the same tiles (main and More)`, set(menuMain) === set([wantMain, wantMore].filter(Boolean).join(",")), { menuMain });
     // Kit 0.2.3: core tiles in the first list, the home page's More tiles behind the menu's More button (closed on
     // open). With no core tile, the "more" tiles are the first list and there is no More row.
-    const menuCore = (await names(page, "#shell-bar .shbar-apps ul.shbar-grid:not(.shbar-more > ul) > li")).join(",");
+    const menuCore = (await names(page, "#shell-bar .shbar-apps ul.shbar-grid:not(.shbar-more > ul) > li")).filter((n, i) => !(i === 0 && n === "Home")).join(",");
     const menuMore = (await names(page, "#shell-bar .shbar-apps .shbar-more > ul.shbar-grid > li")).join(",");
     const wantCore = wantMain || wantMore, wantRest = wantMain ? wantMore : "";
     check(`${label}: Apps menu core tiles [${wantCore}], More [${wantRest}]`, set(menuCore) === set(wantCore) && set(menuMore) === set(wantRest), { menuCore, menuMore });
@@ -228,7 +231,8 @@ try {
     const left = await page.$eval("#shell-bar .shbar-appsbtn", (b) => b.getBoundingClientRect().left);
     check("the nine-dot launcher is at the far left of the bar", left < 24, `left=${left}`);
 
-    const links = await page.$$eval("#app-grid a, #more-list a, #shell-bar .shbar-apps a", (as) => as.map((a) => ({ href: a.href, target: a.target, rel: a.rel })));
+    // Kit 0.5.0: Home (this page) and Tools (one link to the Tools page) open in the same tab; every app opens a new one.
+    const links = await page.$$eval("#app-grid a, #more-list a, #shell-bar .shbar-apps a", (as) => as.filter((a) => a.href !== "http://portal.landing.test/" && !a.classList.contains("shbar-toolslink")).map((a) => ({ href: a.href, target: a.target, rel: a.rel })));
     const bad = links.filter((l) => l.target !== "_blank" || !l.rel.split(/\s+/).includes("noopener"));
     check(`every app link opens a new tab with rel=noopener (${links.length} links)`, links.length >= 10 && bad.length === 0, bad);
     const hrefs = await page.$$eval("#app-grid a", (as) => as.map((a) => a.getAttribute("href")));
@@ -310,7 +314,7 @@ try {
     const state = () => page.evaluate(() => ({ theme: document.documentElement.dataset.theme, label: document.querySelector("#shell-bar [aria-label=Appearance] button[aria-pressed=true]")?.textContent.trim(),
       bg: getComputedStyle(document.body).backgroundColor, cookie: (document.cookie.match(/(?:^|;\s*)theme=([^;]*)/) || [])[1] || null }));
     let s = await state();
-    check("cookie dark + old key light: page and bar both dark", s.theme === "dark" && s.label === "Dark" && s.bg === "rgb(7, 9, 15)", s);
+    check("cookie dark + old key light: page and bar both dark", s.theme === "dark" && s.label === "Dark" && s.bg === "rgb(0, 0, 0)", s);
     await page.click("#shell-bar .shbar-acct");
     await page.click('#shell-bar [aria-label="Appearance"] .shbar-choice >> text=Light');
     s = await state();
@@ -1018,8 +1022,9 @@ try {
     const cookie = (await context.cookies(PORTAL)).find((c) => c.name === "shellgroups");
     check(`${width}px: the open rows are remembered site-wide (shellgroups = tools.adminapps)`, cookie && cookie.value === "tools.adminapps" && cookie.domain === ".landing.test", cookie);
     await page.waitForTimeout(400); // the chevrons finish turning
-    const turned = await page.$$eval("#home-groups .grp", (els) => els.map((e) => [e.dataset.grp, getComputedStyle(e.querySelector(".grpchev")).transform !== "none"]));
-    check(`${width}px: an open row's chevron is turned, a closed one's is not`, JSON.stringify(turned) === JSON.stringify([["tools", true], ["adminapps", true], ["more", false]]), turned);
+    // Kit 0.5.0: a closed row's chevron points down, an open one's up (so it is not read as a link).
+    const turned = await page.$$eval("#home-groups .grp", (els) => els.map((e) => [e.dataset.grp, Math.round(new DOMMatrix(getComputedStyle(e.querySelector(".grpchev")).transform).b) === -1 ? "up" : "down"]));
+    check(`${width}px: an open row's chevron points up, a closed one's down`, JSON.stringify(turned) === JSON.stringify([["tools", "up"], ["adminapps", "up"], ["more", "down"]]), turned);
     await page.$eval("#home-groups", (e) => e.scrollIntoView({ block: "center" }));
     await shot(page, `groups-open-${width}`);
     check(`${width}px: rows open, no sideways scroll`, (await over(page)) <= 0);
@@ -1063,7 +1068,7 @@ try {
     }));
     check(`display ${width}px: "Pick what this screen shows" with Door QR, Pit monitor and Projector`, d.h1 === "Pick what this screen shows" && d.h1s === 1 && JSON.stringify(d.links) === JSON.stringify([
       ["Door QR", "http://calendar.landing.test/here/kiosk", ""], ["Pit monitor", "http://compete.landing.test/pit/monitor", ""], ["Projector", "http://tasks.landing.test/projector", ""]]), d);
-    check(`display ${width}px: nothing else (no bar, no footer, no other control), dark, large links`, !d.bar && d.footer === 0 && d.other === 0 && d.bg === "rgb(7, 9, 15)" && d.cardH >= 100, d);
+    check(`display ${width}px: nothing else (no bar, no footer, no other control), dark, large links`, !d.bar && d.footer === 0 && d.other === 0 && d.bg === "rgb(0, 0, 0)" && d.cardH >= 100, d);
     check(`display ${width}px: no sideways scroll, no script error`, (await over(page)) <= 0 && errors.length === 0, errors);
     await page.keyboard.press("Tab");
     check(`display ${width}px: Tab reaches the first screen`, await page.evaluate(() => document.activeElement?.dataset.screen === "kiosk"));
@@ -1131,7 +1136,7 @@ try {
     const { page, errors } = await openPortal(context);
     await page.click("#shell-bar .shbar-appsbtn");
     const rows = await page.$$eval("#shell-bar .shbar-apps .shbar-group:not([hidden]) > .shbar-groupbtn", (bs) => bs.map((b) => b.firstElementChild.textContent));
-    check(`${width}px: the Apps menu's rows read Tools, Admin apps, More`, rows.join() === "Tools,Admin apps,More", rows);
+    check(`${width}px: the Apps menu's rows read Tools, Admin apps, Team links (kit 0.5.0)`, rows.join() === "Tools,Admin apps,Team links", rows);
     await page.click("#shell-bar .shbar-adminappsbtn");
     const admin = (await names(page, "#shell-bar .shbar-adminapps ul.shbar-grid > li")).join();
     await page.click("#shell-bar .shbar-morebtn");
