@@ -181,17 +181,50 @@ const DRIVE_PHOTOS = (() => {
     return {};
   }
 })();
-// Photos with a blurred region (window.PHOTO_BLUR in config.js, the one list the image build reads too; D193, a face
-// blurred at the owner's request). Their saved files are named <id>-<v>-<w>.webp, and they are never loaded from Google:
-// with no saved copy listed in the manifest (a failed download, a local preview) imgUrl() gives "" and the page shows
-// what it shows for a missing photo. hasPhoto() says whether a photo value can be shown.
-const PHOTO_BLUR = (() => {
-  const t = window.PHOTO_BLUR;
-  return t && typeof t === "object" && !Array.isArray(t) ? t : {};
-})();
+// ---- photo-rules: start ----
+// One copy of the photo rules for the pages and the image build: scripts/drive-photos/fetch.cjs reads this file and runs
+// exactly the lines between the two "photo-rules" markers. Plain JavaScript only (and URL): no window, no document.
+
+// THE SIGNAL (D193; the Website editor's preview relies on it). window.PHOTO_BLUR, set by config.js, "arrived" only when
+// photoBlurList() accepts it: a plain object with format === 1 and photos a plain object (an empty one is fine) whose
+// every key is a Drive ID and every value is { v: 1 to 8 of a-z 0-9, ellipses: a non-empty list of [x, y, rx, ry] with
+// each number strictly between 0 and 1 }. Anything else, including no config.js at all, a config.js that failed or did
+// not parse, PHOTO_BLUR missing, null, without format 1, or with one bad entry, is "did not arrive", and then the pages
+// ask Google for nothing: no Drive photo is shown, and no Google-hosted address is used (imgUrl() gives "").
+// The valid empty list, { format: 1, photos: {} }, means "nothing is blurred" and the pages behave as before D193.
+const PHOTO_BLUR_FORMAT = 1;
+function photoBlurList(t) {
+  const plain = (o) => Object.prototype.toString.call(o) === "[object Object]";
+  if (!plain(t) || t.format !== PHOTO_BLUR_FORMAT || !plain(t.photos)) return null;
+  const out = {};
+  for (const id of Object.keys(t.photos)) {
+    const b = t.photos[id];
+    const ok = /^[\w-]{20,}$/.test(id) && plain(b) && typeof b.v === "string" && /^[a-z0-9]{1,8}$/.test(b.v) &&
+      Array.isArray(b.ellipses) && b.ellipses.length > 0 &&
+      b.ellipses.every((e) => Array.isArray(e) && e.length === 4 && e.every((n) => typeof n === "number" && n > 0 && n < 1));
+    if (!ok) return null;
+    out[id] = { v: b.v, ellipses: b.ellipses.map((e) => e.slice()) };
+  }
+  return out;
+}
+
+// True for an address on a Google host (google.com and its country domains, googleusercontent.com, googleapis.com,
+// ggpht.com, gstatic.com, googledrive.com and their subdomains). Such an address is never put on a page as it is.
+function isGoogleHosted(value) {
+  const s = String(value ?? "").replace(/[\u0000-\u0020\u007f-\u009f]/g, "");
+  let host = "";
+  try { host = new URL(s, "http://relative.invalid/").hostname.toLowerCase().replace(/\.$/, ""); } catch (e) { return false; }
+  return /(^|\.)(googleusercontent|googleapis|ggpht|gstatic|googledrive)\.com$/.test(host) || /(^|\.)google\.[a-z]{2,3}(\.[a-z]{2})?$/.test(host);
+}
+// ---- photo-rules: end ----
+
+// The blur list as the pages see it: the photos map, or null when the list did not arrive (see THE SIGNAL above).
+// A blurred photo's saved files are named <id>-<v>-<w>.webp and it is never loaded from Google: with no saved copy
+// listed in the manifest (a failed download, a local preview) imgUrl() gives "" and the page shows what it shows for a
+// missing photo. hasPhoto() says whether a photo value can be shown.
+const PHOTO_BLUR_LIST = photoBlurList(window.PHOTO_BLUR);
 function blurOf(id) {
-  const b = Object.prototype.hasOwnProperty.call(PHOTO_BLUR, id) ? PHOTO_BLUR[id] : null;
-  return b && /^[a-z0-9]{1,8}$/.test(String(b.v)) ? b : b ? { v: "" } : null;
+  return PHOTO_BLUR_LIST && Object.prototype.hasOwnProperty.call(PHOTO_BLUR_LIST, id) ? PHOTO_BLUR_LIST[id] : null;
 }
 function hasPhoto(src) {
   return Boolean(String(src || "").trim()) && imgUrl(src, MEDIA_WIDTHS[0]) !== "";
@@ -206,6 +239,8 @@ function imgUrl(src, width) {
     return `/media/${media[1]}-${w}.webp`;
   }
   const id = /^[\w-]{20,}$/.test(s) ? s : (s.match(/^https:\/\/lh3\.googleusercontent\.com\/d\/([\w-]+)/) || [])[1];
+  // The blur list did not arrive: nothing from Google, and no Drive photo at all (we cannot tell which are blurred).
+  if (!PHOTO_BLUR_LIST && (id || isGoogleHosted(s))) return "";
   if (!id) return safeUrl(s);
   const saved = Object.prototype.hasOwnProperty.call(DRIVE_PHOTOS, id) && Array.isArray(DRIVE_PHOTOS[id]) ? DRIVE_PHOTOS[id] : [];
   const blur = blurOf(id);

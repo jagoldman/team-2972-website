@@ -34,20 +34,27 @@ const PARALLEL = 4;
 const MAX_BYTES = 40 * 1024 * 1024;
 const BASE_URL = process.env.DRIVE_BASE_URL || "https://lh3.googleusercontent.com/d/";   // tests point this at a local server
 
-// The blur table: window.PHOTO_BLUR in config.js (the site root, or /build in the Docker stage). BLUR_CONFIG overrides
-// the file (tests).
+// The photo rules shared with the pages: the lines between the "photo-rules" markers in js/components.js (the site root,
+// or /build in the Docker stage), run on their own. One copy of each rule for the build and the pages.
+function photoRules(file = path.join(__dirname, "..", "..", "js", "components.js")) {
+  const src = fs.readFileSync(file, "utf8");
+  const a = src.indexOf("// ---- photo-rules: start ----"), b = src.indexOf("// ---- photo-rules: end ----");
+  if (a < 0 || b < a) throw new Error(`no photo-rules block in ${file}`);
+  const ctx = { URL };
+  vm.createContext(ctx);
+  vm.runInContext(`${src.slice(a, b)}\n;globalThis.__rules = { photoBlurList, isGoogleHosted };`, ctx, { timeout: 2000 });
+  return ctx.__rules;
+}
+// The blur table: window.PHOTO_BLUR in config.js (the site root, or /build in the Docker stage), as photoBlurList()
+// accepts it; returns its photos map. A list that is missing or not valid fails the build (it never builds unblurred).
+// BLUR_CONFIG overrides the file (tests).
 function blurTable(configFile = process.env.BLUR_CONFIG || path.join(__dirname, "..", "..", "config.js")) {
   const ctx = { window: {} };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(configFile, "utf8"), ctx, { timeout: 2000 });
-  const t = ctx.window.PHOTO_BLUR;
-  if (!t || typeof t !== "object") throw new Error(`no PHOTO_BLUR table in ${configFile}`);
-  for (const [id, b] of Object.entries(t)) {
-    const ok = /^[\w-]{20,}$/.test(id) && b && /^[a-z0-9]{1,8}$/.test(b.v) && Array.isArray(b.ellipses) && b.ellipses.length &&
-      b.ellipses.every((e) => Array.isArray(e) && e.length === 4 && e.every((n) => typeof n === "number" && n > 0 && n < 1));
-    if (!ok) throw new Error(`bad PHOTO_BLUR entry for ${id}`);
-  }
-  return JSON.parse(JSON.stringify(t));
+  const list = photoRules().photoBlurList(ctx.window.PHOTO_BLUR);
+  if (!list) throw new Error(`PRIVACY (D193): no valid PHOTO_BLUR list (format 1) in ${configFile}`);
+  return JSON.parse(JSON.stringify(list));
 }
 // The name of one saved width: <id>-<w>.webp, or <id>-<v>-<w>.webp for a blurred photo (the same rule as imgUrl()).
 function fileName(id, w, blur = {}) {
@@ -224,7 +231,7 @@ async function run(contentFile, outDir, log = console, blur = blurTable()) {
   return sorted;
 }
 
-module.exports = { WIDTHS, OG, driveId, extractDriveIds, focusOf, blurTable, blurRegions, fileName, run };
+module.exports = { WIDTHS, OG, driveId, extractDriveIds, focusOf, photoRules, blurTable, blurRegions, fileName, run };
 
 if (require.main === module) {
   const root = path.join(__dirname, "..", "..");

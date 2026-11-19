@@ -11,13 +11,19 @@ window.SITE_ENV = {
   drivePhotos: '{{readFile "img/drive/manifest.json"}}',
 };
 
-// Photos with a region blurred (D193: a face blurred at the owner's request). The one list, read here by
-// js/components.js and at image build time by scripts/drive-photos/fetch.cjs. Keyed by Drive ID:
-//   v         a mark in the saved files' names (<id>-<v>-<w>.webp), so a copy of the photo from before the blur, cached
-//             for a year under the old name, is never asked for again. Change it whenever the regions change.
-//   ellipses  [centre x, centre y, radius x, radius y], fractions of the photo after its EXIF rotation.
+// Photos with a region blurred (D193: a face blurred at the owner's request). The one list, read by js/components.js
+// and at image build time by scripts/drive-photos/fetch.cjs, both through photoBlurList() in js/components.js.
+//   format    1. The marker that this is the list: without it (or with anything else wrong) the pages treat the list
+//             as not arrived and show no Drive photo at all (see photoBlurList()). An empty list is { format: 1, photos: {} }.
+//   photos    keyed by Drive ID:
+//     v         a mark in the saved files' names (<id>-<v>-<w>.webp), so a copy of the photo from before the blur, cached
+//               for a year under the old name, is never asked for again. Change it whenever the regions change.
+//     ellipses  [centre x, centre y, radius x, radius y], fractions of the photo after its EXIF rotation.
 // For these photos the site never falls back to Google: without a saved, blurred copy the photo is not shown at all.
 // (Never two opening braces in a row in this table: Caddy renders this file as a template.)
 window.PHOTO_BLUR = {
-  "1VgoMdevZH3syn0BvQq7QpFz09xrDS_rt": { "v": "b1", "ellipses": [[0.3825, 0.538, 0.0215, 0.034]] }
+  "format": 1,
+  "photos": {
+    "1VgoMdevZH3syn0BvQq7QpFz09xrDS_rt": { "v": "b1", "ellipses": [[0.3825, 0.538, 0.0215, 0.034]] }
+  }
 };

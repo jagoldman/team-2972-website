@@ -55,7 +55,7 @@ const CONFIG = readFileSync(join(root, "config.js"), "utf8").replace('{{env "SIT
 
 async function newContext(browser, { width, scheme = "dark", saved = false, reducedMotion = "no-preference", scale = 1 }) {
   const context = await browser.newContext({ viewport: { width, height: width >= 1000 ? 900 : 800 }, colorScheme: scheme, reducedMotion, deviceScaleFactor: scale });
-  const problems = [];
+  const problems = [], google = [];   // google: every request to a Google host (D193)
   context.on("page", (p) => {
     p.on("pageerror", (e) => problems.push(`script error: ${e.message}`));
     p.on("console", (m) => { if (m.type() === "error" && !/status of 404/.test(m.text())) problems.push(`console: ${m.text()}`); });
@@ -63,6 +63,7 @@ async function newContext(browser, { width, scheme = "dark", saved = false, redu
   });
   await context.route("**/*", async (route) => {
     const url = new URL(route.request().url());
+    if (/(^|\.)(googleusercontent|googleapis|ggpht|gstatic|googledrive)\.com$|(^|\.)google\.[a-z.]+$/.test(url.hostname)) google.push(url.href);
     if (url.host === "lh3.googleusercontent.com") {
       const id = (url.pathname.match(/\/d\/([\w-]+)/) || [])[1];
       // D193: the hero (a face blurred at the owner's request) must never be asked for from Google.
@@ -92,7 +93,7 @@ async function newContext(browser, { width, scheme = "dark", saved = false, redu
     await context.addCookies([{ name: "theme", value: "dark", url: PUBLIC }]);
     await context.addInitScript(() => { try { localStorage.setItem("theme", "dark"); } catch (e) { /* ignore */ } });
   }
-  return { context, problems };
+  return { context, problems, google };
 }
 
 // Run inside the page: overflow, contrast, opacity, text over photos, dark controls.
@@ -366,6 +367,31 @@ try {
     const r = await page.evaluate(() => ({ img: !!document.getElementById("hero-photo"), bumper: !!document.getElementById("bumper"), noPhoto: !!document.querySelector(".hero-shot.no-photo") }));
     check("D193: no saved blurred hero: no hero photo (the bumper stays), and the original is never asked for from Google", !r.img && r.bumper && r.noPhoto && problems.length === 0, { r, problems });
     await context.close();
+  }
+  // D193 fail closed: when the blur list does not arrive (no config.js, one that does not parse, one without the list),
+  // no page asks Google for anything and no Drive photo is on the page; the valid empty list behaves as before.
+  {
+    const EMPTY = 'window.SITE_ENV = { scheme: "http", domain: "landing.test", drivePhotos: "{}" };\nwindow.PHOTO_BLUR = { "format": 1, "photos": {} };';
+    for (const [label, status, body, arrived] of [["config.js absent (404)", 404, "not found", false], ["config.js malformed (does not parse)", 200, 'window.SITE_ENV = { scheme: "http", ', false],
+      ["config.js without the list", 200, 'window.SITE_ENV = { scheme: "http", domain: "landing.test", drivePhotos: "{}" };', false], ["config.js with the list in its old shape (no format marker)", 200, CONFIG.replace(/"format": 1,/, ""), false],
+      ["the valid empty list", 200, EMPTY, true]]) {
+      const { context, google } = await newContext(browser, { width: 1440 });
+      await context.route("**/config.js", (route) => route.fulfill({ status, contentType: "text/javascript", body }));
+      const page = await context.newPage();
+      const onPage = [], drawn = [];
+      for (const [name, path] of PAGES) {
+        await open(page, path);
+        await page.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += 700) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 30)); } });
+        await page.waitForTimeout(200);
+        const r = await page.evaluate(() => ({ drawn: !!document.querySelector("main h1") && !!document.querySelector(".ftr"),
+          google: [...document.querySelectorAll("img")].flatMap((i) => [i.getAttribute("src") || "", i.getAttribute("srcset") || ""]).concat([...document.querySelectorAll("a.shot, .pics a")].map((a) => a.getAttribute("href") || ""))
+            .filter((u) => /googleusercontent|googleapis|ggpht|drive\.google|docs\.google/.test(u)) }));
+        drawn.push(r.drawn); onPage.push(...r.google.map((u) => `${name}: ${u}`));
+      }
+      if (arrived) check(`D193 ${label}: photos behave as before (Drive photos come from Google when not saved, the hero too, as it is not in the list)`, google.length > 0 && google.some((u) => u.includes(HERO)) && drawn.every(Boolean), { google: google.length });
+      else check(`D193 ${label}: every page is drawn, with no request to any Google host and no Google address on the page`, google.length === 0 && onPage.length === 0 && drawn.every(Boolean), { google: google.slice(0, 3), onPage: onPage.slice(0, 3), drawn });
+      await context.close();
+    }
   }
   // The robots list follows the data (what the editor's live preview does: new content, the page re-renders)
   {

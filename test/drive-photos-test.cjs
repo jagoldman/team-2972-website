@@ -43,11 +43,12 @@ check("sample: a bare ID and an lh3 URL are found, each once", sampleIds.join() 
 
 // ---------- 2. imgUrl() ----------
 // config.js runs first, as on every page (it carries window.PHOTO_BLUR); then the manifest under test replaces SITE_ENV.
-function loadComponents(drivePhotos, { blur } = {}) {
-  const ctx = { console, location: { host: "localhost", protocol: "http:", search: "", pathname: "/" }, scrollY: 0 };
+// { blur } puts that value in window.PHOTO_BLUR instead of running config.js; { config: false } runs no config.js at all.
+function loadComponents(drivePhotos, { blur, config = true } = {}) {
+  const ctx = { console, location: { host: "localhost", protocol: "http:", search: "", pathname: "/" }, scrollY: 0, URL };
   ctx.window = ctx;
   vm.createContext(ctx);
-  if (blur) ctx.PHOTO_BLUR = blur; else vm.runInContext(read("config.js"), ctx);
+  if (blur !== undefined) ctx.PHOTO_BLUR = blur; else if (config) vm.runInContext(read("config.js"), ctx);
   ctx.SITE_ENV = { scheme: "http", domain: "localhost", drivePhotos };
   ctx.matchMedia = () => ({ matches: false });
   ctx.addEventListener = () => {};
@@ -88,7 +89,7 @@ check("imgUrl: an ID that is also an Object property name is not looked up there
   const blur = fetchPhotos.blurTable();
   const ctx = loadComponents(manifest);
   check("D193: the blur table is in config.js, has the hero photo, and the pages read the same table as the build",
-    blur[HERO] && blur[HERO].v === "b1" && JSON.stringify(blur[HERO].ellipses) === JSON.stringify([[0.3825, 0.538, 0.0215, 0.034]]) && JSON.stringify(ctx.window.PHOTO_BLUR) === JSON.stringify(blur), JSON.stringify(blur));
+    blur[HERO] && blur[HERO].v === "b1" && JSON.stringify(blur[HERO].ellipses) === JSON.stringify([[0.3825, 0.538, 0.0215, 0.034]]) && ctx.window.PHOTO_BLUR.format === 1 && JSON.stringify(ctx.window.PHOTO_BLUR.photos) === JSON.stringify(blur), JSON.stringify(blur));
   const want = { 400: 400, 600: 800, 800: 800, 1200: 1200, 1600: 1600, 2000: 1600, 9999: 1600 };
   const got = Object.keys(want).map((w) => [w, ctx.imgUrl(HERO, Number(w))]);
   check("D193: the hero is served from its blurred files, named <id>-b1-<w>.webp; the full-size link (2000) is the largest blurred copy",
@@ -110,7 +111,7 @@ check("imgUrl: an ID that is also an Object property name is not looked up there
   check("D193: imgUrl() never gives a Google address (or an unblurred file) for a blurred photo, whatever the manifest says", leaks.length === 0, leaks.slice(0, 4).join(" | "));
   const none = loadComponents(JSON.stringify({ [B]: [400] }));
   check("D193: with no saved blurred copy, the photo is not shown at all (imgUrl \"\", hasPhoto false)", none.imgUrl(HERO, 800) === "" && none.imgUrl(HERO, 2000) === "" && !none.hasPhoto(HERO) && none.hasPhoto(B) && ctx.hasPhoto(HERO));
-  check("D193: an entry with a bad version mark fails closed (no photo, never Google)", loadComponents(manifest, { blur: { [HERO]: { v: "../x", ellipses: [] } } }).imgUrl(HERO, 800) === "");
+  check("D193: an entry with a bad version mark fails closed (no photo, never Google)", loadComponents(manifest, { blur: { format: 1, photos: { [HERO]: { v: "../x", ellipses: [[0.5, 0.5, 0.1, 0.1]] } } } }).imgUrl(HERO, 800) === "");
   // The pages' full-size links and photo spots go through imgUrl()/hasPhoto(); no page writes a Google address itself.
   const pages = ["index", "robots", "robot", "about", "sponsors", "member", "mentor", "outreach", "media", "resources", "contact"].map((p) => [p, read(`${p}.html`)]);
   check("D193: no public page or script builds a Google photo address of its own", pages.every(([, h]) => !/googleusercontent/.test(h)) && (read("js/components.js").match(/googleusercontent\.com\/d\/\$\{/g) || []).length === 1);
@@ -121,6 +122,41 @@ check("imgUrl: an ID that is also an Object property name is not looked up there
   check("D193: the table in config.js never holds a Caddy template opening (two braces)", !cfg.slice(cfg.indexOf("window.PHOTO_BLUR")).includes("{{"));
   check("D193: the image build gets config.js (the table) next to content.js", /COPY config\.js \/build\/config\.js/.test(read("Dockerfile")));
   check("D193: the service worker's cache version moved past the live v6 (v8)", /const VERSION = "v8"/.test(read("sw.js")));
+}
+
+// ---------- D193: fail closed when the blur list did not arrive ----------
+{
+  const R = fetchPhotos.photoRules();
+  const ell = [[0.5, 0.5, 0.1, 0.1]];
+  const NOT_ARRIVED = [
+    ["no config.js at all", { config: false }], ["PHOTO_BLUR missing (a config.js without it)", { blur: null }],
+    ["an empty object", { blur: {} }], ["the old shape, with no format marker", { blur: { [HERO]: { v: "b1", ellipses: ell } } }],
+    ["format 2", { blur: { format: 2, photos: {} } }], ["format as a string", { blur: { format: "1", photos: {} } }],
+    ["photos is a list", { blur: { format: 1, photos: [] } }], ["photos missing", { blur: { format: 1 } }],
+    ["a string", { blur: "format 1" }], ["one bad entry (no ellipses)", { blur: { format: 1, photos: { [HERO]: { v: "b1" } } } }],
+    ["one bad entry (an ellipse outside the photo)", { blur: { format: 1, photos: { [HERO]: { v: "b1", ellipses: [[0.5, 1.2, 0.1, 0.1]] } } } }],
+    ["one bad key", { blur: { format: 1, photos: { short: { v: "b1", ellipses: ell } } } }],
+  ];
+  const google = [`https://lh3.googleusercontent.com/d/${B}=w800`, `https://lh3.googleusercontent.com/d/${HERO}`, "https://drive.google.com/uc?id=" + B,
+    "https://www.googleapis.com/drive/v3/files/" + B, "https://lh5.ggpht.com/abc", "https://www.google.com/images/x.png", "https://www.gstatic.com/x.png"];
+  for (const [label, opts] of NOT_ARRIVED) {
+    const c = loadComponents(manifest, opts);
+    const urls = [B, HERO, D, C, ...google].flatMap((src) => [400, 800, 1600, 2000].map((w) => c.imgUrl(src, w)));
+    const leaks = urls.filter((u) => u !== "");
+    check(`D193 fail closed, ${label}: no Drive photo and nothing from Google (every imgUrl is "")`, leaks.length === 0 && !c.hasPhoto(B) && !c.hasPhoto(HERO), leaks.slice(0, 3).join(" | "));
+    check(`D193 fail closed, ${label}: uploads, site paths and other hosts still work`, c.imgUrl("media:0123456789abcdef0123", 600) === "/media/0123456789abcdef0123-800.webp" && c.imgUrl("assets/brand/team.svg", 800) === "assets/brand/team.svg" && c.imgUrl("https://example.com/x.jpg", 800) === "https://example.com/x.jpg");
+    check(`D193 fail closed, ${label}: the build's copy of the rule says the same (photoBlurList is null)`, opts.config === false || R.photoBlurList(opts.blur) === null);
+  }
+  const empty = loadComponents("{}", { blur: { format: 1, photos: {} } });
+  check("D193: the valid empty list ({ format: 1, photos: {} }) means nothing is blurred: photos behave as before (Google when not saved)", empty.imgUrl(B, 800) === lh3(B, 800) && empty.imgUrl(HERO, 800) === lh3(HERO, 800) && empty.hasPhoto(B) && R.photoBlurList({ format: 1, photos: {} }) !== null);
+  check("D193: the build refuses a config.js whose list did not arrive (it never builds without the blur)", (() => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "blur-config-"));
+    try {
+      const bad = [["window.SITE_ENV = {};", "missing"], ["window.PHOTO_BLUR = { photos: {} };", "no format"], ["window.PHOTO_BLUR = { format: 1, photos: { short: {} } };", "bad entry"]];
+      return bad.every(([src]) => { const f = path.join(tmp, "config.js"); fs.writeFileSync(f, src); try { fetchPhotos.blurTable(f); return false; } catch (e) { return /PRIVACY \(D193\)/.test(e.message); } });
+    } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  })());
+  check("D193: the signal is documented once, beside photoBlurList, and config.js carries the format marker", /THE SIGNAL \(D193; the Website editor's preview relies on it\)/.test(read("js/components.js")) && /"format": 1,/.test(read("config.js")));
 }
 
 // The two copies of the Drive ID rule agree: imgUrl() goes to lh3 (empty manifest) exactly when fetch.cjs takes the value.
