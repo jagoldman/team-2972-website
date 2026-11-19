@@ -115,7 +115,7 @@ for h in $D www.$D; do
     case "$page" in *"{{"*) echo "FAIL $h $p still has template actions"; fail=1 ;; *) echo "ok   $h $p is rendered (no template actions left)" ;; esac
     og=$(printf '%s' "$page" | sed -n 's/.*<meta property="og:image" content="\([^"]*\)".*/\1/p')
     case "$og" in
-      "http://$D/img/drive/og-image-b2.jpg"|"http://$D/pwa-icons/site/icon-512.png") echo "ok   $h $p og:image is a full address: $og" ;;
+      "http://$D/img/drive/og-image-v3.jpg"|"http://$D/pwa-icons/site/icon-512.png") echo "ok   $h $p og:image is a full address: $og" ;;
       *) echo "FAIL $h $p og:image is '$og'"; fail=1 ;;
     esac
     for t in 'property="og:title" content="Team 2972 Gears &amp; Buccaneers | Dawson School FRC"' 'property="og:type" content="website"' \
@@ -129,13 +129,17 @@ echo "$hp" | grep -qi '^cache-control: no-cache' && echo "ok   the home page rev
 echo "$hp" | grep -qi '^content-type: text/html' && echo "ok   the home page is text/html" || { echo "FAIL home page content type"; fail=1; }
 og=$(curl -s -H "Host: $D" "$URL/" | sed -n 's/.*<meta property="og:image" content="http:\/\/[^/]*\([^"]*\)".*/\1/p')
 check 200 "the og:image the page names is served ($og)" -H "Host: $D" "$URL$og"
-if [ "$og" = /img/drive/og-image-b2.jpg ]; then
-  oh=$(curl -s -D - -o /dev/null -H "Host: $D" "$URL/img/drive/og-image-b2.jpg" | tr -d '\r')
-  echo "$oh" | grep -qi '^content-type: image/jpeg' && echo "$oh" | grep -qi '^cache-control: public, max-age=86400' && echo "ok   og-image-b2.jpg is a JPEG, cached for a day" || { echo "FAIL og-image-b2.jpg headers"; fail=1; }
+# D206: the link-preview picture has a new name, og-image-v3.jpg (the hero as it is), so services that kept the old picture
+# by its address fetch the new one. The old names are not in the image and answer 404.
+if [ "$og" = /img/drive/og-image-v3.jpg ]; then
+  echo "ok   the page's og:image names og-image-v3.jpg"
+  oh=$(curl -s -D - -o /dev/null -H "Host: $D" "$URL/img/drive/og-image-v3.jpg" | tr -d '\r')
+  echo "$oh" | grep -qi '^content-type: image/jpeg' && echo "$oh" | grep -qi '^cache-control: public, max-age=86400' && echo "ok   og-image-v3.jpg is a JPEG, cached for a day" || { echo "FAIL og-image-v3.jpg headers"; fail=1; }
   curl -s -H "Host: $D" "$URL/" | grep -qF 'property="og:image:width" content="1200"' && echo "ok   og:image size 1200x630 is stated" || { echo "FAIL og:image width"; fail=1; }
 else
-  echo "note no og-image-b2.jpg in this build (the hero photo did not download), so the page names the app icon"
+  echo "FAIL no og-image-v3.jpg in this build (the hero photo did not download?), the page names '$og'"; fail=1
 fi
+for n in og-image.jpg og-image-b1.jpg og-image-b2.jpg; do check 404 "old link-preview name $n is not served" -H "Host: $D" "$URL/img/drive/$n"; done
 # Another address in, the same address out: nothing is typed into the page.
 NAME3=landing-test-domain-$$
 docker run -d --rm --name "$NAME3" -p "127.0.0.1:$((HOST_PORT+2)):3001" \
@@ -249,24 +253,32 @@ if [ -n "$dfile" ]; then
 else
   echo "note no Drive photo was saved in this build (offline?), so only the 404s are checked"
 fi
-# D193 (a face blurred at the owner's request): the hero is served only under its blurred name; the old name is gone.
+# D206 (the hero's blur removed at the owner's request; D193 had blurred it): the hero is saved and served under its plain
+# names at every saved width, like every other Drive photo. Its old marked names are not in the image and answer 404.
 hero=1VgoMdevZH3syn0BvQq7QpFz09xrDS_rt
 if printf '%s' "$dm" | grep -q "\"$hero\""; then
-  for w in 400 800 1200 1600; do check 200 "public blurred hero $w" -H "Host: $D" "$URL/img/drive/$hero-b2-$w.webp"; check 404 "public unblurred hero name $w is not served" -H "Host: $D" "$URL/img/drive/$hero-$w.webp"; done
+  printf '%s' "$dm" | grep -q "\"$hero\":\[400,800,1200,1600\]" && echo "ok   the manifest lists the hero at 400, 800, 1200 and 1600" || { echo "FAIL the hero's saved widths: $dm"; fail=1; }
+  for w in 400 800 1200 1600; do
+    check 200 "public hero $w under its plain name" -H "Host: $D" "$URL/img/drive/$hero-$w.webp"
+    for m in b1 b2; do check 404 "old marked hero name $hero-$m-$w.webp is not served" -H "Host: $D" "$URL/img/drive/$hero-$m-$w.webp"; done
+  done
+  hh=$(curl -s -D - -o /dev/null -H "Host: $D" "$URL/img/drive/$hero-1600.webp" | tr -d '\r')
+  echo "$hh" | grep -qi '^content-type: image/webp' && echo "$hh" | grep -qi '^cache-control: public, max-age=31536000, immutable' && echo "ok   the hero's plain file is image/webp, cached for a year" || { echo "FAIL the hero's plain file headers"; fail=1; }
+  docker exec "$NAME" sh -c "ls /srv/site/img/drive | grep -E -- '-b[0-9]+-'" && { echo "FAIL a marked (blurred) file is still in the image"; fail=1; } || echo "ok   no marked (blurred) file is in the image"
 else
-  echo "FAIL PRIVACY (D193): the hero photo was not saved blurred in this build, so the home page shows no hero photo"; fail=1
+  echo "FAIL the hero photo was not saved in this build"; fail=1
 fi
-# D193: a stale file under a retired name (no mark, an older mark, an old link-preview name) answers 404 even when it is on
-# disk; the current names still answer 200.
-if printf '%s' "$dm" | grep -q "\"$hero\""; then
-  docker exec -u 0 "$NAME" sh -c "cd /srv/site/img/drive && for n in $hero-400.webp $hero-1600.webp $hero-b1-400.webp $hero-b1-1600.webp og-image.jpg og-image-b1.jpg; do cp $hero-b2-400.webp \$n; done" \
+# D193 (the machinery stays): a stale file under a retired link-preview name answers 404 even when it is on disk, and is
+# not cached; the current og-image-v3.jpg still answers 200. (With the blur list empty, no photo name is retired.)
+if docker exec "$NAME" test -f /srv/site/img/drive/og-image-v3.jpg; then
+  docker exec -u 0 "$NAME" sh -c "cd /srv/site/img/drive && for n in og-image.jpg og-image-b1.jpg og-image-b2.jpg; do cp og-image-v3.jpg \$n; done" \
     && echo "ok   stale files put under the retired names" || { echo "FAIL could not put stale files in the container"; fail=1; }
-  for n in $hero-400.webp $hero-1600.webp $hero-b1-400.webp $hero-b1-1600.webp og-image.jpg og-image-b1.jpg; do check 404 "retired name $n is 404 with a stale file present" -H "Host: $D" "$URL/img/drive/$n"; done
-  rh=$(curl -s -D - -o /dev/null -H "Host: $D" "$URL/img/drive/$hero-1600.webp" | tr -d '\r')
+  for n in og-image.jpg og-image-b1.jpg og-image-b2.jpg; do check 404 "retired name $n is 404 with a stale file present" -H "Host: $D" "$URL/img/drive/$n"; done
+  rh=$(curl -s -D - -o /dev/null -H "Host: $D" "$URL/img/drive/og-image-b2.jpg" | tr -d '\r')
   echo "$rh" | grep -qi '^cache-control: no-store' && echo "ok   a retired name is not cached" || { echo "FAIL a retired name's cache header"; fail=1; }
-  check 200 "the current b2 file is still served" -H "Host: $D" "$URL/img/drive/$hero-b2-1600.webp"
+  check 200 "the current og-image-v3.jpg is still served" -H "Host: $D" "$URL/img/drive/og-image-v3.jpg"
   # take the stale files away again (the photo check below looks for any stray picture in the image)
-  docker exec -u 0 "$NAME" sh -c "cd /srv/site/img/drive && rm -f $hero-400.webp $hero-1600.webp $hero-b1-400.webp $hero-b1-1600.webp og-image.jpg og-image-b1.jpg"
+  docker exec -u 0 "$NAME" sh -c "cd /srv/site/img/drive && rm -f og-image.jpg og-image-b1.jpg og-image-b2.jpg"
 fi
 for p in /img/drive/ /img/drive/manifest.json /img/drive/nope-400.webp /img/drive/1AbCdEfGhIjKlMnOpQrStUvWxYz012345-400.webp; do
   check 404 "public $p is not served" -H "Host: $D" "$URL$p"
@@ -290,9 +302,9 @@ echo "-- nothing private in the image"
 for f in /srv/site/README.md /srv/site/CLAUDE.md /srv/site/.git /srv/site/test /srv/site/docs /srv/site/container /srv/site/.env.example /srv/site/.claude; do
   if docker exec "$NAME" test -e "$f"; then echo "FAIL image contains $f"; fail=1; fi
 done
-if docker exec "$NAME" sh -c 'find /srv/site \( -path /srv/site/pwa-icons -o -path /srv/site/brand -o -path /srv/site/img/drive/og-image-b2.jpg \) -prune -o \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print | grep -q .'; then
+if docker exec "$NAME" sh -c 'find /srv/site \( -path /srv/site/pwa-icons -o -path /srv/site/brand -o -path /srv/site/img/drive/og-image-v3.jpg \) -prune -o \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print | grep -q .'; then
   echo "FAIL image contains photos"; fail=1
-else echo "ok   no photos or repo files in the image (the app icons in pwa-icons/, the logo in brand/ and the link-preview picture made at build time, img/drive/og-image-b2.jpg, are meant to be there)"; fi
+else echo "ok   no photos or repo files in the image (the app icons in pwa-icons/, the logo in brand/ and the link-preview picture made at build time, img/drive/og-image-v3.jpg, are meant to be there)"; fi
 
 # Every local image the pages and content.js name is in the image and served (test/assets-test.cjs lists them).
 missing=0

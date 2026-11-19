@@ -47,11 +47,23 @@ const WIDTHS = [320, 390, 1440];
 const MODES = [["os-dark", "dark", false], ["os-light", "light", false], ["saved-dark", "dark", true]];
 const WHITE = "rgb(255, 255, 255)";
 const FULL = Boolean(process.env.PUBLIC_TEST_FULL);
-// config.js as Caddy fills it: the site's address and a manifest that lists the hero photo's blurred copies (D193). The
-// blur table (window.PHOTO_BLUR) is the real file's.
-const HERO = "1VgoMdevZH3syn0BvQq7QpFz09xrDS_rt";
-const CONFIG = readFileSync(join(root, "config.js"), "utf8").replace('{{env "SITE_SCHEME"}}', "http").replace('{{env "SITE_DOMAIN"}}', "landing.test")
-  .replace('{{readFile "img/drive/manifest.json"}}', JSON.stringify({ [HERO]: [400, 800, 1200, 1600] }));
+// config.js as Caddy fills it: the site's address and a manifest that lists the saved photos. CONFIG keeps the real
+// file's blur list, which is empty since D206 (the hero's blur removed at the owner's request): the hero is a plain photo.
+// BLUR_CONFIG puts a made-up photo (FAKE) in the list instead, to test the D193 blur machinery through setContent, as
+// the Website editor's preview changes content.
+const HERO = "1VgoMdevZH3syn0BvQq7QpFz09xrDS_rt";   // SITE.heroImage in content.js
+const FAKE = "1FaKeBlUrPhOtOiDxXxXxXxXxXxXx07";      // made up: the one photo in the test's blur list
+const SAVED = [400, 800, 1200, 1600];
+const EMPTY_LIST = 'window.PHOTO_BLUR = { "format": 1, "photos": {} };';
+function config({ saved = { [HERO]: SAVED, [FAKE]: SAVED }, blur = false } = {}) {
+  const src = readFileSync(join(root, "config.js"), "utf8").replace('{{env "SITE_SCHEME"}}', "http").replace('{{env "SITE_DOMAIN"}}', "landing.test")
+    .replace('{{readFile "img/drive/manifest.json"}}', JSON.stringify(saved));
+  if (!src.includes(EMPTY_LIST)) throw new Error("config.js: the empty blur list (D206) is not in the shape this test expects");
+  return blur ? src.replace(EMPTY_LIST, `window.PHOTO_BLUR = ${JSON.stringify({ format: 1, photos: { [FAKE]: { v: "b2", ellipses: [[0.4, 0.5, 0.05, 0.08]] } } })};`) : src;
+}
+const CONFIG = config();
+const BLUR_CONFIG = config({ blur: true });
+const BLUR_UNSAVED = config({ blur: true, saved: { [HERO]: SAVED } });   // the blurred photo's copy failed to download
 
 async function newContext(browser, { width, scheme = "dark", saved = false, reducedMotion = "no-preference", scale = 1 }) {
   const context = await browser.newContext({ viewport: { width, height: width >= 1000 ? 900 : 800 }, colorScheme: scheme, reducedMotion, deviceScaleFactor: scale });
@@ -66,8 +78,8 @@ async function newContext(browser, { width, scheme = "dark", saved = false, redu
     if (/(^|\.)(googleusercontent|googleapis|ggpht|gstatic|googledrive)\.com$|(^|\.)google\.[a-z.]+$/.test(url.hostname)) google.push(url.href);
     if (url.host === "lh3.googleusercontent.com") {
       const id = (url.pathname.match(/\/d\/([\w-]+)/) || [])[1];
-      // D193: the hero (a face blurred at the owner's request) must never be asked for from Google.
-      if (id === HERO) { problems.push(`PRIVACY: the hero photo was asked for from Google (${url.href})`); return route.abort(); }
+      // D193: a photo in the blur list (the made-up FAKE) must never be asked for from Google.
+      if (id === FAKE) { problems.push(`PRIVACY: the blurred test photo was asked for from Google (${url.href})`); return route.abort(); }
       const file = PHOTOS[id];
       if (file && existsSync(file)) return route.fulfill({ contentType: "image/jpeg", body: readFileSync(file) });
       // No photo map: a plain grey 4:3 picture stands in, so photo boxes have a real size and the "no text over a photograph" check has something to find.
@@ -75,12 +87,13 @@ async function newContext(browser, { width, scheme = "dark", saved = false, redu
     }
     if (url.host !== "landing.test") return route.abort();
     if (url.pathname === "/config.js") return route.fulfill({ contentType: "text/javascript", body: CONFIG });
-    // The hero's saved, blurred copies (D193); any other /img/drive file does not exist here.
-    const saved = url.pathname.match(/^\/img\/drive\/([\w-]{20,}?)-b2-(\d+)\.webp$/);
-    if (saved && saved[1] === HERO) {
-      const file = PHOTOS[HERO];
+    // The hero's saved copies under its plain names (D206), and the made-up blurred photo's under its b2 names (D193);
+    // any other /img/drive file does not exist here.
+    const saved = url.pathname.match(/^\/img\/drive\/([\w-]{20,}?)-(?:(b2)-)?(400|800|1200|1600)\.webp$/);
+    if (saved && ((saved[1] === HERO && !saved[2]) || (saved[1] === FAKE && saved[2] === "b2"))) {
+      const file = PHOTOS[saved[1]], w = saved[3];
       if (file && existsSync(file)) return route.fulfill({ contentType: file.endsWith(".png") ? "image/png" : file.endsWith(".webp") ? "image/webp" : "image/jpeg", body: readFileSync(file) });
-      return route.fulfill({ contentType: "image/svg+xml", body: `<svg xmlns="http://www.w3.org/2000/svg" width="${saved[2]}" height="${saved[2] * 3 / 4}"><rect width="100%" height="100%" fill="#445"/></svg>` });
+      return route.fulfill({ contentType: "image/svg+xml", body: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${w * 3 / 4}"><rect width="100%" height="100%" fill="#445"/></svg>` });
     }
     if (/^\/(content|media)\//.test(url.pathname)) return route.fulfill({ status: 404, body: "" });
     let p = decodeURIComponent(url.pathname);
@@ -308,7 +321,7 @@ try {
     check(`${L}: Join the team (the accent button) and Sponsor a season`, JSON.stringify(h.btns) === JSON.stringify([["Join the team", "member.html", true], ["Sponsor a season", "sponsors.html", false]]), h.btns);
     check(`${L}: the hero caption is live's, with the Dawson line beside it`, h.caption === "Utah Regional winners, 2026. The robot is Theseus." && h.school, h.caption);
     const ratio = width >= 1100 ? 2.5 : width >= 720 ? 2 : 1.33;
-    check(`${L}: the hero photo: blurred copies only (D193) in a srcset of 400/800/1600, the content's crop, ${ratio}:1, fetched first`, h.hero && /-b2-400\.webp 400w, .*-b2-800\.webp 800w, .*-b2-1600\.webp 1600w/.test(h.hero.srcset) && !/google/.test(h.hero.srcset) && h.hero.pos === "50% 100%" && Math.abs(h.hero.ratio - ratio) < 0.03 && h.hero.priority === "high", h.hero);
+    check(`${L}: the hero photo: its plain saved copies (D206) in a srcset of 400/800/1600, the content's crop, ${ratio}:1, fetched first`, h.hero && h.hero.srcset === `/img/drive/${HERO}-400.webp 400w, /img/drive/${HERO}-800.webp 800w, /img/drive/${HERO}-1600.webp 1600w` && h.hero.pos === "50% 100%" && Math.abs(h.hero.ratio - ratio) < 0.03 && h.hero.priority === "high", h.hero);
     check(`${L}: the record as one sentence`, /^16 seasons since 2009, 2 event wins and \d+ events in the playoffs\.$/.test(h.record), h.record);
     check(`${L}: the season chart's hint`, h.hint === "Select a year to see that robot.", h.hint);
     const seasons = h.seasons.filter(([, href]) => href), empty = h.seasons.filter(([, href]) => !href);
@@ -339,33 +352,38 @@ try {
     });
     check("Home 1440x900: the headline and both buttons are on screen, and the bumper starts on screen (as in the demo)", h.h1.bottom <= h.vh && h.btns.every((b) => b <= h.vh) && h.bumper.top < h.vh - 20, h);
     check("Home 1440x900: the bumper sits across the base of the photo; the photo is at full brightness", h.bumper.top < h.photo.bottom && h.bumper.bottom > h.photo.bottom && h.filter === "none" && h.opacity === "1", h);
-    if (SHOTS) {
-      await page.screenshot({ path: join(SHOTS, "home-hero-1440.png") });
-      // A zoom on the blurred region (D193): the photo's rectangle, the ellipse's centre at the content's crop.
-      const z = await page.evaluate(() => { const i = document.getElementById("hero-photo"), r = i.getBoundingClientRect(), nw = i.naturalWidth, nh = i.naturalHeight; const s = Math.max(r.width / nw, r.height / nh);
-        const ox = (r.width - nw * s) * 0.5, oy = (r.height - nh * s) * 1.0; return { x: r.left + ox + 0.3825 * nw * s, y: r.top + scrollY + oy + 0.538 * nh * s, s, rw: r.width, rh: r.height }; });
-      await page.screenshot({ path: join(SHOTS, "home-hero-1440-blur-zoom.png"), clip: { x: Math.max(0, z.x - 160), y: Math.max(0, z.y - 110), width: 320, height: 220 }, fullPage: true });
-    }
+    if (SHOTS) await page.screenshot({ path: join(SHOTS, "home-hero-1440.png") });
     await context.close();
   }
-  // The hero on a phone takes at most the 800 copy, even on a 2x screen; never Google.
+  // The hero on a phone takes at most the 800 copy, even on a 2x screen, under its plain name (D206); never Google, and
+  // no marked (blurred) file is asked for.
   for (const [width, scale] of [[390, 1], [390, 2]]) {
-    const { context, problems } = await newContext(browser, { width, scale });
+    const { context, problems, google } = await newContext(browser, { width, scale });
+    const asked = [];
+    context.on("request", (rq) => asked.push(new URL(rq.url()).pathname));
     const page = await context.newPage();
     await open(page, "/");
     await page.waitForFunction(() => document.getElementById("hero-photo").complete);
     const src = await page.evaluate(() => document.getElementById("hero-photo").currentSrc);
-    check(`Home ${width}px at ${scale}x: the hero loads the ${scale === 1 ? "400" : "800"} blurred copy (at most 800 on a phone)`, new RegExp(`/img/drive/${HERO}-b2-${scale === 1 ? 400 : 800}\\.webp$`).test(src) && problems.length === 0, { src, problems });
+    const marked = asked.filter((p) => /^\/img\/drive\/.*-b\d+-\d+\.webp$/.test(p));
+    check(`Home ${width}px at ${scale}x: the hero loads its plain ${scale === 1 ? "400" : "800"} copy (at most 800 on a phone), nothing marked, nothing from Google`, new RegExp(`/img/drive/${HERO}-${scale === 1 ? 400 : 800}\\.webp$`).test(src) && problems.length === 0 && marked.length === 0 && !google.some((u) => u.includes(HERO)), { src, problems, marked });
     await context.close();
   }
-  // D193: with no saved blurred copy (a failed download), the hero shows no photo; Google is never asked.
-  {
+  // D193 (the machinery, with the made-up FAKE in the list): a blurred hero shows only its blurred copies; with no saved
+  // blurred copy (a failed download) it shows no photo; Google is never asked.
+  for (const [label, body] of [["saved", BLUR_CONFIG], ["not saved", BLUR_UNSAVED]]) {
     const { context, problems } = await newContext(browser, { width: 1440 });
-    await context.route("**/config.js", (route) => route.fulfill({ contentType: "text/javascript", body: CONFIG.replace(JSON.stringify({ [HERO]: [400, 800, 1200, 1600] }), "{}") }));
+    await context.route("**/config.js", (route) => route.fulfill({ contentType: "text/javascript", body }));
     const page = await context.newPage();
     await open(page, "/");
-    const r = await page.evaluate(() => ({ img: !!document.getElementById("hero-photo"), bumper: !!document.getElementById("bumper"), noPhoto: !!document.querySelector(".hero-shot.no-photo") }));
-    check("D193: no saved blurred hero: no hero photo (the bumper stays), and the original is never asked for from Google", !r.img && r.bumper && r.noPhoto && problems.length === 0, { r, problems });
+    const r = await page.evaluate((fake) => {
+      window.setContent({ SITE: { ...SITE, heroImage: fake } });
+      const img = document.getElementById("hero-photo");
+      return { img: !!img, srcset: img && img.getAttribute("srcset"), bumper: !!document.getElementById("bumper"), noPhoto: !!document.querySelector(".hero-shot.no-photo") };
+    }, FAKE);
+    await page.waitForTimeout(300);
+    if (label === "saved") check("D193: a blurred hero shows only its blurred copies (<id>-b2-<w>.webp), never Google", r.img && r.srcset === `/img/drive/${FAKE}-b2-400.webp 400w, /img/drive/${FAKE}-b2-800.webp 800w, /img/drive/${FAKE}-b2-1600.webp 1600w` && problems.length === 0, { r, problems });
+    else check("D193: no saved blurred hero: no hero photo (the bumper stays), and the original is never asked for from Google", !r.img && r.bumper && r.noPhoto && problems.length === 0, { r, problems });
     await context.close();
   }
   // D193 fail closed: when the blur list does not arrive (no config.js, one that does not parse, one without the list),
@@ -373,7 +391,7 @@ try {
   {
     const EMPTY = 'window.SITE_ENV = { scheme: "http", domain: "landing.test", drivePhotos: "{}" };\nwindow.PHOTO_BLUR = { "format": 1, "photos": {} };';
     for (const [label, status, body, arrived] of [["config.js absent (404)", 404, "not found", false], ["config.js malformed (does not parse)", 200, 'window.SITE_ENV = { scheme: "http", ', false],
-      ["config.js without the list", 200, 'window.SITE_ENV = { scheme: "http", domain: "landing.test", drivePhotos: "{}" };', false], ["config.js with the list in its old shape (no format marker)", 200, CONFIG.replace(/"format": 1,/, ""), false],
+      ["config.js without the list", 200, 'window.SITE_ENV = { scheme: "http", domain: "landing.test", drivePhotos: "{}" };', false], ["config.js with the list in its old shape (no format marker)", 200, BLUR_CONFIG.replace(/"format":1,/, ""), false],
       ["the valid empty list", 200, EMPTY, true]]) {
       const { context, google } = await newContext(browser, { width: 1440 });
       await context.route("**/config.js", (route) => route.fulfill({ status, contentType: "text/javascript", body }));
@@ -393,38 +411,43 @@ try {
       await context.close();
     }
   }
-  // D193: one function for every Drive link form. Content edited as the editor does (setContent): the hero pasted as a
-  // drive.google.com link shows its blurred copy; an unblurred photo pasted as a ?id= link loads by its ID; a Google
-  // address that is not a Drive photo, and the hero in a form with no saved copy, show "Photo wanted" and are never requested.
+  // D193: one function for every Drive link form. Content edited as the editor does (setContent), with the made-up FAKE in
+  // the blur list: FAKE pasted as a drive.google.com link shows its blurred copy; an unblurred photo pasted as a ?id= link
+  // loads by its ID; a Google address that is not a Drive photo shows "Photo wanted" and is never requested; the hero
+  // (D206, not in the list) pasted as a link shows its plain saved copy.
   {
     const { context, google } = await newContext(browser, { width: 1440 });
+    await context.route("**/config.js", (route) => route.fulfill({ contentType: "text/javascript", body: BLUR_CONFIG }));
     const page = await context.newPage();
     await open(page, "/robots.html");
     const other = "1AbCdEfGhIjKlMnOpQrStUvWxYz012345";
-    const r = await page.evaluate(({ hero, other }) => {
+    const r = await page.evaluate(({ hero, other, plain }) => {
       const robots = JSON.parse(JSON.stringify(ROBOTS));
       robots[0].image = `https://drive.google.com/file/d/${hero}/view?usp=sharing`;
       robots[1].image = `https://drive.usercontent.google.com/download?id=${other}&export=view`;
       robots[2].image = "https://lh3.googleusercontent.com/a/ACg8ocK-not-a-drive-photo";
       robots[3].image = `https://www.googleapis.com/drive/v3/files/${hero}?alt=media`;
+      robots[4].image = `https://drive.google.com/file/d/${plain}/view?usp=sharing`;
       window.setContent({ ROBOTS: robots });
       const item = (i) => document.querySelector(`#robot-archive > li[data-ck="ROBOTS[${i}]"]`);
       const img = (i) => { const im = item(i).querySelector("img"); return im ? [im.getAttribute("src"), im.getAttribute("srcset")] : null; };
-      return { a: img(0), b: img(1), c: { img: img(2), wanted: !!item(2).querySelector(".ph") }, d: img(3) };
-    }, { hero: HERO, other });
+      return { a: img(0), b: img(1), c: { img: img(2), wanted: !!item(2).querySelector(".ph") }, d: img(3), e: img(4) };
+    }, { hero: FAKE, other, plain: HERO });
     await page.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += 600) { scrollTo(0, y); await new Promise((res) => setTimeout(res, 40)); } });
     await page.waitForTimeout(300);
-    check("D193 forms: the hero pasted as a drive.google.com/file/d/ link shows only its blurred copies", r.a && /-b2-400\.webp$/.test(r.a[0]) && !/google/.test(r.a.join(" ")), r.a);
-    check("D193 forms: the hero as a Drive API address shows its blurred copy too", r.d && /-b2-400\.webp$/.test(r.d[0]), r.d);
+    check("D193 forms: a blurred photo pasted as a drive.google.com/file/d/ link shows only its blurred copies", r.a && r.a[0] === `/img/drive/${FAKE}-b2-400.webp` && !/google/.test(r.a.join(" ")), r.a);
+    check("D193 forms: a blurred photo as a Drive API address shows its blurred copy too", r.d && r.d[0] === `/img/drive/${FAKE}-b2-400.webp`, r.d);
+    check("D206 forms: the hero pasted as a drive.google.com/file/d/ link shows its plain saved copy", r.e && r.e[0] === `/img/drive/${HERO}-400.webp`, r.e);
     check("D193 forms: an unblurred photo pasted as drive.usercontent ?id= loads by its ID from the one lh3 address", r.b && r.b[0] === `https://lh3.googleusercontent.com/d/${other}=w400`, r.b);
     check("D193 forms: a Google address that is not a Drive photo shows Photo wanted, no image", !r.c.img && r.c.wanted, r.c);
-    check("D193 forms: Google is never asked for the hero or for the address it cannot reduce", !google.some((u) => u.includes(HERO) || u.includes("ACg8ocK")) && google.some((u) => u.includes(other)), google.filter((u) => u.includes(HERO) || u.includes("ACg8ocK") || u.includes(other)));
+    check("D193 forms: Google is never asked for the blurred photo, the saved hero or the address it cannot reduce", !google.some((u) => u.includes(FAKE) || u.includes(HERO) || u.includes("ACg8ocK")) && google.some((u) => u.includes(other)), google.filter((u) => u.includes(FAKE) || u.includes(HERO) || u.includes("ACg8ocK") || u.includes(other)));
     await context.close();
   }
-  // D193: a retired address of the hero supplied as content (as the Website editor can) shows the current blurred copy;
-  // an old link-preview address shows nothing; no retired address is ever asked for.
+  // D193: a retired address of a blurred photo (the made-up FAKE) supplied as content (as the Website editor can) shows the
+  // current blurred copy; an old link-preview address shows nothing; no retired address is ever asked for.
   {
     const { context } = await newContext(browser, { width: 1440 });
+    await context.route("**/config.js", (route) => route.fulfill({ contentType: "text/javascript", body: BLUR_CONFIG }));
     const asked = [];
     context.on("request", (rq) => asked.push(new URL(rq.url()).pathname));
     const page = await context.newPage();
@@ -436,16 +459,17 @@ try {
       robots[2].image = `http://landing.test/img/drive/${hero}-1600.webp`;
       robots[3].image = "/img/drive/og-image.jpg";
       robots[4].image = "img/drive/og-image-b1.jpg";
+      robots[5].image = "/img/drive/og-image-b2.jpg";
       window.setContent({ ROBOTS: robots, SITE: { ...SITE, heroImage: `/img/drive/${hero}-1600.webp` } });
       const item = (i) => document.querySelector(`#robot-archive > li[data-ck="ROBOTS[${i}]"]`);
-      return [0, 1, 2, 3, 4].map((i) => { const im = item(i).querySelector("img"); return im ? im.getAttribute("src") : (item(i).querySelector(".ph") ? "Photo wanted" : null); });
-    }, HERO);
+      return [0, 1, 2, 3, 4, 5].map((i) => { const im = item(i).querySelector("img"); return im ? im.getAttribute("src") : (item(i).querySelector(".ph") ? "Photo wanted" : null); });
+    }, FAKE);
     await page.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += 600) { scrollTo(0, y); await new Promise((res) => setTimeout(res, 40)); } });
     await page.waitForTimeout(300);
-    const cur = `/img/drive/${HERO}-b2-400.webp`;
-    check("D193 retired: the hero's old addresses (old name, old mark, this site's full address) show the current b2 copy; old link-preview addresses show Photo wanted",
-      JSON.stringify(r) === JSON.stringify([cur, cur, cur, "Photo wanted", "Photo wanted"]), r);
-    const retired = asked.filter((p) => /^\/img\/drive\/(og-image(-b1)?\.jpg|[\w-]+-(b1-)?\d+\.webp)$/.test(p) && !p.includes("-b2-") && p.includes("/img/drive/") && (p.includes(HERO) || p.includes("og-image")));
+    const cur = `/img/drive/${FAKE}-b2-400.webp`;
+    check("D193 retired: a blurred photo's old addresses (old name, old mark, this site's full address) show the current b2 copy; old link-preview addresses show Photo wanted",
+      JSON.stringify(r) === JSON.stringify([cur, cur, cur, "Photo wanted", "Photo wanted", "Photo wanted"]), r);
+    const retired = asked.filter((p) => /^\/img\/drive\/(og-image(-b[12])?\.jpg|[\w-]+-(b1-)?\d+\.webp)$/.test(p) && !p.includes("-b2-") && p.includes("/img/drive/") && (p.includes(FAKE) || p.includes("og-image")));
     check("D193 retired: no retired address is ever requested", retired.length === 0, retired);
     await context.close();
   }
@@ -455,7 +479,7 @@ try {
   for (const editor of [true, false]) {
     const { context } = await newContext(browser, { width: 1440 });
     if (editor) await context.addInitScript(() => { window.__editorOverlay = true; });
-    await context.route("**/config.js", (route) => route.fulfill({ contentType: "text/javascript", body: CONFIG.replace(JSON.stringify({ [HERO]: [400, 800, 1200, 1600] }), "{}") }));
+    await context.route("**/config.js", (route) => route.fulfill({ contentType: "text/javascript", body: BLUR_UNSAVED }));
     const page = await context.newPage();
     const who = editor ? "editor preview" : "visitor";
     await open(page, "/robots.html");
@@ -481,14 +505,14 @@ try {
       window.setContent({ SITE: { ...SITE, heroImage: hero } });
       const t = document.querySelector('[data-ck="SITE.heroImage"]');
       return { img: !!document.getElementById("hero-photo"), target: !!t, type: t && t.getAttribute("data-ck-type"), spots: document.querySelectorAll(".editor-photo").length };
-    }, HERO);
+    }, FAKE);
     check(`${who}: Home with the blurred hero unavailable: ${editor ? "a SITE.heroImage image target to replace it" : "no photo and no target"}`, !hp.img && hp.target === editor && (!editor || hp.type === "image") && (editor || hp.spots === 0), hp);
     await open(page, "/robot.html?year=2026");
     const rp = await page.evaluate((hero) => {
       const robots = JSON.parse(JSON.stringify(ROBOTS)); robots[0].image = hero; robots[0].gallery = [hero];
       window.setContent({ ROBOTS: robots });
       return { photo: !!document.getElementById("robot-photo"), target: !!document.querySelector('[data-ck="ROBOTS[0].image"]'), gallery: !!document.querySelector('[data-ck="ROBOTS[0].gallery[0]"]') };
-    }, HERO);
+    }, FAKE);
     check(`${who}: a robot page whose photo and gallery photo cannot be shown ${editor ? "keeps both targets" : "shows neither"}`, !rp.photo && rp.target === editor && rp.gallery === editor, rp);
     await context.close();
   }
