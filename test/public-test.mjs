@@ -393,6 +393,34 @@ try {
       await context.close();
     }
   }
+  // D193: one function for every Drive link form. Content edited as the editor does (setContent): the hero pasted as a
+  // drive.google.com link shows its blurred copy; an unblurred photo pasted as a ?id= link loads by its ID; a Google
+  // address that is not a Drive photo, and the hero in a form with no saved copy, show "Photo wanted" and are never requested.
+  {
+    const { context, google } = await newContext(browser, { width: 1440 });
+    const page = await context.newPage();
+    await open(page, "/robots.html");
+    const other = "1AbCdEfGhIjKlMnOpQrStUvWxYz012345";
+    const r = await page.evaluate(({ hero, other }) => {
+      const robots = JSON.parse(JSON.stringify(ROBOTS));
+      robots[0].image = `https://drive.google.com/file/d/${hero}/view?usp=sharing`;
+      robots[1].image = `https://drive.usercontent.google.com/download?id=${other}&export=view`;
+      robots[2].image = "https://lh3.googleusercontent.com/a/ACg8ocK-not-a-drive-photo";
+      robots[3].image = `https://www.googleapis.com/drive/v3/files/${hero}?alt=media`;
+      window.setContent({ ROBOTS: robots });
+      const item = (i) => document.querySelector(`#robot-archive > li[data-ck="ROBOTS[${i}]"]`);
+      const img = (i) => { const im = item(i).querySelector("img"); return im ? [im.getAttribute("src"), im.getAttribute("srcset")] : null; };
+      return { a: img(0), b: img(1), c: { img: img(2), wanted: !!item(2).querySelector(".ph") }, d: img(3) };
+    }, { hero: HERO, other });
+    await page.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += 600) { scrollTo(0, y); await new Promise((res) => setTimeout(res, 40)); } });
+    await page.waitForTimeout(300);
+    check("D193 forms: the hero pasted as a drive.google.com/file/d/ link shows only its blurred copies", r.a && /-b1-400\.webp$/.test(r.a[0]) && !/google/.test(r.a.join(" ")), r.a);
+    check("D193 forms: the hero as a Drive API address shows its blurred copy too", r.d && /-b1-400\.webp$/.test(r.d[0]), r.d);
+    check("D193 forms: an unblurred photo pasted as drive.usercontent ?id= loads by its ID from the one lh3 address", r.b && r.b[0] === `https://lh3.googleusercontent.com/d/${other}=w400`, r.b);
+    check("D193 forms: a Google address that is not a Drive photo shows Photo wanted, no image", !r.c.img && r.c.wanted, r.c);
+    check("D193 forms: Google is never asked for the hero or for the address it cannot reduce", !google.some((u) => u.includes(HERO) || u.includes("ACg8ocK")) && google.some((u) => u.includes(other)), google.filter((u) => u.includes(HERO) || u.includes("ACg8ocK") || u.includes(other)));
+    await context.close();
+  }
   // The robots list follows the data (what the editor's live preview does: new content, the page re-renders)
   {
     const { context } = await newContext(browser, { width: 1440 });

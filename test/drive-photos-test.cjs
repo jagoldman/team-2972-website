@@ -159,6 +159,51 @@ check("imgUrl: an ID that is also an Object property name is not looked up there
   check("D193: the signal is documented once, beside photoBlurList, and config.js carries the format marker", /THE SIGNAL \(D193; the Website editor's preview relies on it\)/.test(read("js/components.js")) && /"format": 1,/.test(read("config.js")));
 }
 
+// ---------- D193: one function for every Drive link form ----------
+{
+  const forms = (id) => [
+    ["a bare ID", id], ["lh3 /d/", `https://lh3.googleusercontent.com/d/${id}`], ["lh3 /d/ with =w800", `https://lh3.googleusercontent.com/d/${id}=w800`],
+    ["lh3 /d/ with =s0-rj", `https://lh3.googleusercontent.com/d/${id}=s0-rj`], ["lh5 /d/", `https://lh5.googleusercontent.com/d/${id}=w400-h300`],
+    ["lh3 over http", `http://lh3.googleusercontent.com/d/${id}`],
+    ["drive /file/d/.../view", `https://drive.google.com/file/d/${id}/view?usp=sharing`], ["drive /file/d/ bare", `https://drive.google.com/file/d/${id}`],
+    ["drive /file/u/0/d/", `https://drive.google.com/file/u/0/d/${id}/view`], ["drive /open?id=", `https://drive.google.com/open?id=${id}`],
+    ["drive /uc?id=", `https://drive.google.com/uc?id=${id}`], ["drive /uc?export=view&id=", `https://drive.google.com/uc?export=view&id=${id}`],
+    ["docs /uc?id=", `https://docs.google.com/uc?id=${id}&export=download`], ["docs /file/d/", `https://docs.google.com/file/d/${id}/edit`],
+    ["drive /thumbnail?id=", `https://drive.google.com/thumbnail?id=${id}&sz=w1000`], ["drive /u/1/uc?id=", `https://drive.google.com/u/1/uc?id=${id}`],
+    ["usercontent /download?id=", `https://drive.usercontent.google.com/download?id=${id}&export=view`], ["usercontent /u/0/uc?id=", `https://drive.usercontent.google.com/u/0/uc?id=${id}`],
+    ["Drive API v3", `https://www.googleapis.com/drive/v3/files/${id}?alt=media`], ["Drive API v2", `https://www.googleapis.com/drive/v2/files/${id}`],
+    ["with spaces round it", `  https://drive.google.com/file/d/${id}/view  `], ["upper-case host", `https://DRIVE.GOOGLE.COM/file/d/${id}/view`],
+  ];
+  const site = loadComponents(manifest), bare = loadComponents("{}");
+  const wrong = [];
+  for (const [label, v] of forms(HERO)) {
+    if (fetchPhotos.driveId(v) !== HERO) wrong.push(`build ${label}`);
+    if (site.imgUrl(v, 800) !== `/img/drive/${HERO}-b1-800.webp` || site.imgUrl(v, 2000) !== `/img/drive/${HERO}-b1-1600.webp`) wrong.push(`page ${label}: ${site.imgUrl(v, 800)}`);
+    if (bare.imgUrl(v, 800) !== "" || bare.hasPhoto(v)) wrong.push(`page, not saved ${label}: ${bare.imgUrl(v, 800)}`);
+  }
+  check(`D193: a blurred photo in each of ${forms(HERO).length} link forms is found by the build and shows its blurred copy, or nothing when it is not saved`, wrong.length === 0, wrong.slice(0, 4).join(" | "));
+  const ok = [];
+  for (const [label, v] of forms(B)) {
+    if (fetchPhotos.driveId(v) !== B) ok.push(`build ${label}`);
+    if (site.imgUrl(v, 800) !== `/img/drive/${B}-800.webp`) ok.push(`page saved ${label}: ${site.imgUrl(v, 800)}`);
+    if (bare.imgUrl(v, 800) !== lh3(B, 800)) ok.push(`page not saved ${label}: ${bare.imgUrl(v, 800)}`);
+  }
+  check("D193: an unblurred photo in each form still works: its saved copy, or the one lh3 address for its ID", ok.length === 0, ok.slice(0, 4).join(" | "));
+  const unreducible = ["https://lh3.googleusercontent.com/a/ACg8ocK", "https://lh3.googleusercontent.com/pw/AP1Gcz", `https://lh3.googleusercontent.com/d/short`,
+    `https://drive.google.com/drive/folders/${B}`, `https://drive.google.com/open?id=short`, `https://photos.google.com/photo/${B}`, `https://lh3.google.com/u/0/d/${B}`,
+    `https://www.googleapis.com/drive/v3/about`, "https://lh4.ggpht.com/x.jpg", "https://www.gstatic.com/images/x.png", "https://images.google.co.uk/x.jpg", "https://drive.google.com./uc"];
+  const passed = unreducible.filter((v) => site.imgUrl(v, 800) !== "" || fetchPhotos.driveId(v) !== "");
+  check("D193: a Google-hosted address the function cannot reduce to an ID is never requested (imgUrl gives \"\")", passed.length === 0, passed.join(" | "));
+  const others = [["https://example.com/photo.jpg", "https://example.com/photo.jpg"], [`https://lh3.googleusercontent.com.evil.example/d/${B}`, `https://lh3.googleusercontent.com.evil.example/d/${B}`], ["assets/placeholder-robot.svg", "assets/placeholder-robot.svg"]];
+  check("D193: addresses on other hosts and site paths are unchanged", others.every(([v, want]) => site.imgUrl(v, 800) === want && fetchPhotos.driveId(v) === ""));
+  check("D193: driveIdOf is one function, in the photo-rules block: no other Drive ID rule in components.js or fetch.cjs",
+    (read("js/components.js").match(/function driveIdOf\(/g) || []).length === 1 && !/DRIVE_URL|DRIVE_ID =/.test(read("scripts/drive-photos/fetch.cjs")) && !/lh3\\\.googleusercontent\\\.com\\\/d/.test(read("js/components.js").replace(/\/\/[^\n]*/g, "")));
+  const sampleForms = `const SITE = { heroImage: "https://drive.google.com/file/d/${HERO}/view" };
+const ROBOTS = [{ image: "https://drive.usercontent.google.com/download?id=${B}" }, { gallery: ["https://www.googleapis.com/drive/v3/files/${C}", "https://lh3.googleusercontent.com/a/nope"] }];
+const contentSections = { SITE, ROBOTS };`;
+  check("D193: the build downloads a photo pasted in any form (each ID once)", fetchPhotos.extractDriveIds(sampleForms).join() === [B, C, HERO].sort().join(), fetchPhotos.extractDriveIds(sampleForms).join());
+}
+
 // The two copies of the Drive ID rule agree: imgUrl() goes to lh3 (empty manifest) exactly when fetch.cjs takes the value.
 const plain = loadComponents("{}");
 const probes = [B, ` ${B} `, "short", "a".repeat(19), "a".repeat(20), "abc-def_ghi-jkl_mnop-q", "has space in it 1234567890", "a/b/cccccccccccccccccccccc",

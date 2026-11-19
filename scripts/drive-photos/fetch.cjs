@@ -3,9 +3,8 @@
 //   node scripts/drive-photos/fetch.cjs [content.js] [out dir]     defaults: js/content.js  img/drive
 //   (run `npm ci` in scripts/drive-photos first; it needs sharp)
 //
-// 1. Reads every Drive image in the content: each string value in contentSections that imgUrl() in
-//    js/components.js treats as a Drive photo (a bare ID of 20+ word characters, or an
-//    https://lh3.googleusercontent.com/d/<ID> URL). Keep DRIVE_ID / DRIVE_URL in step with imgUrl().
+// 1. Reads every Drive image in the content: each string value in contentSections that driveIdOf() (the "photo-rules"
+//    block of js/components.js, which imgUrl() uses too) reduces to a Drive ID, in any form it knows.
 // 2. Downloads each one once from lh3 at the largest width, then writes <out>/<id>-<w>.webp for every width
 //    in WIDTHS (never enlarged; EXIF rotation applied, then all metadata dropped).
 //    A photo in the blur table (window.PHOTO_BLUR in config.js, the one list the pages read too; D193, a face blurred
@@ -42,7 +41,7 @@ function photoRules(file = path.join(__dirname, "..", "..", "js", "components.js
   if (a < 0 || b < a) throw new Error(`no photo-rules block in ${file}`);
   const ctx = { URL };
   vm.createContext(ctx);
-  vm.runInContext(`${src.slice(a, b)}\n;globalThis.__rules = { photoBlurList, isGoogleHosted };`, ctx, { timeout: 2000 });
+  vm.runInContext(`${src.slice(a, b)}\n;globalThis.__rules = { photoBlurList, isGoogleHosted, driveIdOf };`, ctx, { timeout: 2000 });
   return ctx.__rules;
 }
 // The blur table: window.PHOTO_BLUR in config.js (the site root, or /build in the Docker stage), as photoBlurList()
@@ -52,7 +51,7 @@ function blurTable(configFile = process.env.BLUR_CONFIG || path.join(__dirname, 
   const ctx = { window: {} };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(configFile, "utf8"), ctx, { timeout: 2000 });
-  const list = photoRules().photoBlurList(ctx.window.PHOTO_BLUR);
+  const list = rules().photoBlurList(ctx.window.PHOTO_BLUR);
   if (!list) throw new Error(`PRIVACY (D193): no valid PHOTO_BLUR list (format 1) in ${configFile}`);
   return JSON.parse(JSON.stringify(list));
 }
@@ -87,13 +86,12 @@ async function blurRegions(sharp, input, ellipses) {
   return img;
 }
 
-const DRIVE_ID = /^[\w-]{20,}$/;
-const DRIVE_URL = /^https:\/\/lh3\.googleusercontent\.com\/d\/([\w-]+)/;
+let RULES = null;
+const rules = () => RULES || (RULES = photoRules());
 
-// The Drive ID in a content value, or "" (the same rule as imgUrl()).
+// The Drive ID in a content value, or "": driveIdOf() from js/components.js, the same function the pages use.
 function driveId(value) {
-  const s = String(value || "").trim();
-  return DRIVE_ID.test(s) ? s : (s.match(DRIVE_URL) || [])[1] || "";
+  return rules().driveIdOf(value);
 }
 
 // The content sections of a content.js source.

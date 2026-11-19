@@ -162,14 +162,16 @@ function ckAlt(path) {
 //                  /media/<id>-<w>.webp, where <w> is the smallest stored width (400, 800 or 1600) that
 //                  is at least the width asked for; if the published media list says which widths exist,
 //                  only those are used. (<id>-thumb.webp is for the editor's own screens, not for pages.)
-//   a Google Drive image ID or lh3.googleusercontent.com/d/ID URL (any =w size on it is replaced) ->
+//   a Google Drive photo in any form driveIdOf() knows (an ID, lh3.googleusercontent.com/d/ID, drive.google.com/file/d/ID,
+//   ?id=ID, the Drive API; any size on it is replaced) ->
 //                  /img/drive/<id>-<w>.webp, the copy this server downloaded when the image was built, at the
 //                  smallest saved width that is at least the width asked for; if there is none (local preview,
 //                  a photo added later, a failed download), the lh3 URL as before
 //   any other http(s) URL or site path, such as an SVG placeholder, which is returned unchanged
 //   imgUrl("media:<id>", 600) -> "/media/<id>-800.webp"
 //   imgUrl("1AbC…", 400)      -> "/img/drive/1AbC…-400.webp" or "https://lh3.googleusercontent.com/d/1AbC…=w400"
-// The Drive ID rule is also in scripts/drive-photos/fetch.cjs; keep the two in step.
+//   any other Google-hosted address -> "" (never used as it is); a blurred photo -> its blurred copy or "" (D193)
+// The Drive ID rule is driveIdOf() in the "photo-rules" block, which scripts/drive-photos/fetch.cjs runs too.
 const MEDIA_WIDTHS = [400, 800, 1600];
 const MEDIA_REF = /^media:([a-f0-9]{20})$/;
 // { "<Drive id>": [widths saved, smallest first] } from config.js; {} when Caddy did not fill it in.
@@ -216,6 +218,34 @@ function isGoogleHosted(value) {
   try { host = new URL(s, "http://relative.invalid/").hostname.toLowerCase().replace(/\.$/, ""); } catch (e) { return false; }
   return /(^|\.)(googleusercontent|googleapis|ggpht|gstatic|googledrive)\.com$/.test(host) || /(^|\.)google\.[a-z]{2,3}(\.[a-z]{2})?$/.test(host);
 }
+// The Drive file ID in a photo value, whatever form it was pasted in, or "". The one function for every Drive form; the
+// pages (imgUrl) and the image build (fetch.cjs) both use it, so a blurred photo is found in any form.
+//   a bare ID                                     20 or more of A-Z a-z 0-9 _ -
+//   lh<N>.googleusercontent.com/d/<id>            with or without a size or other suffix (=w800, =s0, /view)
+//   drive.google.com or docs.google.com           /file/d/<id>/..., /file/u/<n>/d/<id>/..., /open?id=, /uc?id=,
+//                                                 /thumbnail?id= (also under /u/<n>/)
+//   drive.usercontent.google.com                  any path with ?id= (/download?id=, /u/0/uc?id=)
+//   www.googleapis.com/drive/v2|v3/files/<id>     the Drive API
+// http: and https: are both taken (both name the same file). Any other Google-hosted address is not a Drive photo
+// this site can serve: imgUrl() gives "" for it (isGoogleHosted).
+function driveIdOf(value) {
+  const s = String(value ?? "").trim();
+  const ok = (id) => (/^[\w-]{20,}$/.test(id || "") ? id : "");
+  if (ok(s)) return s;
+  let u;
+  try { u = new URL(s.replace(/[\u0000-\u0020\u007f-\u009f]/g, "")); } catch (e) { return ""; }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return "";
+  const host = u.hostname.toLowerCase().replace(/\.$/, ""), p = u.pathname, q = u.searchParams.get("id") || "";
+  let m;
+  if (/^lh\d+\.googleusercontent\.com$/.test(host) && (m = /^\/d\/([\w-]+)/.exec(p))) return ok(m[1]);
+  if (host === "drive.google.com" || host === "docs.google.com") {
+    if ((m = /^\/file(?:\/u\/\d+)?\/d\/([\w-]+)/.exec(p))) return ok(m[1]);
+    if (/^(?:\/u\/\d+)?\/(?:open|uc|thumbnail)\/?$/.test(p)) return ok(q);
+  }
+  if (host === "drive.usercontent.google.com") return ok(q);
+  if (host === "www.googleapis.com" && (m = /^\/drive\/v[23]\/files\/([\w-]+)/.exec(p))) return ok(m[1]);
+  return "";
+}
 // ---- photo-rules: end ----
 
 // The blur list as the pages see it: the photos map, or null when the list did not arrive (see THE SIGNAL above).
@@ -238,10 +268,11 @@ function imgUrl(src, width) {
     const w = have.find((x) => x >= width) || have[have.length - 1];
     return `/media/${media[1]}-${w}.webp`;
   }
-  const id = /^[\w-]{20,}$/.test(s) ? s : (s.match(/^https:\/\/lh3\.googleusercontent\.com\/d\/([\w-]+)/) || [])[1];
-  // The blur list did not arrive: nothing from Google, and no Drive photo at all (we cannot tell which are blurred).
-  if (!PHOTO_BLUR_LIST && (id || isGoogleHosted(s))) return "";
-  if (!id) return safeUrl(s);
+  const id = driveIdOf(s);
+  // A Google-hosted address that is not a Drive photo in a form driveIdOf() knows is never used as it is.
+  if (!id) return isGoogleHosted(s) ? "" : safeUrl(s);
+  // The blur list did not arrive: no Drive photo at all (we cannot tell which are blurred), so nothing from Google.
+  if (!PHOTO_BLUR_LIST) return "";
   const saved = Object.prototype.hasOwnProperty.call(DRIVE_PHOTOS, id) && Array.isArray(DRIVE_PHOTOS[id]) ? DRIVE_PHOTOS[id] : [];
   const blur = blurOf(id);
   if (blur) {

@@ -27,6 +27,14 @@ and the work list `new-apps/adoption/r83/GAP_PUBLIC_SITE.md`. `docs/PUBLIC_REDES
   up, a wide Gaussian, a soft mask fully opaque over the ellipse), and writes `<id>-<v>-<w>.webp`; the link-preview picture
   is `og-image-b1.jpg`. `imgUrl()` never gives a Google address for a blurred ID; without a saved copy the photo is not
   shown (`hasPhoto()`), and the build log says `PRIVACY (D193)` loudly. Change `v` whenever the regions change.
+- **D193 fails closed:** the list is `{ format: 1, photos: { <id>: { v, ellipses } } }`. `photoBlurList()`, in the
+  "photo-rules" block of `js/components.js` (the image build runs exactly that block; the Dockerfile copies the file into
+  the photo stage), accepts only that shape. Anything else (no `config.js`, one that does not parse, no list, no
+  `format: 1`, one bad entry) means "did not arrive": the pages then show no Drive photo and ask Google for nothing.
+  `{ format: 1, photos: {} }` means "nothing blurred". The Website editor's preview relies on this signal.
+- **One Drive ID function:** `driveIdOf()` in the same block reduces every Drive link form (an ID, `lh*.googleusercontent.com/d/`,
+  `drive.google.com`/`docs.google.com` `/file/d/`, `?id=` on `/open`, `/uc`, `/thumbnail`, `drive.usercontent.google.com`, the
+  Drive API) to the ID, for the pages and the build. Any other Google-hosted address is never used (`isGoogleHosted()`).
 - **Tests:** `test/public-test.mjs` rewritten (see its header); `theme-test`, `season-test`, `legal-test`, `pwa-test`,
   `install-test`, `site-test.html`, `menu-test.html`, `portal-shell-test.mjs`, `drive-photos-test` and `container-test.sh`
   updated.
