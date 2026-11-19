@@ -3,6 +3,7 @@
 /** The app bar's own hover descriptions. */
 export const BAR_TIPS: Readonly<{
   apps: string;
+  home: string;
   build: string;
   competition: string;
   tools: string;
@@ -14,6 +15,8 @@ export const BAR_TIPS: Readonly<{
   closeapps: string;
   closebell: string;
   closeaccount: string;
+  notice: string;
+  noticeread: string;
 }>;
 /** Tab descriptions by apps.json id, then data-tab id. */
 export const TAB_TIPS: Readonly<Record<string, Readonly<Record<string, string>>>>;

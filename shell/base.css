@@ -1,0 +1,71 @@
+/*
+ * 2972 shell kit: base type for a page (0.5.0, Ground up; the demo's css/look.css and css/ideal.css). Source of truth:
+ * infra/shell/base.css. Needs tokens.css. Import it once, after tokens.css (and after tailwindcss in a Tailwind app).
+ *
+ * Everything here is in `@layer base`, so it is the floor, never the ceiling: in a Tailwind app it merges into
+ * Tailwind's base layer (after preflight, before every utility, so `text-2xl` on an h1 still wins); in an app without
+ * Tailwind, any unlayered rule of the app's own beats it. An app deletes its own body, h1, h2 and h3 font rules
+ * (family, size, weight) and keeps only what is really different on one page.
+ *
+ * Type: one family, Archivo. 16 px on a phone (so iOS does not zoom into a field), 14 px from 641 px (tighter rows
+ * with a mouse). Headings are wider, not taller: h1 and h2 at font-stretch var(--wide) (112%). Numbers that line up
+ * (times, counts in a column, codes) use .num or .mono: tabular figures in the same face.
+ */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.45;
+    font-kerning: normal;
+  }
+  @media (min-width: 641px) {
+    body {
+      font-size: 14px;
+    }
+  }
+  h1,
+  h2,
+  h3 {
+    margin: 0;
+    text-wrap: balance;
+  }
+  h1 {
+    font-family: var(--display);
+    font-stretch: var(--wide);
+    font-weight: 750;
+    font-size: 1.375rem;
+    line-height: 1.15;
+    letter-spacing: -0.012em;
+  }
+  h2 {
+    font-family: var(--display);
+    font-stretch: var(--wide);
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.25;
+    letter-spacing: -0.005em;
+  }
+  h3 {
+    font-family: var(--body);
+    font-weight: 650;
+    font-size: 0.95rem;
+    line-height: 1.3;
+  }
+  .num,
+  .mono {
+    font-variant-numeric: tabular-nums;
+  }
+  .mono {
+    font-family: var(--mono);
+    font-size: 0.94em;
+  }
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+}

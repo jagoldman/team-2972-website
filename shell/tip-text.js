@@ -1,5 +1,6 @@
 // 2972 shell kit: the shared hover descriptions (D149), so every app says its tabs and status words the same way.
-// Source of truth: infra/shell/tip-text.js. Words from the approved demo (portal-demo 4f767ea, js/tip.js).
+// Source of truth: infra/shell/tip-text.js. Words from the approved demo (portal-demo 4f767ea, js/tip.js; 0.5.0 adds the
+// Ground up words from demo-design83 ef99513: Calendar's Volunteer tab and Full, Who's coming, Skills' permissions).
 // Plain ES module, no dependencies. Types: tip-text.d.ts.
 //
 // Keyed by the ids in config/apps.json (tasks, calendar, skills, parts, schedule, pit, scouting). The tip module
@@ -15,6 +16,7 @@
 /** The app bar's own controls (both adapters use these; the demo's words where it has them). */
 export const BAR_TIPS = Object.freeze({
   apps: "Every app, tool and team link.",
+  home: "Your starting page, with what needs you today.",
   build: "Show the apps for build season.",
   competition: "Show the event apps: schedule, pit and scouting.",
   tools: "Small helpers that open on this site.",
@@ -26,6 +28,9 @@ export const BAR_TIPS = Object.freeze({
   closeapps: "Close the apps menu.",
   closebell: "Close notifications.",
   closeaccount: "Close the account menu.",
+  // 0.5.0 (H3): a notice row; the menu says the other state.
+  notice: "Open it; right-click or press and hold to mark it read.",
+  noticeread: "Open it; right-click or press and hold to mark it unread.",
 });
 
 const freeze = (o) => Object.freeze(Object.fromEntries(Object.entries(o).map(([k, v]) => [k, Object.freeze(v)])));
@@ -53,6 +58,7 @@ export const TAB_TIPS = freeze({
     calendar: "Practices, events and days off.",
     here: "Sign in at the door and see hours.",
     snacks: "Families sign up to bring snacks to practice.",
+    volunteer: "Sign up to help at team events like the field build.",
     month: "The whole month at a glance.",
     agenda: "The coming days as a list.",
     setup: "When the team practices, days off and phone links.",
@@ -140,6 +146,11 @@ export const STATUS_TIPS = freeze({
     "Missed sign-out": "Didn't sign out; hours need a fix.",
     Adjusted: "A mentor changed these hours.",
     "Up to date": "Phone calendars have the latest changes.",
+    // 0.5.0 (Ground up): the Volunteer tab, and Who's coming in its new words (Coming, Not coming, No reply).
+    Full: "Every volunteer spot is taken.",
+    Coming: "Said they are coming.",
+    "Not coming": "Said they can't come.",
+    "No reply": "Hasn't said yet whether they are coming.",
   },
   skills: {
     Ready: "You can start this skill now.",
@@ -153,6 +164,14 @@ export const STATUS_TIPS = freeze({
     Needed: "Must be done before this one.",
     Add: "Will be added when you save.",
     Edit: "Will be changed when you save.",
+    // 0.5.0 (Ground up): machine permissions and the sign-off words.
+    Cleared: "A mentor signed off the written test and the demonstration.",
+    "In training": "Started; may not use it alone yet.",
+    "Not cleared": "Not trained on it yet; may not use it.",
+    "Signed off": "A mentor checked the work and approved it.",
+    "Needs earlier skills": "Finish the skills before it first.",
+    "Ready for sign-off": "Ask a mentor to check your work.",
+    Asked: "You asked for a sign-off; a mentor will check it.",
   },
   schedule: COMPETE,
   pit: COMPETE,

@@ -112,6 +112,8 @@ export const THEME_COOKIE: "theme";
 export const MODE_COOKIE: "mode";
 export const GROUPS_COOKIE: "shellgroups";
 export const MENU_GROUPS: readonly MenuGroup[];
+/** The words on each group's row (0.5.0: more is "Team links"). */
+export const GROUP_LABELS: Readonly<Record<MenuGroup, string>>;
 export const ADMIN_GROUP: "admin";
 export const COOKIE_MAX_AGE: number;
 export const ICONS: Readonly<Record<string, string>>;
@@ -132,6 +134,8 @@ export function changeScreenHref(site: Site, appId: string): string;
 /** The raw groups (an array or a "|" list) hold `display`. */
 export function isDisplay(groups: readonly string[] | string | null | undefined): boolean;
 export function hasAccountMenu(user?: ShellUser | null, enabled?: boolean): boolean;
+/** The account panel's role line: "Mentor", "Mentor, admin", "Student"; "" when no known group (0.5.0). */
+export function roleLabel(groups: readonly string[] | string | null | undefined): string;
 export function resolveTiles(appsJson: unknown, groups: readonly string[], site: Site): ShellTile[];
 /** The Tools rows: entries with `tool: true`, filtered and resolved like tiles. resolveTiles leaves them out. */
 export function resolveTools(appsJson: unknown, groups: readonly string[], site: Site): ShellTool[];
@@ -150,6 +154,18 @@ export const INBOX_READ_ALL: Readonly<{ all: true }>;
 export function inboxHasUnread(inbox: { unread: number; items: readonly ShellInboxItem[] } | null | undefined): boolean;
 /** The inbox after a successful "Mark all read". */
 export function inboxAllRead<T extends { unread: number; items: readonly ShellInboxItem[] }>(inbox: T): T;
+/** 0.5.0 (H3): the body that marks one notice read (`read` omitted: `{ ids: [id] }`) or sets it read or unread. */
+export function inboxReadOne(id: string, read?: boolean): { ids: [string]; read?: boolean };
+/** The most ids one read request may carry. */
+export const INBOX_READ_MAX_IDS: number;
+/** A POST /_shell/inbox/read body, checked; null when it must be refused (400). `read` defaults to true. */
+export function parseInboxRead(body: unknown): { all: true } | { ids: string[]; read: boolean } | null;
+/** The inbox with one notice marked read or unread; the count follows. */
+export function inboxMark<T extends { unread: number; items: ShellInboxItem[] }>(inbox: T, id: string, read: boolean): T;
+/** Unread notices first, then read ones, each newest first. */
+export function inboxOrder(items: readonly ShellInboxItem[]): ShellInboxItem[];
+/** "Parts, 12 min ago": the app that sent a notice and when. */
+export function noticeLine(label: string, at: string, now?: number): string;
 /** Competition's /event-status.json → { pit, rank, teams }, or null. */
 export function parseEventStatus(d: unknown): { pit: string | null; rank: number | null; teams: number | null } | null;
 /** "Just now", "12 min ago", "3 h ago", "Sun", "Nov 6". */
@@ -183,3 +199,11 @@ export function applyTheme(choice: ThemeChoice, doc?: Document, win?: Window): "
 export function setTheme(choice: ThemeChoice, site: Site, doc?: Document, win?: Window): "light" | "dark";
 export function themeInitScript(site: Site): string;
 export function iconPath(name: string): string;
+
+/**
+ * 0.5.0 (D187-1): `<link rel="preconnect">` once per origin, only for this site's own hosts on SITE_SCHEME (never an
+ * outside address, never this page's origin). True when a link was added.
+ */
+export function warmOrigin(href: string, site: Site, doc?: Document | null): boolean;
+/** Warms any `a[href]` door on hover (about 100 ms), press, touch and keyboard focus. Reference-counted; returns its undo. */
+export function installWarm(site: Site, doc?: Document | null): () => void;

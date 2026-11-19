@@ -32,12 +32,13 @@ const freeze = (o) => Object.freeze({ ...o, needs: Object.freeze({ ...(o.needs |
 /** Every stop, once; a role's own words for a shared stop are in ROLE_WORDS. */
 export const GUIDE_STOPS = Object.freeze([
   freeze({
-    // Calendar: Attendance > Today has "Scan the door code" while the person is not signed in; it opens the camera,
-    // and the code leads to /here/scan, whose confirm button signs them in (the app says "door" there).
+    // Calendar: Attendance > Today has "Sign in" (0.5.0, Ground up; it was "Scan the door code") while the person is
+    // not signed in; it opens the camera, and the code leads to /here/scan, whose confirm button signs them in (the app
+    // says "door" there).
     id: "door", roles: ["student"], app: "calendar", path: "/here?tab=today", target: ring("door"), finish: "event", continues: ["/here/scan"],
     name: "Sign in at the door", line: "The first thing you do at every practice.", covered: "signing in at the door",
-    title: "Sign in at the door", text: "Press Scan the door code when you arrive, then point your camera at the code on the door screen.",
-    missing: "When you are not signed in yet, Scan the door code is on this page; press it when you arrive.",
+    title: "Sign in at the door", text: "Press Sign in when you arrive, then point your camera at the code on the door screen.",
+    missing: "When you are not signed in yet, Sign in is on this page; press it when you arrive.",
   }),
   freeze({
     // Tasks: My tasks (/my), the Next up card's Open (a link to /my?task=…, which opens the task).
@@ -115,6 +116,14 @@ export const GUIDE_STOPS = Object.freeze([
     missing: "Every practice has snacks covered; a day that needs more gets an I'll bring snacks button.",
   }),
   freeze({
+    // Calendar: the Volunteer tab (0.5.0, D184; both modes), the first event's "Sign up"; the app says "vol" when the
+    // sign-up is saved (as the snack stop). The demo's S_VOL.
+    id: "vol", roles: ["parent"], app: "calendar", path: "/volunteer", target: ring("vol"), finish: "event",
+    name: "Help at a team event", line: "The field build and other days that need adults.", covered: "volunteer sign-up",
+    title: "Help at a team event", text: "Press Sign up on an event you can make; you get a reminder two days before.",
+    missing: "Every volunteer event is full; one that needs people gets a Sign up button.",
+  }),
+  freeze({
     // The Admin link in the portal home's Admin apps row, as the demo rings it (the static mountHomeGroups marks it; the
     // stop opens that row for this time only); the bar's Admin tile in its Apps menu when Home has no such row (C2, D161).
     id: "admin", roles: ["admin"], app: "portal", path: "/", target: ring("tile-admin"), finish: "click", needs: { tile: "admin", menu: "adminapps" },
@@ -145,7 +154,7 @@ export const ROLE_WORDS = Object.freeze({
 export const GUIDE_ROLES = Object.freeze({
   student: Object.freeze(["door", "task", "part", "skill"]),
   mentor: Object.freeze(["days", "wait", "ok", "sign"]),
-  parent: Object.freeze(["next", "sub", "snack"]),
+  parent: Object.freeze(["next", "sub", "snack", "vol"]),
   admin: Object.freeze(["admin", "pattern", "wait", "days", "ok"]),
 });
 

@@ -2,17 +2,22 @@
  * 2972 shell kit: design tokens (MASTER_PLAN D101). Source of truth: infra/shell/tokens.css.
  * Do not edit a synced copy; change infra and run scripts/sync-shell.sh (the hash check finds drift).
  *
- * Colours, fonts and radius come from the redesigned portal demo (portal-demo/css/base.css, see
- * shell/README.md for the commit). Deliberate differences from the demo, all recorded in the README:
+ * 0.5.0 (release 8.3, "Ground up", D182–D190): the colours, type and corners of the approved design
+ * (.worktrees/demo-design83 `ef99513`, css/look.css and css/ideal.css). Flag black and white, arena grey for the
+ * page, and one accent: the blue of the robot's bumpers. Deliberate differences from the demo, all in the README:
  *   - the demo's --accent (the blue ink for links, selected items and focus) is --accent-ink here, because
  *     shadcn uses --accent for a hover background;
- *   - --input-line (form field borders) is new: the demo's --line-2 is under WCAG 1.4.11's 3:1;
- *   - --focus is a separate token that follows the ink in both themes.
+ *   - --input-line (form field borders) is kept: the demo has none, and its --line-2 is decorative;
+ *   - --focus is a separate token that follows the ink in both themes;
+ *   - --gold, --gold-2 and --on-gold stay as aliases of the bumper blue for this release (the apps' 5 to 8 uses each
+ *     keep working); new code uses --bumper.
  *
- * Colour meaning: gold (--gold / --primary) is only the main button, the active-tab underline, the 2972 badge
- * and "today" on a calendar. Links, selected chips and rows, and focus use the blue ink (--accent-ink).
- * Type: Inter (--body) for everything including h2/h3; Bricolage Grotesque (--display) only for the brand,
- * the page h1 and big numbers; JetBrains Mono (--mono) only for real codes.
+ * Colour meaning: blue (--bumper / --primary) is only for what is yours to act on: the one filled button on a screen,
+ * the 2972 badge, the hero's left edge and "today" on a calendar. Links, selected chips and rows, and focus use the
+ * blue ink (--accent-ink). Chosen tabs are underlined in the text colour, not in blue.
+ * Type: one family, Archivo (--body; --display and --mono are the same face). Headings are wider (font-stretch:
+ * var(--wide), 112%), never taller. Codes and times use tabular figures, not a monospace face.
+ * Corners: --r (4 px) for anything that holds content, --r-ctl (8 px) for anything you press.
  *
  * Theme (INTEGRATION §9b, D92): the cookie `theme` = light | dark; no cookie = follow the system.
  * The theme script (shell core: themeInitScript) puts data-theme="light|dark" on <html> for an explicit
@@ -25,22 +30,27 @@
 
 :root {
   /* ---------- Part 1: brand palette, light ---------- */
-  --bg: #f7f8fa;
+  --bg: #eceef0;
   --surface: #ffffff;
-  --surface-2: #f1f3f6;
-  --surface-3: #e5e8ee;
-  --line: rgba(11, 18, 36, 0.1);
-  --line-2: rgba(11, 18, 36, 0.22);
-  --input-line: rgba(11, 18, 36, 0.5);
-  --text: #0b1224;
-  --text-2: #343d52;
-  --mute: #5b6478; /* AA (4.5:1+) on the page and on every light surface */
-  --gold: #e8b931;
-  --gold-2: #f2c94f;
-  --on-gold: #07090f;
-  --accent-ink: #2148a8; /* links, selected items, focus: the blue ink (not gold) */
-  --tint: rgba(33, 72, 168, 0.07);
-  --tint-2: rgba(33, 72, 168, 0.13);
+  --surface-2: #f3f4f6;
+  --surface-3: #dfe2e6;
+  --line: rgba(0, 0, 0, 0.13);
+  --line-2: rgba(0, 0, 0, 0.46);
+  --input-line: rgba(0, 0, 0, 0.5);
+  --text: #000000;
+  --text-2: #2c3238;
+  --mute: #4a5158; /* AA (4.5:1+) on the page and on every light surface */
+  /* The bumper blue: the one filled button, the badge, the hero edge, "today". */
+  --bumper: #1d43c0;
+  --bumper-2: #15329a; /* hover */
+  /* Aliases kept for 0.5.0 (README: "Blue is only…"); new code uses --bumper. */
+  --gold: var(--bumper);
+  --gold-2: var(--bumper-2);
+  --on-gold: #ffffff;
+  --on-bumper: #ffffff;
+  --accent-ink: #1d43c0; /* links, selected items, focus: the blue ink */
+  --tint: rgba(29, 67, 192, 0.07);
+  --tint-2: rgba(29, 67, 192, 0.14);
   --focus: var(--accent-ink);
   --ok: #1d7446;
   --ok-bg: rgba(29, 116, 70, 0.12);
@@ -49,31 +59,39 @@
   --bad: #b42318;
   --bad-bg: rgba(180, 35, 24, 0.1);
   --on-bad: #ffffff;
-  --info: #2353b0;
-  --info-bg: rgba(35, 83, 176, 0.1);
-  /* The app bar (the demo's "rail" colours): dark navy in both themes. */
-  --rail: #0b1224;
-  --rail-2: #141c33;
-  --rail-text: #e9ecf3;
-  --rail-mute: #8f98ad;
-  --role-pit: #e8b931;
+  --info: #1d43c0;
+  --info-bg: rgba(29, 67, 192, 0.1);
+  /* The app bar (the demo's "rail" colours): true black in both themes. */
+  --rail: #000000;
+  --rail-2: #24272b;
+  --rail-text: #ffffff;
+  --rail-mute: #a3a9b1;
+  /* On the black bar: an outlined button's edge, a count's fill, and status words that pass on black. */
+  --rail-edge: rgba(255, 255, 255, 0.42);
+  --rail-count: rgba(255, 255, 255, 0.18);
+  --rail-warn: #f0b43c;
+  --on-rail-warn: #000000;
+  --rail-ok: #4cc38a;
+  --rail-bad: #f2716a;
+  --role-pit: #e8b931; /* data, not chrome: Pit's role colour stays gold */
   --role-scout: #4f7fd9;
   --role-drive: #2e9e6a;
   --role-break: #a7adbb;
   --role-lead: #9b6ad6;
   --role-media: #d9774f;
-  --heat-0: #e5e8ee;
-  --heat-1: #f3dc94;
-  --heat-2: #e8b931;
-  --heat-3: #b8860b;
-  /* next/font sets --font-bricolage / --font-inter / --font-jetbrains-mono when the app loads them that way;
-     landing declares @font-face with the plain family names. Either works. */
-  --display: var(--font-bricolage, "Bricolage Grotesque"), "Avenir Next", "Segoe UI", system-ui, sans-serif;
-  --body: var(--font-inter, "Inter"), "Segoe UI", system-ui, -apple-system, sans-serif;
-  --mono: var(--font-jetbrains-mono, "JetBrains Mono"), ui-monospace, "SF Mono", Menlo, monospace;
-  --r: 12px; /* cards */
-  --r-ctl: 8px; /* controls */
-  --shell-bar-height: 52px;
+  --heat-0: #dfe2e6;
+  --heat-1: #b9c6f1;
+  --heat-2: #6583de;
+  --heat-3: #1d43c0;
+  /* One family (D187-4): each Next app loads the kit's Archivo file with next/font/local, which sets --font-archivo;
+     landing declares @font-face with the plain family name. Either works. */
+  --body: var(--font-archivo, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+  --display: var(--body);
+  --mono: var(--body); /* codes use font-variant-numeric: tabular-nums */
+  --wide: 112%; /* headings, the app's name, big numbers: wider, not taller */
+  --r: 4px; /* anything that holds content */
+  --r-ctl: 8px; /* anything you press */
+  --shell-bar-height: 48px;
   color-scheme: light;
 
   /* ---------- Part 2: shadcn / Tailwind 4 names ---------- */
@@ -83,8 +101,8 @@
   --card-foreground: var(--text);
   --popover: var(--surface);
   --popover-foreground: var(--text);
-  --primary: var(--gold);
-  --primary-foreground: var(--on-gold);
+  --primary: var(--bumper);
+  --primary-foreground: var(--on-bumper);
   --secondary: var(--surface-2);
   --secondary-foreground: var(--text);
   --muted: var(--surface-2);
@@ -97,38 +115,40 @@
   --input: var(--input-line);
   --ring: var(--focus);
   --radius: var(--r);
-  --chart-1: var(--gold);
+  --chart-1: var(--bumper);
   --chart-2: var(--info);
   --chart-3: var(--ok);
   --chart-4: var(--role-lead);
   --chart-5: var(--role-media);
   --sidebar: var(--surface);
   --sidebar-foreground: var(--text);
-  --sidebar-primary: var(--gold);
-  --sidebar-primary-foreground: var(--on-gold);
+  --sidebar-primary: var(--bumper);
+  --sidebar-primary-foreground: var(--on-bumper);
   --sidebar-accent: var(--surface-2);
   --sidebar-accent-foreground: var(--text);
   --sidebar-border: var(--line);
   --sidebar-ring: var(--focus);
 }
 
-/* Dark, part 1 only: part 2 follows through var() (so does --focus, which is the ink). Kept as two identical blocks (system and explicit) on
-   purpose; the contrast test checks that they match. */
+/* Dark, part 1 only: part 2 follows through var() (so do --focus, --gold and --primary). Kept as two identical blocks
+   (system and explicit) on purpose; the contrast test checks that they match. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not(.light) {
-    --bg: #07090f;
-    --surface: #121a2b;
-    --surface-2: #0d1220;
-    --surface-3: #1b2439;
-    --line: rgba(255, 255, 255, 0.09);
-    --line-2: rgba(255, 255, 255, 0.18);
+    --bg: #000000;
+    --surface: #131517;
+    --surface-2: #1c1f22;
+    --surface-3: #2b2f34;
+    --line: rgba(255, 255, 255, 0.14);
+    --line-2: rgba(255, 255, 255, 0.4);
     --input-line: rgba(255, 255, 255, 0.4);
-    --text: #e9ecf3;
-    --text-2: #c2c8d6;
-    --mute: #8f98ad;
-    --accent-ink: #a9c1ff;
-    --tint: rgba(169, 193, 255, 0.1);
-    --tint-2: rgba(169, 193, 255, 0.18);
+    --text: #f5f6f7;
+    --text-2: #cdd1d6;
+    --mute: #9aa1a9;
+    --bumper: #2c55d6;
+    --bumper-2: #3d66e6;
+    --accent-ink: #9db6ff;
+    --tint: rgba(157, 182, 255, 0.12);
+    --tint-2: rgba(157, 182, 255, 0.22);
     --ok: #4cc38a;
     --ok-bg: rgba(76, 195, 138, 0.13);
     --warn: #f0b43c;
@@ -136,34 +156,36 @@
     --bad: #f2716a;
     --bad-bg: rgba(242, 113, 106, 0.13);
     --on-bad: #07090f;
-    --info: #86acff;
-    --info-bg: rgba(134, 172, 255, 0.13);
-    --rail: #0b101d;
-    --rail-2: #151d31;
+    --info: #9db6ff;
+    --info-bg: rgba(157, 182, 255, 0.14);
+    --rail: #000000;
+    --rail-2: #24272b;
     --role-break: #59607a;
-    --heat-0: #1b2439;
-    --heat-1: #5c4a17;
-    --heat-2: #a8841f;
-    --heat-3: #e8b931;
+    --heat-0: #2b2f34;
+    --heat-1: #22347a;
+    --heat-2: #2c55d6;
+    --heat-3: #9db6ff;
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"],
 :root.dark {
-  --bg: #07090f;
-  --surface: #121a2b;
-  --surface-2: #0d1220;
-  --surface-3: #1b2439;
-  --line: rgba(255, 255, 255, 0.09);
-  --line-2: rgba(255, 255, 255, 0.18);
+  --bg: #000000;
+  --surface: #131517;
+  --surface-2: #1c1f22;
+  --surface-3: #2b2f34;
+  --line: rgba(255, 255, 255, 0.14);
+  --line-2: rgba(255, 255, 255, 0.4);
   --input-line: rgba(255, 255, 255, 0.4);
-  --text: #e9ecf3;
-  --text-2: #c2c8d6;
-  --mute: #8f98ad;
-  --accent-ink: #a9c1ff;
-  --tint: rgba(169, 193, 255, 0.1);
-  --tint-2: rgba(169, 193, 255, 0.18);
+  --text: #f5f6f7;
+  --text-2: #cdd1d6;
+  --mute: #9aa1a9;
+  --bumper: #2c55d6;
+  --bumper-2: #3d66e6;
+  --accent-ink: #9db6ff;
+  --tint: rgba(157, 182, 255, 0.12);
+  --tint-2: rgba(157, 182, 255, 0.22);
   --ok: #4cc38a;
   --ok-bg: rgba(76, 195, 138, 0.13);
   --warn: #f0b43c;
@@ -171,14 +193,14 @@
   --bad: #f2716a;
   --bad-bg: rgba(242, 113, 106, 0.13);
   --on-bad: #07090f;
-  --info: #86acff;
-  --info-bg: rgba(134, 172, 255, 0.13);
-  --rail: #0b101d;
-  --rail-2: #151d31;
+  --info: #9db6ff;
+  --info-bg: rgba(157, 182, 255, 0.14);
+  --rail: #000000;
+  --rail-2: #24272b;
   --role-break: #59607a;
-  --heat-0: #1b2439;
-  --heat-1: #5c4a17;
-  --heat-2: #a8841f;
-  --heat-3: #e8b931;
+  --heat-0: #2b2f34;
+  --heat-1: #22347a;
+  --heat-2: #2c55d6;
+  --heat-3: #9db6ff;
   color-scheme: dark;
 }

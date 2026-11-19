@@ -2,8 +2,10 @@
  * 2972 shell kit: app bar styles, shared by the React bar (react/AppBar.tsx) and the static bar
  * (static/shell.js). Source of truth: infra/shell/app-bar.css. Needs tokens.css. No Tailwind.
  * Everything is scoped under .shbar so it can't leak into the app.
- * Look: the redesigned demo bar (portal-demo/css/base.css): a 52 px navy bar, the nine-dot Apps button at the far
- * left, the 2972 badge, then the current app's name in white. Selected and hover states use the tint and the ink.
+ * Look (0.5.0, Ground up; demo-design83 css/look.css, css/ideal.css, css/ground.css): a 48 px true-black bar with a
+ * hairline under it, the nine-dot Apps button at the far left, the 2972 badge on a small bumper-blue plate, then the
+ * current app's name in wide Archivo. The initials are a white circle with black letters. Panels have 4 px corners;
+ * the current app in the Apps menu is a tinted cell with 8 px corners.
  */
 
 .shbar {
@@ -12,11 +14,12 @@
   z-index: 40;
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: var(--shell-bar-height, 52px);
+  gap: 6px;
+  height: var(--shell-bar-height, 48px);
   padding-block: 0;
   padding-left: max(12px, env(safe-area-inset-left, 0px));
   padding-right: max(12px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line);
   background: var(--rail);
   color: var(--rail-text);
   font: 500 14px/1.4 var(--body);
@@ -37,7 +40,7 @@
   cursor: pointer;
 }
 .shbar :focus-visible {
-  outline: 2px solid var(--rail-text);
+  outline: 3px solid var(--rail-text);
   outline-offset: 2px;
 }
 .shbar .shbar-panel :focus-visible {
@@ -69,9 +72,9 @@
   top: -100px;
   z-index: 60;
   padding: 8px 12px;
-  border-radius: 8px;
-  background: var(--gold);
-  color: var(--on-gold) !important;
+  border-radius: var(--r-ctl, 8px);
+  background: var(--bumper);
+  color: var(--on-bumper) !important;
   font-weight: 700;
 }
 .shbar-skip:focus {
@@ -94,7 +97,7 @@
   height: 44px;
   padding: 0;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-ctl, 8px);
   background: none;
   color: var(--rail-text);
 }
@@ -110,34 +113,40 @@
   display: inline-flex;
   align-items: center;
   flex: none;
-  border-radius: 8px;
+  margin-right: 2px;
+  border-radius: var(--r-ctl, 8px);
 }
+/* "2972" on a small bumper: wide Archivo 800 on the bumper blue, with a darker lower edge and a light upper one. */
 .shbar-badge {
   flex: none;
   display: grid;
   place-items: center;
-  min-width: 34px;
-  height: 34px;
-  padding: 0 4px;
-  border-radius: 9px;
-  background: var(--gold);
-  color: var(--on-gold);
-  font: 800 0.72rem/1 var(--display);
-  letter-spacing: -0.02em;
+  min-width: 50px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 7px;
+  background: var(--bumper);
+  color: var(--on-bumper);
+  font: 800 0.9rem/1 var(--display);
+  font-stretch: var(--wide);
+  letter-spacing: 0.03em;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
-/* The current app's name, in white; on the portal the app passes "Gears & Buccaneers". */
+/* The current app's name, in white, wide; on the portal the app passes "Home". */
 .shbar-appname {
   flex: 0 1 auto;
   min-width: 0;
+  max-width: 15rem;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   color: #fff;
-  font-weight: 600;
-  font-size: 1.02rem;
+  font: 700 1.02rem/1.2 var(--display);
+  font-stretch: var(--wide);
+  letter-spacing: -0.005em;
 }
 
-/* Competition chip: only in competition mode; outlined, not gold. */
+/* Competition chip: only in competition mode; outlined, 8 px corners, the one word "Competition". */
 .shbar-chip {
   display: inline-flex;
   align-items: center;
@@ -145,8 +154,8 @@
   flex: none;
   min-height: 28px;
   padding: 3px 11px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 999px;
+  border: 1px solid var(--rail-edge, rgba(255, 255, 255, 0.42));
+  border-radius: var(--r-ctl, 8px);
   background: none;
   color: #fff !important;
   font-size: 0.78rem;
@@ -166,7 +175,7 @@
   height: 40px;
   padding: 0;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-ctl, 8px);
   background: none;
   color: var(--rail-text);
   font-weight: 700;
@@ -176,14 +185,19 @@
 .shbar-icon[aria-expanded="true"] {
   background: var(--rail-2);
 }
-/* The account initials: a round navy button, not gold. */
+/* The account initials: a white circle with black letters (the same in both themes: the bar is black in both). */
 .shbar-acct {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: var(--rail-2);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
-  color: var(--rail-text) !important;
+  background: #fff;
+  box-shadow: none;
+  color: #000 !important;
+  font-weight: 800;
+}
+.shbar .shbar-acct:hover,
+.shbar .shbar-acct[aria-expanded="true"] {
+  background: #dfe2e6;
 }
 .shbar-count {
   position: absolute;
@@ -216,12 +230,13 @@
   z-index: 50;
   display: grid;
   gap: 10px;
-  max-height: min(600px, calc(100vh - var(--shell-bar-height, 52px) - 24px));
-  max-height: min(600px, calc(100dvh - var(--shell-bar-height, 52px) - 24px));
+  max-height: min(600px, calc(100vh - var(--shell-bar-height, 48px) - 24px));
+  max-height: min(600px, calc(100dvh - var(--shell-bar-height, 48px) - 24px));
   overflow: auto;
+  overscroll-behavior: contain;
   padding: 12px;
   border: 1px solid var(--line-2);
-  border-radius: var(--r, 12px);
+  border-radius: var(--r, 4px);
   background: var(--surface);
   color: var(--text);
   box-shadow: 0 16px 44px rgba(0, 0, 0, 0.25);
@@ -230,7 +245,7 @@
 .shbar-apps {
   right: auto;
   left: max(8px, env(safe-area-inset-left, 0px));
-  width: min(600px, calc(100vw - 16px));
+  width: min(400px, calc(100vw - 16px));
 }
 .shbar-account {
   right: max(8px, env(safe-area-inset-right, 0px));
@@ -263,7 +278,7 @@
   min-height: 44px;
   padding: 5px 12px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--r-ctl, 8px);
   background: transparent;
   color: var(--text-2);
   font-size: 0.88rem;
@@ -275,7 +290,7 @@
 .shbar-mode button[aria-pressed="true"] {
   background: var(--surface);
   color: var(--text);
-  box-shadow: 0 0 0 1px var(--line-2);
+  box-shadow: 0 0 0 1px var(--text);
 }
 .shbar-eyebrow a,
 .shbar-linkbtn {
@@ -313,8 +328,9 @@
   padding: 0;
   list-style: none;
 }
-/* Tools and More: one quiet row each under the core apps (the demo's .grp); open or closed as the person left them
-   (D149); the chevron turns. A group with nothing in it for this person is not drawn. */
+/* Admin apps and Team links: one quiet row each under the core apps (the demo's .grp); open or closed as the person
+   left them (D149); the chevron points down, and up when open. A group with nothing in it for this person is not
+   drawn. No count on a row (0.5.0). Tools is a row too, but a link to the Tools page (.shbar-toolslink), not a list. */
 .shbar-group {
   display: grid;
   gap: 4px;
@@ -329,34 +345,28 @@
   min-height: 44px;
   padding: 0 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--r, 4px);
   background: none;
-  color: var(--text-2);
-  font-size: 0.92rem;
-  font-weight: 600;
+  color: var(--text) !important;
+  font-size: 1rem;
+  font-weight: 650;
   text-align: left;
 }
 .shbar .shbar-groupbtn:hover {
   background: var(--surface-2);
   color: var(--text);
 }
-.shbar-groupcount {
-  min-width: 18px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  color: var(--text-2);
-  font-size: 0.72rem;
-  font-weight: 600;
-  line-height: 18px;
-  text-align: center;
-}
 .shbar-groupbtn svg {
   margin-left: auto;
   color: var(--mute);
+  transform: rotate(90deg);
 }
 .shbar-groupbtn[aria-expanded="true"] svg {
-  transform: rotate(90deg);
+  transform: rotate(-90deg);
+}
+/* Tools: a door to the Tools page (same tab), so its chevron points right and never turns. */
+.shbar .shbar-toolslink svg {
+  transform: none;
 }
 /* Tools: one column of rows, each icon, name and one line; same tab (the demo's .toolrow). */
 .shbar-toollist {
@@ -372,7 +382,7 @@
   gap: 10px;
   min-height: 52px;
   padding: 6px 8px;
-  border-radius: 10px;
+  border-radius: var(--r, 4px);
   color: var(--text) !important;
   text-align: left;
 }
@@ -383,14 +393,8 @@
   background: var(--tint);
 }
 .shbar-toolrow .shbar-item-ic {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--surface-2);
-  color: var(--text-2);
-}
-.shbar-toolrow:hover .shbar-item-ic {
-  background: var(--surface-3);
+  width: 30px;
+  height: 30px;
 }
 .shbar-toolrow b {
   display: block;
@@ -411,31 +415,34 @@
   align-items: center;
   gap: 10px;
   height: 100%;
-  min-height: 52px;
+  min-height: 48px;
   padding: 6px 8px;
-  border-radius: 10px;
+  border-radius: var(--r, 4px);
   color: var(--text) !important;
   text-align: left;
 }
 a.shbar-item:hover {
   background: var(--surface-2);
 }
+/* The current app is a tinted cell, so it reads the same in either column (demo round 12). */
 .shbar-item[aria-current="page"] {
-  background: var(--tint);
+  background: var(--tint-2);
+  border-radius: var(--r-ctl, 8px);
 }
 .shbar-item.is-soon {
   opacity: 0.75;
   cursor: default;
 }
+/* Plain icons in the text colour (0.5.0): no tinted square. */
 .shbar-item-ic {
   display: grid;
   place-items: center;
   flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--tint);
-  color: var(--accent-ink);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r, 4px);
+  background: none;
+  color: var(--text);
 }
 .shbar-item-text {
   min-width: 0;
@@ -443,8 +450,8 @@ a.shbar-item:hover {
 .shbar-item b {
   display: block;
   font-size: 0.92rem;
-  font-weight: 600;
-  line-height: 1.3;
+  font-weight: 700;
+  line-height: 1.25;
   overflow-wrap: anywhere;
 }
 /* Only "Coming soon" is printed under an app's name; app descriptions are never printed in the menu (a tool row
@@ -462,7 +469,7 @@ a.shbar-item:hover {
   min-height: 44px;
   padding: 6px 10px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--r, 4px);
   background: none;
   color: var(--text) !important;
   text-align: left;
@@ -474,6 +481,24 @@ a.shbar-item:hover {
 .shbar-choice[aria-pressed="true"] {
   background: var(--tint-2);
   color: var(--accent-ink) !important;
+}
+/* The chosen appearance has a tick as well as the tint (demo round 2): never colour alone. */
+.shbar-choice[aria-pressed="true"]::after {
+  content: "";
+  flex: none;
+  margin-left: auto;
+  width: 6px;
+  height: 11px;
+  border: solid currentColor;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-2px, -2px);
+}
+/* Appearance: a group between two rules (demo round 3). */
+.shbar-account .shbar-appearance {
+  display: grid;
+  gap: 2px;
+  padding-block: 8px;
+  border-block: 1px solid var(--line);
 }
 
 /* ---------- 0.4.0: the menus' ×, the scrim, the bell panel, "All tools", the event-day banner ---------- */
@@ -488,19 +513,20 @@ a.shbar-item:hover {
   padding: 0;
   border: 0;
   border-radius: var(--r-ctl, 8px);
-  background: var(--surface-2);
-  color: var(--text-2);
+  background: none;
+  color: var(--text);
 }
 .shbar .shbar-x:hover {
   background: var(--surface-3);
   color: var(--text);
 }
 /* Behind an open menu, under the bar (the demo's .menu-scrim): a press on it closes the menu. */
+/* An open menu dims the page under it, so nothing under it looks live (demo rounds 6 and 9). */
 .shbar-scrim {
   position: fixed;
   inset: 0;
   z-index: 35;
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.6);
 }
 .shbar-scrim[hidden],
 .shbar-banner[hidden],
@@ -550,17 +576,29 @@ a.shbar-item:hover {
 .shbar-notice + .shbar-notice {
   border-top: 1px solid var(--line);
 }
-.shbar-notice-link {
+/* 0.5.0 (the demo's Ground up .nli): "Parts, 12 min ago" on its own line, then the text, then a chevron. Unread is a
+   10 px dot, bold, and "Unread:" for a screen reader; a read notice steps back to --text-2. A row is a link (or a
+   button when the notice has no link); a long-press opens the row menu, so the phone's own callout is off. */
+.shbar .shbar-notice-link {
   position: relative;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
+  width: 100%;
   min-height: 44px;
   padding: 8px 8px 8px 22px;
-  border-radius: 8px;
+  border: 0;
+  border-radius: var(--r, 4px);
+  background: none;
   color: var(--text) !important;
+  font: inherit;
+  font-weight: 400;
+  text-align: left;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
-a.shbar-notice-link:hover {
+.shbar .shbar-notice-link:hover {
   background: var(--surface-2);
 }
 .shbar-notice-text {
@@ -568,27 +606,75 @@ a.shbar-notice-link:hover {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.shbar-notice-app,
-.shbar-notice-when {
+.shbar-notice-app {
+  display: block;
   color: var(--mute);
-}
-.shbar-notice-when {
-  flex: none;
   font-size: 0.8rem;
-  white-space: nowrap;
+  font-weight: 400;
+  line-height: 1.3;
 }
 .shbar-notice.is-unread .shbar-notice-text {
-  font-weight: 600;
+  font-weight: 650;
+}
+.shbar-notice:not(.is-unread) .shbar-notice-text {
+  color: var(--text-2);
+}
+.shbar-notice-chev {
+  flex: none;
+  margin-left: 8px;
+  color: var(--mute);
+  font-size: 1.1rem;
+  line-height: 1;
 }
 .shbar-notice-dot {
   position: absolute;
-  left: 8px;
+  left: 6px;
   top: 50%;
-  width: 8px;
-  height: 8px;
-  margin-top: -4px;
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
   border-radius: 50%;
   background: var(--accent-ink);
+}
+/* The row menu (notice-menu.js): one item, "Mark as unread" or "Mark as read", at the pointer or under the row. */
+.shbar-nmenu {
+  position: fixed;
+  z-index: 70;
+  min-width: 168px;
+  max-width: calc(100vw - 16px);
+  padding: 4px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r, 4px);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+.shbar .shbar-nmenu button {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r, 4px);
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: left;
+}
+.shbar .shbar-nmenu button:hover,
+.shbar .shbar-nmenu button:focus-visible {
+  background: var(--surface-2);
+}
+.shbar .shbar-nmenu button[aria-disabled="true"] {
+  cursor: progress;
+  opacity: 0.7;
+}
+@media (pointer: coarse) {
+  .shbar .shbar-nmenu button {
+    min-height: 44px;
+  }
 }
 .shbar-panel-foot {
   display: flex;
@@ -629,38 +715,75 @@ a.shbar-notice-link:hover {
   color: var(--accent-ink);
   font-weight: 600;
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .shbar-banner :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
-/* The demo's gold button (btn sm primary): the banner's one action (C15). */
+/* The demo's main button (btn sm primary), bumper blue: the banner's one action (C15). */
 .shbar-bannerbtn {
-  min-height: 36px;
+  min-height: 34px;
   padding: 0 12px;
-  border: 1px solid var(--primary);
+  border: 1px solid var(--bumper);
   border-radius: var(--r-ctl, 8px);
-  background: var(--primary);
-  color: var(--on-gold);
-  font: 600 0.84rem/1 var(--body);
+  background: var(--bumper);
+  color: var(--on-bumper);
+  font: 700 0.84rem/1 var(--body);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18);
   cursor: pointer;
 }
 .shbar-bannerbtn:hover {
-  filter: brightness(0.95);
+  border-color: var(--bumper-2);
+  background: var(--bumper-2);
 }
 
 /* ---------- Narrow screens ---------- */
+/* With a mouse the bar's buttons are 36 px (the demo's tighter rows); on a phone every target is 44 px. */
 @media (min-width: 641px) {
-  .shbar-chip-short {
-    display: none;
+  .shbar-appsbtn,
+  .shbar-icon,
+  .shbar-acct {
+    width: 36px;
+    height: 36px;
+  }
+  .shbar-brand {
+    min-width: 36px;
+    min-height: 36px;
+  }
+  .shbar .shbar-x {
+    width: 32px;
+    height: 32px;
   }
 }
 @media (max-width: 640px) {
   .shbar {
-    gap: 6px;
+    gap: 4px;
   }
-  .shbar-chip-long {
-    display: none;
+  .shbar-badge {
+    min-width: 0;
+    padding: 0 6px;
+    font-size: 0.82rem;
+  }
+  .shbar-brand {
+    margin-right: 0;
+  }
+  .shbar-appname {
+    font-size: 0.96rem;
+  }
+  /* Competition mode on a phone: the chip and the app's name both fit. */
+  .shbar-chip {
+    min-height: 30px;
+    padding-inline: 7px;
+    font-size: 0.74rem;
+  }
+  .shbar-apps {
+    left: 8px;
+    right: 8px;
+    width: auto;
+  }
+  .shbar-mode button {
+    padding-inline: 16px;
   }
   .shbar-mode button {
     min-height: 44px;
@@ -694,6 +817,11 @@ a.shbar-notice-link:hover {
   .shbar-chip {
     padding: 3px 7px;
   }
+  /* The one word is "Competition" (0.5.0); only on the narrowest phones, with an app's own icon in the bar too, it is
+     cut to "Comp" so everything fits. Its spoken name is the full sentence at every width. */
+  .shbar-chip-rest {
+    display: none;
+  }
 }
 @media (prefers-reduced-motion: no-preference) {
   .shbar-appsbtn,
@@ -722,3 +850,244 @@ a.shbar-notice-link:hover {
 .shbar-identity small { display: block; color: var(--mute); font-size: .8rem; }
 .shbar-account .shbar-choice { width: 100%; min-height: 44px; }
 .shbar-brand { min-width: 44px; min-height: 44px; justify-content: center; }
+@media (min-width: 641px) {
+  .shbar-brand { min-width: 36px; min-height: 36px; }
+}
+
+/* ---------- 0.5.0: things an app puts in the black bar (the children slot and the tabs slot) ----------
+   A count on black: white on 18% white; a warning count amber with black figures. A status word on black uses the
+   bar's own colours (the Website editor's orange "Draft"). An outlined bar button: white words, a white edge
+   (Admin's Install); --primary is the bumper blue. All pass on black (contrast test). */
+.shbar .shell-count {
+  background: var(--rail-count);
+  color: var(--rail-text);
+}
+.shbar .shell-count--warn {
+  background: var(--rail-warn);
+  color: var(--on-rail-warn);
+}
+.shbar-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  color: var(--rail-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.shbar-status::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--rail-mute);
+}
+.shbar-status--warn {
+  color: var(--rail-warn);
+}
+.shbar-status--warn::before {
+  background: var(--rail-warn);
+}
+.shbar-status--ok {
+  color: var(--rail-ok);
+}
+.shbar-status--ok::before {
+  background: var(--rail-ok);
+}
+.shbar-status--bad {
+  color: var(--rail-bad);
+}
+.shbar-status--bad::before {
+  background: var(--rail-bad);
+}
+.shbar .shbar-barbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: none;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--rail-edge);
+  border-radius: var(--r-ctl, 8px);
+  background: none;
+  color: var(--rail-text) !important;
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.shbar .shbar-barbtn:hover {
+  background: var(--rail-2);
+}
+.shbar .shbar-barbtn--primary {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: var(--bumper);
+}
+.shbar .shbar-barbtn--primary:hover {
+  background: var(--bumper-2);
+}
+@media (min-width: 641px) {
+  .shbar .shbar-barbtn {
+    min-height: 32px;
+  }
+}
+
+/* ---------- 0.5.0: the tabs slot (AppBar `tabs`, static setTabs; KIT §8.1, the demo's ideal.css §1) ----------
+   The app passes its .shell-tabs row (tabs and its one button) to the bar. From 1024 px it sits inside the black
+   bar, after the app's name: grey words, white when chosen with a 3 px white underline, counts white on 18% white,
+   the button outlined in white (the main one bumper blue). Below 1024 px it is a white row hanging under the bar,
+   sticky with it, the chosen tab underlined in black; .shbar-tabspace after the bar keeps the page clear of it.
+   While a menu is open the row takes no presses (a press there lands on the scrim and closes the menu), and below
+   1024 px it is dimmed like the page. */
+.shbar-tabs[hidden],
+.shbar-tabspace[hidden],
+.shbar-tabs:empty,
+.shbar:has(> .shbar-tabs:empty) ~ .shbar-tabspace {
+  /* An app's tab component that draws nothing on a page leaves no empty row and no gap. */
+  display: none !important;
+}
+.shbar .shbar-tabs .shell-tabs {
+  position: static;
+  min-width: 0;
+  box-sizing: border-box;
+}
+/* .shbar button sets font and colour to inherit: the tab's own look comes back here. */
+.shbar .shbar-tabs .shell-tab {
+  color: var(--mute);
+  font: 600 0.92rem/1.2 var(--body);
+}
+.shbar .shbar-tabs .shell-tab:hover,
+.shbar .shbar-tabs .shell-tab[aria-pressed="true"],
+.shbar .shbar-tabs .shell-tab[aria-current]:not([aria-current="false"]),
+.shbar .shbar-tabs .shell-tab[aria-selected="true"],
+.shbar .shbar-tabs .shell-tab.is-active {
+  color: var(--text);
+}
+.shbar[data-open] .shbar-tabs {
+  pointer-events: none;
+}
+@media (min-width: 1024px) {
+  .shbar-tabs {
+    flex: 1 1 auto;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .shbar-tabs::before {
+    content: "";
+    flex: none;
+    width: 1px;
+    height: 20px;
+    margin: 0 2px 0 4px;
+    background: rgba(255, 255, 255, 0.3);
+  }
+  /* With tabs the slot takes the free room; the spacer then has nothing to do. */
+  .shbar:has(> .shbar-tabs:not([hidden])) > .shbar-grow {
+    flex: 0 0 0;
+  }
+  .shbar .shbar-tabs .shell-tabs {
+    flex: 1 1 auto;
+    align-self: stretch;
+    min-height: 0;
+    padding: 0;
+    gap: 10px;
+    border: 0;
+    background: none;
+    color: var(--rail-text);
+  }
+  .shbar .shbar-tabs .shell-tab {
+    min-height: var(--shell-bar-height, 48px);
+    margin: 0;
+    padding-inline: 11px;
+    border-bottom-width: 3px;
+    color: var(--rail-mute);
+  }
+  .shbar .shbar-tabs .shell-tab:hover {
+    color: #fff;
+  }
+  .shbar .shbar-tabs .shell-tab[aria-pressed="true"],
+  .shbar .shbar-tabs .shell-tab[aria-current]:not([aria-current="false"]),
+  .shbar .shbar-tabs .shell-tab[aria-selected="true"],
+  .shbar .shbar-tabs .shell-tab.is-active {
+    border-bottom-color: #fff;
+    color: #fff;
+  }
+  .shbar .shbar-tabs .shell-tab:focus-visible {
+    outline-color: #fff;
+  }
+  .shbar .shbar-tabs .shell-tabs-right .shell-btn {
+    min-height: 32px;
+    border-color: var(--rail-edge);
+    background: none;
+    color: var(--rail-text);
+  }
+  .shbar .shbar-tabs .shell-tabs-right .shell-btn:hover {
+    background: var(--rail-2);
+  }
+  .shbar .shbar-tabs .shell-tabs-right .shell-btn--primary {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: var(--bumper);
+    color: var(--on-bumper);
+  }
+  .shbar .shbar-tabs .shell-tabs-right .shell-btn--primary:hover {
+    background: var(--bumper-2);
+  }
+  .shbar-tabspace {
+    display: none;
+  }
+}
+@media (max-width: 1023px) {
+  .shbar-tabs {
+    position: absolute;
+    top: calc(100% + 1px); /* under the bar's hairline */
+    left: 0;
+    right: 0;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 400;
+  }
+  .shbar .shbar-tabs :focus-visible {
+    outline-color: var(--focus);
+  }
+  .shbar .shbar-tabs .shell-tabs {
+    border-bottom: 0;
+  }
+  /* On the white row a count is the page's own grey (the black bar's white-on-white would vanish). */
+  .shbar .shbar-tabs .shell-count {
+    background: var(--surface-3);
+    color: var(--text-2);
+  }
+  .shbar .shbar-tabs .shell-count--warn {
+    background: var(--warn-bg);
+    color: var(--warn);
+  }
+  .shbar[data-open] .shbar-tabs::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+  }
+  /* The page starts under the hanging row: its height, as ui.css draws .shell-tabs (48 px on a phone, 44 px with a
+     mouse), plus its 1 px line. */
+  .shbar-tabspace {
+    height: 49px;
+  }
+}
+@media (min-width: 641px) and (max-width: 1023px) {
+  .shbar-tabspace {
+    height: 45px;
+  }
+}
+/* After the slot's own tab rule above: four tabs fit a 320 px screen in the slot too (as ui.css does for a row). */
+@media (max-width: 360px) {
+  .shbar .shbar-tabs .shell-tab {
+    padding: 0 6px;
+    font-size: 0.8125rem;
+  }
+}

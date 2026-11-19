@@ -9,8 +9,14 @@ export const THEME_COOKIE = "theme";
 export const MODE_COOKIE = "mode";
 /** Which Apps-menu groups the person left open (D149): any of "tools", "adminapps", "more", joined with ".". */
 export const GROUPS_COOKIE = "shellgroups";
-/** The Apps menu's remembered groups, in the order they are drawn (Admin apps since 0.4.0, D161, C1). */
+/**
+ * The remembered groups, in the order they are drawn (Admin apps since 0.4.0, D161, C1). Since 0.5.0 the bar's Apps
+ * menu draws Tools as one link to the Tools page (no list), so only Home's rows use "tools"; the id and the cookie
+ * value stay, so Home and the menu agree on the other two.
+ */
 export const MENU_GROUPS = Object.freeze(["tools", "adminapps", "more"]);
+/** The words on each group's row (0.5.0: "more" reads "Team links"; the id and the cookie value stay "more"). */
+export const GROUP_LABELS = Object.freeze({ tools: "Tools", adminapps: "Admin apps", more: "Team links" });
 /** The apps.json `group` value that puts an app in the Admin apps row (C1). */
 export const ADMIN_GROUP = "admin";
 /** 400 days, the longest a browser keeps a cookie (INTEGRATION §9b). */
@@ -93,6 +99,16 @@ export function signOutHref(site) {
 /** Raw groups retain display; parseGroups intentionally filters it out for tile access. */
 export function hasAccountMenu(user, enabled = true) {
   return !!(enabled && user && (user.name || user.email) && !user.groups?.includes("display"));
+}
+
+// The account panel's role line (0.5.0, the demo's D.me().label): the person's place on the team first, then admin,
+// which gives powers and never a place (D166). Unknown groups are left out.
+const ROLE_WORDS = [["mentor", "Mentor"], ["student", "Student"], ["parent", "Parent"], ["alumni", "Alumni"], ["admin", "Admin"]];
+/** Raw groups (array or pipe-separated) → "Mentor", "Mentor, admin", "Student"; "" when none is known. */
+export function roleLabel(groups) {
+  const have = new Set((Array.isArray(groups) ? groups : typeof groups === "string" ? groups.split("|") : []).map((g) => String(g).trim()));
+  const words = ROLE_WORDS.filter(([g]) => have.has(g)).map(([, w], i) => (i === 0 ? w : w.toLowerCase()));
+  return words.join(", ");
 }
 
 /**
@@ -262,6 +278,57 @@ export function inboxHasUnread(inbox) {
 /** The inbox after a successful "Mark all read": nothing unread. */
 export function inboxAllRead(inbox) {
   return { ...inbox, unread: 0, items: (inbox.items || []).map((n) => ({ ...n, read: true })) };
+}
+
+/**
+ * 0.5.0 (H3): one notice read or unread. A click on an unread notice posts `{ ids: [id] }` (with `keepalive`, then
+ * the link is followed); the row menu posts `{ ids: [id], read: false }` ("Mark as unread") or `{ ids: [id], read: true }`
+ * ("Mark as read"). Account marks only the caller's own rows. Only a 204 is success.
+ */
+export function inboxReadOne(id, read) {
+  return read === undefined ? { ids: [String(id)] } : { ids: [String(id)], read: !!read };
+}
+
+/** The most ids one read request may carry (Account's limit). */
+export const INBOX_READ_MAX_IDS = 100;
+
+/**
+ * A POST /_shell/inbox/read body, checked: `{ all: true }`, or `{ ids: [1..100 non-empty strings], read?: boolean }`
+ * (`read` defaults to true). Anything else, any other key included, is null (answer 400). For adapters and the kit's
+ * stub route: they pass `read` through to Account (H3); an adapter that drops it would mark a notice read instead of
+ * unread.
+ */
+export function parseInboxRead(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+  const keys = Object.keys(body);
+  if (keys.length === 1 && body.all === true) return { all: true };
+  if (!keys.every((k) => k === "ids" || k === "read") || !Array.isArray(body.ids)) return null;
+  if ("read" in body && typeof body.read !== "boolean") return null;
+  const ids = body.ids;
+  if (ids.length < 1 || ids.length > INBOX_READ_MAX_IDS) return null;
+  if (!ids.every((id) => typeof id === "string" && id.length > 0 && id.length <= 200)) return null;
+  return { ids: [...new Set(ids)], read: body.read !== false };
+}
+
+/** The inbox with one notice marked read or unread (the count follows; never below 0). Unknown id: unchanged. */
+export function inboxMark(inbox, id, read) {
+  const items = inbox.items || [];
+  const n = items.find((x) => x.id === id);
+  if (!n || n.read === !!read) return inbox;
+  const unread = Math.max(0, (Number(inbox.unread) || 0) + (read ? -1 : 1));
+  return { ...inbox, unread, items: items.map((x) => (x.id === id ? { ...x, read: !!read } : x)) };
+}
+
+/** The bell's order (0.5.0): unread notices first, then read ones, each newest first (the order parseInbox gives). */
+export function inboxOrder(items) {
+  const list = items || [];
+  return [...list.filter((n) => !n.read), ...list.filter((n) => n.read)];
+}
+
+/** A notice's first line: the app that sent it and when, "Parts, 12 min ago" (the demo's Ground up row). */
+export function noticeLine(label, at, now = Date.now()) {
+  const when = noticeWhen(at, now);
+  return label && when ? `${label}, ${when}` : label || when;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -516,6 +583,7 @@ export function themeInitScript(site) {
 
 /** Small outline icons (24×24, stroke), the demo's set. Unknown names fall back to "apps". */
 export const ICONS = Object.freeze({
+  home: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
   apps: "M5 5h.01M12 5h.01M19 5h.01M5 12h.01M12 12h.01M19 12h.01M5 19h.01M12 19h.01M19 19h.01",
   tasks: "M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2",
   calendar: "M4 6h16v14H4zM4 10h16M9 3v4M15 3v4",
@@ -552,9 +620,91 @@ export function iconPath(name) {
   return ICONS[name] || ICONS.apps;
 }
 
-/** Labels shared by both builds, so the React and static bars read the same to a screen reader. */
+/**
+ * Labels shared by both builds, so the React and static bars read the same to a screen reader. 0.5.0: the group is
+ * "Appearance" and the order is Light, Dark, Match my device (the demo's Ground up account panel).
+ */
 export const THEME_CHOICES = Object.freeze([
-  ["system", "Match my device"],
   ["light", "Light"],
   ["dark", "Dark"],
+  ["system", "Match my device"],
 ]);
+
+/**
+ * Warm the next app (0.5.0, D187-1; the lead's answer to KIT §8.2: preconnect only, never prefetch or prerender).
+ * Adds `<link rel="preconnect" href="<origin>">` once per origin per page, for an address on this site only: the scheme
+ * in SITE_SCHEME and a host that is SITE_DOMAIN or one of its subdomains, not this page's own origin. Never an outside
+ * address (Onshape, GitHub: no outside site learns of a hover), never `javascript:` or another scheme. A preconnect
+ * sends no HTTP request and no cookie, so it never touches forward auth; it saves DNS, TCP and TLS for the new tab.
+ * No `crossorigin` attribute: a page load uses the credentialed connection pool. Returns true when it added a link.
+ */
+export function warmOrigin(href, site, doc = typeof document === "undefined" ? null : document) {
+  if (!doc || !doc.head || typeof href !== "string" || !site) return false;
+  let u;
+  try {
+    u = new URL(href, doc.baseURI || undefined);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== `${site.scheme}:` || (site.scheme !== "https" && site.scheme !== "http")) return false;
+  const domain = String(site.domain || "").toLowerCase();
+  const host = u.host.toLowerCase();
+  if (!domain || !(host === domain || host.endsWith(`.${domain}`))) return false;
+  const here = doc.location && doc.location.origin;
+  if (u.origin === here) return false;
+  for (const l of doc.head.querySelectorAll('link[rel="preconnect"]')) if (l.getAttribute("href") === u.origin) return false;
+  const link = doc.createElement("link");
+  link.rel = "preconnect";
+  link.href = u.origin;
+  doc.head.append(link);
+  return true;
+}
+
+// One delegated listener per document, reference-counted like the hover description (tip.js): every bar and page
+// that installs it shares it, and it goes when the last one is removed.
+const warmInstalls = new WeakMap();
+/**
+ * Warms the origin of any `a[href]` on the page (the Apps menu's tiles, Home's rows, an app's own doors) when a mouse
+ * rests on it for about 100 ms, on pointerdown or touchstart, and on keyboard focus. Returns its undo.
+ */
+export function installWarm(site, doc = typeof document === "undefined" ? null : document) {
+  if (!doc || typeof doc.addEventListener !== "function") return () => {};
+  let entry = warmInstalls.get(doc);
+  if (!entry) {
+    let timer = null;
+    let over = null;
+    const linkOf = (t) => (t && typeof t.closest === "function" ? t.closest("a[href]") : null);
+    const warm = (a) => a && warmOrigin(a.getAttribute("href"), entry.site, doc);
+    const onOver = (e) => {
+      if (e.pointerType && e.pointerType !== "mouse") return;
+      const a = linkOf(e.target);
+      if (a === over) return;
+      clearTimeout(timer);
+      over = a;
+      if (a) timer = setTimeout(() => warm(a), 100);
+    };
+    const onOut = (e) => {
+      if (over && !(e.relatedTarget && over.contains(e.relatedTarget))) {
+        clearTimeout(timer);
+        over = null;
+      }
+    };
+    const onNow = (e) => warm(linkOf(e.target));
+    const handlers = [["pointerover", onOver], ["pointerout", onOut], ["pointerdown", onNow], ["touchstart", onNow], ["focusin", onNow]];
+    entry = { count: 0, site, handlers, stop: () => clearTimeout(timer) };
+    for (const [type, fn] of handlers) doc.addEventListener(type, fn, { capture: true, passive: true });
+    warmInstalls.set(doc, entry);
+  }
+  entry.count++;
+  entry.site = site;
+  let undone = false;
+  return () => {
+    if (undone) return;
+    undone = true;
+    entry.count--;
+    if (entry.count > 0) return;
+    entry.stop();
+    for (const [type, fn] of entry.handlers) doc.removeEventListener(type, fn, { capture: true });
+    warmInstalls.delete(doc);
+  };
+}

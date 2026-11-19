@@ -20,8 +20,11 @@
 // 0.4.0 (8.1.5): the Apps menu's three rows (Tools with "All tools", Admin apps, More; C1); the bell is a button that
 // opens the notices panel (C3); each menu has a × and a scrim behind it (C10); the event-day banner under the bar
 // (C5). The portal home's helpers are below the bar: loadLandingApps, mountHomeGroups, mountHomeGuide.
+// 0.5.0 (8.3, Ground up): the black bar and the bumper badge; the Apps menu starts with Home, Tools is one link to the
+// Tools page, More reads "Team links", no counts on the menu's rows; the account panel shows the role and "Appearance".
 
 import {
+  GROUP_LABELS,
   MENU_GROUPS,
   accountHref,
   eventBanner,
@@ -31,8 +34,11 @@ import {
   INBOX_READ_ALL,
   inboxAllRead,
   inboxHasUnread,
+  inboxMark,
+  inboxOrder,
+  inboxReadOne,
   isDisplay,
-  noticeWhen,
+  noticeLine,
   parseInbox,
   signOutHref,
   MODE_COOKIE,
@@ -42,6 +48,7 @@ import {
   filterByMode,
   iconPath,
   initials,
+  installWarm,
   parseGroups,
   parseMode,
   portalHref,
@@ -49,6 +56,7 @@ import {
   readOpenGroups,
   resolveTheme,
   resolveTiles,
+  roleLabel,
   resolveTools,
   setGroupOpen,
   setModeCookie,
@@ -57,6 +65,7 @@ import {
   toolsHref,
 } from "../core.js";
 import { installTip } from "../tip.js";
+import { installNoticeMenu } from "../notice-menu.js";
 import { BAR_TIPS } from "../tip-text.js";
 import { guideActive, guideCardWanted, guideClearCookie, guideOpenId, guideRole, readGuide } from "../guide-state.js";
 
@@ -88,15 +97,11 @@ function icon(name, size = 20) {
 // The guide's layer (../guide.js) is not "outside" the bar: a stop that opened the Apps menu keeps it open.
 const inGuide = (n) => !!(n && typeof n.closest === "function" && n.closest("[data-guide-layer]"));
 
-const themeIcon = (c) => (c === "light" ? "sun" : c === "dark" ? "moon" : "system");
 const sr = (text) => h("span", { class: "shbar-sr", text });
 
 // The id of a tile's hidden description (ids from apps.json may hold any character).
 const descId = (base, kind, id) => `${base}-${kind}-${String(id).replace(/[^A-Za-z0-9_-]/g, "_")}`;
 
-// The Apps menu's rows, in drawing order (C1): the word on the row and what its count counts.
-const GROUP_WORDS = Object.freeze({ tools: ["Tools", "tool", "tools"], adminapps: ["Admin apps", "app", "apps"], more: ["More", "app", "apps"] });
-const counted = (n, [, one, many]) => `, ${n} ${n === 1 ? one : many}`;
 
 // A tile shows its icon and name only; the description is its hover description (data-tip, ../tip.js), so nothing
 // is cut off, and visually hidden text the tile names in aria-describedby, so a screen reader always has it.
@@ -136,34 +141,27 @@ function tileEl(t, appId, base) {
   );
 }
 
-// A tool row: icon, name and its one line; same tab (a tool is part of the site, not a link-out).
-function toolEl(t, appId, base) {
-  const did = t.tip ? descId(base, "t", t.id) : null;
+// Home, the first tile (0.5.0): the portal, in the same tab (it is the suite's own start page, not another app).
+function homeEl(href, appId, base) {
+  const did = `${base}-d-home`;
   return h(
     "li",
     null,
-    h(
-      "a",
-      { class: "shbar-toolrow", href: t.href, "aria-current": t.id === appId ? "page" : null, "data-tip": t.tip || null, "aria-describedby": did },
-      h("span", { class: "shbar-item-ic" }, icon(t.icon)),
-      h("span", { class: "shbar-item-text" }, h("b", { text: t.name }), t.description ? h("small", { text: t.description }) : null),
-    ),
-    t.tip ? h("span", { id: did, class: "shbar-sr", text: t.tip }) : null,
+    h("a", { class: "shbar-item shbar-home", href, "aria-current": appId === "portal" ? "page" : null, "data-tip": BAR_TIPS.home, "aria-describedby": did, "data-guide": "tile-portal" },
+      h("span", { class: "shbar-item-ic" }, icon("home")), h("span", { class: "shbar-item-text" }, h("b", { text: "Home" }))),
+    h("span", { id: did, class: "shbar-sr", text: BAR_TIPS.home }),
   );
 }
-// The Tools row's last line (the demo's "All tools ›"): the tools service's own page, same tab.
-const allToolsEl = (href) => h("li", null, h("a", { class: "shbar-toolrow shbar-alltools", href }, h("span", { text: "All tools" }), h("span", { class: "shbar-alltools-chev", "aria-hidden": "true", text: "›" })));
 
 // The tip tables' ids: opts.tipIds (one id or a list), else opts.appId.
 const tipIdsOf = (opts) => (Array.isArray(opts.tipIds) ? opts.tipIds : [opts.tipIds ?? opts.appId ?? ""]).filter(Boolean);
 
-// The quiet row that opens a group (Tools, Admin apps, More): the word, a count, a chevron. A real button (D141, D149).
+// The quiet row that opens a group (Admin apps, Team links): the word and a chevron. A real button (D141, D149).
+// No count on the row (0.5.0, the demo's Ground up menu).
 function groupParts(id, listId) {
-  const count = h("span", { class: "shbar-groupcount", "aria-hidden": "true" });
-  const spoken = sr("");
   const button = h("button", { type: "button", class: `shbar-groupbtn shbar-${id}btn`, "aria-expanded": "false", "aria-controls": listId, "data-tip": BAR_TIPS[id] },
-    h("span", { text: GROUP_WORDS[id][0] }), count, spoken, icon("chevron", 16));
-  return { button, count, spoken };
+    h("span", { text: GROUP_LABELS[id] }), icon("chevron", 16));
+  return { button };
 }
 
 // The menus' × (C10): an icon button named "Close", with its own hover description.
@@ -196,12 +194,13 @@ export async function loadLandingApps(opts = {}) {
 }
 
 /**
- * Renders the bar into `root` (replacing its content) and returns { update(opts), destroy() }.
+ * Renders the bar into `root` (replacing its content) and returns { update(opts), setTabs(el), destroy() }.
  * opts: appName, appId, siteScheme, siteDomain, user {name,email,groups}, accountMenu (default true for identified non-display users), accountHref, source ("shell" | "landing"),
  * appsUrl, meUrl, tiles (already resolved; skips fetching), tools (resolved Tools rows, with tiles), skipToId, onThemeChange, showBell, inboxUrl,
  * inboxReadUrl (default inboxUrl + "/read"), eventBanner (default true), eventUrl (default "/event.json"),
  * eventStatusUrl (default "/event-status.json"),
- * tipIds (the hover description's table ids: one id or a list; default appId).
+ * tipIds (the hover description's table ids: one id or a list; default appId),
+ * tabs (0.5.0: the app's .shell-tabs element for the bar's tabs slot; or setTabs(el) on the returned object).
  * showBell (default off) fetches the inbox and, when it is available, draws the bell: a button that opens the
  * notices panel (C3).
  *
@@ -255,12 +254,16 @@ export function mountAppBar(root, opts) {
   const loadingNote = h("p", { class: "shbar-note", role: "status", text: "Loading apps…", hidden: true });
   const failedNote = h("p", { class: "shbar-note", role: "status", hidden: true }, "Couldn't load the apps. ", retry);
   const emptyNote = h("p", { class: "shbar-note", text: "No apps here yet. If you just joined, an admin still has to add you to a group.", hidden: true });
-  const mainList = h("ul", { class: "shbar-grid", hidden: true });
-  // The three rows (C1): Tools (one column of tool rows, then "All tools"), Admin apps and More (two columns of tiles).
+  const mainList = h("ul", { class: "shbar-grid" });
+  // Tools (0.5.0): one door to the Tools page, same tab; drawn when the person has a tool in this mode.
+  const toolsLink = h("a", { class: "shbar-groupbtn shbar-toolslink", href: toolsHref(site), "aria-current": opts.appId === "tools" ? "page" : null, "data-tip": BAR_TIPS.tools },
+    h("span", { text: GROUP_LABELS.tools }), icon("chevron", 16));
+  const toolsBox = h("div", { class: "shbar-group shbar-tools", hidden: true }, toolsLink);
+  // The two rows that open (C1): Admin apps and Team links (two columns of tiles).
   const groups = {};
-  for (const g of MENU_GROUPS) {
+  for (const g of MENU_GROUPS.filter((x) => x !== "tools")) {
     const parts = groupParts(g, `${id}-${g}`);
-    const list = h("ul", { id: `${id}-${g}`, class: g === "tools" ? "shbar-toollist" : "shbar-grid", hidden: true });
+    const list = h("ul", { id: `${id}-${g}`, class: "shbar-grid", hidden: true });
     const box = h("div", { class: `shbar-group shbar-${g}`, hidden: true }, parts.button, list);
     parts.button.addEventListener("click", () => {
       state.open = setGroupOpen(g, !state.open.includes(g), site, document, state.open);
@@ -271,7 +274,7 @@ export function mountAppBar(root, opts) {
     groups[g] = { ...parts, list, box };
   }
   const closeApps = closeButton("closeapps", () => setPanel(null, true));
-  const appsBody = h("div", { style: "display:contents" }, loadingNote, failedNote, emptyNote, mainList, MENU_GROUPS.map((g) => groups[g].box));
+  const appsBody = h("div", { style: "display:contents" }, loadingNote, failedNote, emptyNote, mainList, toolsBox, groups.adminapps.box, groups.more.box);
   const appsPanel = h(
     "nav",
     { id: `${id}-apps`, class: "shbar-panel shbar-apps", "aria-label": "All apps", hidden: true },
@@ -280,7 +283,7 @@ export function mountAppBar(root, opts) {
     appsBody,
   );
   const choices = THEME_CHOICES.map(([c, label]) => {
-    const b = h("button", { type: "button", class: "shbar-choice", "aria-pressed": "false" }, icon(themeIcon(c), 18), label);
+    const b = h("button", { type: "button", class: "shbar-choice", "aria-pressed": "false" }, label);
     b.addEventListener("click", () => {
       setTheme(c, site);
       state.theme = c;
@@ -289,7 +292,7 @@ export function mountAppBar(root, opts) {
     });
     return [c, b];
   });
-  const chip = h("a", { class: "shbar-chip", href: account, target: "_blank", rel: "noopener noreferrer", "data-tip": BAR_TIPS.chip, hidden: true }, h("span", { "aria-hidden": "true" }, h("span", { class: "shbar-chip-short", text: "Comp" }), h("span", { class: "shbar-chip-long", text: "Competition mode" })), sr("Competition mode is on. Change it in Apps or Account (opens in a new tab)."));
+  const chip = h("a", { class: "shbar-chip", href: account, target: "_blank", rel: "noopener noreferrer", "data-tip": BAR_TIPS.chip, hidden: true }, h("span", { "aria-hidden": "true" }, "Comp", h("span", { class: "shbar-chip-rest", text: "etition" })), sr("Competition mode is on. Change it in Apps or Account (opens in a new tab)."));
 
   // ---- the bell (C3): a button and the notices panel ----
   const bellSr = sr("Notifications");
@@ -319,7 +322,7 @@ export function mountAppBar(root, opts) {
   const notificationLink = h("a", { class: "shbar-choice", href: `${account.split("#")[0]}#notifications`, text: "Notification settings" });
   const accountPanel = h("div", { id: `${id}-account`, class: "shbar-panel shbar-account", role: "group", "aria-label": "Account", hidden: true },
     h("div", { class: "shbar-panel-head" }, h("div", { class: "shbar-identity" }, identityName, identityGroups), closeButton("closeaccount", () => setPanel(null, true))),
-    h("div", { role: "group", "aria-label": "Theme" }, h("p", { class: "shbar-eyebrow", text: "Theme" }), choices.map(([, b]) => b)),
+    h("div", { class: "shbar-appearance", role: "group", "aria-label": "Appearance" }, h("p", { class: "shbar-eyebrow", text: "Appearance" }), choices.map(([, b]) => b)),
     notificationLink, accountLink, h("a", { class: "shbar-choice", href: signOutHref(site), "data-signout": "", text: "Sign out",
       // The guide's progress belongs to this person: it is cleared before the browser leaves.
       onclick: () => { document.cookie = guideClearCookie(site); } }));
@@ -338,6 +341,15 @@ export function mountAppBar(root, opts) {
   acct.addEventListener("click", () => setPanel(state.panel === "account" ? null : "account", false));
   bell.addEventListener("click", () => setPanel(state.panel === "bell" ? null : "bell", false));
 
+  // 0.5.0, the tabs slot: the app's .shell-tabs row (opts.tabs, or setTabs(el) later). From 1024 px it sits in the
+  // black bar after the name; below that it hangs under the bar as a white row, and the spacer keeps the page clear.
+  const tabsSlot = h("div", { class: "shbar-tabs", hidden: true });
+  const tabSpace = h("div", { class: "shbar-tabspace", "aria-hidden": "true", hidden: true });
+  function setTabs(el) {
+    tabsSlot.replaceChildren(...(el ? [el] : []));
+    tabsSlot.hidden = !el;
+    tabSpace.hidden = !el;
+  }
   const header = h(
     "header",
     { class: "shbar" },
@@ -345,6 +357,7 @@ export function mountAppBar(root, opts) {
     appsBox,
     h("a", { class: "shbar-brand", "aria-label": "Portal home", href: portal }, h("span", { class: "shbar-badge", "aria-hidden": "true", text: "2972" }), sr("Portal home")),
     appName,
+    tabsSlot,
     h("span", { class: "shbar-grow" }),
     chip,
     bellBox,
@@ -373,7 +386,8 @@ export function mountAppBar(root, opts) {
   root.textContent = "";
   // The mount wrapper must not become the sticky header's containing block, or the bar scrolls away.
   root.classList.add("shbar-mount");
-  root.append(header, scrim, banner);
+  root.append(header, scrim, tabSpace, banner);
+  if (opts.tabs) setTabs(opts.tabs);
 
   // ---- patch ----
   function renderTiles() {
@@ -383,27 +397,19 @@ export function mountAppBar(root, opts) {
     loadingNote.hidden = !(state.tiles === null && !state.failed);
     failedNote.hidden = !state.failed;
     emptyNote.hidden = !(state.tiles !== null && !state.failed && shown.length === 0);
-    mainList.replaceChildren(...main.map((t) => tileEl(t, opts.appId, id)));
-    mainList.hidden = main.length === 0;
-    const shownTools = filterByMode(state.tools, state.mode);
-    const lists = {
-      tools: [shownTools.length, [...shownTools.map((t) => toolEl(t, opts.appId, id)), shownTools.length ? allToolsEl(toolsHref(site)) : null]],
-      adminapps: [admin.length, admin.map((t) => tileEl(t, opts.appId, id))],
-      more: [rest.length, rest.map((t) => tileEl(t, opts.appId, id))],
-    };
-    for (const g of MENU_GROUPS) {
-      const [n, kids] = lists[g];
-      const grp = groups[g];
-      grp.list.replaceChildren(...kids.filter(Boolean));
-      grp.box.hidden = n === 0;
-      grp.count.textContent = String(n);
-      grp.spoken.textContent = counted(n, GROUP_WORDS[g]);
+    // Home first (0.5.0), then the core apps.
+    mainList.replaceChildren(homeEl(portal, opts.appId, id), ...main.map((t) => tileEl(t, opts.appId, id)));
+    toolsBox.hidden = filterByMode(state.tools, state.mode).length === 0;
+    const lists = { adminapps: admin, more: rest };
+    for (const g of Object.keys(groups)) {
+      groups[g].list.replaceChildren(...lists[g].map((t) => tileEl(t, opts.appId, id)));
+      groups[g].box.hidden = lists[g].length === 0;
     }
     renderGroups();
     renderInbox();
   }
   function renderGroups() {
-    for (const g of MENU_GROUPS) {
+    for (const g of Object.keys(groups)) {
       const open = state.open.includes(g);
       groups[g].button.setAttribute("aria-expanded", String(open));
       groups[g].list.hidden = !open;
@@ -414,18 +420,29 @@ export function mountAppBar(root, opts) {
     const t = (state.tiles || []).find((x) => x.id === app) || (state.tools || []).find((x) => x.id === app);
     return t ? t.name : app === "account" ? "Account" : "";
   }
+  // 0.5.0 (H3; the demo's Ground up bell): unread first; each row is "Parts, 12 min ago", then the text, then a
+  // chevron. A click on an unread notice marks it read (a keepalive POST) and follows its link; a notice without a link
+  // is a button that marks it read. The row menu (notice-menu.js) marks it read or unread.
   function renderInbox() {
-    const items = state.inbox.items;
+    const items = inboxOrder(state.inbox.items);
+    const ae = document.activeElement;
+    const had = ae && ae.getAttribute && bellPanel.contains(ae) ? ae.getAttribute("data-id") : null;
+    const rows = new Map();
     noticeList.replaceChildren(...items.map((n) => {
       const label = appLabel(n.app);
       const body = [
         n.read ? null : h("span", { class: "shbar-notice-dot", "aria-hidden": "true" }),
-        h("span", { class: "shbar-notice-text" }, n.read ? null : sr("Unread: "), label ? h("span", { class: "shbar-notice-app", text: `${label} ` }) : null, n.text),
-        h("span", { class: "shbar-notice-when", text: noticeWhen(n.at) }),
+        h("span", { class: "shbar-notice-text" }, n.read ? null : sr("Unread: "), h("span", { class: "shbar-notice-app", text: noticeLine(label, n.at) }), " ", n.text),
+        h("span", { class: "shbar-notice-chev", "aria-hidden": "true", text: "›" }),
       ];
+      const attrs = { class: "shbar-notice-link", "data-id": n.id, "data-read": String(n.read), "data-tip": n.read ? BAR_TIPS.noticeread : BAR_TIPS.notice, onclick: () => openNotice(n.id) };
       const cls = `shbar-notice${n.read ? "" : " is-unread"}`;
-      return h("li", { class: cls }, n.href ? h("a", { class: "shbar-notice-link", href: n.href }, body) : h("div", { class: "shbar-notice-link" }, body));
+      const row = n.href ? h("a", { ...attrs, href: n.href }, body) : h("button", { ...attrs, type: "button" }, body);
+      rows.set(n.id, row);
+      return h("li", { class: cls }, row);
     }));
+    // A row that was focused keeps the focus when the list is drawn again (it may have moved: unread first).
+    if (had && rows.has(had)) rows.get(had).focus();
     noticeList.hidden = items.length === 0;
     noticeEmpty.hidden = items.length !== 0;
     // Offered whenever the server counts an unread notice (as the demo), also one not shown in the panel.
@@ -450,7 +467,7 @@ export function mountAppBar(root, opts) {
     acct.setAttribute("aria-expanded", String(state.panel === "account"));
     accountPanel.hidden = !showAccount || state.panel !== "account";
     identityName.textContent = who;
-    identityGroups.textContent = state.user?.groups?.join(" · ") || "";
+    identityGroups.textContent = roleLabel(state.user && state.user.groups);
     identityGroups.hidden = !identityGroups.textContent;
     const accountUrl = opts.accountHref ?? accountHref(site);
     const accountBase = String(accountUrl).split("#")[0];
@@ -468,6 +485,8 @@ export function mountAppBar(root, opts) {
     bell.setAttribute("aria-expanded", String(state.panel === "bell"));
     bellPanel.hidden = !showBell || state.panel !== "bell";
     scrim.hidden = !state.panel;
+    if (state.panel) header.setAttribute("data-open", "");
+    else header.removeAttribute("data-open");
     for (const [choice, button] of modeChoices) button.setAttribute("aria-pressed", String(state.mode === choice));
     for (const [c, b] of choices) b.setAttribute("aria-pressed", String(state.theme === c));
     chip.hidden = state.mode !== "competition";
@@ -546,6 +565,7 @@ export function mountAppBar(root, opts) {
   function setPanel(p, focusBack) {
     const was = state.panel;
     state.panel = p;
+    if (p !== "bell") noticeMenu.close(false);
     // The groups open as this device left them (another app or tab may have changed it).
     if (p === "apps" && was !== "apps") {
       if (groupsStick) state.open = readOpenGroups();
@@ -629,6 +649,45 @@ export function mountAppBar(root, opts) {
     renderInbox();
     render();
   }
+  const readUrl = () => opts.inboxReadUrl || `${opts.inboxUrl || "/_shell/inbox"}/read`;
+  const readPost = (body, keepalive) => fetch(readUrl(), { method: "POST", keepalive, credentials: "same-origin", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(body) });
+  // A click on a notice (H3): an unread one is marked read at once (the count drops) and the POST is sent with
+  // keepalive, so it finishes after the page leaves; the link is then followed as usual (no preventDefault, so
+  // Cmd-click and Ctrl-click still open a new tab). A failure is silent: the person has left, and the panel shows the
+  // true state the next time it opens.
+  function openNotice(id) {
+    const n = state.inbox.items.find((x) => x.id === id);
+    if (!n || n.read) return;
+    readPost(inboxReadOne(id), true).catch(() => {});
+    state.inbox = inboxMark(state.inbox, id, true);
+    renderInbox();
+    render();
+  }
+  // The row menu's "Mark as unread" / "Mark as read" (H3): only a 204 changes the notice.
+  async function flipNotice(id, read) {
+    let ok = false;
+    try {
+      ok = (await readPost(inboxReadOne(id, read), false)).status === 204;
+    } catch {
+      ok = false;
+    }
+    if (!alive) return false;
+    if (ok) {
+      state.inbox = inboxMark(state.inbox, id, read);
+      state.inboxNote = "";
+      renderInbox();
+      render();
+    }
+    return ok;
+  }
+  const noticeMenu = installNoticeMenu(bellPanel, {
+    flip: flipNotice,
+    onFailed: (text) => {
+      noticeStatus.textContent = text;
+      noticeStatus.hidden = false;
+    },
+  });
+
   // "Mark all read" (C15): POST /_shell/inbox/read { all: true }; only a 204 is success (an adapter answers 200 with
   // { available: false } when Account fails, and then nothing was saved). Disabled while the request runs; it keeps
   // the focus (aria-disabled, not disabled).
@@ -637,10 +696,9 @@ export function mountAppBar(root, opts) {
     if (marking || !inboxHasUnread(state.inbox)) return;
     marking = true;
     readAll.setAttribute("aria-disabled", "true");
-    const url = opts.inboxReadUrl || `${opts.inboxUrl || "/_shell/inbox"}/read`;
     let ok = false;
     try {
-      const r = await fetch(url, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(INBOX_READ_ALL) });
+      const r = await readPost(INBOX_READ_ALL, false);
       ok = r.status === 204;
     } catch {
       ok = false;
@@ -690,6 +748,8 @@ export function mountAppBar(root, opts) {
 
   let tipKey = JSON.stringify(tipIdsOf(opts));
   let removeTip = installTip(tipIdsOf(opts));
+  // Warm the next app (0.5.0, D187-1): a preconnect to this site's host under the pointer, the finger or the focus.
+  const removeWarm = installWarm(site);
   render();
   renderTiles();
   if (!state.tiles) load();
@@ -698,6 +758,8 @@ export function mountAppBar(root, opts) {
   loadEvent();
 
   return {
+    /** Puts the app's tab row (its .shell-tabs element) in the bar's slot; null takes it out. */
+    setTabs,
     update(more) {
       const refetch = ("showBell" in more && !!more.showBell !== !!opts.showBell) || ("inboxUrl" in more && more.inboxUrl !== opts.inboxUrl);
       Object.assign(opts, more);
@@ -727,6 +789,8 @@ export function mountAppBar(root, opts) {
       window.removeEventListener("shell:open-apps", onOpenApps);
       window.removeEventListener("shell:close-apps", onCloseApps);
       window.removeEventListener("shell:change", onShellChange);
+      noticeMenu.destroy();
+      removeWarm();
       removeTip();
       root.textContent = "";
     },
@@ -794,7 +858,7 @@ export function mountHomeGroups(root, opts = {}) {
     items = [];
     const body = h("div", { class: "grpbody", id: `grp-home-${id}` }, content);
     const btn = h("button", { type: "button", class: "grphead", id: `grp-home-${id}-btn`, "aria-controls": `grp-home-${id}`, "data-tip": id === "adminapps" ? BAR_TIPS.adminapps : null },
-      h("span", { class: "grpname", text: GROUP_WORDS[id][0] }), h("span", { class: "tcount", text: String(count) }), h("span", { class: "grpchev", "aria-hidden": "true" }, icon("chevron", 16)));
+      h("span", { class: "grpname", text: GROUP_LABELS[id] }), h("span", { class: "tcount", text: String(count) }), h("span", { class: "grpchev", "aria-hidden": "true" }, icon("chevron", 16)));
     const grp = h("div", { class: "grp", "data-grp": id, id: id === "more" ? "more-apps" : `${id}-group` }, btn, body);
     const row = { id, grp, btn, body, items: mine };
     btn.addEventListener("click", () => {
@@ -907,27 +971,51 @@ export function mountHomeGroups(root, opts = {}) {
  * The guide's "Get started" card on the portal home (C2): draws into `root` (the page's `<div data-guide-card>`)
  * only while the person's guide is wanted, so a finished, hidden or absent guide never loads the engine. It also
  * resumes a stop that is open for Home (Start the tour again, the admin and wait stops), so Home needs no bar.
- * opts: { user: { name, groups }, tiles, mode, siteScheme, siteDomain }. Returns { update(opts), destroy() } at once;
- * the engine loads in the background.
+ * opts: { user: { name, groups }, tiles, mode, siteScheme, siteDomain, eventDay }. Returns { update(opts), destroy() }
+ * at once; the engine loads in the background.
+ * 0.5.0 (Ground up): the card is quiet (a section under a rule, no box, no progress bar), so it fits Home's side
+ * column under the apps as well as the main column: put `root` where the page wants it. `eventDay: true` (an event is
+ * on today; Home already knows from /event.json) hides it: on an event day the person's job comes first, not the tour.
+ * update({ eventDay }) hides or shows it again; a stop that is open for Home still opens.
  */
 export function mountHomeGuide(root, opts = {}) {
   let card = null;
   let gone = false;
+  let loading = false;
   const groups = opts.user && Array.isArray(opts.user.groups) ? opts.user.groups : [];
-  // The card is wanted, or a stop is open for Home (a person with no bar on the page still gets it).
-  if (guideCardWanted(readGuide(document.cookie, Date.now(), guideRole(groups)), groups) || guideOpenId(document.cookie, undefined, groups)) {
+  const wanted = () => guideCardWanted(readGuide(document.cookie, Date.now(), guideRole(groups)), groups);
+  const openForHome = () => !!guideOpenId(document.cookie, undefined, groups);
+  function show() {
+    if (gone || loading || card) return;
+    // The card is wanted (and this is not an event day), or a stop is open for Home (a person with no bar on the page
+    // still gets it).
+    const drawCard = !opts.eventDay && wanted();
+    if (!drawCard && !openForHome()) return;
+    loading = true;
     import("../guide.js")
       .then((m) => {
+        loading = false;
         if (gone) return;
-        card = m.mountGuideCard(root, { appId: "portal", ...opts });
+        if (drawCard && !opts.eventDay) card = m.mountGuideCard(root, { appId: "portal", ...opts });
         // Home may have no bar (the shop screen's home): the card resumes an open stop itself (safe twice).
         m.resumeGuide({ appId: "portal", ...opts });
       })
-      .catch(() => {});
+      .catch(() => {
+        loading = false;
+      });
   }
+  root.hidden = !!opts.eventDay;
+  show();
   return {
     update(more = {}) {
       Object.assign(opts, more);
+      if ("eventDay" in more) {
+        root.hidden = !!opts.eventDay;
+        if (opts.eventDay && card) {
+          card.destroy();
+          card = null;
+        } else if (!opts.eventDay) show();
+      }
       if (card) card.update(more);
     },
     destroy() {

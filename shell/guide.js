@@ -437,6 +437,9 @@ function place() {
     }
   }
   ringEl.hidden = !rr;
+  // 0.5.0: a control in the black bar (a tab in the bar's slot from 1024 px) gets a white ring, which shows on black.
+  const onBar = !!(rr && t.closest(".shbar") && !(t.closest(".shbar-tabs") && vw() < 1024));
+  ringEl.classList.toggle("is-onbar", onBar);
   layer.classList.toggle("is-dim", !!rr);
   // The "Done." card stays beside the control it was about (no ring).
   let anchor = t;
