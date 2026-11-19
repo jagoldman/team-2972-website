@@ -189,19 +189,22 @@ const DRIVE_PHOTOS = (() => {
 
 // THE SIGNAL (D193; the Website editor's preview relies on it). window.PHOTO_BLUR, set by config.js, "arrived" only when
 // photoBlurList() accepts it: a plain object with format === 1 and photos a plain object (an empty one is fine) whose
-// every key is a Drive ID and every value is { v: 1 to 8 of a-z 0-9, ellipses: a non-empty list of [x, y, rx, ry] with
+// every key is a Drive ID and every value is { v: a letter and 1 to 6 digits, ellipses: a non-empty list of [x, y, rx, ry] with
 // each number strictly between 0 and 1 }. Anything else, including no config.js at all, a config.js that failed or did
 // not parse, PHOTO_BLUR missing, null, without format 1, or with one bad entry, is "did not arrive", and then the pages
 // ask Google for nothing: no Drive photo is shown, and no Google-hosted address is used (imgUrl() gives "").
 // The valid empty list, { format: 1, photos: {} }, means "nothing is blurred" and the pages behave as before D193.
 const PHOTO_BLUR_FORMAT = 1;
+// A blurred photo's version mark ("b2"): a letter and 1 to 6 digits, so a saved file's name <id>-<mark>-<w>.webp reads
+// back without doubt.
+const PHOTO_MARK = /^[a-z][0-9]{1,6}$/;
 function photoBlurList(t) {
   const plain = (o) => Object.prototype.toString.call(o) === "[object Object]";
   if (!plain(t) || t.format !== PHOTO_BLUR_FORMAT || !plain(t.photos)) return null;
   const out = {};
   for (const id of Object.keys(t.photos)) {
     const b = t.photos[id];
-    const ok = /^[\w-]{20,}$/.test(id) && plain(b) && typeof b.v === "string" && /^[a-z0-9]{1,8}$/.test(b.v) &&
+    const ok = /^[\w-]{20,}$/.test(id) && plain(b) && typeof b.v === "string" && PHOTO_MARK.test(b.v) &&
       Array.isArray(b.ellipses) && b.ellipses.length > 0 &&
       b.ellipses.every((e) => Array.isArray(e) && e.length === 4 && e.every((n) => typeof n === "number" && n > 0 && n < 1));
     if (!ok) return null;
@@ -226,12 +229,20 @@ function isGoogleHosted(value) {
 //                                                 /thumbnail?id= (also under /u/<n>/)
 //   drive.usercontent.google.com                  any path with ?id= (/download?id=, /u/0/uc?id=)
 //   www.googleapis.com/drive/v2|v3/files/<id>     the Drive API
+//   img/drive/<id>-<w>.webp, img/drive/<id>-<mark>-<w>.webp   this site's own saved copy, as a path (resolved by
+//                                                 sitePath: /img/..., img/..., ./ and ../, percent-escapes), current or
+//                                                 retired; imgUrl() also reads this site's full address as its path
 // http: and https: are both taken (both name the same file). Any other Google-hosted address is not a Drive photo
 // this site can serve: imgUrl() gives "" for it (isGoogleHosted).
 function driveIdOf(value) {
   const s = String(value ?? "").trim();
   const ok = (id) => (/^[\w-]{20,}$/.test(id || "") ? id : "");
   if (ok(s)) return s;
+  const saved = /^\/img\/drive\/([\w-]+)-[0-9]+\.webp$/.exec(sitePath(s));
+  if (saved) {
+    const mark = /^(.*)-([a-z][0-9]{1,6})$/.exec(saved[1]);
+    return ok(mark && ok(mark[1]) ? mark[1] : saved[1]);
+  }
   let u;
   try { u = new URL(s.replace(/[\u0000-\u0020\u007f-\u009f]/g, "")); } catch (e) { return ""; }
   if (u.protocol !== "https:" && u.protocol !== "http:") return "";
@@ -246,6 +257,16 @@ function driveIdOf(value) {
   if (host === "www.googleapis.com" && (m = /^\/drive\/v[23]\/files\/([\w-]+)/.exec(p))) return ok(m[1]);
   return "";
 }
+// A value that is not a full address (no scheme) as the path a browser would ask for from the site's root, with "./",
+// "../" and percent-escapes resolved ("img/./drive/%31x" -> "/img/drive/1x"); "" for a full address or nonsense.
+function sitePath(value) {
+  const s = String(value ?? "").trim();
+  if (!s || /^[a-z][a-z0-9+.-]*:/i.test(s) || s.startsWith("//")) return "";
+  try {
+    const p = new URL(s, "http://relative.invalid/").pathname;
+    try { return decodeURIComponent(p); } catch (e) { return p; }
+  } catch (e) { return ""; }
+}
 // ---- photo-rules: end ----
 
 // The blur list as the pages see it: the photos map, or null when the list did not arrive (see THE SIGNAL above).
@@ -255,6 +276,16 @@ function driveIdOf(value) {
 const PHOTO_BLUR_LIST = photoBlurList(window.PHOTO_BLUR);
 function blurOf(id) {
   return PHOTO_BLUR_LIST && Object.prototype.hasOwnProperty.call(PHOTO_BLUR_LIST, id) ? PHOTO_BLUR_LIST[id] : null;
+}
+// A full address on this site (its own host, or www., portal. or editor. on the site's domain) as its path, so a pasted
+// https://<site>/img/drive/... is read like /img/drive/...; anything else unchanged.
+function sitePathOf(s) {
+  if (!/^https?:\/\//i.test(s)) return s;
+  try {
+    const u = new URL(s), host = u.host.toLowerCase(), domain = siteBase().domain.toLowerCase();
+    const mine = host === String(location.host).toLowerCase() || host === domain || SITE_SUBDOMAINS.some((sub) => host === `${sub}.${domain}`);
+    return mine ? u.pathname + u.search : s;
+  } catch (e) { return s; }
 }
 function hasPhoto(src) {
   return Boolean(String(src || "").trim()) && imgUrl(src, MEDIA_WIDTHS[0]) !== "";
@@ -268,9 +299,11 @@ function imgUrl(src, width) {
     const w = have.find((x) => x >= width) || have[have.length - 1];
     return `/media/${media[1]}-${w}.webp`;
   }
-  const id = driveIdOf(s);
-  // A Google-hosted address that is not a Drive photo in a form driveIdOf() knows is never used as it is.
-  if (!id) return isGoogleHosted(s) ? "" : safeUrl(s);
+  const local = sitePathOf(s);
+  const id = driveIdOf(local);
+  // A Google-hosted address that is not a Drive photo in a form driveIdOf() knows is never used as it is, and nor is
+  // any other path into img/drive (an old link-preview picture, the manifest): only a current saved copy is ever named.
+  if (!id) return isGoogleHosted(s) || /^\/img\/drive(?:\/|$)/i.test(sitePath(local)) ? "" : safeUrl(s);
   // The blur list did not arrive: no Drive photo at all (we cannot tell which are blurred), so nothing from Google.
   if (!PHOTO_BLUR_LIST) return "";
   const saved = Object.prototype.hasOwnProperty.call(DRIVE_PHOTOS, id) && Array.isArray(DRIVE_PHOTOS[id]) ? DRIVE_PHOTOS[id] : [];

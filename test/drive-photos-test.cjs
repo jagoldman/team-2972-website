@@ -205,6 +205,28 @@ const contentSections = { SITE, ROBOTS };`;
   check("D193: the build downloads a photo pasted in any form (each ID once)", fetchPhotos.extractDriveIds(sampleForms).join() === [B, C, HERO].sort().join(), fetchPhotos.extractDriveIds(sampleForms).join());
 }
 
+// ---------- D193: a retired address cannot come back ----------
+{
+  const site = loadComponents(manifest), bare = loadComponents("{}");
+  const cur = (w) => `/img/drive/${HERO}-b2-${w}.webp`;
+  const old = [`/img/drive/${HERO}-1600.webp`, `img/drive/${HERO}-400.webp`, `/img/drive/${HERO}-b1-800.webp`, `./img/./drive/${HERO}-b1-1600.webp`,
+    `../img/drive/%31${HERO.slice(1)}-400.webp`, `/img/drive/${HERO}-b2-400.webp`, `http://localhost/img/drive/${HERO}-1600.webp`, `https://www.localhost/img/drive/${HERO}-b1-400.webp`,
+    `/img/drive/${HERO}-1600.webp?v=1`];
+  // (The build cannot know the site's host, so it reads only the path forms; the pages read this site's full address too.)
+  const bad = old.filter((v) => site.imgUrl(v, 800) !== cur(800) || bare.imgUrl(v, 800) !== "" || (!/^https?:/.test(v) && fetchPhotos.driveId(v) !== HERO));
+  check("D193: a blurred photo's old address (any old name, mark, spelling, or this site's full address) shows the current blurred copy, or nothing", bad.length === 0, bad.map((v) => `${v} -> ${site.imgUrl(v, 800)}`).slice(0, 3).join(" | "));
+  const never = ["/img/drive/og-image.jpg", "/img/drive/og-image-b1.jpg", "img/drive/og-image-b2.jpg", "https://www.localhost/img/drive/og-image.jpg", "/img/drive/manifest.json",
+    "/img/drive/", "/img/drive/drive-retired.caddy", "/%69mg/drive/og-image.jpg", "./img/drive/x.webp"];
+  check("D193: no other img/drive path is ever named (old link-preview pictures, the manifest, anything unknown)", never.every((v) => site.imgUrl(v, 800) === ""), never.filter((v) => site.imgUrl(v, 800) !== "").join(" | "));
+  check("D193: an unblurred photo's saved-copy path reads back to its ID (served from its copy, or lh3)", site.imgUrl(`/img/drive/${B}-1600.webp`, 400) === `/img/drive/${B}-400.webp` && bare.imgUrl(`img/drive/${B}-400.webp`, 800) === lh3(B, 800));
+  const routes = fetchPhotos.retiredRoutes(fetchPhotos.blurTable());
+  check("D193: the build's Caddy rule names every current file of each blurred photo and the current link-preview picture as the only ones served",
+    routes.includes(`path_regexp drive_retired ^/img/drive/(?:og-image[^/]*\\.jpg|(?:${HERO})-(?:[a-z0-9]+-)?[0-9]+\\.webp)$`) && fetchPhotos.WIDTHS.every((w) => routes.includes(cur(w))) && routes.includes("/img/drive/og-image-b2.jpg") && /handle @drive_retired \{\s*header Cache-Control "no-store"\s*respond 404\s*\}/.test(routes), routes);
+  const caddy = read("container/Caddyfile");
+  check("D193: Caddy imports that rule first in (drive_photos), before any photo is served", /\(drive_photos\) \{[^@]*import \/etc\/caddy\/drive-retired\.caddy\s*@drive_photo \{/.test(caddy));
+  check("D193: the Dockerfile moves the rule from the photo build into /etc/caddy", /mv \/srv\/site\/img\/drive\/drive-retired\.caddy \/etc\/caddy\/drive-retired\.caddy/.test(read("Dockerfile")));
+}
+
 // The two copies of the Drive ID rule agree: imgUrl() goes to lh3 (empty manifest) exactly when fetch.cjs takes the value.
 const plain = loadComponents("{}");
 const probes = [B, ` ${B} `, "short", "a".repeat(19), "a".repeat(20), "abc-def_ghi-jkl_mnop-q", "has space in it 1234567890", "a/b/cccccccccccccccccccccc",
@@ -299,7 +321,8 @@ const contentSections = { SITE, ROBOTS };`);
     check("build: the manifest lists only the photos that worked", JSON.stringify(onDisk) === JSON.stringify({ [GOOD]: fresh.WIDTHS, [WIDE]: fresh.WIDTHS }) && JSON.stringify(result) === JSON.stringify(onDisk), JSON.stringify(onDisk));
     check("build: one warning per failed photo", warnings.length === 3 && [NOTSHARED, HTML, BROKEN].every((id) => warnings.some((w) => w.includes(id))), warnings.join(" | "));
     check("build: a 404 is not retried", hits[NOTSHARED] === 1, `${hits[NOTSHARED]} requests`);
-    check("build: nothing is left behind for failed photos (only the manifest, the saved photos and the link-preview picture)", fs.readdirSync(out).every((f) => f === "manifest.json" || f === fresh.OG.file || f.startsWith(GOOD) || f.startsWith(WIDE)), fs.readdirSync(out).join(" "));
+    check("build: nothing is left behind for failed photos (only the manifest, the Caddy rule, the saved photos and the link-preview picture)", fs.readdirSync(out).every((f) => f === "manifest.json" || f === "drive-retired.caddy" || f === fresh.OG.file || f.startsWith(GOOD) || f.startsWith(WIDE)), fs.readdirSync(out).join(" "));
+    check("build: the Caddy rule for retired names is written with the photos", fs.readFileSync(path.join(out, "drive-retired.caddy"), "utf8") === fresh.retiredRoutes(fresh.blurTable()));
     const og = await sharp(path.join(out, fresh.OG.file)).metadata();
     check("build: og-image-b2.jpg is the hero photo cut to 1200x630, JPEG, with no metadata", og.format === "jpeg" && og.width === 1200 && og.height === 630 && !og.exif && !og.icc && !og.xmp, JSON.stringify({ f: og.format, w: og.width, h: og.height }));
     // A hero that is not a saved photo (it failed here): no og-image-b2.jpg, and a stale one from a run before is removed.

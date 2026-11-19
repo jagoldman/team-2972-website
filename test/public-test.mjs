@@ -421,6 +421,34 @@ try {
     check("D193 forms: Google is never asked for the hero or for the address it cannot reduce", !google.some((u) => u.includes(HERO) || u.includes("ACg8ocK")) && google.some((u) => u.includes(other)), google.filter((u) => u.includes(HERO) || u.includes("ACg8ocK") || u.includes(other)));
     await context.close();
   }
+  // D193: a retired address of the hero supplied as content (as the Website editor can) shows the current blurred copy;
+  // an old link-preview address shows nothing; no retired address is ever asked for.
+  {
+    const { context } = await newContext(browser, { width: 1440 });
+    const asked = [];
+    context.on("request", (rq) => asked.push(new URL(rq.url()).pathname));
+    const page = await context.newPage();
+    await open(page, "/robots.html");
+    const r = await page.evaluate((hero) => {
+      const robots = JSON.parse(JSON.stringify(ROBOTS));
+      robots[0].image = `/img/drive/${hero}-1600.webp`;
+      robots[1].image = `img/drive/${hero}-b1-800.webp`;
+      robots[2].image = `http://landing.test/img/drive/${hero}-1600.webp`;
+      robots[3].image = "/img/drive/og-image.jpg";
+      robots[4].image = "img/drive/og-image-b1.jpg";
+      window.setContent({ ROBOTS: robots, SITE: { ...SITE, heroImage: `/img/drive/${hero}-1600.webp` } });
+      const item = (i) => document.querySelector(`#robot-archive > li[data-ck="ROBOTS[${i}]"]`);
+      return [0, 1, 2, 3, 4].map((i) => { const im = item(i).querySelector("img"); return im ? im.getAttribute("src") : (item(i).querySelector(".ph") ? "Photo wanted" : null); });
+    }, HERO);
+    await page.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += 600) { scrollTo(0, y); await new Promise((res) => setTimeout(res, 40)); } });
+    await page.waitForTimeout(300);
+    const cur = `/img/drive/${HERO}-b2-400.webp`;
+    check("D193 retired: the hero's old addresses (old name, old mark, this site's full address) show the current b2 copy; old link-preview addresses show Photo wanted",
+      JSON.stringify(r) === JSON.stringify([cur, cur, cur, "Photo wanted", "Photo wanted"]), r);
+    const retired = asked.filter((p) => /^\/img\/drive\/(og-image(-b1)?\.jpg|[\w-]+-(b1-)?\d+\.webp)$/.test(p) && !p.includes("-b2-") && p.includes("/img/drive/") && (p.includes(HERO) || p.includes("og-image")));
+    check("D193 retired: no retired address is ever requested", retired.length === 0, retired);
+    await context.close();
+  }
   // The robots list follows the data (what the editor's live preview does: new content, the page re-renders)
   {
     const { context } = await newContext(browser, { width: 1440 });

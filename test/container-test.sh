@@ -256,6 +256,16 @@ if printf '%s' "$dm" | grep -q "\"$hero\""; then
 else
   echo "FAIL PRIVACY (D193): the hero photo was not saved blurred in this build, so the home page shows no hero photo"; fail=1
 fi
+# D193: a stale file under a retired name (no mark, an older mark, an old link-preview name) answers 404 even when it is on
+# disk; the current names still answer 200.
+if printf '%s' "$dm" | grep -q "\"$hero\""; then
+  docker exec -u 0 "$NAME" sh -c "cd /srv/site/img/drive && for n in $hero-400.webp $hero-1600.webp $hero-b1-400.webp $hero-b1-1600.webp og-image.jpg og-image-b1.jpg; do cp $hero-b2-400.webp \$n; done" \
+    && echo "ok   stale files put under the retired names" || { echo "FAIL could not put stale files in the container"; fail=1; }
+  for n in $hero-400.webp $hero-1600.webp $hero-b1-400.webp $hero-b1-1600.webp og-image.jpg og-image-b1.jpg; do check 404 "retired name $n is 404 with a stale file present" -H "Host: $D" "$URL/img/drive/$n"; done
+  rh=$(curl -s -D - -o /dev/null -H "Host: $D" "$URL/img/drive/$hero-1600.webp" | tr -d '\r')
+  echo "$rh" | grep -qi '^cache-control: no-store' && echo "ok   a retired name is not cached" || { echo "FAIL a retired name's cache header"; fail=1; }
+  check 200 "the current b2 file is still served" -H "Host: $D" "$URL/img/drive/$hero-b2-1600.webp"
+fi
 for p in /img/drive/ /img/drive/manifest.json /img/drive/nope-400.webp /img/drive/1AbCdEfGhIjKlMnOpQrStUvWxYz012345-400.webp; do
   check 404 "public $p is not served" -H "Host: $D" "$URL$p"
 done

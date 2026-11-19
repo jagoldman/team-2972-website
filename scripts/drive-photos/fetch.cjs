@@ -14,6 +14,9 @@
 //    the page then shows no photo there, never the original from Google.
 // 3. Writes <out>/manifest.json: { "<id>": [400, 800, 1200, 1600], ... } for the photos that worked.
 //    Caddy pastes it into /config.js, and imgUrl() uses a local file only when the manifest lists it.
+// 3b. Writes <out>/drive-retired.caddy (the Dockerfile moves it to /etc/caddy, and the Caddyfile imports it before the
+//    photo route): every retired name of a blurred photo (<id>-<w>.webp, any other mark) and of the link-preview picture
+//    answers 404, even if a stale file with that name is on disk (D193).
 // 4. Writes <out>/og-image-b2.jpg: SITE.heroImage cut to 1200x630 (the link-preview size), framed by SITE.heroPosition as
 //    the page frames it. index.html names it in its og:image tag (Caddy renders that tag with the site's address).
 //    No hero photo, or one that failed: no og-image-b2.jpg, and the page's tag falls back to the site's app icon.
@@ -247,6 +250,7 @@ async function run(contentFile, outDir, log = console, blur = blurTable()) {
   const sorted = Object.fromEntries(Object.keys(manifest).sort().map((id) => [id, manifest[id]]));
   // Only [\w-] IDs and numbers, so the JSON holds no ' or \ and can sit inside a JS string in config.js.
   fs.writeFileSync(path.join(outDir, "manifest.json"), JSON.stringify(sorted));
+  fs.writeFileSync(path.join(outDir, "drive-retired.caddy"), retiredRoutes(blur));
   log.log(`drive photos: ${Object.keys(sorted).length} of ${ids.length} saved (${Math.round(bytes / 1024)} KB) in ${outDir}`);
   // The link-preview picture, from the hero photo when it was saved.
   const site = sections.SITE || {};
@@ -266,7 +270,26 @@ async function run(contentFile, outDir, log = console, blur = blurTable()) {
   return sorted;
 }
 
-module.exports = { WIDTHS, OG, driveId, extractDriveIds, focusOf, photoRules, blurTable, blurGeometry, insideEllipse, blurMask, blurRegions, fileName, run };
+// The Caddy rule for retired names (step 3b): the current names of each blurred photo and the current link-preview
+// picture are served; every other name of a blurred photo, and every other og-image*.jpg, answers 404.
+function retiredRoutes(blur) {
+  const ids = Object.keys(blur).filter((id) => /^[\w-]{20,}$/.test(id) && /^[a-z][0-9]{1,6}$/.test(blur[id].v)).sort();
+  const names = [`/img/drive/${OG.file}`].concat(ids.flatMap((id) => WIDTHS.map((w) => `/img/drive/${fileName(id, w, blur)}`)));
+  const photos = ids.length ? `|(?:${ids.join("|")})-(?:[a-z0-9]+-)?[0-9]+\\.webp` : "";
+  return `# Written by scripts/drive-photos/fetch.cjs at image build time (D193). Retired names of blurred photos and of the
+# link-preview picture answer 404, even if a stale file with that name is on disk. Imported first in (drive_photos).
+@drive_retired {
+	path_regexp drive_retired ^/img/drive/(?:og-image[^/]*\\.jpg${photos})$
+	not path ${names.join(" ")}
+}
+handle @drive_retired {
+	header Cache-Control "no-store"
+	respond 404
+}
+`;
+}
+
+module.exports = { WIDTHS, OG, retiredRoutes, driveId, extractDriveIds, focusOf, photoRules, blurTable, blurGeometry, insideEllipse, blurMask, blurRegions, fileName, run };
 
 if (require.main === module) {
   const root = path.join(__dirname, "..", "..");

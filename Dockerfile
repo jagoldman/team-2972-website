@@ -33,7 +33,9 @@ COPY --chmod=0755 container/entrypoint.sh /usr/local/bin/landing-entrypoint
 COPY . /srv/site
 # config.js reads img/drive/manifest.json, so it must exist (it is "{}" when every download failed).
 COPY --from=drive-photos /out/drive /srv/site/img/drive
+# drive-retired.caddy (written with the photos) is the Caddy rule that answers 404 for retired photo names (D193).
 RUN rm -rf /srv/site/container /srv/site/scripts && test -f /srv/site/img/drive/manifest.json \
+	&& mv /srv/site/img/drive/drive-retired.caddy /etc/caddy/drive-retired.caddy \
 	&& mkdir -p /config /srv/content /srv/media
 
 EXPOSE 3001
