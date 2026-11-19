@@ -991,7 +991,10 @@ body[data-display] .install-banner { display: none; }
   bottom: 16px;
   max-width: 560px;
   margin: 0 auto;
-  z-index: 900;
+  /* 8.3.1: above the page (Home's own fixed layers stop at 30: the status line), under the bar's open menus: their
+     scrim is 35 and the bar 40 (shell/app-bar.css), so an open Apps, notices or account menu covers the card and a
+     press on the card's place reaches the scrim, which closes the menu. */
+  z-index: 34;
   padding: 20px 22px;
   border-radius: 12px;
   border: 1px solid var(--line);

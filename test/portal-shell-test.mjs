@@ -21,6 +21,8 @@
 //     event day, the app column, Done's answers (403, 404, 5xx, no answer in 10 s), one POST for two presses, one
 //     lasting status line, hostile words, the shop screen's notice and an extra Authentik group, the amber chip's
 //     contrast, the install banner's start, the cookie re-read. PORTAL_TEST_SHOTS=<dir> saves viewport screenshots.
+//   - release 8.3.1 (M6): Home's Tools row (favourites, chevrons, "needs a photo", the six defaults without top), and the
+//     install card under the bar's open menus at 320x568 and 375x667.
 // Contrast in both themes is test/theme-test.sh (it covers the new tiles).
 // Needs Playwright with its Chromium from an existing install (nothing is added to landing):
 //   LANDING_TEST_NODE_MODULES=/path/to/node_modules node test/portal-shell-test.mjs
@@ -1339,19 +1341,30 @@ try {
       const g = document.querySelector('#home-groups [data-grp="tools"]');
       if (!g) return null;
       return { count: g.querySelector(".tcount").textContent, expanded: g.querySelector(".grphead").getAttribute("aria-expanded"),
-        favs: [...g.querySelectorAll("#tools-list a.toolrow:not(.all)")].map((a) => [a.querySelector("b").textContent, a.getAttribute("href"), a.target]),
+        // The name is the b's first text: a photo tool's b also holds span.tooltag "needs a photo" (kit a574444).
+        favs: [...g.querySelectorAll("#tools-list a.toolrow:not(.all)")].map((a) => [a.querySelector("b").childNodes[0].textContent, a.getAttribute("href"), a.target]),
+        // Each favourite row ends in span.chev "›", hidden from screen readers; the tags, by the tool's name.
+        chevs: [...g.querySelectorAll("#tools-list a.toolrow:not(.all)")].every((a) => a.lastElementChild?.matches("span.chev[aria-hidden=true]") && a.lastElementChild.textContent === "›"),
+        tags: [...g.querySelectorAll("#tools-list a.toolrow:not(.all) .tooltag")].map((t) => [t.closest("b").childNodes[0].textContent, t.textContent]),
         note: g.querySelector(".grpnote")?.textContent || "", all: [...g.querySelectorAll("#tools-list a.toolrow.all")].map((a) => [a.textContent.trim(), a.getAttribute("href")]) };
     });
     const want = (favs, all = "All 17 tools›", count = "17") => ({ count, favs: favs.map(([n, p]) => [n, `http://tools.landing.test${p}`, ""]), all: [[all, "http://tools.landing.test/"]] });
     const same = (got, w, note = "") => got && got.count === w.count && JSON.stringify(got.favs) === JSON.stringify(w.favs) && JSON.stringify(got.all) === JSON.stringify(w.all) && got.note === note;
+    // needsPhoto (infra a574444): the two photo tools carry "needs a photo"; every favourite row ends in a chevron.
+    const PHOTO = new Set(["Drawing to vector", "Gear and sprocket finder"]);
+    const tagsOk = (got) => got && got.chevs && JSON.stringify(got.tags) === JSON.stringify(got.favs.filter(([n]) => PHOTO.has(n)).map(([n]) => [n, "needs a photo"]));
+    // A 0.5.0 server's answer or an old apps.json: no tool is marked top. With no cookie, the kit's six defaults show.
+    const NO_TOP = JSON.stringify(JSON.parse(TOOL_APPS).map(({ top, ...t }) => t));
     const CASES = [
       ["no cookie: the six marked top, in apps.json's order", null, SIX, ""],
       ["a cookie naming two tools: those two, in the cookie's order", "tool-ratio.tool-shooter", [["Gear ratio", "/ratio"], ["Shooter", "/shooter"]], ""],
       ['the "none" value: the line and All 17 tools', "-", [], NOTE],
       ["a cookie naming a tool this person may not open, an unknown id and a repeat: only Gear ratio", "tool-staffonly.tool-nope.tool-ratio.tool-ratio", [["Gear ratio", "/ratio"]], ""],
+      ["no top marks in apps.json and no cookie: the six defaults (DEFAULT_TOOL_FAVS)", null, SIX, "", NO_TOP],
+      ["a cookie naming a photo tool: its tag and chevron", "tool-gear.tool-ratio", [["Gear and sprocket finder", "/gear"], ["Gear ratio", "/ratio"]], ""],
     ];
-    for (const [label, value, favs, note] of CASES) {
-      const { context } = await newContext(browser, { groups: "student", apps: TOOL_APPS });
+    for (const [label, value, favs, note, apps = TOOL_APPS] of CASES) {
+      const { context } = await newContext(browser, { groups: "student", apps });
       if (value !== null) await context.addCookies([site("shelltoolfavs", value)]);
       const { page, errors } = await openPortal(context);
       const closed = await homeTools(page);
@@ -1359,6 +1372,7 @@ try {
       await page.click('[data-grp="tools"] .grphead');
       const got = await homeTools(page);
       check(`M6 student, ${label}`, same(got, want(favs), note) && errors.length === 0, { got, errors });
+      check(`M6 student, ${label}: each favourite row ends in a chevron; only the photo tools say "needs a photo"`, tagsOk(got), got);
       // The bar's menu draws the same favourites from the same cookie (kit 0.5.1).
       await page.click("#shell-bar .shbar-appsbtn");
       const menu = await page.$eval("#shell-bar .shbar-apps", (p) => ({ open: p.querySelector(".shbar-toolsbtn")?.getAttribute("aria-expanded"),
@@ -1411,6 +1425,119 @@ try {
       const m = await page.$eval("#shell-bar .shbar-apps", (p) => ({ title: p.querySelector(".shbar-panel-head")?.textContent.replace("Close", "").trim(),
         mode: p.querySelectorAll(".shbar-mode").length, favs: p.querySelectorAll(".shbar-toolitem").length, all: p.querySelector(".shbar-alltools")?.textContent.trim() }));
       check(`M6 ${width}px: the open Apps menu reads Apps, no mode switch, six favourites, All 17 tools; no sideways scroll`, m.title === "Apps" && m.mode === 0 && m.favs === 6 && m.all === "All 17 tools›" && (await over(page)) <= 0 && errors.length === 0, { m, errors });
+      await context.close();
+    }
+
+    // 8.3.1 (kit a574444): the chevron and "needs a photo" as Home draws them. Home styles its rows with css/style.css's
+    // .homegroups rules and the kit's ui.css (the row is also .shell-homegroups): both draw them. Looked at by hand.
+    for (const [width, height] of [[1280, 900], [390, 844]]) {
+      for (const theme of ["light", "dark"]) {
+        const { context } = await newContext(browser, { groups: "student", apps: TOOL_APPS, width, height, today: TODAY.student });
+        await context.addCookies([site("theme", theme)]);
+        const { page, errors } = await openPortal(context);
+        await settle(page);
+        const notNow = page.getByRole("button", { name: "Not now" });
+        if (await notNow.isVisible()) await notNow.click();
+        await page.click('[data-grp="tools"] .grphead');
+        await page.$eval('[data-grp="tools"]', (e) => scrollTo({ top: e.getBoundingClientRect().top + scrollY - 64, behavior: "instant" }));
+        await page.waitForTimeout(300);
+        const look = await page.evaluate(() => {
+          const rows = [...document.querySelectorAll("#tools-list a.toolrow:not(.all)")];
+          const cs = (e) => getComputedStyle(e);
+          const mute = cs(rows[0].querySelector("small")).color;
+          const out = rows.map((a) => {
+            const r = a.getBoundingClientRect(), c = a.querySelector(".chev"), cr = c.getBoundingClientRect(), text = a.querySelector(":scope > span:not(.ic):not(.chev)").getBoundingClientRect();
+            return { chevGrey: cs(c).color === mute, chevEnd: r.right - cr.right <= 16 && cr.left >= text.right, chevMid: Math.abs((cr.top + cr.bottom) / 2 - (r.top + r.bottom) / 2) <= 4, fits: a.scrollWidth <= a.clientWidth };
+          });
+          const tag = document.querySelector("#tools-list .tooltag"), name = tag.closest("b");
+          return { rows: out, theme: document.documentElement.dataset.theme || "", tag: { grey: cs(tag).color === mute, smaller: parseFloat(cs(tag).fontSize) < parseFloat(cs(name).fontSize), inline: cs(tag).display === "inline", gap: parseFloat(cs(tag).marginLeft) > 0 } };
+        });
+        await shot(page, `r831-home-tools-chev-${width}-${theme}`);
+        check(`M6 ${width}px ${theme}: each favourite ends in a grey chevron at the row's end, centred; nothing overflows`, look.rows.length === 6 && look.rows.every((r) => r.chevGrey && r.chevEnd && r.chevMid && r.fits) && errors.length === 0, look);
+        check(`M6 ${width}px ${theme}: "needs a photo" is grey, smaller than the name, on its line after a gap`, look.tag.grey && look.tag.smaller && look.tag.inline && look.tag.gap, look.tag);
+        await context.close();
+      }
+    }
+
+    // 8.3.1: the install card (a first visit on a phone) stays under the bar's open menus. While the Apps menu, the
+    // notices or the account menu is open, the menu and its scrim cover the card (css/style.css: z-index 34, under the
+    // scrim's 35 and the bar's 40); a press where the card is lands on the scrim and closes the menu. Closed, the card is
+    // back on top of the page and its buttons work.
+    const NOTICES = { v: 1, available: true, unread: 1, items: [
+      { id: "n1", app: "Parts", text: "Your part request was ordered", href: "http://parts.landing.test/requests/7", at: new Date(Date.now() - 300000).toISOString(), read: false }] };
+    const CARD = ".install-banner";
+    // What a press at the centre of each of the card's parts would reach: the card itself, or something above it.
+    const cardTop = (page) => page.evaluate(() => [...document.querySelectorAll(".install-banner h2, .install-banner .install-actions button, .install-banner .install-body .btn")].map((e) => {
+      const r = e.getBoundingClientRect(), t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return { what: e.textContent.trim(), card: !!t && e.contains(t), under: !t ? "" : t.closest(".shbar-panel") ? "panel" : t.matches(".shbar-scrim") ? "scrim" : t.closest(".install-banner") ? "card" : t.tagName };
+    }));
+    const covered = (parts) => parts.length >= 3 && parts.every((p) => !p.card && (p.under === "panel" || p.under === "scrim"));
+    const onTop = (parts) => parts.length >= 3 && parts.every((p) => p.card);
+    const keys = (page) => page.evaluate(() => [localStorage.getItem("install-banner-later"), localStorage.getItem("install-banner-never")]);
+    for (const [width, height] of [[320, 568], [375, 667]]) {
+      const { context } = await newContext(browser, { groups: "student", apps: TOOL_APPS, width, height, today: TODAY.student, inbox: NOTICES });
+      const { page, errors } = await openPortal(context);
+      await page.waitForSelector(CARD, { timeout: 5000 });
+      await settle(page);
+      await page.waitForTimeout(600);   // the card's slide-in (0.5 s)
+      check(`card ${width}x${height}: the card shows over the page`, onTop(await cardTop(page)) && (await page.$eval(CARD, (c) => getComputedStyle(c).zIndex)) === "34", await cardTop(page));
+
+      // The Apps menu: open, it and its scrim cover the card.
+      await page.click("#shell-bar .shbar-appsbtn");
+      await page.waitForSelector("#shell-bar .shbar-apps:not([hidden])");
+      await page.waitForTimeout(300);
+      check(`card ${width}x${height}: the open Apps menu and its scrim cover the card; the card is still there`, covered(await cardTop(page)) && (await page.isVisible(CARD)), await cardTop(page));
+      await shot(page, `r831-card-apps-menu-${width}`);
+      // Every row of the menu can be reached and pressed: open its closed rows, then Playwright's own check (scrolled
+      // into view, visible, enabled, and the press would land on it) for every link and button in it.
+      for (const b of await page.$$("#shell-bar .shbar-apps .shbar-groupbtn[aria-expanded=false]")) if (await b.isVisible()) await b.click();
+      const ctl = page.locator("#shell-bar .shbar-apps a:visible, #shell-bar .shbar-apps button:visible");
+      const n = await ctl.count();
+      const blocked = [];
+      for (let i = 0; i < n; i++) {
+        try { await ctl.nth(i).click({ trial: true, timeout: 3000 }); } catch (e) { blocked.push(((await ctl.nth(i).textContent()) || "").trim() || `#${i}`); }
+      }
+      const favCount = await page.locator("#shell-bar .shbar-apps .shbar-toolitem:visible").count();
+      check(`card ${width}x${height}: every link and button in the open Apps menu can be reached and pressed (${n}), the six favourites and All 17 tools among them`,
+        n >= 10 && favCount === 6 && blocked.length === 0 && (await page.locator("#shell-bar .shbar-apps .shbar-alltools").isVisible()), { n, favCount, blocked });
+      // A real press: the Tools row closes and opens again.
+      const tb = page.locator("#shell-bar .shbar-apps .shbar-toolsbtn");
+      await tb.click();
+      const shut = await tb.getAttribute("aria-expanded");
+      await tb.click();
+      check(`card ${width}x${height}: pressing Tools in the menu closes and opens the row`, shut === "false" && (await tb.getAttribute("aria-expanded")) === "true" && (await page.locator("#shell-bar .shbar-apps .shbar-toolitem:visible").count()) === 6, shut);
+      // A press where the card's "Not now" is reaches the scrim: the menu closes, the card is not put away.
+      const later = await page.$eval(".install-banner .install-actions button", (b) => { const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+      await page.mouse.click(later[0], later[1]);
+      await page.waitForTimeout(200);
+      check(`card ${width}x${height}: a press on the card's place closes the menu through the scrim and does not press the card`,
+        (await page.isHidden("#shell-bar .shbar-apps")) && (await page.isVisible(CARD)) && JSON.stringify(await keys(page)) === "[null,null]", await keys(page));
+      // Opened again and closed with its ×: the card is back on top.
+      await page.click("#shell-bar .shbar-appsbtn");
+      await page.waitForSelector("#shell-bar .shbar-apps:not([hidden])");
+      await page.click("#shell-bar .shbar-apps .shbar-x");
+      await page.waitForTimeout(200);
+      check(`card ${width}x${height}: the menu's × closes it; the card is visible and on top again`, (await page.isHidden("#shell-bar .shbar-apps")) && (await page.getAttribute("#shell-bar .shbar-appsbtn", "aria-expanded")) === "false" && onTop(await cardTop(page)), await cardTop(page));
+
+      // The notices and the account menu: the same.
+      for (const [btn, panel, label] of [[".shbar-bell", ".shbar-bellpanel", "notices"], [".shbar-acct", ".shbar-account", "account menu"]]) {
+        await page.click(`#shell-bar ${btn}`);
+        await page.waitForSelector(`#shell-bar ${panel}:not([hidden])`);
+        await page.waitForTimeout(200);
+        const under = await cardTop(page);
+        await page.click(`#shell-bar ${panel} .shbar-x`);
+        await page.waitForTimeout(200);
+        check(`card ${width}x${height}: the open ${label} and its scrim cover the card; its × closes it and the card is on top again`, covered(under) && (await page.isHidden(`#shell-bar ${panel}`)) && onTop(await cardTop(page)), under);
+      }
+
+      // The card's buttons work after the menus closed.
+      await page.locator(".install-banner .install-body a.btn, .install-banner .install-body button.btn").first().click({ trial: true, timeout: 3000 });
+      const which = width === 320 ? "Don't show again" : "Not now";
+      await page.getByRole("button", { name: which }).click();
+      await page.waitForTimeout(200);
+      const k = await keys(page);
+      check(`card ${width}x${height}: after the menus, the card's install link can be pressed and "${which}" puts the card away`,
+        !(await page.$(CARD)) && (width === 320 ? k[1] !== null : k[0] !== null) && (await over(page)) <= 0 && errors.length === 0, { k, errors });
       await context.close();
     }
   }

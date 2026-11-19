@@ -15,8 +15,17 @@ From `new-apps/briefs/r831/HOME_TOOLS.md` and `SYNC.md`. The static kit is synce
   switch writes the mode and dispatches it), not clicks on the menu's switch, which is gone.
 - **Tests:** `test/fixtures/tools-831.json` is the seventeen tool entries of infra's `config/apps.json` at `r831`
   `a574444`; refresh it when infra's tools change. A test that needs Competition sets the `mode` cookie before the page loads.
-- **`sw.js` stays v11:** it never precaches or stores `/shell/` scripts or styles (only `/shell/fonts/`), and `/js/` is
-  network first, so no stored file outlives this change.
+- **Kit `a574444` (review fixes), synced as its own commit:** each favourite row on Home ends in a grey chevron and the two
+  photo tools (`needsPhoto`) say "needs a photo". Home's rows carry both `.homegroups` (css/style.css) and
+  `.shell-homegroups` (the kit's ui.css, loaded by `portal/index.html`), so ui.css draws them; landing adds no rule.
+  With no `top` in the tools list and no cookie, the kit's six defaults show.
+- **The install card under the bar's menus:** `.install-banner` is `z-index: 34` (was 900): above the page (Home's own
+  fixed layers stop at 30, the status line), under the open menu's scrim (35) and the bar (40). An open Apps, notices or
+  account menu covers the card; a press where the card is closes the menu through the scrim. Only the portal Home shows
+  the card (`initInstallBanner` in `portal/index.html`); `/install` loads `js/install.js` but never shows it, and the public
+  pages (css/site.css, their own header) never load it.
+- **`sw.js` stays v11:** it never precaches or stores `/shell/` scripts or styles (only `/shell/fonts/`); `css/style.css` is
+  precached but, like `/js/`, network first (the stored copy is used only offline), so no stored file outlives this change.
 
 ## 2026-11-19: release 8.3.1, the hero photo shown as it is (D206, branch `r831`)
 
