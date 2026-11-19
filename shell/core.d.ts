@@ -35,6 +35,10 @@ export interface AppsJsonTile {
   tip?: string;
   /** "admin" puts the app in the Apps menu's (and Home's) Admin apps row, between Tools and More (0.4.0, C1). */
   group?: "admin";
+  /** 0.5.1 (F1): a tool that is one of the six favourites a person starts with. */
+  top?: boolean;
+  /** 0.5.1: a tool that works from a photo; Home's row tags it "needs a photo". */
+  needsPhoto?: boolean;
 }
 
 /** A tile as /_shell/apps returns it: allowed for the person, with its link resolved. */
@@ -65,6 +69,8 @@ export interface ShellTool {
   modes: Mode[];
   /** 0.5.1 (F1): one of the favourites a person starts with (apps.json `top: true`). Absent from a 0.5.0 server. */
   top?: boolean;
+  /** 0.5.1: Home's row tags it "needs a photo" (apps.json `needsPhoto: true`). Absent from a 0.5.0 server. */
+  needsPhoto?: boolean;
 }
 
 export type MenuGroup = "tools" | "adminapps" | "more";
@@ -212,14 +218,17 @@ export const TOOL_FAVS_MAX: 17;
  */
 export function parseToolFavs(v: string | null | undefined, allowed?: readonly string[] | null): string[] | null;
 /** This device's favourite ids (not filtered), or null for no choice. Browser only. */
+/** Not filtered or capped: favouriteTools keeps the person's tools, then 17. */
 export function readToolFavs(doc?: Document): string[] | null;
+/** The six a person starts with, for a tools list with no `top` at all (an older server or apps.json). */
+export const DEFAULT_TOOL_FAVS: readonly string[];
 /** document.cookie string storing the favourites; [] stores "-". */
 export function toolFavsCookie(ids: readonly string[], site: Site): string;
 /** The writer (the Tools service, F4): stores the ids, dispatches `shell:toolfavs`, returns the ids stored. Browser only. */
 export function setToolFavs(ids: readonly string[], site: Site, doc?: Document, win?: Window): string[];
 /**
  * The favourites to draw: `tools` = the tools this person may open in this mode; `favs` = the cookie's ids (or its raw
- * value), null = no choice → the tools marked `top`.
+ * value), null = no choice → the tools marked `top` (none marked at all → DEFAULT_TOOL_FAVS).
  */
 export function favouriteTools(tools: readonly ShellTool[], favs: readonly string[] | string | null | undefined): ShellTool[];
 export function initials(name?: string | null, email?: string | null): string;

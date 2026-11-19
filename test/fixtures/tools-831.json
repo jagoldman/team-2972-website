@@ -298,6 +298,7 @@
     "host": "tools",
     "path": "/trace",
     "top": true,
+    "needsPhoto": true,
     "modes": [
       "build",
       "competition"
@@ -318,6 +319,7 @@
     "host": "tools",
     "path": "/gear",
     "top": true,
+    "needsPhoto": true,
     "modes": [
       "build",
       "competition"

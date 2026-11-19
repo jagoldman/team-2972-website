@@ -188,6 +188,8 @@ export function resolveTools(appsJson, groups, site) {
       modes: tileModes(t),
       // 0.5.1 (F1): one of the favourites a person starts with (no shelltoolfavs cookie).
       top: t.top === true,
+      // 0.5.1: Home's row tags it "needs a photo" (apps.json `needsPhoto: true`; the demo's tool group "photo").
+      needsPhoto: t.needsPhoto === true,
     });
   }
   return out;
@@ -570,26 +572,35 @@ const TOOL_FAVS_LEN = TOOL_FAVS_MAX * 41;
 
 /**
  * A `shelltoolfavs` value → the favourite ids, in order, or null for "no choice" (no cookie, or a value that cannot be
- * read at all: empty, too long, a character other than a-z, 0-9, "-" and ".", an empty id). F3: with `allowed` (ids
- * the person may open in this mode) the others are dropped; duplicates are dropped; at most TOOL_FAVS_MAX are kept.
- * "-" is [] (none).
+ * read at all: empty, too long, a character other than a-z, 0-9, "-" and ".", an empty id). F3: duplicates are
+ * dropped; with `allowed` (ids the person may open in this mode) the others are dropped FIRST and then at most
+ * TOOL_FAVS_MAX are kept, so unknown ids never crowd out a real favourite. Without `allowed` nothing is capped beyond
+ * the raw length bound (the caller filters, then caps: favouriteTools). "-" is [] (none).
  */
 export function parseToolFavs(v, allowed = null) {
   if (typeof v !== "string" || v === "" || v.length > TOOL_FAVS_LEN) return null;
   if (v === TOOL_FAVS_NONE) return [];
   const parts = v.split(".");
   if (!parts.every((id) => TOOL_ID.test(id))) return null;
+  return pickFavs(parts, allowed);
+}
+
+// Ids in order: repeats dropped; with `allowed`, the others dropped and then at most TOOL_FAVS_MAX kept.
+function pickFavs(ids, allowed) {
   const ok = allowed ? new Set(allowed) : null;
   const out = [];
-  for (const id of parts) {
-    if (out.length >= TOOL_FAVS_MAX) break;
-    if (out.includes(id) || (ok && !ok.has(id))) continue;
+  for (const id of ids) {
+    if (ok && out.length >= TOOL_FAVS_MAX) break;
+    if (typeof id !== "string" || out.includes(id) || (ok && !ok.has(id))) continue;
     out.push(id);
   }
   return out;
 }
 
-/** The favourite ids stored on this device (browser), or null when there is no readable choice. Not filtered. */
+/**
+ * The favourite ids stored on this device (browser), or null when there is no readable choice. Not filtered and not
+ * capped (only bounded by the value's length): pass it to favouriteTools, which keeps the person's tools, then 17.
+ */
 export function readToolFavs(doc = document) {
   return parseToolFavs(readCookie(doc.cookie, TOOL_FAVS_COOKIE));
 }
@@ -622,14 +633,27 @@ export function setToolFavs(ids, site, doc = document, win = typeof window === "
 }
 
 /**
+ * The six favourites a person starts with (F1), for a tools list that carries no `top` at all: an answer from a 0.5.0
+ * server or an old apps.json during a deploy. Kept apart from "the person chose none" (the cookie's "-").
+ */
+export const DEFAULT_TOOL_FAVS = Object.freeze(["tool-shooter", "tool-elevator", "tool-spacing", "tool-ratio", "tool-trace", "tool-gear"]);
+
+/**
  * The favourites to draw (M2, M4, M6): `tools` are the tools this person may open in this mode (resolveTools, then
- * filterByMode), `favs` the cookie's ids (readToolFavs or parseToolFavs; null = no choice). No choice → the tools
- * marked `top`, in apps.json order. A choice → those tools in the person's order, unknown ids left out; [] when none.
+ * filterByMode), `favs` the cookie's ids (readToolFavs or parseToolFavs; null = no choice) or its raw value. A choice
+ * → those tools in the person's order, ids this person may not open and repeats left out, then at most 17; [] when
+ * none. No choice → the tools marked `top`, in apps.json order; when no tool in the list carries `top` (no `top`
+ * information at all), DEFAULT_TOOL_FAVS, those the person may open.
  */
 export function favouriteTools(tools, favs) {
   const list = Array.isArray(tools) ? tools : [];
-  const ids = parseToolFavs(Array.isArray(favs) ? favs.join(".") || TOOL_FAVS_NONE : favs, list.map((t) => t.id));
-  if (ids === null) return list.filter((t) => t.top === true).slice(0, TOOL_FAVS_MAX);
+  const allowed = list.map((t) => t.id);
+  const ids = Array.isArray(favs) ? pickFavs(favs, allowed) : parseToolFavs(favs, allowed);
+  if (ids === null) {
+    const top = list.filter((t) => t.top === true);
+    if (top.length) return top.slice(0, TOOL_FAVS_MAX);
+    return DEFAULT_TOOL_FAVS.map((id) => list.find((t) => t.id === id)).filter(Boolean);
+  }
   return ids.map((id) => list.find((t) => t.id === id));
 }
 

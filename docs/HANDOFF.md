@@ -14,7 +14,7 @@ From `new-apps/briefs/r831/HOME_TOOLS.md` and `SYNC.md`. The static kit is synce
 - **`bindPortalModeChange`** (`js/portal-shell.js`) now follows the kit's `shell:change` window event (the banner's
   switch writes the mode and dispatches it), not clicks on the menu's switch, which is gone.
 - **Tests:** `test/fixtures/tools-831.json` is the seventeen tool entries of infra's `config/apps.json` at `r831`
-  `5983bb9`; refresh it when infra's tools change. A test that needs Competition sets the `mode` cookie before the page loads.
+  `a574444`; refresh it when infra's tools change. A test that needs Competition sets the `mode` cookie before the page loads.
 - **`sw.js` stays v11:** it never precaches or stores `/shell/` scripts or styles (only `/shell/fonts/`), and `/js/` is
   network first, so no stored file outlives this change.
 

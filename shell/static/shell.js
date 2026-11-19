@@ -284,6 +284,8 @@ export function mountAppBar(root, opts) {
   const toolsBtn = h("button", { type: "button", class: "shbar-groupbtn shbar-toolsbtn", "aria-expanded": "true", "aria-controls": `${id}-tools`, "data-tip": BAR_TIPS.tools },
     h("span", { text: GROUP_LABELS.tools }), icon("chevron", 16));
   const favList = h("ul", { class: "shbar-grid shbar-favs" });
+  // The drawn favourites by what they show, so a refresh keeps the nodes that survive (renderFavs).
+  let favNodes = new Map();
   const favNote = h("p", { class: "shbar-note shbar-favnote", text: "Star a tool on the Tools page to keep it here.", hidden: true });
   const allToolsText = h("span");
   const allTools = h("a", { class: "shbar-toolrow shbar-alltools", href: toolsHref(site) }, allToolsText, h("span", { class: "shbar-chev", "aria-hidden": "true", text: "›" }));
@@ -435,16 +437,7 @@ export function mountAppBar(root, opts) {
     emptyNote.hidden = !(state.tiles !== null && !state.failed && shown.length === 0);
     // Home first (0.5.0), then the core apps.
     mainList.replaceChildren(homeEl(portal, opts.appId, id), ...main.map((t) => tileEl(t, opts.appId, id)));
-    const tools = filterByMode(state.tools, state.mode);
-    toolsBox.hidden = tools.length === 0;
-    const favs = favouriteTools(tools, state.favs);
-    favList.replaceChildren(...favs.map((t) => favEl(t, opts.appId === "tools" && isHere(t.href), id)));
-    favList.hidden = favs.length === 0;
-    favNote.hidden = favs.length !== 0;
-    allToolsText.textContent = `All ${tools.length} tools`;
-    // On the Tools page itself, "All N tools" is the page the person is on (M5).
-    if (opts.appId === "tools" && isHere(toolsHref(site))) allTools.setAttribute("aria-current", "page");
-    else allTools.removeAttribute("aria-current");
+    renderFavs();
     const lists = { adminapps: admin, more: rest };
     for (const g of Object.keys(groups)) {
       groups[g].list.replaceChildren(...lists[g].map((t) => tileEl(t, opts.appId, id)));
@@ -452,6 +445,42 @@ export function mountAppBar(root, opts) {
     }
     renderGroups();
     renderInbox();
+  }
+  // The menu's favourites on their own (0.5.1 review): a refresh after a star changed elsewhere redraws only this
+  // list, keeps each link that survives (the same node, so a focused one keeps the focus), and moves the focus to the
+  // Tools button when the focused favourite was removed.
+  function renderFavs() {
+    const tools = filterByMode(state.tools, state.mode);
+    toolsBox.hidden = tools.length === 0;
+    const favs = favouriteTools(tools, state.favs);
+    const ae = document.activeElement;
+    const hadFocus = !!ae && favList.contains(ae);
+    const next = new Map();
+    const items = favs.map((t) => {
+      const current = opts.appId === "tools" && isHere(t.href);
+      const key = JSON.stringify([t.id, t.href, t.name, t.icon, t.tip || t.description || "", current]);
+      const li = favNodes.get(key) || favEl(t, current, id);
+      next.set(key, li);
+      return li;
+    });
+    // Moving nodes that are already in place would drop the focus: change the list only where it differs.
+    if (items.length !== favList.children.length || items.some((li, i) => favList.children[i] !== li)) {
+      favList.replaceChildren(...items);
+    }
+    favNodes = next;
+    favList.hidden = favs.length === 0;
+    favNote.hidden = favs.length !== 0;
+    allToolsText.textContent = `All ${tools.length} tools`;
+    // On the Tools page itself, "All N tools" is the page the person is on (M5).
+    if (opts.appId === "tools" && isHere(toolsHref(site))) allTools.setAttribute("aria-current", "page");
+    else allTools.removeAttribute("aria-current");
+    // A node that moved was taken out of the page for a moment, which drops its focus: give it back to the same link.
+    if (hadFocus && favList.contains(ae)) {
+      if (document.activeElement !== ae) ae.focus({ preventScroll: true });
+    } else if (hadFocus) {
+      if (!toolsBox.hidden) toolsBtn.focus();
+      else closeApps.focus();
+    }
   }
   function renderGroups() {
     toolsBtn.setAttribute("aria-expanded", String(state.toolsOpen));
@@ -653,10 +682,14 @@ export function mountAppBar(root, opts) {
     state.theme = resolveTheme(document, window, opts.themeFallback);
     applyTheme(state.theme);
     const favs = readToolFavs();
-    if (mode !== state.mode || String(favs) !== String(state.favs)) {
+    if (mode !== state.mode) {
       state.mode = mode;
       state.favs = favs;
       renderTiles();
+    } else if (String(favs) !== String(state.favs)) {
+      // Only the favourites changed (a star in another tab): the app links stay, and so does the focus.
+      state.favs = favs;
+      renderFavs();
     }
     render();
   };
@@ -683,7 +716,7 @@ export function mountAppBar(root, opts) {
   // The Tools page pressed a star in this tab (setToolFavs): its own menu follows at once.
   const onFavs = () => {
     state.favs = readToolFavs();
-    renderTiles();
+    renderFavs();
   };
   window.addEventListener("shell:toolfavs", onFavs);
 
@@ -908,7 +941,10 @@ export function mountHomeGroups(root, opts = {}) {
   };
   function tool(t) {
     const a = h("a", { class: "toolrow", href: t.href, "data-tip": t.tip || null, "data-q": `${t.name} ${t.description || ""} tools`.toLowerCase() },
-      h("span", { class: "ic" }, icon(t.icon, 18)), h("span", null, h("b", { text: t.name }), t.description ? h("small", { text: t.description }) : null));
+      h("span", { class: "ic" }, icon(t.icon, 18)),
+      h("span", null, h("b", null, t.name, t.needsPhoto ? " " : null, t.needsPhoto ? h("span", { class: "tooltag", text: "needs a photo" }) : null), t.description ? h("small", { text: t.description }) : null),
+      // The demo's Home (D.toolRow, Ground up): a grey chevron at the end of each row.
+      h("span", { class: "chev", "aria-hidden": "true", text: "›" }));
     return entry(a, a);
   }
   function link(t) {

@@ -880,6 +880,22 @@
   font-size: 0.92rem;
   font-weight: 600;
 }
+/* 0.5.1 (the demo's Home, Ground up): a quiet "needs a photo" after a photo tool's name, and a grey chevron at the
+   end of each row. */
+.shell-homegroups .toolrow .tooltag {
+  margin-left: 4px;
+  color: var(--mute);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.shell-homegroups .toolrow .chev {
+  flex: none;
+  margin-left: auto;
+  color: var(--mute);
+  font-size: 1.1rem;
+  font-weight: 400;
+  line-height: 1;
+}
 /* 0.5.1 (M6): no favourite tool: one quiet line before "All N tools". */
 .shell-homegroups .grpnote {
   margin: 0;

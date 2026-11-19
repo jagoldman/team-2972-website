@@ -1324,7 +1324,7 @@ try {
   }
 
   // 8.3.1, M6 and F3: Home's own Tools row lists the person's favourites (the kit reads the shelltoolfavs cookie), then
-  // "All N tools". The seventeen tools are infra's apps.json at r831 5983bb9 (test/fixtures/tools-831.json); one more,
+  // "All N tools". The seventeen tools are infra's apps.json at r831 a574444 (test/fixtures/tools-831.json); one more,
   // made up for this test, is for mentors only, so a student's cookie that names it shows nothing for it.
   {
     const TOOLS = JSON.parse(readFileSync(join(root, "test/fixtures/tools-831.json"), "utf8"));

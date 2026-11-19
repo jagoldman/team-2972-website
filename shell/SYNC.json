@@ -20,15 +20,15 @@
     },
     {
       "path": "shell/ui.css",
-      "sha256": "e759108e2915745b9963c0ec654ca79b34814b6fb9f538916b0a070906559bdd"
+      "sha256": "1f2ddaba8d355a30e6102ef809e6f26ecaf7e27c0293341613839885b38a8450"
     },
     {
       "path": "shell/core.js",
-      "sha256": "b2935e0e002e5bee37f9a1c19840ca35d2a285330154930730ff55113089acc4"
+      "sha256": "e056f187edf5eed08b38e0023140699266996afe69fa366b7a1e26b8b2d98957"
     },
     {
       "path": "shell/core.d.ts",
-      "sha256": "4996688a6e49033be972eda29a35f5d82d308e0822efc3cb1c833bcc81241b5b"
+      "sha256": "ed6fc074aeb7c56315cdcd1586c1832eb3c1c23e79757c4c3d0f2ffad5b95e58"
     },
     {
       "path": "shell/tip.js",
@@ -96,7 +96,7 @@
     },
     {
       "path": "shell/static/shell.js",
-      "sha256": "8d4a33170632be819b9b0e650f7fe8d7b8bd4eb11be46556069a641ce94d28fd"
+      "sha256": "18c412f217ba43588549b0848972329b6618b22551734da9fa598637384db8aa"
     }
   ]
 }
