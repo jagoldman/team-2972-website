@@ -528,7 +528,6 @@ const SPONSOR_TIERS = [
     sponsors: [
       { name: "BAE Systems", logo: "assets/placeholder-sponsor.svg" },
       { name: "Syniti", logo: "assets/placeholder-sponsor.svg" },
-      { name: "NVIDIA", logo: "assets/placeholder-sponsor.svg" },
       { name: "Hirsh Precision Products", logo: "assets/placeholder-sponsor.svg" },
       { name: "The Goldman Family", logo: "assets/placeholder-sponsor.svg" },
       { name: "Dawson School", logo: "media:ec3bf41661c1556a00ab" },

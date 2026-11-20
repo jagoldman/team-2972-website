@@ -627,6 +627,10 @@ try {
       packet: (() => { const a = document.getElementById("packet-link"); return a && [a.textContent, a.className, a.target]; })(), hidden: document.querySelectorAll('section[hidden][data-ck^="SPONSOR_TIERS["]').length, drill: /miter saw, drill on drill presses, and prototype/.test(document.body.textContent) }));
     check("Sponsors: a real logo is a tile (keyed); when its file fails the name shows instead", sp.tile && /^SPONSOR_TIERS\[\d+\]\.sponsors\[\d+\]$/.test(sp.tile.ck) && sp.tile.img && sp.tile.failed && sp.tile.name, sp.tile);
     check("Sponsors: Read the sponsorship packet is the accent button, opening in a new tab; an empty tier is hidden; the machines sentence names the drill presses", sp.packet && sp.packet[0] === "Read the sponsorship packet (opens in a new tab)" && /btn-bumper/.test(sp.packet[1]) && sp.packet[2] === "_blank" && sp.hidden === 1 && sp.drill, sp);
+    // Release 8.3.1, at the owner's request: NVIDIA is no longer listed; the other eight 2024 sponsors keep their order.
+    const sp24 = await page.evaluate(() => { const t = [...document.querySelectorAll('section[data-ck^="SPONSOR_TIERS["]:not([hidden])')].find((s) => s.querySelector("h2").textContent === "2024 sponsors");
+      return { names: t ? [...t.querySelectorAll("ul.names > li")].map((li) => li.textContent.trim()) : null, gone: !/nvidia/i.test(document.body.innerHTML) }; });
+    check("Sponsors: the 2024 tier shows the eight sponsors in order and NVIDIA is gone from the page", sp24.gone && JSON.stringify(sp24.names) === JSON.stringify(["BAE Systems", "Syniti", "Hirsh Precision Products", "The Goldman Family", "Dawson School", "Dawson Parent Association", "Haas", "Hagerty"]), sp24);
     for (const p of ["member", "mentor"]) {
       await open(page, `/${p}.html`);
       const j = await page.evaluate(() => ({ cal: (() => { const a = document.getElementById("calendar-link"); return a && [a.getAttribute("data-ck-href"), a.target, a.textContent]; })(), first: document.querySelectorAll(".first-links a").length, year: document.querySelectorAll('[data-ck="ANNUAL_EVENTS"] > li').length }));
