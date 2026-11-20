@@ -98,6 +98,7 @@ async function newContext(browser, { width, scheme = "dark", saved = false, redu
     if (/^\/(content|media)\//.test(url.pathname)) return route.fulfill({ status: 404, body: "" });
     let p = decodeURIComponent(url.pathname);
     if (p === "/") p = "/index.html";
+    else if (p === "/handbook") p = "/handbook/index.html";   // Caddy's rewrite (container/Caddyfile, "handbook")
     const file = normalize(join(root, p));
     if (!file.startsWith(root) || !existsSync(file)) return route.fulfill({ status: 404, body: "not found" });
     return route.fulfill({ contentType: TYPES[extname(file)] || "application/octet-stream", body: readFileSync(file) });
@@ -658,6 +659,21 @@ try {
     const e = await p2.evaluate(() => ({ hidden: document.querySelectorAll('section[hidden][data-ck^="SPONSOR_TIERS["]').length, empty: document.querySelectorAll(".editor-empty").length }));
     check("editor preview: an empty sponsor tier is shown, with its empty-list spot", e.hidden === 0 && e.empty === 1, e);
     await ed.context.close();
+  }
+
+  // ---------- Resources: the handbook link (stored "handbook", no leading slash, so the Website editor accepts it) ----------
+  for (const width of [1280, 390]) {
+    const { context, problems } = await newContext(browser, { width });
+    const page = await context.newPage();
+    await open(page, "/resources.html");
+    const link = page.locator("#resource-groups a", { hasText: "Team 2972 Program Handbook (working draft)" });
+    check(`Resources ${width}px: one handbook link, in the same tab`, (await link.count()) === 1 && (await link.evaluate((a) => a.target)) === "", await link.count());
+    await link.click();
+    await page.waitForURL(`${PUBLIC}/handbook`);
+    const at = await page.evaluate(() => [location.pathname, document.querySelector("h1") && document.querySelector("h1").textContent]);
+    check(`Resources ${width}px: pressing the handbook link lands on /handbook`, at[0] === "/handbook" && at[1] === "Team 2972 Program Handbook", at);
+    check(`Resources ${width}px: handbook link, no console errors or failed requests`, problems.length === 0, problems.slice(0, 3));
+    await context.close();
   }
 
   // ---------- the header: Home "2972" and the name, every other page "2972 Team" ----------

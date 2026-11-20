@@ -553,7 +553,7 @@ const OUTREACH_EVENTS = [
 // A url of "#" is hidden until it's set. Outside sites are linked, never copied.
 const RESOURCE_LINKS = [
   { category: "Team Documents", items: [
-    { label: "Team 2972 Program Handbook (working draft)", url: "/handbook" },
+    { label: "Team 2972 Program Handbook (working draft)", url: "handbook" },
     { label: "Game Analysis and Planning Template", url: "https://docs.google.com/document/d/1fZVxb6nVicIAbYfuTFl0PZAnThBFkbATEzExnshtqF0/edit?usp=sharing" },
     { label: "Team logo (PNG, 2400 × 2400, white on black)", url: "brand/team-2972-logo.png", download: "team-2972-logo.png" },
   ]},

@@ -25,7 +25,7 @@ own, not drawn from `js/content.js`, and the site editor does not reach it.
   script adds `js` to `<html>`; without it the page is sent with the contents open (`<details open>`), and on a phone they
   are a plain list at the top instead of a sticky menu.
 - **Link back:** "Team 2972 home page", in the rail under the team name on a wide screen, at the top of the page on a phone.
-- **Resources:** the link in `RESOURCE_LINKS` ("Team 2972 Program Handbook (working draft)") goes to `/handbook`. If the site
+- **Resources:** the link in `RESOURCE_LINKS` ("Team 2972 Program Handbook (working draft)") is stored as `handbook` (no leading slash: the Website editor accepts only site paths without one) and lands on `/handbook`. If the site
   editor has published `RESOURCE_LINKS` in `content.json`, that copy wins on the live site until it is published again.
 - **`sw.js` stays v12:** pages are never stored, both fonts were already precached, and nothing precached changed.
 - **Tests:** `test/handbook-test.mjs` (browser, in memory; `HANDBOOK_SOURCE=<owner's file>` also compares every section's

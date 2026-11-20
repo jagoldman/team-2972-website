@@ -7,7 +7,7 @@
 //   - dark mode uses the page's dark colours; the print stylesheet hides the rail
 //   - with JavaScript off the contents and every section are readable, and nothing scrolls sideways
 //   - the text of every section is the source's (when HANDBOOK_SOURCE names the owner's file)
-//   - the resources page's handbook link is "Team 2972 Program Handbook (working draft)" and goes to /handbook
+//   - the resources page's handbook link is "Team 2972 Program Handbook (working draft)" and lands on /handbook (1280, 390)
 // Optional: HANDBOOK_SHOTS=<dir> writes the screenshots the brief asks for (and the source's top at 1280 beside them).
 // Needs Playwright: LANDING_TEST_NODE_MODULES=/path/to/node_modules node test/handbook-test.mjs
 import { createRequire } from "node:module";
@@ -173,20 +173,22 @@ try {
     await context.close();
   }
 
-  // ---- the resources page links to it ----
-  {
-    const { context, problems } = await newContext(browser, { width: 1280, height: 900 });
+  // ---- the resources page links to it (stored as "handbook", no leading slash, so the Website editor accepts it) ----
+  for (const [width, height] of [[1280, 900], [390, 844]]) {
+    const { context, problems } = await newContext(browser, { width, height });
     const page = await context.newPage();
     await page.goto(`${SITE}/resources.html`);
     const link = page.locator("a", { hasText: "Team 2972 Program Handbook (working draft)" });
     await link.first().waitFor();
-    check("resources: one handbook link", (await link.count()) === 1, await link.count());
-    check("resources: it goes to /handbook in the same tab", (await link.getAttribute("href")) === "/handbook" && (await link.getAttribute("target")) === null, await link.getAttribute("href"));
-    check("resources: the old Google Doc link is gone", (await page.locator('a[href*="docs.google.com/document/d/1cmYx"]').count()) === 0);
+    check(`resources ${width}: one handbook link`, (await link.count()) === 1, await link.count());
+    const to = await link.evaluate((a) => [new URL(a.href).pathname, a.target]);
+    check(`resources ${width}: it resolves to /handbook in the same tab`, to[0] === "/handbook" && to[1] === "", to);
+    check(`resources ${width}: the old Google Doc link is gone`, (await page.locator('a[href*="docs.google.com/document/d/1cmYx"]').count()) === 0);
     await link.click();
     await page.waitForURL(`${SITE}/handbook`);
-    check("resources: the link opens the handbook", (await page.textContent("h1")) === "Team 2972 Program Handbook");
-    check("resources: no script error", problems.length === 0, problems);
+    check(`resources ${width}: pressing the link lands on /handbook`, new URL(page.url()).pathname === "/handbook", page.url());
+    check(`resources ${width}: the link opens the handbook`, (await page.textContent("h1")) === "Team 2972 Program Handbook");
+    check(`resources ${width}: no script error`, problems.length === 0, problems);
     await context.close();
   }
 
