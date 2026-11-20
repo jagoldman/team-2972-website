@@ -14,6 +14,7 @@
 #   /content/content.json, /media/<id>-<w>.webp      -> published content (read-only mounts), any host
 #   /img/drive/<drive id>-<w>.webp                   -> Drive photos saved at image build time (public and direct hosts)
 #   /img/drive/og-image-v3.jpg                          -> the link-preview picture made from the hero photo at build time
+#   /handbook (public and direct hosts)               -> handbook/index.html; /handbook/, /handbook.html -> 301 /handbook
 #   / and /index.html (public and direct hosts)      -> the home page, rendered as a template so its og: tags carry
 #                                                       full addresses built from SITE_SCHEME and SITE_DOMAIN
 #
@@ -150,6 +151,23 @@
 	respond @drive_other 404
 }
 
+# The handbook (release 8.3.1, D222-D224): handbook/index.html, public, at /handbook. /handbook/, /handbook/index.html
+# and /handbook.html redirect there. Served like every other public page (file_server, no Cache-Control of its own).
+# disable_canonical_uris: the file is an index file, and file_server would otherwise send /handbook to /handbook/.
+(handbook) {
+	@handbook_alias path /handbook/ /handbook/index.html /handbook.html
+	redir @handbook_alias /handbook 301
+	@handbook path /handbook
+	handle @handbook {
+		rewrite * /handbook/index.html
+		file_server {
+			disable_canonical_uris
+		}
+	}
+	@handbook_other path /handbook/*
+	respond @handbook_other 404
+}
+
 # Identity and tiles. Import only after the gate.
 # no-store on everything behind login, so after sign-out the browser can't show a stored
 # (or back/forward-cached) portal page with the old name and tiles.
@@ -233,6 +251,7 @@
 			import config_js
 			import published
 			import drive_photos
+			import handbook
 			import home_page
 			file_server
 		}
@@ -267,6 +286,7 @@
 			import config_js
 			import published
 			import drive_photos
+			import handbook
 			import home_page
 			file_server
 		}

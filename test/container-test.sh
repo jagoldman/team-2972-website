@@ -338,6 +338,30 @@ if docker exec "$NAME" sh -c 'find /srv/site \( -path /srv/site/pwa-icons -o -pa
   echo "FAIL image contains photos"; fail=1
 else echo "ok   no photos or repo files in the image (the app icons in pwa-icons/, the logo in brand/ and the link-preview picture made at build time, img/drive/og-image-v3.jpg, are meant to be there)"; fi
 
+echo "-- the handbook (release 8.3.1): /handbook, public, served like the other public pages"
+check 200 "public /handbook, no sign-in" -H "Host: $D" "$URL/handbook"
+check 200 "www /handbook" -H "Host: www.$D" "$URL/handbook"
+check 200 "direct /handbook" -H "Host: landing" "$URL/handbook"
+for p in /handbook/ /handbook/index.html /handbook.html; do
+  hl=$(curl -s -o /dev/null -D - -H "Host: $D" "$URL$p" | tr -d '\r')
+  echo "$hl" | head -1 | grep -q ' 301' && has_hdr "$hl" '^location: /handbook$' && echo "ok   $p redirects (301) to /handbook" || { echo "FAIL $p redirect: $(echo "$hl" | head -1) $(echo "$hl" | grep -i '^location')"; fail=1; }
+done
+check 404 "public /handbook/other is 404" -H "Host: $D" "$URL/handbook/other"
+check 401 "portal /handbook, no secret (the gate, like /about.html)" -H "Host: portal.$D" "$URL/handbook"
+check 302 "portal /handbook with the secret goes to the public host (like /about.html)" -H "Host: portal.$D" $S "$URL/handbook"
+hb=$(curl -s -H "Host: $D" "$URL/handbook")
+echo "$hb" | grep -q '<title>Team 2972 Program Handbook' && echo "$hb" | grep -q 'Working draft.</b> Not finalized and subject to change.' && echo "ok   /handbook is the handbook, with its draft line" || { echo "FAIL /handbook body"; fail=1; }
+echo "$hb" | grep -qiE 'googleapis|gstatic|https?://' && { echo "FAIL /handbook names an outside address: $(echo "$hb" | grep -oiE '(https?:)?//[a-z0-9.-]+' | sort -u | tr '\n' ' ')"; fail=1; } || echo "ok   /handbook names no outside address (no Google fonts)"
+hh=$(curl -s -o /dev/null -D - -H "Host: $D" "$URL/handbook" | tr -d '\r')
+ah=$(curl -s -o /dev/null -D - -H "Host: $D" "$URL/about.html" | tr -d '\r')
+has_hdr "$hh" '^content-type: text/html' && echo "ok   /handbook is text/html" || { echo "FAIL /handbook content type"; fail=1; }
+hk=$(echo "$hh" | grep -iE '^(cache-control|x-robots-tag|content-security-policy|x-content-type-options):' | sort)
+ak=$(echo "$ah" | grep -iE '^(cache-control|x-robots-tag|content-security-policy|x-content-type-options):' | sort)
+[ "$hk" = "$ak" ] && echo "ok   /handbook has the same caching and robots headers as /about.html ('$hk')" || { echo "FAIL /handbook headers '$hk' differ from /about.html '$ak'"; fail=1; }
+for f in /fonts/bricolage-grotesque-latin.woff2 /fonts/libre-franklin-latin.woff2 /pwa-icons/site/icon.svg; do
+  check 200 "the handbook's $f" -H "Host: $D" "$URL$f"
+done
+
 # Every local image the pages and content.js name is in the image and served (test/assets-test.cjs lists them).
 missing=0
 for p in $(node test/assets-test.cjs --list); do

@@ -1,5 +1,36 @@
 # landing: handoff
 
+## 2026-11-19: release 8.3.1, the handbook at `/handbook` (D222-D224, branch `r831`)
+
+From `new-apps/briefs/r831/HANDBOOK.md`. **`handbook/index.html` is the owner's "Team 2972 Program Handbook"**, published
+public (no sign-in) at `https://2972robotics.com/handbook`. **To change the handbook, edit that file**; it is a page of its
+own, not drawn from `js/content.js`, and the site editor does not reach it.
+
+- **Content:** the owner's page as given: every section, anchor (`#s1` ... `#s13`, `#s5-4` and the rest, `#acknowledgment`),
+  the order and the acknowledgment block. Two changes the owner asked for on 2026-11-19: the status line reads "Working
+  draft. Not finalized and subject to change." (keep it until the handbook is approved), and the colours follow the public
+  site (below). The handbook keeps its own layout: the contents rail, callouts, light and dark, print styles.
+- **Colours:** the site's (css/site.css, design 8.2) in the page's own token block: white, flag black, bumper blue
+  `#1d43c0` for links and marks (the source's `--navy` and `--brass` names), the site's red `#c3122a` for Critical, grey
+  rules, and a black contents rail like the site's footer. Dark mode keeps the same roles. Light-only does not apply here.
+- **Fonts:** the site's own, from `fonts/` (no request to Google or any other outside host): **Bricolage Grotesque** for
+  headings and numbers (in place of Barlow Condensed; nothing tall or condensed), **Libre Franklin** for text (in place of
+  Public Sans). Headline sizes are about 0.85 of the source's and the column is `62ch`, because those faces set wider.
+- **Routes** (`container/Caddyfile`, snippet `handbook`, public and direct hosts): `/handbook` serves `handbook/index.html`
+  (canonical); `/handbook/`, `/handbook/index.html` and `/handbook.html` redirect there (301); anything else under
+  `/handbook/` is 404. On the portal host it behaves like `/about.html` (the gate, then a redirect to the public host). It
+  has the same headers as the other public pages. It is in a folder, not a root `.html`, because the root pages are design
+  8.2 light-only pages (test/theme-test.cjs counts them).
+- **Inline style and script stay inline:** the container sends no Content-Security-Policy, as for every public page. The
+  script adds `js` to `<html>`; without it the page is sent with the contents open (`<details open>`), and on a phone they
+  are a plain list at the top instead of a sticky menu.
+- **Link back:** "Team 2972 home page", in the rail under the team name on a wide screen, at the top of the page on a phone.
+- **Resources:** the link in `RESOURCE_LINKS` ("Team 2972 Program Handbook (working draft)") goes to `/handbook`. If the site
+  editor has published `RESOURCE_LINKS` in `content.json`, that copy wins on the live site until it is published again.
+- **`sw.js` stays v12:** pages are never stored, both fonts were already precached, and nothing precached changed.
+- **Tests:** `test/handbook-test.mjs` (browser, in memory; `HANDBOOK_SOURCE=<owner's file>` also compares every section's
+  text) and the handbook block in `test/container-test.sh`.
+
 ## 2026-11-19: release 8.3.1, kit 0.5.1 and Home's Tools row (CONTRACT r831 M6, branch `r831`)
 
 From `new-apps/briefs/r831/HOME_TOOLS.md` and `SYNC.md`. The static kit is synced from infra `r831` `5983bb9`
