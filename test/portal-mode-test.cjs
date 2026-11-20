@@ -20,15 +20,24 @@ test("portal mode subscription refreshes on the kit's shell:change and can be re
   };
   const context = vm.createContext({ document: { getElementById: () => ({}) }, window: win });
   vm.runInContext(source, context);
-  let cookie = "build";
+  // Home's drawn mode: what onChange (Home's paintTiles) last drew.
+  let cookie = "build", drawn = "build";
   const observed = [];
-  const remove = context.bindPortalModeChange(() => observed.push(cookie));
+  const remove = context.bindPortalModeChange(() => { observed.push(cookie); drawn = cookie; }, () => drawn, win);
   assert.deepEqual([...listeners.keys()], ["shell:change"]);
+  const fire = (mode, theme) => listeners.get("shell:change")({ detail: { mode, theme } });
   cookie = "competition";
-  listeners.get("shell:change")({ detail: { mode: "competition", theme: "system" } });
+  fire("competition", "system");
   cookie = "build";
-  listeners.get("shell:change")({ detail: { mode: "build", theme: "system" } });
+  fire("build", "system");
   assert.deepEqual(observed, ["competition", "build"]);
+  // 8.3.1 review: a theme change (Appearance) with the mode unchanged sends shell:change too; Home draws nothing.
+  fire("build", "dark");
+  fire("build", "light");
+  assert.deepEqual(observed, ["competition", "build"]);
+  // An event with no mode (an older kit) still repaints.
+  listeners.get("shell:change")({});
+  assert.deepEqual(observed, ["competition", "build", "build"]);
   remove();
   assert.equal(listeners.size, 0);
 });

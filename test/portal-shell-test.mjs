@@ -22,7 +22,8 @@
 //     lasting status line, hostile words, the shop screen's notice and an extra Authentik group, the amber chip's
 //     contrast, the install banner's start, the cookie re-read. PORTAL_TEST_SHOTS=<dir> saves viewport screenshots.
 //   - release 8.3.1 (M6): Home's Tools row (favourites, chevrons, "needs a photo", the six defaults without top), and the
-//     install card under the bar's open menus at 320x568 and 375x667.
+//     install card under the bar's open menus at 320x568 and 375x667 (and 320x568 with reduced motion); the review
+//     fixes: the event-day banner's real switch redraws Home, a theme change does not; the Apps menu's × by Tab.
 // Contrast in both themes is test/theme-test.sh (it covers the new tiles).
 // Needs Playwright with its Chromium from an existing install (nothing is added to landing):
 //   LANDING_TEST_NODE_MODULES=/path/to/node_modules node test/portal-shell-test.mjs
@@ -66,8 +67,8 @@ const MODE_APPS = JSON.stringify([
 // (default 204); its requests are in `reads`.
 // act: what POST /today/act answers (8.3, H2): a status, { status, body }, "hang", or a function of the request body
 // returning one of those, or "abort" (a network failure); its requests are in `actPosts`.
-async function newContext(browser, { groups = "mentor", apps = APPS, width = 1280, height = 900, today = 404, taskDone = 204, inbox = 404, event = 404, me = 200, eventStatus = 404, inboxRead = 204, act = 204 } = {}) {
-  const context = await browser.newContext({ viewport: { width, height } });
+async function newContext(browser, { groups = "mentor", apps = APPS, width = 1280, height = 900, today = 404, taskDone = 204, inbox = 404, event = 404, me = 200, eventStatus = 404, inboxRead = 204, act = 204, reducedMotion = "no-preference" } = {}) {
+  const context = await browser.newContext({ viewport: { width, height }, reducedMotion });
   const seen = [];
   const posts = [];
   const reads = [];
@@ -1474,12 +1475,16 @@ try {
     const covered = (parts) => parts.length >= 3 && parts.every((p) => !p.card && (p.under === "panel" || p.under === "scrim"));
     const onTop = (parts) => parts.length >= 3 && parts.every((p) => p.card);
     const keys = (page) => page.evaluate(() => [localStorage.getItem("install-banner-later"), localStorage.getItem("install-banner-never")]);
-    for (const [width, height] of [[320, 568], [375, 667]]) {
-      const { context } = await newContext(browser, { groups: "student", apps: TOOL_APPS, width, height, today: TODAY.student, inbox: NOTICES });
+    // 8.3.1 review: the same run once more at 320 x 568 with reduced motion (no slide-in, no transitions).
+    for (let [width, height, reducedMotion] of [[320, 568, "no-preference"], [375, 667, "no-preference"], [320, 568, "reduce"]]) {
+      const { context } = await newContext(browser, { groups: "student", apps: TOOL_APPS, width, height, today: TODAY.student, inbox: NOTICES, reducedMotion });
       const { page, errors } = await openPortal(context);
       await page.waitForSelector(CARD, { timeout: 5000 });
       await settle(page);
       await page.waitForTimeout(600);   // the card's slide-in (0.5 s)
+      if (reducedMotion === "reduce") height = `${height} reduced motion`;
+      const reduced = await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches);
+      check(`card ${width}x${height}: the page's motion preference is ${reducedMotion}`, reduced === (reducedMotion === "reduce"), reduced);
       check(`card ${width}x${height}: the card shows over the page`, onTop(await cardTop(page)) && (await page.$eval(CARD, (c) => getComputedStyle(c).zIndex)) === "34", await cardTop(page));
 
       // The Apps menu: open, it and its scrim cover the card.
@@ -1487,7 +1492,7 @@ try {
       await page.waitForSelector("#shell-bar .shbar-apps:not([hidden])");
       await page.waitForTimeout(300);
       check(`card ${width}x${height}: the open Apps menu and its scrim cover the card; the card is still there`, covered(await cardTop(page)) && (await page.isVisible(CARD)), await cardTop(page));
-      await shot(page, `r831-card-apps-menu-${width}`);
+      await shot(page, `r831-card-apps-menu-${width}${reducedMotion === "reduce" ? "-reduced" : ""}`);
       // Every row of the menu can be reached and pressed: open its closed rows, then Playwright's own check (scrolled
       // into view, visible, enabled, and the press would land on it) for every link and button in it.
       for (const b of await page.$$("#shell-bar .shbar-apps .shbar-groupbtn[aria-expanded=false]")) if (await b.isVisible()) await b.click();
@@ -1640,9 +1645,27 @@ try {
       mode: p.querySelectorAll('.shbar-mode, [role="group"][aria-label="App mode"]').length,
       first: [...p.querySelectorAll("a[href], button")].find((e) => !e.closest("[hidden]"))?.matches(".shbar-x") }));
     check(`${width}px: the Apps menu's head reads Apps, has no mode switch, and its × is the first stop`, head.title === "Apps" && head.mode === 0 && head.first, head);
-    await page.focus("#shell-bar .shbar-apps .shbar-x");
+    // 8.3.1 review: the keyboard path, not only the DOM order. Closed, then opened from the keyboard on the Apps button:
+    // one Tab reaches the ×, Shift+Tab goes back to the Apps button (the menu stays open), Tab again reaches the ×.
+    await page.click("#shell-bar .shbar-appsbtn");
+    await page.waitForSelector("#shell-bar .shbar-apps", { state: "hidden" });
+    await page.focus("#shell-bar .shbar-appsbtn");
+    await page.keyboard.press("Enter");
+    await page.waitForSelector("#shell-bar .shbar-apps:not([hidden])");
+    const at = () => page.evaluate(() => { const a = document.activeElement; return a?.matches(".shbar-apps .shbar-x") ? "x" : a?.matches(".shbar-appsbtn") ? "apps button" : (a?.className || a?.tagName || ""); });
+    const keyPath = { opened: await page.getAttribute("#shell-bar .shbar-appsbtn", "aria-expanded") };
+    await page.keyboard.press("Tab");
+    keyPath.tab = await at();
+    await page.keyboard.press("Shift+Tab");
+    keyPath.back = await at();
+    keyPath.stillOpen = await page.isVisible("#shell-bar .shbar-apps");
+    await page.keyboard.press("Tab");
+    keyPath.again = await at();
+    check(`${width}px: opened from the keyboard, Tab reaches the Apps menu's × first, Shift+Tab goes back to the Apps button, Tab reaches × again`,
+      keyPath.opened === "true" && keyPath.tab === "x" && keyPath.back === "apps button" && keyPath.stillOpen && keyPath.again === "x", keyPath);
     await page.keyboard.press("Enter");
     check(`${width}px: the × closes the Apps menu`, !(await page.isVisible("#shell-bar .shbar-apps")));
+    check(`${width}px: closed with the × from the keyboard, the focus goes back to the Apps button`, await page.evaluate(() => !!document.activeElement?.matches(".shbar-appsbtn")));
     // the scrim: a press on the page closes the menu and does not reach the control beneath
     const box = await page.$eval('[data-grp="more"] .grphead', (b) => { b.scrollIntoView({ block: "end" }); const r = b.getBoundingClientRect(); return { x: r.right - 12, y: r.top + r.height / 2 }; });
     await page.click("#shell-bar .shbar-appsbtn");
@@ -1685,6 +1708,74 @@ try {
       check(`${width}px: scrolled, the bar still sticks at the top over the page`, top === 0, top);
       await context.close();
     }
+
+    // 8.3.1 review: the banner's real "Switch to Competition" redraws Home for the new mode (the kit's shell:change),
+    // and a theme change from the account menu (the same event, the mode unchanged) redraws nothing.
+    const EV_TOOLS = JSON.parse(readFileSync(join(root, "test/fixtures/tools-831.json"), "utf8"));
+    const EV_APPS = JSON.stringify([
+      { id: "tasks", name: "Task App", description: "Both modes.", host: "tasks", groups: [] },
+      { id: "pit", name: "Pit Checklist", description: "Competition only.", host: "pit", groups: [], modes: ["competition"] },
+      { id: "parts", name: "Parts", description: "Build only.", host: "parts", groups: [], modes: ["build"] },
+      ...EV_TOOLS,
+    ]);
+    const { context } = await newContext(browser, { groups: "student", apps: EV_APPS, event });
+    await context.addCookies([site("shelltoolfavs", "tool-ratio.tool-shooter")]);
+    const { page, errors } = await openPortal(context);
+    await page.waitForSelector("#shell-bar .shbar-bannerbtn:not([hidden])");
+    const homeNow = (page) => page.evaluate(() => ({
+      mode: (document.cookie.match(/(?:^|; )mode=([^;]*)/) || [])[1] || "",
+      rows: [...document.querySelectorAll("#app-grid .approw")].map((r) => [r.dataset.id, !r.hidden]),
+      empty: !document.getElementById("app-empty").hidden,
+      q: document.getElementById("q").value,
+      chip: !!document.querySelector("#shell-bar .shbar-chip:not([hidden])"),
+      banner: !!document.querySelector("#shell-bar .shbar-bannerbtn:not([hidden])"),
+      toolsOpen: document.querySelector('#home-groups [data-grp="tools"] .grphead')?.getAttribute("aria-expanded"),
+      favs: [...document.querySelectorAll("#tools-list a.toolrow:not(.all)")].map((a) => [a.querySelector("b").childNodes[0].textContent, !a.hidden]),
+      all: [...document.querySelectorAll("#tools-list a.toolrow.all")].map((a) => [a.textContent.trim(), !a.hidden]),
+      toolsRow: !document.querySelector('#home-groups [data-grp="tools"]')?.hidden,
+    }));
+    await page.click('[data-grp="tools"] .grphead');
+    await page.fill("#q", "only");
+    const before = await homeNow(page);
+    check("event day, Build: the search shows Parts (build only), not Pit Checklist; no chip; the banner offers the switch",
+      JSON.stringify(before.rows) === JSON.stringify([["tasks", false], ["parts", true]]) && !before.chip && before.banner && before.mode !== "competition", before);
+    await page.click("#shell-bar .shbar-bannerbtn");
+    await page.waitForFunction(() => !!document.querySelector('#app-grid .approw[data-id="pit"]'));
+    const after = await homeNow(page);
+    check("Switch to Competition (the real button): Pit Checklist appears, Parts goes, the chip shows, the banner's button goes",
+      after.mode === "competition" && after.rows.some(([id]) => id === "pit") && !after.rows.some(([id]) => id === "parts") && after.chip && !after.banner, after);
+    check("Switch to Competition: the search still applies to the new list (only Pit Checklist matches \"only\")",
+      after.q === "only" && JSON.stringify(after.rows) === JSON.stringify([["tasks", false], ["pit", true]]) && !after.empty, after);
+    await page.fill("#q", "");
+    const cleared = await homeNow(page);
+    check("Switch to Competition: the Tools row still shows the favourites (Gear ratio, Shooter) and All 17 tools, still open",
+      cleared.toolsRow && cleared.toolsOpen === "true" && JSON.stringify(cleared.favs) === JSON.stringify([["Gear ratio", true], ["Shooter", true]])
+      && JSON.stringify(cleared.all) === JSON.stringify([["All 17 tools›", true]]), cleared);
+    // The theme: keep Home's row nodes and watch #main for added or removed nodes, then pick Dark in the account menu.
+    await page.fill("#q", "only");
+    const themeBefore = await homeNow(page);
+    await page.evaluate(() => {
+      window.__kept = [...document.querySelectorAll("#app-grid .approw, #home-groups .grpbody a, #home-groups .grphead")];
+      window.__changes = 0;
+      window.__watch = new MutationObserver((list) => { window.__changes += list.filter((m) => m.type === "childList").length; });
+      window.__watch.observe(document.getElementById("main"), { childList: true, subtree: true });
+    });
+    await page.click("#shell-bar .shbar-acct");
+    await page.waitForSelector("#shell-bar .shbar-account:not([hidden])");
+    await page.locator("#shell-bar .shbar-account .shbar-choice", { hasText: "Dark" }).click();
+    await page.waitForTimeout(300);
+    const kept = await page.evaluate(() => {
+      const now = [...document.querySelectorAll("#app-grid .approw, #home-groups .grpbody a, #home-groups .grphead")];
+      window.__watch.disconnect();
+      return { same: now.length === window.__kept.length && now.every((n, i) => n === window.__kept[i]) && window.__kept.every((n) => n.isConnected),
+        n: now.length, changes: window.__changes, theme: document.documentElement.getAttribute("data-theme") };
+    });
+    check("a theme change (Dark, from the account menu) does not rebuild Home's rows: the same nodes, nothing added or removed in #main",
+      kept.theme === "dark" && kept.same && kept.n >= 5 && kept.changes === 0, kept);
+    const themeAfter = await homeNow(page);
+    check("a theme change: nothing else on Home changed (mode, rows, search, chip, Tools row)", JSON.stringify(themeAfter) === JSON.stringify(themeBefore), { themeBefore, themeAfter });
+    check("the switch and the theme change raise no script error", errors.length === 0, errors);
+    await context.close();
   }
 
   // The guide (kit 0.4.0, C2): the "Get started" card on Home, and the two stops that live on Home.

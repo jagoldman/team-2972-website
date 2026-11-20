@@ -24,8 +24,12 @@ From `new-apps/briefs/r831/HOME_TOOLS.md` and `SYNC.md`. The static kit is synce
   account menu covers the card; a press where the card is closes the menu through the scrim. Only the portal Home shows
   the card (`initInstallBanner` in `portal/index.html`); `/install` loads `js/install.js` but never shows it, and the public
   pages (css/site.css, their own header) never load it.
-- **`sw.js` stays v11:** it never precaches or stores `/shell/` scripts or styles (only `/shell/fonts/`); `css/style.css` is
-  precached but, like `/js/`, network first (the stored copy is used only offline), so no stored file outlives this change.
+- **`sw.js` is v12 (8.3.1 review):** `css/style.css` changed (the install card's z-index) and is in the precache list, so
+  the version moves as the notes above `VERSION` say (a precached file changed); the old `2972-static-v11` cache is
+  deleted on activate. It never precaches or stores `/shell/` scripts or styles (only `/shell/fonts/`).
+- **Home repaints on `shell:change` only when the mode changed (8.3.1 review):** `bindPortalModeChange(onChange,
+  drawnMode)` skips an event whose `detail.mode` is the mode Home last drew (`paintTiles` sets it), so a theme change from
+  the account menu rebuilds nothing; an event without a mode still repaints.
 
 ## 2026-11-19: release 8.3.1, the hero photo shown as it is (D206, branch `r831`)
 

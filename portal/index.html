@@ -147,7 +147,9 @@ onContent(async () => {
   const first = full.split(" ")[0];
   document.getElementById("name").textContent = first;
   document.getElementById("greeting").setAttribute("aria-label", `Hi ${first}.`);
-  bindPortalModeChange(paintTiles);
+  // The mode Home's rows were last drawn for (paintTiles sets it): a "shell:change" for the theme alone draws nothing.
+  let drawnMode = null;
+  bindPortalModeChange(paintTiles, () => drawnMode);
 
   if (groups.length === 0) {
     document.getElementById("no-group").hidden = false;
@@ -314,7 +316,7 @@ onContent(async () => {
   function paintTiles() {
     if (groups.length === 0) return;
     if (lastToday && !posting() && cardsMode !== parseMode(readCookie(document.cookie, "mode"))) paintCards(lastToday);
-    const mode = parseMode(readCookie(document.cookie, "mode"));
+    const mode = drawnMode = parseMode(readCookie(document.cookie, "mode"));
     const shown = filterByMode(resolved, mode).sort((a, b) => !a.href - !b.href);
     // The kit's split, the same as the bar's Apps menu: the core apps here, Admin apps (group "admin") and the rest below.
     const { main } = splitGroups(shown);

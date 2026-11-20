@@ -11,8 +11,15 @@ import { isDisplayOnly } from "/js/portal-home.js";
 // The bar tells this tab when it wrote the mode cookie (the kit's "shell:change"; since kit 0.5.1 the only switch in
 // the bar is the event-day banner's "Switch to Competition", the menu's Build / Competition switch is on Account).
 // A change made in another tab or on Account is followed when the tab comes back (Home's visibilitychange).
-export function bindPortalModeChange(onChange, win = window) {
-  const listener = () => onChange();
+// The kit sends the same event when the person picks a theme (Appearance) with the mode unchanged, so `drawnMode()`
+// returns the mode Home last drew, and onChange runs only when the event's mode differs from it (8.3.1 review).
+// An event without a mode (an older kit) still repaints.
+export function bindPortalModeChange(onChange, drawnMode = () => null, win = window) {
+  const listener = (event) => {
+    const mode = event && event.detail ? event.detail.mode : undefined;
+    if (mode && mode === drawnMode()) return;
+    onChange();
+  };
   win.addEventListener("shell:change", listener);
   return () => win.removeEventListener("shell:change", listener);
 }

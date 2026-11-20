@@ -208,6 +208,8 @@ const okNetwork = async () => basic("from the network");
   check("install stores the offline page and the shared styles, fonts and icon", ["/offline.html", "/css/style.css", "/css/site.css", "/fonts/big-shoulders-latin.woff2", "/fonts/libre-franklin-latin.woff2", "/fonts/inter-latin.woff2", "/fonts/bricolage-grotesque-latin.woff2", "/pwa-icons/site/icon.svg"].every((p) => w.pathsStored().includes(p)));
   check("install stores the portal's font, the shell kit's Archivo (8.3)", w.pathsStored().includes("/shell/fonts/archivo-latin-var.woff2"));
   check("the cache name is versioned", [...w.store.keys()].every((n) => /^2972-static-v\d+$/.test(n)));
+  // 8.3.1: /css/style.css (precached) changed for the install card, so the version moved to v12; any later one keeps it.
+  check("the cache version moved with 8.3.1's css/style.css (v12 or later)", +((swSource.match(/const VERSION = "v(\d+)"/) || [])[1] || 0) >= 12);
   w = makeWorker({ fetchImpl: async (r) => (new URL(r.url).pathname === "/css/style.css" ? basic("x", 404) : okNetwork()) });
   let ok = true; try { await w.dispatch("install"); } catch (e) { ok = false; }
   check("install still succeeds when a nice-to-have file is missing", ok && w.pathsStored().includes("/offline.html"));

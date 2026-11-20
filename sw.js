@@ -10,7 +10,8 @@
 //
 // Change VERSION when this file's rules or the precached list change. Old caches are deleted on activate.
 
-const VERSION = "v11";  // v11: a file is stored only when it is the server's own 200 of the right type, not redirected,
+const VERSION = "v12";  // v12: /css/style.css (precached) changed for release 8.3.1 (the install card under the bar's menus)
+                       // v11: a file is stored only when it is the server's own 200 of the right type, not redirected,
                        //      and not no-store or private (also for the precached files)
                        // v10: the two branches of release 8.3 together: v9 (the public site) and the portal's kit 0.5.0 font
                        //      (the shell kit's Archivo under /shell/fonts/: precached and stored); nothing else changes
